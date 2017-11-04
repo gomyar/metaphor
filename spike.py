@@ -25,22 +25,34 @@ def index():
 
 @app.route("/schema")
 def api():
-    return jsonify({'resources': [
-        'company': {
-            'fields': {
-                'name': {'type': 'str'},
-                'address': {'type': 'str'},
-                'periods': {'type': 'collection', 'target': {'type': 'period'}},
-                'sector': {'type': 'link', 'target': {'type': 'sector'}},
-        }},
-        'period': {
-            'year': {'type': 'int'},
-            'period': {'type': 'str'},
-            'total_assets': {'type': 'float'},
-            'total_liabilities': {'type': 'float'},
-            'net_assets': {'type': 'calc', 'calc': 'total_assets - total_liabilities'},
-        }
-    ]})
+    return jsonify({
+        'functions': [
+            'space_periods': {'module': 'extensions.space_periods',
+                              'args': ['periods'],
+            },
+        ],
+        'root': {
+            'companies': {'type': 'collection', 'target': 'company'},
+        },
+        'resources': [
+            'company': {
+                'fields': {
+                    'name': {'type': 'str'},
+                    'address': {'type': 'str'},
+                    'periods': {'type': 'collection', 'target': 'period'},
+                    'spaced_periods': {'type': 'collection', 'calc': 'space_periods(self.periods)'},
+                    'sector': {'type': 'link', 'target': {'type': 'sector'}},
+            }},
+            'period': {
+                'year': {'type': 'int'},
+                'period': {'type': 'str'},
+                'total_assets': {'type': 'float'},
+                'total_liabilities': {'type': 'float'},
+                'net_assets': {'type': 'float', 'calc': 'total_assets - total_liabilities'},
+                'previous_year_period': {'type': 'link', 'calc': 'self.company.spaced_periods[-4]'},
+                'previous_quarter_period': {'type': 'link', 'calc': 'self.company.spaced_periods[-1]'},
+            }
+        ]})
 
 
 @app.route("/api")
