@@ -46,18 +46,22 @@ class SpikeTest(unittest.TestCase):
 
         self.assertEquals(2017, period['year'])
 
-
-    def _test_add_data(self):
+    def test_add_data(self):
         company_id = self.api.create('companies', dict(name='Bobs Burgers'))
+
+        new_company = self.db['resource_company'].find_one({'_id': company_id})
+        self.assertEquals("Bobs Burgers", new_company['name'])
+
         period_id = self.api.create('companies/%s/periods' % (company_id,),
                                     dict(year=2017, period='YE'))
 
-        company = self.db['companies'].find_one({'_id': company_id})
+        company = self.db['resource_company'].find_one({'_id': company_id})
         self.assertEquals('Bobs Burgers', company['name'])
-        period = self.db['periods'].find_one({'_id': period_id})
+        period = self.db['resource_period'].find_one({'_id': period_id})
         self.assertEquals('YE', period['period'])
         self.assertEquals(2017, period['year'])
 
+    def _test_linked_collection(self):
         api_period = self.api.get("periods/%s" % (period_id,))
         self.assertEquals('YE', api_period['period'])
         self.assertEquals(2017, api_period['year'])

@@ -37,6 +37,9 @@ class ResourceSpec(object):
     def create_resource(self, data):
         return Resource(self, data)
 
+    def default_value(self):
+        return None
+
 
 class FieldSpec(object):
     def __init__(self, field_type):
@@ -48,6 +51,9 @@ class FieldSpec(object):
 
     def create_resource(self, data):
         return Field(self, data)
+
+    def default_value(self):
+        return None
 
 
 class CollectionSpec(object):
@@ -64,6 +70,9 @@ class CollectionSpec(object):
 
     def create_resource(self, name):
         return CollectionResource(self, name)
+
+    def default_value(self):
+        return []
 
 
 class Resource(object):
@@ -104,6 +113,15 @@ class CollectionResource(Resource):
         data = self._collection().find_one({'_id': ObjectId(child_id)})
         resource = self.spec.resource_type.create_resource(data)
         return resource
+
+    def create(self, new_data):
+        data = {}
+        for field_name, field_spec in self.spec.resource_type.fields.items():
+            if field_name in new_data:
+                data[field_name] = new_data[field_name]
+            else:
+                data[field_name] = field_spec.default_value()
+        return self._collection().insert(data)
 
 
 class Field(Resource):
@@ -154,8 +172,8 @@ class MongoApi(object):
         return path.strip('/').split('/')[-1]
 
     def create(self, path, data):
-        collection_name = self._resource_name(path)
-        return self.db[collection_name].insert(data)
+        resource = self.root.create_child(path)
+        return resource.create(data)
 
     def _get(self, resource, resource_id):
         return self.db[resource].find_one({'_id': ObjectId(resource_id)})
