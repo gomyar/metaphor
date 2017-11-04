@@ -46,6 +46,14 @@ class SpikeTest(unittest.TestCase):
 
         self.assertEquals(2017, period['year'])
 
+        self.assertEquals([
+            'http://server/companies/%s' % (company_id,)
+        ], self.api.get('/companies'))
+
+        self.assertEquals({
+            'companies': 'http://server/companies',
+        }, self.api.get('/'))
+
     def test_add_data(self):
         company_id = self.api.create('companies', dict(name='Bobs Burgers'))
 

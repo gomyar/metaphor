@@ -30,6 +30,12 @@ class ResourceSpec(object):
     def __repr__(self):
         return "<ResourceSpec %s>" % (self.name)
 
+    def _db(self, collection):
+        return self.schema.db[collection]
+
+    def _collection(self):
+        return self._db('resource_%s' % (self.name,))
+
     def add_field(self, name, spec):
         self.fields[name] = spec
         spec.schema = self.schema
@@ -83,12 +89,6 @@ class Resource(object):
     def __repr__(self):
         return "<Resource %s>" % (self.spec)
 
-    def _db(self, collection):
-        return self.spec.schema.db[collection]
-
-    def _collection(self):
-        return self._db('resource_%s' % (self.spec.resource_type.name,))
-
     def serialize(self, path):
         fields = {}
         for field_name, field_spec in self.spec.fields.items():
@@ -110,7 +110,7 @@ class CollectionResource(Resource):
         return [os.path.join(path, str(r_id)) for r_id in self.data]
 
     def create_child(self, child_id):
-        data = self._collection().find_one({'_id': ObjectId(child_id)})
+        data = self.spec.resource_type._collection().find_one({'_id': ObjectId(child_id)})
         resource = self.spec.resource_type.create_resource(data)
         return resource
 
@@ -121,7 +121,7 @@ class CollectionResource(Resource):
                 data[field_name] = new_data[field_name]
             else:
                 data[field_name] = field_spec.default_value()
-        return self._collection().insert(data)
+        return self.spec.resource_type._collection().insert(data)
 
 
 class Field(Resource):
@@ -136,6 +136,7 @@ class Field(Resource):
     def serialize(self, path):
         return self.data
 
+
 class RootResource(Resource):
     def __init__(self, api):
         super(RootResource, self).__init__(api.schema.specs["root"], {})
@@ -148,10 +149,17 @@ class RootResource(Resource):
         root_name = parts.pop(0)
 
         spec = self.spec.fields[root_name]
-        resource = spec.create_resource(root_name)
+        resources = spec.resource_type._collection().find({}, {'_id': 1})
+        resource = spec.create_resource([str(r_id['_id']) for r_id in resources])
         while parts:
             resource = resource.create_child(parts.pop(0))
         return resource
+
+    def serialize(self, path):
+        fields = {}
+        for field_name, field_spec in self.spec.fields.items():
+            fields[field_name] = os.path.join(path, field_name)
+        return fields
 
 
 class MongoApi(object):
@@ -179,5 +187,9 @@ class MongoApi(object):
         return self.db[resource].find_one({'_id': ObjectId(resource_id)})
 
     def get(self, path):
-        resource = self.root.create_child(path)
-        return resource.serialize(os.path.join(self.root_url, path))
+        path = path.strip('/')
+        if path:
+            resource = self.root.create_child(path)
+            return resource.serialize(os.path.join(self.root_url, path))
+        else:
+            return self.root.serialize(self.root_url)
