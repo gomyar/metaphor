@@ -1,4 +1,5 @@
 
+import os
 from bson.objectid import ObjectId
 
 
@@ -16,8 +17,8 @@ class Schema(object):
         self.specs[resource_spec.name] = resource_spec
         resource_spec.schema = self
 
-    def add_root(self, path, spec):
-        self.specs['root'].add_field(path, spec)
+    def add_root(self, name, spec):
+        self.specs['root'].add_field(name, spec)
 
 
 class ResourceSpec(object):
@@ -46,16 +47,20 @@ class FieldSpec(object):
         return "<FieldSpec %s>" % (self.field_type)
 
     def create_resource(self, data):
-        return Resource(self, data)
+        return Field(self, data)
 
 
 class CollectionSpec(object):
-    def __init__(self, resource_type):
-        self.resource_type = resource_type
+    def __init__(self, target_spec):
+        self.target_spec = target_spec
         self.schema = None
 
     def __repr__(self):
-        return "<CollectionSpec %s>" % (self.resource_type)
+        return "<CollectionSpec %s>" % (self.target_spec)
+
+    @property
+    def resource_type(self):
+        return self.schema.specs[self.target_spec]
 
     def create_resource(self, name):
         return CollectionResource(self, name)
@@ -75,10 +80,11 @@ class Resource(object):
     def _collection(self):
         return self._db('resource_%s' % (self.spec.resource_type.name,))
 
-    def serialize(self):
+    def serialize(self, path):
         fields = {}
-        for field_name, field_type in self.spec.fields.items():
-            fields[field_name] = self.data[field_name]
+        for field_name, field_spec in self.spec.fields.items():
+            fields[field_name] = field_spec.create_resource(
+                self.data[field_name]).serialize(os.path.join(path, field_name))
         return fields
 
     def create_child(self, field_name):
@@ -91,10 +97,8 @@ class CollectionResource(Resource):
     def __repr__(self):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
 
-    def serialize(self):
-        data = self._collection().find()
-        resources = [self.spec.create_resource(res) for res in data]
-        return resources
+    def serialize(self, path):
+        return [os.path.join(path, str(r_id)) for r_id in self.data]
 
     def create_child(self, child_id):
         data = self._collection().find_one({'_id': ObjectId(child_id)})
@@ -103,16 +107,16 @@ class CollectionResource(Resource):
 
 
 class Field(Resource):
-    def __init__(self, name, data):
-        self.name = name
-        self.data = data
-
     def __repr__(self):
-        return "<Field %s=%s>" % (self.name, self.value)
+        return "<Field %s>" % (self.data,)
 
-    def create_child(self, path):
-        raise NotImplementedError('%s is not a traverable resource' % (
-                                  self.name))
+    def create_child(self, name):
+        raise NotImplementedError(
+            '%s is not a traversable resource, its a %s' % (
+                self.name, self.spec))
+
+    def serialize(self, path):
+        return self.data
 
 class RootResource(Resource):
     def __init__(self, api):
@@ -122,13 +126,13 @@ class RootResource(Resource):
         return "<RootResource>"
 
     def create_child(self, path):
-        path = path.split('/')
-        root_name = path.pop(0)
+        parts = path.split('/')
+        root_name = parts.pop(0)
 
         spec = self.spec.fields[root_name]
         resource = spec.create_resource(root_name)
-        while path:
-            resource = resource.create_child(path.pop(0))
+        while parts:
+            resource = resource.create_child(parts.pop(0))
         return resource
 
 
@@ -158,4 +162,4 @@ class MongoApi(object):
 
     def get(self, path):
         resource = self.root.create_child(path)
-        return resource.serialize()
+        return resource.serialize(os.path.join(self.root_url, path))

@@ -21,12 +21,12 @@ class SpikeTest(unittest.TestCase):
         self.schema.add_resource_spec(self.period_spec)
 
         self.company_spec.add_field("name", FieldSpec("string"))
-        self.company_spec.add_field("periods", CollectionSpec(self.period_spec))
+        self.company_spec.add_field("periods", CollectionSpec('period'))
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
 
-        self.schema.add_root('companies', CollectionSpec(self.company_spec))
+        self.schema.add_root('companies', CollectionSpec('company'))
 
         self.api = MongoApi('http://server', self.schema, self.db)
 
@@ -37,9 +37,15 @@ class SpikeTest(unittest.TestCase):
             {'name': 'Bobs Burgers', 'periods': [period_id]})
 
         company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals("Bobs Burgers", company['name'])
+        self.assertEquals(
+            "http://server/companies/%s/periods/%s" % (company_id, period_id),
+            company['periods'][0])
+
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
 
         self.assertEquals(2017, period['year'])
+
 
     def _test_add_data(self):
         company_id = self.api.create('companies', dict(name='Bobs Burgers'))
