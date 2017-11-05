@@ -40,8 +40,8 @@ class ResourceSpec(object):
         self.fields[name] = spec
         spec.schema = self.schema
 
-    def create_resource(self, data):
-        return Resource(self, data)
+    def create_resource(self, field_name, data):
+        return Resource(field_name, self, data)
 
     def default_value(self):
         return None
@@ -55,8 +55,8 @@ class FieldSpec(object):
     def __repr__(self):
         return "<FieldSpec %s>" % (self.field_type)
 
-    def create_resource(self, data):
-        return Field(self, data)
+    def create_resource(self, field_name, data):
+        return Field(field_name, self, data)
 
     def default_value(self):
         return None
@@ -74,32 +74,41 @@ class CollectionSpec(object):
     def resource_type(self):
         return self.schema.specs[self.target_spec]
 
-    def create_resource(self, name):
-        return CollectionResource(self, name)
+    def create_resource(self, field_name, name):
+        return CollectionResource(field_name, self, name)
 
     def default_value(self):
         return []
 
 
 class Resource(object):
-    def __init__(self, spec, data):
+    def __init__(self, field_name, spec, data):
+        self.field_name = field_name
         self.spec = spec
         self.data = data
+        self._parent = None
 
     def __repr__(self):
         return "<Resource %s>" % (self.spec)
 
+    @property
+    def _id(self):
+        return self.data.get('_id')
+
     def serialize(self, path):
         fields = {}
         for field_name, field_spec in self.spec.fields.items():
-            fields[field_name] = field_spec.create_resource(
-                self.data[field_name]).serialize(os.path.join(path, field_name))
+            child = field_spec.create_resource(field_name, self.data.get(field_name))
+            if isinstance(child, CollectionResource):
+                fields[field_name] = os.path.join(path, field_name)
+            else:
+                fields[field_name] = child.serialize(os.path.join(path, field_name))
         return fields
 
     def create_child(self, field_name):
         field_spec = self.spec.fields[field_name]
-        field_data = self.data[field_name]
-        return field_spec.create_resource(field_name)
+        field_data = self.data.get(field_name)
+        return field_spec.create_resource(field_name, field_name)
 
 
 class CollectionResource(Resource):
@@ -107,11 +116,24 @@ class CollectionResource(Resource):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
 
     def serialize(self, path):
-        return [os.path.join(path, str(r_id)) for r_id in self.data]
+        if self._parent:
+            resources = self.spec.resource_type._collection().find({
+                '_owners': {
+                    '$elemMatch': {
+                        'owner_spec': self._parent.spec.name,
+                        'owner_id': self.parent._id,
+                        'owner_field': self.field_name,
+                    }
+                }
+            })
+        else:
+            resources = self.spec.resource_type._collection().find()
+        return [self.spec.resource_type.create_resource(self.field_name, data).serialize(path) for data in resources]
 
     def create_child(self, child_id):
-        data = self.spec.resource_type._collection().find_one({'_id': ObjectId(child_id)})
-        resource = self.spec.resource_type.create_resource(data)
+        data = self.spec.resource_type._collection().find_one(
+            {'_id': ObjectId(child_id)})
+        resource = self.spec.resource_type.create_resource(self.field_name, data)
         return resource
 
     def create(self, new_data):
@@ -121,6 +143,12 @@ class CollectionResource(Resource):
                 data[field_name] = new_data[field_name]
             else:
                 data[field_name] = field_spec.default_value()
+        if self._parent:
+            data['_owners'] = [{
+                'owner_spec': self._parent.spec.name,
+                'owner_id': self._parent._id,
+                'owner_field': self.field_name
+            }]
         return self.spec.resource_type._collection().insert(data)
 
 
@@ -139,7 +167,7 @@ class Field(Resource):
 
 class RootResource(Resource):
     def __init__(self, api):
-        super(RootResource, self).__init__(api.schema.specs["root"], {})
+        super(RootResource, self).__init__('root', api.schema.specs["root"], {})
 
     def __repr__(self):
         return "<RootResource>"
@@ -150,9 +178,11 @@ class RootResource(Resource):
 
         spec = self.spec.fields[root_name]
         resources = spec.resource_type._collection().find({}, {'_id': 1})
-        resource = spec.create_resource([str(r_id['_id']) for r_id in resources])
+        resource = spec.create_resource(root_name, [str(r_id['_id']) for r_id in resources])
         while parts:
+            parent = resource
             resource = resource.create_child(parts.pop(0))
+            resource._parent = parent
         return resource
 
     def serialize(self, path):
@@ -169,22 +199,9 @@ class MongoApi(object):
         self.db = db
         self.root = RootResource(self)
 
-    def _create_resource(self, spec, data=None):
-        return spec.create_resource(self, data)
-
-    def _resource_name(self, path):
-        '''
-            /collection/id/collection
-            /collection/id/field
-        '''
-        return path.strip('/').split('/')[-1]
-
     def create(self, path, data):
         resource = self.root.create_child(path)
         return resource.create(data)
-
-    def _get(self, resource, resource_id):
-        return self.db[resource].find_one({'_id': ObjectId(resource_id)})
 
     def get(self, path):
         path = path.strip('/')

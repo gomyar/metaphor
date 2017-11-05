@@ -31,23 +31,30 @@ class SpikeTest(unittest.TestCase):
         self.api = MongoApi('http://server', self.schema, self.db)
 
     def test_find(self):
-        period_id = self.db['resource_period'].insert(
-            {'year': 2017, 'period': 'YE'})
         company_id = self.db['resource_company'].insert(
-            {'name': 'Bobs Burgers', 'periods': [period_id]})
+            {'name': 'Bobs Burgers'})
+
+        period_id = self.db['resource_period'].insert(
+            {'year': 2017, 'period': 'YE', '_owners': [
+                {'owner_field': 'periods',
+                 'owner_id': company_id,
+                 'owner_spec': 'company'}
+            ]})
 
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals("Bobs Burgers", company['name'])
+        self.assertEquals("http://server/companies/%s/periods" % (company_id,),
+            company['periods'])
         self.assertEquals(
-            "http://server/companies/%s/periods/%s" % (company_id, period_id),
-            company['periods'][0])
+            "http://server/companies/%s/periods" % (company_id,),
+            company['periods'])
 
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
 
         self.assertEquals(2017, period['year'])
 
         self.assertEquals([
-            'http://server/companies/%s' % (company_id,)
+            {'name': 'Bobs Burgers', 'periods': 'http://server/companies/periods'}
         ], self.api.get('/companies'))
 
         self.assertEquals({
@@ -68,6 +75,10 @@ class SpikeTest(unittest.TestCase):
         period = self.db['resource_period'].find_one({'_id': period_id})
         self.assertEquals('YE', period['period'])
         self.assertEquals(2017, period['year'])
+        self.assertEquals([
+            {'owner_field': 'periods',
+             'owner_id': company_id,
+             'owner_spec': 'company'}], period['_owners'])
 
     def _test_linked_collection(self):
         api_period = self.api.get("periods/%s" % (period_id,))
