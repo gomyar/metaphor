@@ -129,6 +129,22 @@ class Resource(object):
         field_data = self.data.get(field_name)
         return field_spec.create_resource(field_name, field_name)
 
+    def unlink(self):
+        if self._parent:
+            self.spec._collection().update({
+                "_id": ObjectId(self._id)
+            },
+            {"$pull":
+                {"_owners":
+                    {
+                        'owner_spec': self._parent._parent.spec.name,
+                        'owner_id': self._parent._parent._id,
+                        'owner_field': self._parent.field_name
+                    }
+                }
+            })
+            return self._id
+
 
 class CollectionResource(Resource):
     def __repr__(self):
@@ -254,3 +270,8 @@ class MongoApi(object):
             return resource.serialize(os.path.join(self.root_url, path))
         else:
             return self.root.serialize(self.root_url)
+
+    def unlink(self, path):
+        resource = self.root.create_child(path)
+        resource.unlink()
+        return resource._id

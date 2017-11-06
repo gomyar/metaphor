@@ -98,11 +98,13 @@ def api_root():
     return jsonify(api.get('/'))
 
 
-@app.route("/api/<path:path>", methods=['GET', 'POST', 'PUT'])
+@app.route("/api/<path:path>", methods=['GET', 'POST', 'DELETE'])
 def api_call(path):
     if request.method == 'POST':
         data = json.loads(request.data)
         return jsonify({'id': str(api.create(path, data))})
+    elif request.method == 'DELETE':
+        return jsonify({'id': str(api.unlink(path))})
     else:
         resource = api.get(path)
         return jsonify(resource)

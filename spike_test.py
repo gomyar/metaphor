@@ -103,6 +103,12 @@ class SpikeTest(unittest.TestCase):
 
         self.assertEquals('Neds Fries', self.api.get('portfolios/%s/companies/%s' % (portfolio_1_id, company_id))['name'])
 
+        self.api.unlink('portfolios/%s/companies/%s' % (portfolio_1_id, company_id))
+
+        p1_companies = self.api.get('portfolios/%s/companies' % (portfolio_1_id,))
+        self.assertEquals(0, len(p1_companies))
+
+
     def test_save_schema(self):
         expected = {
             'company': {
