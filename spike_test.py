@@ -54,7 +54,7 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(2017, period['year'])
 
         self.assertEquals([
-            {'name': 'Bobs Burgers', 'periods': 'http://server/companies/periods'}
+            {'name': 'Bobs Burgers', 'periods': 'http://server/companies/%s/periods' % (company_id,)}
         ], self.api.get('/companies'))
 
         self.assertEquals({

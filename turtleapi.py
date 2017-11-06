@@ -100,7 +100,9 @@ class Resource(object):
         for field_name, field_spec in self.spec.fields.items():
             child = field_spec.create_resource(field_name, self.data.get(field_name))
             if isinstance(child, CollectionResource):
-                fields[field_name] = os.path.join(path, field_name)
+                fields[field_name] = os.path.join(path,
+                                                  #str(self._id),
+                                                  field_name)
             else:
                 fields[field_name] = child.serialize(os.path.join(path, field_name))
         return fields
@@ -121,14 +123,18 @@ class CollectionResource(Resource):
                 '_owners': {
                     '$elemMatch': {
                         'owner_spec': self._parent.spec.name,
-                        'owner_id': self.parent._id,
+                        'owner_id': self._parent._id,
                         'owner_field': self.field_name,
                     }
                 }
             })
         else:
             resources = self.spec.resource_type._collection().find()
-        return [self.spec.resource_type.create_resource(self.field_name, data).serialize(path) for data in resources]
+        serialized = []
+        for data in resources:
+            resource = self.spec.resource_type.create_resource(self.field_name, data)
+            serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
+        return serialized
 
     def create_child(self, child_id):
         data = self.spec.resource_type._collection().find_one(
