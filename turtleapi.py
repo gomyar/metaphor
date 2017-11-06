@@ -13,6 +13,10 @@ class Schema(object):
     def __repr__(self):
         return "<Schema %s>" % (self.version)
 
+    def serialize(self):
+        return dict(
+            (name, spec.serialize()) for (name, spec) in self.specs.items())
+
     def add_resource_spec(self, resource_spec):
         self.specs[resource_spec.name] = resource_spec
         resource_spec.schema = self
@@ -29,6 +33,14 @@ class ResourceSpec(object):
 
     def __repr__(self):
         return "<ResourceSpec %s>" % (self.name)
+
+    def serialize(self):
+        return {
+            'spec': 'resource',
+            'name': self.name,
+            'fields': dict(
+                (name, field.serialize()) for (name, field) in
+                self.fields.items())}
 
     def _db(self, collection):
         return self.schema.db[collection]
@@ -55,6 +67,9 @@ class FieldSpec(object):
     def __repr__(self):
         return "<FieldSpec %s>" % (self.field_type)
 
+    def serialize(self):
+        return {'spec': 'field', 'type': self.field_type}
+
     def create_resource(self, field_name, data):
         return Field(field_name, self, data)
 
@@ -66,6 +81,9 @@ class CollectionSpec(object):
     def __init__(self, target_spec):
         self.target_spec = target_spec
         self.schema = None
+
+    def serialize(self):
+        return {'spec': 'collection', 'target_spec': self.target_spec}
 
     def __repr__(self):
         return "<CollectionSpec %s>" % (self.target_spec)
@@ -96,12 +114,11 @@ class Resource(object):
         return self.data.get('_id')
 
     def serialize(self, path):
-        fields = {}
+        fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
             child = field_spec.create_resource(field_name, self.data.get(field_name))
             if isinstance(child, CollectionResource):
                 fields[field_name] = os.path.join(path,
-                                                  #str(self._id),
                                                   field_name)
             else:
                 fields[field_name] = child.serialize(os.path.join(path, field_name))
@@ -143,6 +160,12 @@ class CollectionResource(Resource):
         return resource
 
     def create(self, new_data):
+        if 'id' in new_data:
+            return self._create_link(new_data['id'])
+        else:
+            return self._create_new(new_data)
+
+    def _create_new(self, new_data):
         data = {}
         for field_name, field_spec in self.spec.resource_type.fields.items():
             if field_name in new_data:
@@ -156,6 +179,21 @@ class CollectionResource(Resource):
                 'owner_field': self.field_name
             }]
         return self.spec.resource_type._collection().insert(data)
+
+    def _create_link(self, resource_id):
+        self.spec.resource_type._collection().update({
+            "_id": ObjectId(resource_id)
+        },
+        {"$push":
+            {"_owners":
+                {
+                    'owner_spec': self._parent.spec.name,
+                    'owner_id': self._parent._id,
+                    'owner_field': self.field_name
+                }
+            }
+        })
+        return resource_id
 
 
 class Field(Resource):

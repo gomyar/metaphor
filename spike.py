@@ -29,9 +29,13 @@ schema = Schema(db, "0.1")
 
 company_spec = ResourceSpec('company')
 period_spec = ResourceSpec('period')
+org_spec = ResourceSpec('org')
+portfolio_spec = ResourceSpec('portfolio')
 
 schema.add_resource_spec(company_spec)
 schema.add_resource_spec(period_spec)
+schema.add_resource_spec(org_spec)
+schema.add_resource_spec(portfolio_spec)
 
 company_spec.add_field("name", FieldSpec("string"))
 company_spec.add_field("periods", CollectionSpec('period'))
@@ -39,7 +43,15 @@ company_spec.add_field("periods", CollectionSpec('period'))
 period_spec.add_field("period", FieldSpec("string"))
 period_spec.add_field("year", FieldSpec("int"))
 
+org_spec.add_field("name", FieldSpec("string"))
+org_spec.add_field("portfolios", CollectionSpec('portfolio'))
+
+portfolio_spec.add_field("name", FieldSpec("string"))
+portfolio_spec.add_field("companies", CollectionSpec('company'))
+
 schema.add_root('companies', CollectionSpec('company'))
+schema.add_root('organizations', CollectionSpec('org'))
+schema.add_root('portfolios', CollectionSpec('portfolio'))
 
 api = MongoApi("http://localhost:5000/api", schema, db)
 
