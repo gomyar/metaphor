@@ -2,6 +2,8 @@
 import os
 from bson.objectid import ObjectId
 
+from calclang import parser
+
 
 class Schema(object):
     def __init__(self, db, version):
@@ -57,6 +59,14 @@ class ResourceSpec(object):
 
     def default_value(self):
         return None
+
+
+class CalcSpec(object):
+    def __init__(self, calc_str):
+        self.calc_str = calc_str
+
+    def create_resource(self, field_name, data):
+        return CalcResource(field_name, self, data)
 
 
 class FieldSpec(object):
@@ -127,7 +137,7 @@ class Resource(object):
     def create_child(self, field_name):
         field_spec = self.spec.fields[field_name]
         field_data = self.data.get(field_name)
-        return field_spec.create_resource(field_name, field_name)
+        return field_spec.create_resource(field_name, field_data)
 
     def unlink(self):
         if self._parent:
@@ -184,10 +194,19 @@ class CollectionResource(Resource):
     def _create_new(self, new_data):
         data = {}
         for field_name, field_spec in self.spec.resource_type.fields.items():
-            if field_name in new_data:
-                data[field_name] = new_data[field_name]
-            else:
-                data[field_name] = field_spec.default_value()
+            if not isinstance(field_spec, CalcSpec):
+                if field_name in new_data:
+                    data[field_name] = new_data[field_name]
+                else:
+                    data[field_name] = field_spec.default_value()
+        # do recalc
+        for field_name, field_spec in self.spec.resource_type.fields.items():
+            if isinstance(field_spec, CalcSpec):
+                resource = self.spec.resource_type.create_resource(field_name, data)
+                calc_field = resource.create_child(field_name)
+                calc_field._parent = resource
+                data[field_name] = calc_field.calculate()
+
         if self._parent:
             data['_owners'] = [{
                 'owner_spec': self._parent.spec.name,
@@ -223,6 +242,24 @@ class Field(Resource):
 
     def serialize(self, path):
         return self.data
+
+
+class CalcResource(Resource):
+    def __repr__(self):
+        return "<CalcResource %s - (%s)>" % (
+            self.field_name, self.spec.calc_str,)
+
+    def create_child(self, name):
+        raise NotImplementedError(
+            '%s is not a traversable resource, its a %s' % (
+                self, self.spec))
+
+    def serialize(self, path):
+        return self.data
+
+    def calculate(self):
+        calc = parser.parse(self.spec.schema, self.spec.calc_str)
+        return calc.calculate(self._parent)
 
 
 class RootResource(Resource):

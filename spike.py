@@ -10,7 +10,7 @@ from flask import request
 from flask import send_from_directory
 
 from turtleapi import MongoApi, Schema
-from turtleapi import ResourceSpec, FieldSpec, CollectionSpec
+from turtleapi import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
 
 from pymongo import MongoClient
 client = MongoClient('localhost', 27017)
@@ -42,6 +42,9 @@ company_spec.add_field("periods", CollectionSpec('period'))
 
 period_spec.add_field("period", FieldSpec("string"))
 period_spec.add_field("year", FieldSpec("int"))
+period_spec.add_field("totalAssets", FieldSpec("int"))
+period_spec.add_field("totalLiabilities", FieldSpec("int"))
+period_spec.add_field("grossProfit", CalcSpec("self.totalAssets - self.totalLiabilities"))
 
 org_spec.add_field("name", FieldSpec("string"))
 org_spec.add_field("portfolios", CollectionSpec('portfolio'))
