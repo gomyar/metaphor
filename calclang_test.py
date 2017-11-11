@@ -60,7 +60,7 @@ class CalcLangTest(unittest.TestCase):
         self.assertEquals('Bobs Burgers', exp_tree.calculate(resource))
 
     def test_expr_fields(self):
-        company_id = self.api.create(
+        company_id = self.api.post(
             'companies', dict(name='Bobs Burgers', totalAssets=100,
                               totalLiabilities=80))
 

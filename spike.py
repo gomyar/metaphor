@@ -11,6 +11,7 @@ from flask import send_from_directory
 
 from turtleapi import MongoApi, Schema
 from turtleapi import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
+from turtleapi import ResourceLinkSpec
 
 from pymongo import MongoClient
 client = MongoClient('localhost', 27017)
@@ -31,20 +32,23 @@ company_spec = ResourceSpec('company')
 period_spec = ResourceSpec('period')
 org_spec = ResourceSpec('org')
 portfolio_spec = ResourceSpec('portfolio')
+financial_spec = ResourceSpec("financial")
 
 schema.add_resource_spec(company_spec)
 schema.add_resource_spec(period_spec)
 schema.add_resource_spec(org_spec)
 schema.add_resource_spec(portfolio_spec)
+schema.add_resource_spec(financial_spec)
 
 company_spec.add_field("name", FieldSpec("string"))
 company_spec.add_field("periods", CollectionSpec('period'))
 
 period_spec.add_field("period", FieldSpec("string"))
 period_spec.add_field("year", FieldSpec("int"))
-period_spec.add_field("totalAssets", FieldSpec("int"))
-period_spec.add_field("totalLiabilities", FieldSpec("int"))
-period_spec.add_field("grossProfit", CalcSpec("self.totalAssets - self.totalLiabilities"))
+financial_spec.add_field("totalAssets", FieldSpec("int"))
+financial_spec.add_field("totalLiabilities", FieldSpec("int"))
+financial_spec.add_field("grossProfit", CalcSpec("self.totalAssets - self.totalLiabilities"))
+period_spec.add_field("financial", ResourceLinkSpec('financial'))
 
 org_spec.add_field("name", FieldSpec("string"))
 org_spec.add_field("portfolios", CollectionSpec('portfolio'))
@@ -105,7 +109,7 @@ def api_root():
 def api_call(path):
     if request.method == 'POST':
         data = json.loads(request.data)
-        return jsonify({'id': str(api.create(path, data))})
+        return jsonify({'id': str(api.post(path, data))})
     elif request.method == 'DELETE':
         return jsonify({'id': str(api.unlink(path))})
     else:

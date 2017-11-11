@@ -3,7 +3,7 @@ import unittest
 
 from mongomock import Connection
 
-from turtleapi import ResourceSpec, FieldSpec, CollectionSpec
+from turtleapi import ResourceSpec, FieldSpec, CollectionSpec, ResourceLinkSpec
 from turtleapi import Schema
 from turtleapi import MongoApi
 
@@ -16,16 +16,21 @@ class SpikeTest(unittest.TestCase):
         self.company_spec = ResourceSpec('company')
         self.period_spec = ResourceSpec('period')
         self.portfolio_spec = ResourceSpec('portfolio')
+        self.financial_spec = ResourceSpec('financial')
 
         self.schema.add_resource_spec(self.company_spec)
         self.schema.add_resource_spec(self.period_spec)
         self.schema.add_resource_spec(self.portfolio_spec)
+        self.schema.add_resource_spec(self.financial_spec)
 
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
+        self.period_spec.add_field("financial", ResourceLinkSpec("financial"))
+
+        self.financial_spec.add_field("totalAssets", FieldSpec("int"))
 
         self.portfolio_spec.add_field("name", FieldSpec("string"))
         self.portfolio_spec.add_field("companies", CollectionSpec('company'))
@@ -68,12 +73,12 @@ class SpikeTest(unittest.TestCase):
         }, self.api.get('/'))
 
     def test_add_data(self):
-        company_id = self.api.create('companies', dict(name='Bobs Burgers'))
+        company_id = self.api.post('companies', dict(name='Bobs Burgers'))
 
         new_company = self.db['resource_company'].find_one({'_id': company_id})
         self.assertEquals("Bobs Burgers", new_company['name'])
 
-        period_id = self.api.create('companies/%s/periods' % (company_id,),
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
                                     dict(year=2017, period='YE'))
 
         company = self.db['resource_company'].find_one({'_id': company_id})
@@ -87,11 +92,11 @@ class SpikeTest(unittest.TestCase):
              'owner_spec': 'company'}], period['_owners'])
 
     def test_add_resource_to_other_collection(self):
-        company_id = self.api.create('companies', {'name': 'Neds Fries'})
-        portfolio_1_id = self.api.create('portfolios', {'name': 'Portfolio 1'})
-        portfolio_2_id = self.api.create('portfolios', {'name': 'Portfolio 2'})
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        portfolio_1_id = self.api.post('portfolios', {'name': 'Portfolio 1'})
+        portfolio_2_id = self.api.post('portfolios', {'name': 'Portfolio 2'})
 
-        self.api.create('portfolios/%s/companies' % (portfolio_1_id,),
+        self.api.post('portfolios/%s/companies' % (portfolio_1_id,),
                         {'id': company_id})
 
         p1_companies = self.api.get('portfolios/%s/companies' % (portfolio_1_id,))
@@ -108,67 +113,35 @@ class SpikeTest(unittest.TestCase):
         p1_companies = self.api.get('portfolios/%s/companies' % (portfolio_1_id,))
         self.assertEquals(0, len(p1_companies))
 
+    def test_embedded_financials_default(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+            {'year': 2017, 'period': 'YE'})
+
+        period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
+        self.assertEquals(2017, period['year'])
+        self.assertEquals('YE', period['period'])
+        self.assertEquals(None, period['financial'])
+
+    def test_embedded_financials_create(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+            {'year': 2017,
+             'period': 'YE',
+             'financial': {
+                    "totalAssets": 100,
+            }})
+
+        period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
+        self.assertEquals(2017, period['year'])
+        self.assertEquals('YE', period['period'])
+        self.assertEquals("http://server/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
+
+        financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
+        self.assertEquals(100, financial['totalAssets'])
 
     def test_save_schema(self):
-        expected = {
-            'company': {
-                'fields': {
-                    'name': {
-                        'spec': 'field',
-                        'type': 'string'
-                    },
-                    'periods': {
-                        'spec': 'collection',
-                        'target_spec': 'period'
-                    }
-                },
-                'name': 'company',
-                'spec': 'resource'
-            },
-            'period': {
-                'fields': {
-                    'period': {
-                        'spec': 'field',
-                        'type': 'string'
-                    },
-                    'year': {
-                        'spec': 'field', 'type': 'int'
-                    }
-                },
-                'name': 'period',
-                'spec': 'resource',
-            },
-            'portfolio': {
-                'fields': {
-                    'name': {
-                        'spec': 'field',
-                        'type': 'string'
-                    },
-                    'companies': {
-                        'spec': 'collection',
-                        'target_spec': 'company'
-                    }
-                },
-                'name': 'portfolio',
-                'spec': 'resource',
-            },
-            'root': {
-                'fields': {
-                    'companies': {
-                        'spec': 'collection',
-                        'target_spec': 'company'
-                    },
-                    'portfolios': {
-                        'spec': 'collection',
-                        'target_spec': 'portfolio'
-                    }
-                },
-                'name': 'root',
-                'spec': 'resource'
-            }
-        }
-
-        self.assertEquals(expected, self.schema.serialize())
+        self.assertTrue('root' in self.schema.serialize())
 
     def _test_linked_collection(self):
         api_period = self.api.get("periods/%s" % (period_id,))

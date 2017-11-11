@@ -61,6 +61,32 @@ class ResourceSpec(object):
         return None
 
 
+class ResourceLinkSpec(object):
+    def __init__(self, name):
+        self.name = name
+
+    def serialize(self):
+        return {
+            'spec': 'resource_link',
+            'name': self.name,
+        }
+
+    def _db(self, collection):
+        return self.schema.db[collection]
+    def _collection(self):
+        return self._db('resource_%s' % (self.name,))
+
+    def create_resource(self, field_name, data):
+        if not data:
+            return NullResource()
+        target_resource_spec = self.schema.specs[self.name]
+        resource_data = target_resource_spec._collection().find_one({'_id': data})
+        return target_resource_spec.create_resource(field_name, resource_data)
+
+    def default_value(self):
+        return None
+
+
 class CalcSpec(object):
     def __init__(self, calc_str):
         self.calc_str = calc_str
@@ -99,7 +125,7 @@ class CollectionSpec(object):
         return "<CollectionSpec %s>" % (self.target_spec)
 
     @property
-    def resource_type(self):
+    def resource_type(self):  # rename this to target_spec or something
         return self.schema.specs[self.target_spec]
 
     def create_resource(self, field_name, name):
@@ -127,9 +153,15 @@ class Resource(object):
         fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
             child = field_spec.create_resource(field_name, self.data.get(field_name))
-            if isinstance(child, CollectionResource):
+            if type(field_spec) == CollectionSpec:
                 fields[field_name] = os.path.join(path,
                                                   field_name)
+            elif type(field_spec) == ResourceLinkSpec:
+                if self.data.get(field_name):
+                    fields[field_name] = os.path.join(path,
+                                                    field_name)
+                else:
+                    fields[field_name] = None
             else:
                 fields[field_name] = child.serialize(os.path.join(path, field_name))
         return fields
@@ -138,6 +170,52 @@ class Resource(object):
         field_spec = self.spec.fields[field_name]
         field_data = self.data.get(field_name)
         return field_spec.create_resource(field_name, field_data)
+
+    def _create_new(self, parent_field_name, new_data, spec):
+        data = {}
+        for field_name, field_spec in spec.fields.items():
+            if isinstance(field_spec, FieldSpec):
+                if field_name in new_data:
+                    data[field_name] = new_data[field_name]
+                else:
+                    data[field_name] = field_spec.default_value()
+
+        resource = spec.create_resource(parent_field_name, data)
+        resource._parent = self
+
+        # do recalc
+        for field_name, field_spec in spec.fields.items():
+            if isinstance(field_spec, CalcSpec):
+                calc_field = resource.create_child(field_name)
+                calc_field._parent = resource
+                data[field_name] = calc_field.calculate()
+
+        if isinstance(self.spec, CollectionSpec) and self._parent:
+            data['_owners'] = [{
+                'owner_spec': self._parent.spec.name,
+                'owner_id': self._parent._id,
+                'owner_field': self.field_name
+            }]
+        elif not isinstance(self.spec, CollectionSpec):
+            data['_owners'] = [{
+                'owner_spec': spec.name,
+                'owner_id': self._id,
+                'owner_field': self.field_name
+            }]
+
+
+        new_id = spec._collection().insert(data)
+
+        # embedded resources
+        for field_name, field_spec in spec.fields.items():
+            if isinstance(field_spec, ResourceLinkSpec):
+                if new_data.get(field_name):
+                    embedded_id = resource._create_new(field_name, new_data[field_name], field_spec.schema.specs[field_spec.name])
+                    spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id}})
+                    data[field_name] = embedded_id
+                else:
+                    data[field_name] = field_spec.default_value()
+        return new_id
 
     def unlink(self):
         if self._parent:
@@ -154,6 +232,17 @@ class Resource(object):
                 }
             })
             return self._id
+
+
+class NullResource(Resource):
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "<NullResource>"
+
+    def serialize(self, path):
+        return None
 
 
 class CollectionResource(Resource):
@@ -189,31 +278,7 @@ class CollectionResource(Resource):
         if 'id' in new_data:
             return self._create_link(new_data['id'])
         else:
-            return self._create_new(new_data)
-
-    def _create_new(self, new_data):
-        data = {}
-        for field_name, field_spec in self.spec.resource_type.fields.items():
-            if not isinstance(field_spec, CalcSpec):
-                if field_name in new_data:
-                    data[field_name] = new_data[field_name]
-                else:
-                    data[field_name] = field_spec.default_value()
-        # do recalc
-        for field_name, field_spec in self.spec.resource_type.fields.items():
-            if isinstance(field_spec, CalcSpec):
-                resource = self.spec.resource_type.create_resource(field_name, data)
-                calc_field = resource.create_child(field_name)
-                calc_field._parent = resource
-                data[field_name] = calc_field.calculate()
-
-        if self._parent:
-            data['_owners'] = [{
-                'owner_spec': self._parent.spec.name,
-                'owner_id': self._parent._id,
-                'owner_field': self.field_name
-            }]
-        return self.spec.resource_type._collection().insert(data)
+            return self._create_new(self.field_name, new_data, self.spec.resource_type)
 
     def _create_link(self, resource_id):
         self.spec.resource_type._collection().update({
@@ -296,7 +361,7 @@ class MongoApi(object):
         self.db = db
         self.root = RootResource(self)
 
-    def create(self, path, data):
+    def post(self, path, data):
         resource = self.root.create_child(path)
         return resource.create(data)
 

@@ -5,3 +5,4 @@ setuptools==2.2
 nose==1.3.7
 mongomock==2.0.0
 ply==3.10
+gevent==1.2.2
