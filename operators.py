@@ -35,7 +35,7 @@ class ResourceRef(Calc):
             resource = resource.spec.schema.root
         while parts:
             parent = resource
-            resource = resource.create_child(parts.pop(0))
+            resource = resource.build_child(parts.pop(0))
             resource._parent = parent
 
         return resource.data
