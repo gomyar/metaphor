@@ -3,7 +3,7 @@ import unittest
 
 from mongomock import Connection
 
-from calclang import parser
+from metaphor.calclang import parser
 from metaphor.schema import Schema
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
 from metaphor.api import MongoApi

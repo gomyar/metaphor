@@ -3,7 +3,7 @@ import os
 
 from bson.objectid import ObjectId
 
-from calclang import parser
+from metaphor.calclang import parser
 
 
 class ResourceSpec(object):

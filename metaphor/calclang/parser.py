@@ -1,5 +1,5 @@
 
-from calclang import lang
+from metaphor.calclang import lang
 
 import ply.lex as lex
 lexer = lex.lex(module=lang)

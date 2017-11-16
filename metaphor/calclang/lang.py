@@ -1,7 +1,8 @@
 
-from operators import Calc, ConstRef, AddOp, SubtractOp, MultiplyOp, DividebyOp
-from operators import Func
-from operators import ResourceRef
+from metaphor.operators import Calc, ConstRef, AddOp, SubtractOp, MultiplyOp
+from metaphor.operators import DividebyOp
+from metaphor.operators import Func
+from metaphor.operators import ResourceRef
 
 tokens = (
     'NAME','NUMBER',
