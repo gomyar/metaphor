@@ -3,9 +3,10 @@ import unittest
 
 from mongomock import Connection
 
-from turtleapi import ResourceSpec, FieldSpec, CollectionSpec, ResourceLinkSpec
-from turtleapi import Schema
-from turtleapi import MongoApi
+from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
+from metaphor.resource import ResourceLinkSpec
+from metaphor.schema import Schema
+from metaphor.api import MongoApi
 
 
 class SpikeTest(unittest.TestCase):
@@ -17,11 +18,13 @@ class SpikeTest(unittest.TestCase):
         self.period_spec = ResourceSpec('period')
         self.portfolio_spec = ResourceSpec('portfolio')
         self.financial_spec = ResourceSpec('financial')
+        self.config_spec = ResourceSpec('config')
 
         self.schema.add_resource_spec(self.company_spec)
         self.schema.add_resource_spec(self.period_spec)
         self.schema.add_resource_spec(self.portfolio_spec)
         self.schema.add_resource_spec(self.financial_spec)
+        self.schema.add_resource_spec(self.config_spec)
 
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
@@ -35,8 +38,11 @@ class SpikeTest(unittest.TestCase):
         self.portfolio_spec.add_field("name", FieldSpec("string"))
         self.portfolio_spec.add_field("companies", CollectionSpec('company'))
 
+        self.config_spec.add_field("ppp", FieldSpec("int"))
+
         self.schema.add_root('companies', CollectionSpec('company'))
         self.schema.add_root('portfolios', CollectionSpec('portfolio'))
+        self.schema.add_root('config', ResourceLinkSpec('config'))
 
         self.api = MongoApi('http://server', self.schema, self.db)
 
@@ -70,6 +76,7 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals({
             'companies': 'http://server/companies',
             'portfolios': 'http://server/portfolios',
+            'config': 'http://server/config',
         }, self.api.get('/'))
 
     def test_add_data(self):
@@ -123,6 +130,12 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals('YE', period['period'])
         self.assertEquals(None, period['financial'])
 
+    def test_patch(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        self.api.patch('companies/%s' % (company_id,), {'name': 'Norman'})
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals('Norman', company['name'])
+
     def test_embedded_financials_create(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
         period_id = self.api.post('companies/%s/periods' % (company_id,),
@@ -141,14 +154,17 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(100, financial['totalAssets'])
 
     def test_save_schema(self):
-        self.assertTrue('root' in self.schema.serialize())
+        serialized = self.schema.serialize()
+        self.assertTrue('root' in serialized)
+        self.assertEquals(['company', 'config', 'financial', 'period', 'portfolio', 'root'],
+                          sorted(serialized.keys()))
 
-    def _test_linked_collection(self):
-        api_period = self.api.get("periods/%s" % (period_id,))
-        self.assertEquals('YE', api_period['period'])
-        self.assertEquals(2017, api_period['year'])
-        self.assertEquals({
-            '_id': company_id,
-            'name': 'Bobs Burgers',
-            'periods': 'http://server/companies/%s/periods' % (company_id,),
-        }, self.api.get("companies/%s" % (company_id,)))
+    def _test_resource_at_root(self):
+        before = self.api.get('config')
+        self.assertEquals(None, before)
+        self.api.post('config', {'ppp': 100})
+        after = self.api.get('config')
+        self.assertEquals(100, after['ppp'])
+
+    def test_resource_link_points_to_another_resource_link(self):
+        pass

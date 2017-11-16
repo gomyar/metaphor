@@ -7,6 +7,29 @@ class Calc(object):
     def calculate(self, resource):
         return self.exp.calculate(resource)
 
+    def dependencies(self):
+        return set()
+
+
+class Func(object):
+    def __init__(self, func_name, resource_ref):
+        self.func_name = func_name
+        self.resource_ref = resource_ref
+
+    def calculate(self, resource):
+        # resolve resource
+          # AggregateResource?
+
+          # follow child resources as far as collection
+            # create query for children of collection
+            # follow child resource specs as far as next collection
+                # repeat
+        # call function
+        return 75
+
+    def dependencies(self):
+        return set()
+
 
 class ConstRef(Calc):
     ''' Represents a constant basic value

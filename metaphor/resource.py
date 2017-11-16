@@ -1,30 +1,9 @@
 
 import os
+
 from bson.objectid import ObjectId
 
 from calclang import parser
-
-
-class Schema(object):
-    def __init__(self, db, version):
-        self.db = db
-        self.version = version
-        self.specs = {}
-        self.add_resource_spec(ResourceSpec('root'))
-
-    def __repr__(self):
-        return "<Schema %s>" % (self.version)
-
-    def serialize(self):
-        return dict(
-            (name, spec.serialize()) for (name, spec) in self.specs.items())
-
-    def add_resource_spec(self, resource_spec):
-        self.specs[resource_spec.name] = resource_spec
-        resource_spec.schema = self
-
-    def add_root(self, name, spec):
-        self.specs['root'].add_field(name, spec)
 
 
 class ResourceSpec(object):
@@ -43,6 +22,12 @@ class ResourceSpec(object):
             'fields': dict(
                 (name, field.serialize()) for (name, field) in
                 self.fields.items())}
+
+    def dependencies(self):
+        deps = set()
+        for field_name, field_spec in self.fields.items():
+            deps.update(field_spec.dependencies())
+        return deps
 
     def _db(self, collection):
         return self.schema.db[collection]
@@ -71,11 +56,6 @@ class ResourceLinkSpec(object):
             'name': self.name,
         }
 
-    def _db(self, collection):
-        return self.schema.db[collection]
-    def _collection(self):
-        return self._db('resource_%s' % (self.name,))
-
     def build_resource(self, field_name, data):
         if not data:
             return NullResource()
@@ -86,6 +66,9 @@ class ResourceLinkSpec(object):
     def default_value(self):
         return None
 
+    def dependencies(self):
+        return set([self.name])
+
 
 class CalcSpec(object):
     def __init__(self, calc_str):
@@ -93,6 +76,12 @@ class CalcSpec(object):
 
     def build_resource(self, field_name, data):
         return CalcResource(field_name, self, data)
+
+    def parse_calc(self):
+        return parser.parse(self.schema, self.calc_str)
+
+    def dependencies(self):
+        return self.parse_calc().dependencies()
 
 
 class FieldSpec(object):
@@ -111,6 +100,9 @@ class FieldSpec(object):
 
     def default_value(self):
         return None
+
+    def dependencies(self):
+        return set()
 
 
 class CollectionSpec(object):
@@ -136,6 +128,12 @@ class CollectionSpec(object):
 
     def default_value(self):
         return []
+
+    def dependencies(self):
+        return set([self.target_spec_name])
+
+
+# resources
 
 
 class Resource(object):
@@ -175,6 +173,9 @@ class Resource(object):
         resource = field_spec.build_resource(field_name, field_data)
         resource._parent = self
         return resource
+
+    def update(self, data):
+        return self.spec._collection().update({'_id': self._id}, data)
 
     def _create_new_fields(self, new_data, spec):
         data = {}
@@ -272,6 +273,10 @@ class CollectionResource(Resource):
         return serialized
 
     def build_child(self, child_id):
+        # check for field id which creates AggregateResource
+
+        # else perform lookup for individual child resource
+
         data = self.spec._collection().find_one(
             {'_id': ObjectId(child_id)})
         resource = self.spec.target_spec.build_resource(self.field_name, data)
@@ -347,7 +352,7 @@ class CalcResource(Resource):
         return self.data
 
     def calculate(self):
-        calc = parser.parse(self.spec.schema, self.spec.calc_str)
+        calc = self.spec.parse_calc()
         return calc.calculate(self._parent)
 
 
@@ -363,8 +368,7 @@ class RootResource(Resource):
         root_name = parts.pop(0)
 
         spec = self.spec.fields[root_name]
-        resources = spec._collection().find({}, {'_id': 1})
-        resource = spec.build_resource(root_name, [str(r_id['_id']) for r_id in resources])
+        resource = spec.build_resource(root_name, None)
         while parts:
             resource = resource.build_child(parts.pop(0))
         return resource
@@ -376,26 +380,3 @@ class RootResource(Resource):
         return fields
 
 
-class MongoApi(object):
-    def __init__(self, root_url, schema, db):
-        self.root_url = root_url
-        self.schema = schema
-        self.db = db
-        self.root = RootResource(self)
-
-    def post(self, path, data):
-        resource = self.root.build_child(path)
-        return resource.create(data)
-
-    def get(self, path):
-        path = path.strip('/')
-        if path:
-            resource = self.root.build_child(path)
-            return resource.serialize(os.path.join(self.root_url, path))
-        else:
-            return self.root.serialize(self.root_url)
-
-    def unlink(self, path):
-        resource = self.root.build_child(path)
-        resource.unlink()
-        return resource._id

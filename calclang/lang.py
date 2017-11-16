@@ -1,5 +1,6 @@
 
 from operators import Calc, ConstRef, AddOp, SubtractOp, MultiplyOp, DividebyOp
+from operators import Func
 from operators import ResourceRef
 
 tokens = (
@@ -60,6 +61,10 @@ names = { }
 def p_statement_expr(t):
     'statement : expression'
     t[0] = Calc(t[1])
+
+def p_expression_function(t):
+    'expression : NAME LPAREN expression RPAREN'
+    t[0] = Func(t[1], t[3])
 
 def p_expression_binop(t):
     '''expression : expression PLUS expression

@@ -9,9 +9,10 @@ from flask import jsonify
 from flask import request
 from flask import send_from_directory
 
-from turtleapi import MongoApi, Schema
-from turtleapi import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
-from turtleapi import ResourceLinkSpec
+from metaphor.api import MongoApi
+from metaphor.schema import Schema
+from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
+from metaphor.resource import ResourceLinkSpec
 
 from pymongo import MongoClient
 client = MongoClient('localhost', 27017)
@@ -112,6 +113,8 @@ def api_call(path):
         return jsonify({'id': str(api.post(path, data))})
     elif request.method == 'DELETE':
         return jsonify({'id': str(api.unlink(path))})
+    elif request.method == 'PATCH':
+        return jsonify({'id': str(api.patch(path, data))})
     else:
         resource = api.get(path)
         return jsonify(resource)
