@@ -274,14 +274,21 @@ class CollectionResource(Resource):
 
     def build_child(self, child_id):
         # check for field id which creates AggregateResource
-
-        # else perform lookup for individual child resource
-
-        data = self.spec._collection().find_one(
-            {'_id': ObjectId(child_id)})
-        resource = self.spec.target_spec.build_resource(self.field_name, data)
-        resource._parent = self
-        return resource
+        if child_id in self.spec.target_spec.fields:
+            # do aggregate
+            if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
+                # do nother aggregate
+                pass
+            else:
+                raise Exception("Cannot aggregate %s" % (
+                    self.spec.fields[child_id]))
+        else:
+            data = self.spec._collection().find_one(
+                {'_id': ObjectId(child_id)})
+            resource = self.spec.target_spec.build_resource(
+                self.field_name, data)
+            resource._parent = self
+            return resource
 
     def create(self, new_data):
         if 'id' in new_data:

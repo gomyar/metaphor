@@ -106,7 +106,7 @@ def api_root():
     return jsonify(api.get('/'))
 
 
-@app.route("/api/<path:path>", methods=['GET', 'POST', 'DELETE'])
+@app.route("/api/<path:path>", methods=['GET', 'POST', 'DELETE', 'PATCH'])
 def api_call(path):
     if request.method == 'POST':
         data = json.loads(request.data)
@@ -114,6 +114,7 @@ def api_call(path):
     elif request.method == 'DELETE':
         return jsonify({'id': str(api.unlink(path))})
     elif request.method == 'PATCH':
+        data = json.loads(request.data)
         return jsonify({'id': str(api.patch(path, data))})
     else:
         resource = api.get(path)

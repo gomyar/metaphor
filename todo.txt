@@ -1,0 +1,17 @@
+
+ - enter calculated fields
+   - string / int
+   - collection (collection filters / functions that return a collection)
+   - resource link (min max median - functions that take a collection and return 1 result)
+
+
+add basic schema
+ - view schema
+ - create schema through api
+ - save schema in mongo
+
+collect dependencies for schema / live
+
+differentiate between embedded resources and linked resources on create
+ - make atomic by forcing a second post call for linked resources or
+ - embed the document in mongo document
