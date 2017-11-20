@@ -249,6 +249,54 @@ class NullResource(Resource):
         return None
 
 
+
+class AggregateResource(Resource):
+    def __init__(self, field_name, spec, parent_spec):
+        self.field_name = field_name
+        self.parent_spec = parent_spec
+        self.spec = spec
+
+    def __repr__(self):
+        return "<AggregateResource %s>" % (self.field_name,)
+
+    def serialize(self, path):
+        aggregate_chain = []
+        aggregate_chain.append(
+            {"$lookup": {
+                "from": "resource_%s" % (self.parent_spec.name,),
+                "localField": "_owners.owner_id",
+                "foreignField": "_id",
+                "as": "_owners_%s" % (self.parent_spec.name,),
+            }}
+        )
+        if self._parent and self._parent.data:
+            aggregate_chain.append(
+                {"$match": {
+                    "_owners_%s._id" % (self.parent_spec.name,): self._parent._id
+                }},
+            )
+        else:  # root collection
+            aggregate_chain.append(
+                {"$match": {
+                    "_owners_%s" % (self.parent_spec.name,): {"$ne": []}
+                }}
+            )
+
+        resources = self.spec._collection().aggregate(aggregate_chain)
+        serialized = []
+        for data in resources:
+            resource = self.spec.target_spec.build_resource(self.field_name, data)
+            serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
+        return serialized
+
+    def build_child(self, child_id):
+        if child_id in self.spec.target_spec.fields:
+            if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate._parent = self
+                return aggregate
+
+
 class CollectionResource(Resource):
     def __repr__(self):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
@@ -273,11 +321,11 @@ class CollectionResource(Resource):
         return serialized
 
     def build_child(self, child_id):
-        # check for field id which creates AggregateResource
         if child_id in self.spec.target_spec.fields:
-            # do aggregate
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
-                return AggregateResource()
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate._parent = self
+                return aggregate
                 # do nother aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
                 return AggregateResource()

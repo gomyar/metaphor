@@ -1,7 +1,7 @@
 
 import unittest
 
-from mongomock import Connection
+from mongomock import MongoClient
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec
@@ -12,7 +12,7 @@ from metaphor.api import MongoApi
 
 class CollectionTest(unittest.TestCase):
     def setUp(self):
-        self.db = Connection().db
+        self.db = MongoClient().db
         self.schema = Schema(self.db, '0.1')
 
         self.company_spec = ResourceSpec('company')

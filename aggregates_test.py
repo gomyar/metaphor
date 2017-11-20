@@ -1,7 +1,8 @@
 
 import unittest
 
-from mongomock import Connection
+# using real connetion as mockmongo doesn't support some aggregates
+from pymongo import MongoClient
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec
@@ -11,7 +12,9 @@ from metaphor.api import MongoApi
 
 class AggregatesTest(unittest.TestCase):
     def setUp(self):
-        self.db = Connection().db
+        client = MongoClient()
+        client.drop_database('metaphor_test_db')
+        self.db = client.metaphor_test_db
         self.schema = Schema(self.db, '0.1')
 
         self.company_spec = ResourceSpec('company')
@@ -57,6 +60,12 @@ class AggregatesTest(unittest.TestCase):
         self.api.post('portfolios/%s/companies' % (self.portfolio_2,), {'id': self.company_3})
         self.api.post('portfolios/%s/companies' % (self.portfolio_2,), {'id': self.company_4})
 
+        self.api.post('companies/%s/periods' % (self.company_1,), {'year': 2017, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (self.company_2,), {'year': 2017, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (self.company_3,), {'year': 2017, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (self.company_4,), {'year': 2017, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (self.company_5,), {'year': 2017, 'period': 'YE'})
+
     def test_portfolio_sizes(self):
         all_companies = self.api.get('companies')
         self.assertEquals(5, len(all_companies))
@@ -67,3 +76,18 @@ class AggregatesTest(unittest.TestCase):
     def test_aggregate_portfolio_companies(self):
         all_companies = self.api.get('portfolios/companies')
         self.assertEquals(4, len(all_companies))
+
+        self.assertEquals('Bob1', all_companies[0]['name'])
+        self.assertEquals('Bob2', all_companies[1]['name'])
+        self.assertEquals('Bob3', all_companies[2]['name'])
+        self.assertEquals('Bob4', all_companies[3]['name'])
+
+    def test_aggregate_portfolio_companies_periods(self):
+        all_periods = self.api.get('portfolios/companies/periods')
+
+        self.assertEquals(4, len(all_periods))
+
+        self.assertEquals(2017, all_periods[0]['year'])
+        self.assertEquals(2017, all_periods[1]['year'])
+        self.assertEquals(2017, all_periods[2]['year'])
+        self.assertEquals(2017, all_periods[3]['year'])
