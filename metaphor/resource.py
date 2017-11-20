@@ -277,8 +277,10 @@ class CollectionResource(Resource):
         if child_id in self.spec.target_spec.fields:
             # do aggregate
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
+                return AggregateResource()
                 # do nother aggregate
-                pass
+            elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
+                return AggregateResource()
             else:
                 raise Exception("Cannot aggregate %s" % (
                     self.spec.fields[child_id]))
