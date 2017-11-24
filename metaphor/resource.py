@@ -259,17 +259,19 @@ class AggregateResource(Resource):
     def __repr__(self):
         return "<AggregateResource %s>" % (self.field_name,)
 
-    def serialize(self, path):
+    def build_aggregate_chain(self, link_name):
         aggregate_chain = []
         aggregate_chain.append(
             {"$lookup": {
                 "from": "resource_%s" % (self.parent_spec.name,),
-                "localField": "_owners.owner_id",
+                "localField": "%s_owners.owner_id" % ("_owners_%s." % (link_name,) if link_name else "" ),
                 "foreignField": "_id",
                 "as": "_owners_%s" % (self.parent_spec.name,),
             }}
         )
-        if self._parent and self._parent.data:
+        if type(self._parent) == AggregateResource:
+            aggregate_chain.extend(self._parent.build_aggregate_chain(self.parent_spec.name))
+        elif self._parent and self._parent.data:
             aggregate_chain.append(
                 {"$match": {
                     "_owners_%s._id" % (self.parent_spec.name,): self._parent._id
@@ -281,7 +283,10 @@ class AggregateResource(Resource):
                     "_owners_%s" % (self.parent_spec.name,): {"$ne": []}
                 }}
             )
+        return aggregate_chain
 
+    def serialize(self, path):
+        aggregate_chain = self.build_aggregate_chain("")
         resources = self.spec._collection().aggregate(aggregate_chain)
         serialized = []
         for data in resources:

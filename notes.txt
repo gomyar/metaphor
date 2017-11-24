@@ -17,3 +17,23 @@ db.resource_period.aggregate([
         "_owners_portfolio.name": "Metaphor Inc Small Portfolio"}},
     {$sort: {year: 1, period: 1}}
 ])
+
+db.resource_period.aggregate([
+    {$lookup: {
+        from: "resource_company",
+        localField: "_owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_company"
+    }},
+    {$unwind: "$_owners_company"},
+    {$lookup: {
+        from: "resource_portfolio",
+        localField: "_owners_company._owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_portfolio"
+    }},
+    {$unwind: "$_owners_portfolio"},
+    {$match: {
+        "_owners_portfolio": {"$ne": []}}},
+    {$sort: {year: 1, period: 1}}
+])
