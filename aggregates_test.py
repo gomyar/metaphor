@@ -5,7 +5,8 @@ import unittest
 from pymongo import MongoClient
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
-from metaphor.resource import ResourceLinkSpec
+from metaphor.resource import ResourceLinkSpec, AggregateResource
+from metaphor.resource import AggregateField
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
 
@@ -32,6 +33,7 @@ class AggregatesTest(unittest.TestCase):
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
+        self.period_spec.add_field("totalAssets", FieldSpec("int"))
 
         self.portfolio_spec.add_field("name", FieldSpec("string"))
         self.portfolio_spec.add_field("companies", CollectionSpec('company'))
@@ -60,11 +62,11 @@ class AggregatesTest(unittest.TestCase):
         self.api.post('portfolios/%s/companies' % (self.portfolio_2,), {'id': self.company_3})
         self.api.post('portfolios/%s/companies' % (self.portfolio_2,), {'id': self.company_4})
 
-        self.api.post('companies/%s/periods' % (self.company_1,), {'year': 2017, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (self.company_2,), {'year': 2017, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (self.company_3,), {'year': 2017, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (self.company_4,), {'year': 2017, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (self.company_5,), {'year': 2017, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (self.company_1,), {'year': 2017, 'period': 'YE', 'totalAssets': 10})
+        self.api.post('companies/%s/periods' % (self.company_2,), {'year': 2017, 'period': 'YE', 'totalAssets': 20})
+        self.api.post('companies/%s/periods' % (self.company_3,), {'year': 2017, 'period': 'YE', 'totalAssets': 30})
+        self.api.post('companies/%s/periods' % (self.company_4,), {'year': 2017, 'period': 'YE', 'totalAssets': 40})
+        self.api.post('companies/%s/periods' % (self.company_5,), {'year': 2017, 'period': 'YE', 'totalAssets': 50})
 
     def test_portfolio_sizes(self):
         all_companies = self.api.get('companies')
@@ -91,3 +93,10 @@ class AggregatesTest(unittest.TestCase):
         self.assertEquals(2017, all_periods[1]['year'])
         self.assertEquals(2017, all_periods[2]['year'])
         self.assertEquals(2017, all_periods[3]['year'])
+
+    def test_lang_parser(self):
+        aggregate_resource = self.api.root.build_lang_resource('portfolios[%s].companies.periods' % (self.portfolio_1,))
+        self.assertEquals(AggregateResource, type(aggregate_resource))
+
+        aggregate_field = self.api.root.build_lang_resource('portfolios[%s].companies.periods.totalAssets')
+        self.assertEquals(AggregateField, type(aggregate_resource))

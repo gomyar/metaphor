@@ -16,7 +16,7 @@ from metaphor.resource import ResourceLinkSpec
 
 from pymongo import MongoClient
 client = MongoClient('localhost', 27017)
-db = client['metaphor']
+db = client['metaphor2']
 
 
 def create_app():

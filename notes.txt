@@ -25,15 +25,70 @@ db.resource_period.aggregate([
         foreignField: "_id",
         as: "_owners_company"
     }},
-    {$unwind: "$_owners_company"},
     {$lookup: {
         from: "resource_portfolio",
         localField: "_owners_company._owners.owner_id",
         foreignField: "_id",
         as: "_owners_portfolio"
     }},
-    {$unwind: "$_owners_portfolio"},
     {$match: {
         "_owners_portfolio": {"$ne": []}}},
     {$sort: {year: 1, period: 1}}
+])
+
+db.resource_period.aggregate([
+    {$lookup: {
+        from: "resource_company",
+        localField: "_owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_company"
+    }},
+    {$lookup: {
+        from: "resource_portfolio",
+        localField: "_owners_company._owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_portfolio"
+    }},
+    {$lookup: {
+        from: "resource_org",
+        localField: "_owners_portfolio._owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_org"
+    }}, 
+    {$match: {
+        "_owners_org._id": ObjectId("5a1896b63d14bf094bd9689d")}},
+    {$sort: {year: 1, period: 1}}
+])
+
+
+db.resource_period.aggregate([
+    {$lookup: {
+        from: "resource_company",
+        localField: "_owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_company"
+    }},
+    {$lookup: {
+        from: "resource_portfolio",
+        localField: "_owners_company._owners.owner_id",
+        foreignField: "_id",
+        as: "_owners_portfolio"
+    }},
+    {$match: {
+        "_owners_portfolio._id": ObjectId("5a1de2453d14bf4b7991085f")}},
+    {$sort: {year: 1, period: 1}}
+])
+
+
+
+db.resource_company.aggregate(
+[{'$lookup': {'as': '_owners_portfolio',
+              'foreignField': '_id',
+              'from': 'resource_portfolio',
+              'localField': '_owners.owner_id'}},
+ {'$lookup': {'as': '_owners_org',
+              'foreignField': '_id',
+              'from': 'resource_org',
+              'localField': '_owners_portfolio._owners.owner_id'}},
+ {'$match': {'_owners_org._id': ObjectId('5a1896be3d14bf094bd9689e')}}
 ])
