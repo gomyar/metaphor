@@ -56,3 +56,9 @@ class CollectionTest(unittest.TestCase):
         sector = self.api.get('sectors/%s' % (sector_id,))
         self.assertEquals(75, sector['averageCompanyAssets'])
         self.assertEquals(170, sector['averageCompanyIncome'])
+
+    def test_filter_by_value(self):
+        ''' companies[name='bob'] '''
+
+    def test_filter_by_reference(self):
+        ''' companies[sector=sectors/3] ? '''

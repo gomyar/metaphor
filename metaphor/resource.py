@@ -167,6 +167,13 @@ class Resource(object):
                 fields[field_name] = child.serialize(os.path.join(path, field_name))
         return fields
 
+    @property
+    def root(self):
+        root = self
+        while root._parent:
+            root = root._parent
+        return root
+
     def build_child(self, field_name):
         field_spec = self.spec.fields[field_name]
         field_data = self.data.get(field_name)
@@ -298,12 +305,6 @@ class AggregateResource(Resource):
                         "_owners_%s" % (self.parent_spec.name,): {"$ne": []}
                     }}
                 )
-        elif type(self._parent) == Resource:
-            aggregate_chain.append(
-                {"$match": {
-                    "_owners_%s._id" % (self._parent.spec.name,): self._parent._id
-                }},
-            )
         else:  # root collection
             aggregate_chain.append(
                 {"$match": {
@@ -328,16 +329,33 @@ class AggregateResource(Resource):
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
                 return aggregate
+            if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
+                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate._parent = self
+                return aggregate
 
 
-class AggregateField(Resource):
+class AggregateField(AggregateResource):
     def __init__(self, field_name, spec, parent_spec):
-        self.field_name = field_name
-        self.parent_spec = parent_spec
-        self.spec = spec
+        super(AggregateField, self).__init__(field_name, spec, parent_spec)
 
     def __repr__(self):
         return "<AggregateField%s>" % (self.field_name,)
+
+    def build_aggregate_chain(self, link_name):
+        aggregate_chain = self._parent.build_aggregate_chain(link_name)
+        aggregate_chain.append(
+            {"$project": {self.field_name: 1}}
+        )
+        return aggregate_chain
+
+    def serialize(self, path):
+        aggregate_chain = self.build_aggregate_chain("")
+        resources = self._parent.spec._collection().aggregate(aggregate_chain)
+        serialized = []
+        for data in resources:
+            serialized.append(data)
+        return serialized
 
 
 class CollectionResource(Resource):
@@ -372,9 +390,13 @@ class CollectionResource(Resource):
                 # do nother aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
                 return AggregateResource()
+            elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
+                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate._parent = self
+                return aggregate
             else:
                 raise Exception("Cannot aggregate %s" % (
-                    self.spec.fields[child_id]))
+                    child_id))
         else:
             data = self.spec._collection().find_one(
                 {'_id': ObjectId(child_id)})
@@ -423,6 +445,30 @@ class CollectionResource(Resource):
             }
         })
         return resource_id
+
+    def build_aggregate_chain(self, link_name):
+        aggregate_chain = []
+        aggregate_chain.append(
+            {"$lookup": {
+                "from": "resource_%s" % (self._parent.spec.name,),
+                "localField": "_owners.owner_id",
+                "foreignField": "_id",
+                "as": "_owners_%s" % (self._parent.spec.name,),
+            }}
+        )
+        if type(self._parent) == Resource:
+            aggregate_chain.append(
+                {"$match": {
+                    "_owners_%s._id" % (self._parent.spec.name,): self._parent._id
+                }},
+            )
+        else:  # root collection
+            aggregate_chain.append(
+                {"$match": {
+                    "_owners_%s" % (self._parent.spec.name,): {"$ne": []}
+                }}
+            )
+        return aggregate_chain
 
 
 class Field(Resource):

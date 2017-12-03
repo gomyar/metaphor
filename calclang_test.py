@@ -6,6 +6,7 @@ from mongomock import MongoClient
 from metaphor.calclang import parser
 from metaphor.schema import Schema
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
+from metaphor.resource import ResourceLinkSpec, AggregateResource, AggregateField
 from metaphor.api import MongoApi
 from metaphor.resource import Resource
 
@@ -16,8 +17,11 @@ class CalcLangTest(unittest.TestCase):
         self.schema = Schema(self.db, '0.1')
 
         self.company_spec = ResourceSpec('company')
+        self.sector_spec = ResourceSpec('sector')
 
         self.schema.add_resource_spec(self.company_spec)
+        self.schema.add_resource_spec(self.sector_spec)
+
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("totalAssets", FieldSpec('int'))
         self.company_spec.add_field("totalLiabilities", FieldSpec('int'))
@@ -27,6 +31,11 @@ class CalcLangTest(unittest.TestCase):
             "grossProfit",
             CalcSpec('self.totalAssets - self.totalLiabilities'))
 
+        self.sector_spec.add_field("name", FieldSpec("string"))
+        self.sector_spec.add_field("companies", CollectionSpec("company"))
+        self.sector_spec.add_field("averageAssets", CalcSpec("average(self.companies.totalAssets)"))
+
+        self.schema.add_root('sectors', CollectionSpec('sector'))
         self.schema.add_root('companies', CollectionSpec('company'))
 
         self.api = MongoApi('http://server', self.schema, self.db)
@@ -56,6 +65,14 @@ class CalcLangTest(unittest.TestCase):
         exp_tree = parser.parse(self.schema, 'self.name')
         self.assertEquals('Bobs Burgers', exp_tree.calculate(resource))
 
+    def test_calc_function(self):
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 110, 'totalLiabilities': 10})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 130, 'totalLiabilities': 10})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 150, 'totalLiabilities': 10})
+        resource = self.api.root.build_child("sectors/%s" % (self.sector_1,))
+        self.assertEquals(180, resource.averageAssets)
+
     def test_expr_fields(self):
         company_id = self.api.post(
             'companies', dict(name='Bobs Burgers', totalAssets=100,
@@ -66,3 +83,14 @@ class CalcLangTest(unittest.TestCase):
         self.assertEquals(80, company['totalLiabilities'])
         self.assertEquals(100, company['totalCurrentAssets'])
         self.assertEquals(20, company['grossProfit'])
+
+    def test_lang_parser(self):
+        # basic agg
+        exp_tree = parser.parse(self.schema, 'sectors.companies')
+        resource = exp_tree.exp.create_resource(self.api.root)
+        self.assertEquals(AggregateResource, type(resource))
+
+        # agg field
+        exp_tree = parser.parse(self.schema, 'sectors.companies.totalAssets')
+        resource = exp_tree.exp.create_resource(self.api.root)
+        self.assertEquals(AggregateField, type(resource))

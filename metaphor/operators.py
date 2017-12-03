@@ -52,16 +52,20 @@ class ResourceRef(Calc):
     ''' Reference to resource, self.companies[0]
     '''
     def calculate(self, resource):
+        return self.create_resource(resource).data
+
+    def create_resource(self, resource):
         # find thing here
         parts = self.exp.split('.')
-        if parts.pop(0) != 'self':
-            resource = resource.spec.schema.root
+        root_part = parts.pop(0)
+
+        if root_part != 'self':
+            resource = resource.root.build_child(root_part)
         while parts:
             parent = resource
             resource = resource.build_child(parts.pop(0))
             resource._parent = parent
-
-        return resource.data
+        return resource
 
 
 class FunctionRef(Calc):
