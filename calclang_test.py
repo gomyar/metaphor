@@ -1,7 +1,7 @@
 
 import unittest
 
-from mongomock import MongoClient
+from pymongo import MongoClient
 
 from metaphor.calclang import parser
 from metaphor.schema import Schema
@@ -13,7 +13,9 @@ from metaphor.resource import Resource
 
 class CalcLangTest(unittest.TestCase):
     def setUp(self):
-        self.db = MongoClient().db
+        client = MongoClient()
+        client.drop_database('metaphor_test_db')
+        self.db = client.metaphor_test_db
         self.schema = Schema(self.db, '0.1')
 
         self.company_spec = ResourceSpec('company')

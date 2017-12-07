@@ -90,5 +90,5 @@ db.resource_company.aggregate(
               'foreignField': '_id',
               'from': 'resource_org',
               'localField': '_owners_portfolio._owners.owner_id'}},
- {'$match': {'_owners_org._id': ObjectId('5a1896be3d14bf094bd9689e')}}
+ {'$match': {'_owners_org._id': ObjectId('5a11b4763d14bf6c5b9f1926')}}
 ])

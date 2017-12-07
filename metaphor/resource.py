@@ -209,24 +209,43 @@ class Resource(object):
                     embedded_id = resource._create_new(field_name, new_data[field_name], field_spec.schema.specs[field_spec.name])
                     spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id}})
 
+    def _create_owner_link(self):
+        return {
+            'owner_spec': self.spec.name,
+            'owner_id': self._id,
+            'owner_field': self.field_name
+        }
+
     def _create_new(self, parent_field_name, new_data, spec):
         data = self._create_new_fields(new_data, spec)
 
         resource = spec.build_resource(parent_field_name, data)
 
-        data.update(self._recalc_resource(resource, spec))
+        # remove this
+#        data.update(self._recalc_resource(resource, spec))
 
-        data['_owners'] = [{
-            'owner_spec': self.spec.name,
-            'owner_id': self._id,
-            'owner_field': self.field_name
-        }]
+        # this is differnt for collections
+        if self._parent:
+            data['_owners'] = [self._create_owner_link()]
 
+        # mark as changed on insert
+        data['_changed'] = True # node id ?
         new_id = spec._collection().insert(data)
+        resource.data['_id'] = new_id
 
+        # possibly remove this as a thing
         self._create_new_embedded(resource, new_id, new_data, spec)
 
+#        self.schema.kickoff_update(resource)
+
+        data.update(self._recalc_resource(resource, spec))
+
+        # kickoff update worker, join, wait for worker to finish
+        # update resource
+        #   update resources dependent on this resource
+
         return new_id
+
 
     def unlink(self):
         if self._parent:
@@ -340,7 +359,7 @@ class AggregateField(AggregateResource):
         super(AggregateField, self).__init__(field_name, spec, parent_spec)
 
     def __repr__(self):
-        return "<AggregateField%s>" % (self.field_name,)
+        return "<AggregateField: %s>" % (self.field_name,)
 
     def build_aggregate_chain(self, link_name):
         aggregate_chain = self._parent.build_aggregate_chain(link_name)
@@ -411,25 +430,12 @@ class CollectionResource(Resource):
         else:
             return self._create_new(self.field_name, new_data, self.spec.target_spec)
 
-    def _create_new(self, parent_field_name, new_data, spec):
-        data = self._create_new_fields(new_data, spec)
-
-        resource = spec.build_resource(parent_field_name, data)
-
-        data.update(self._recalc_resource(resource, spec))
-
-        if self._parent:
-            data['_owners'] = [{
-                'owner_spec': self._parent.spec.name,
-                'owner_id': self._parent._id,
-                'owner_field': self.field_name
-            }]
-
-        new_id = spec._collection().insert(data)
-
-        self._create_new_embedded(resource, new_id, new_data, spec)
-
-        return new_id
+    def _create_owner_link(self):
+        return {
+            'owner_spec': self._parent.spec.name,
+            'owner_id': self._parent._id,
+            'owner_field': self.field_name
+        }
 
     def _create_link(self, resource_id):
         self.spec._collection().update({

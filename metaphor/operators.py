@@ -1,5 +1,20 @@
 
 
+
+def _calc_average(aggregate):
+    total = 0
+    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    if values:
+        return sum(values) / len(values)
+    else:
+        return None
+
+
+BUILTIN_FUNCTIONS = {
+    'average': _calc_average
+}
+
+
 class Calc(object):
     def __init__(self, exp):
         self.exp = exp
@@ -17,15 +32,8 @@ class Func(object):
         self.resource_ref = resource_ref
 
     def calculate(self, resource):
-        # resolve resource
-          # AggregateResource?
-
-          # follow child resources as far as collection
-            # create query for children of collection
-            # follow child resource specs as far as next collection
-                # repeat
-        # call function
-        return 75
+        res = self.resource_ref.create_resource(resource)
+        return BUILTIN_FUNCTIONS[self.func_name](res)
 
     def dependencies(self):
         return set()

@@ -4,6 +4,12 @@
    - collection (collection filters / functions that return a collection)
    - resource link (min max median - functions that take a collection and return 1 result)
 
+add recalc worker
+ - field dependencies
+ - queue updates, no recalc clashes
+  - global topsorted recalc queue?
+  - idempotency may make this unnecessary
+
 
 add basic schema
  - view schema
