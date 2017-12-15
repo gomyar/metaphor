@@ -57,6 +57,16 @@ class CollectionTest(unittest.TestCase):
         self.api.post('companies/%s/periods' % (company_id_2,), dict(year=2016, period='YE', totalIncome=200))
         self.api.post('companies/%s/periods' % (company_id_2,), dict(year=2015, period='YE', totalIncome=220))
 
+        # add company to sector
+        self.api.post('sectors/%s/companies' % (sector_id,), {'id': company_id_1})
+
+        sector = self.api.get('sectors/%s' % (sector_id,))
+        self.assertEquals(50, sector['averageCompanyAssets'])
+        self.assertEquals(170, sector['averageCompanyIncome'])
+
+        # add other company to sector
+        self.api.post('sectors/%s/companies' % (sector_id,), {'id': company_id_2})
+
         sector = self.api.get('sectors/%s' % (sector_id,))
         self.assertEquals(75, sector['averageCompanyAssets'])
         self.assertEquals(170, sector['averageCompanyIncome'])

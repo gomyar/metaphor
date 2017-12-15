@@ -97,10 +97,6 @@ class CalcSpec(object):
                 raise Exception("Cannot resolve spec %s" % (spec,))
         return spec
 
-#    def dependant_fields(self):
-#        resource_refs = self.all_resource_refs()
-#        return set(self.resolve_spec(ref) for ref in resource_refs)
-
     def all_resource_refs(self):
         return self.parse_calc().all_resource_refs()
 
@@ -168,9 +164,6 @@ class Resource(object):
     @property
     def _id(self):
         return self.data.get('_id')
-
-    def dependencies(self):
-        return []
 
     def serialize(self, path):
         fields = {'id': str(self._id)}
@@ -246,9 +239,6 @@ class Resource(object):
 
         resource = spec.build_resource(parent_field_name, data)
 
-        # remove this
-#        data.update(self._recalc_resource(resource, spec))
-
         # this is differnt for collections
         if self._parent:
             data['_owners'] = [self._create_owner_link()]
@@ -262,8 +252,6 @@ class Resource(object):
         self._create_new_embedded(resource, new_id, new_data, spec)
 
         self.spec.schema.kickoff_create(self, resource)
-
-#        data.update(self._recalc_resource(resource, spec))
 
         return new_id
 
@@ -436,12 +424,16 @@ class CollectionResource(Resource):
                 raise Exception("Cannot aggregate %s" % (
                     child_id))
         else:
-            data = self.spec._collection().find_one(
-                {'_id': ObjectId(child_id)})
-            resource = self.spec.target_spec.build_resource(
-                self.field_name, data)
-            resource._parent = self
+            resource = self._load_child_resource(child_id)
             return resource
+
+    def _load_child_resource(self, child_id):
+        data = self.spec._collection().find_one(
+            {'_id': ObjectId(child_id)})
+        resource = self.spec.target_spec.build_resource(
+            self.field_name, data)
+        resource._parent = self
+        return resource
 
     def create(self, new_data):
         if 'id' in new_data:
@@ -469,6 +461,8 @@ class CollectionResource(Resource):
                 }
             }
         })
+        resource = self._load_child_resource(resource_id)
+        self.spec.schema.kickoff_create(self, resource)
         return resource_id
 
     def build_aggregate_chain(self, link_name):
@@ -507,9 +501,6 @@ class Field(Resource):
 
     def serialize(self, path):
         return self.data
-
-    def dependencies(self):
-        return []
 
 
 class CalcResource(Resource):

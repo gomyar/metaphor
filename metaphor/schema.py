@@ -33,12 +33,6 @@ class Schema(object):
     def all_types(self):
         return sorted(self.specs.keys())
 
-    def build_dependency_tree(self):
-        deps = {}
-#        for field_name, field_spec in self.specs.items():
-#            deps[field_name] = field_spec.dependencies()
-        return deps
-
     def kickoff_create(self, collection, resource):
         # aggregation resources
         # find all calc specs which refer to this collection
@@ -47,14 +41,6 @@ class Schema(object):
         pass
         for field_name in resource.spec.fields.keys():
             self.kickoff_update(resource, field_name)
-
-    def _old_kickoff():
-        for field_name, field_spec in collection.spec.fields.items():
-            field = collection.build_child(field_name)
-            deps = field.dependencies()
-            for calc_field in deps:
-                dep_res = calc_field._parent
-                dep_res.update(field_name, calc_field.calculate())
 
     def kickoff_update(self, resource, field_name):
         # find all calc specs which refer to this field_name
@@ -121,11 +107,3 @@ class Schema(object):
                     res = calc_spec.parent.build_resource('self', resource_data['_owners%s' % (reverse_path,)])
                     res_calc = res.build_child(calc_spec.field_name)
                     res.update({calc_spec.field_name: res_calc.calculate()})
-
-    def _old_update():
-        for field_name, field_spec in resource.spec.fields.items():
-            field = resource.build_child(field_name)
-            deps = field.dependencies()
-            for calc_field in deps:
-                dep_res = calc_field._parent
-                dep_res.update(field_name, calc_field.calculate())

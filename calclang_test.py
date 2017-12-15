@@ -70,10 +70,10 @@ class CalcLangTest(unittest.TestCase):
     def test_calc_function(self):
         self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 110, 'totalLiabilities': 10})
-        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 130, 'totalLiabilities': 10})
-        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 150, 'totalLiabilities': 10})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 130, 'totalLiabilities': 20})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 150, 'totalLiabilities': 30})
         resource = self.api.root.build_child("sectors/%s" % (self.sector_1,))
-        self.assertEquals(180, resource.data['averageLiabilities'])
+        self.assertEquals(20, resource.data['averageLiabilities'])
 
     def test_expr_fields(self):
         company_id = self.api.post(

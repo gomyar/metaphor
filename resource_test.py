@@ -182,3 +182,6 @@ class SpikeTest(unittest.TestCase):
         resource_4 = self.api.root.build_child('companies/%s/periods' % (company_2,))
 
         self.assertFalse(resource_3 == resource_4)
+
+    def test_resolve_spec(self):
+        pass
