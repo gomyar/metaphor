@@ -74,16 +74,16 @@ class Schema(object):
             reverse_path = ''
             aggregate_chain = []
             if path == ['self']:
-                resource_ids = [resource._id]
+                calc_field = resource.build_child(calc_spec.field_name)
+                resource.update({calc_spec.field_name: calc_field.calculate()})
             else:
-                while path:
+                while path and path != ['self']:
                     parent_field = path[-1]
-                    reverse_path += "_" + parent_field
+                    reverse_path = ""
                     if parent_field == 'self':
                         parent_spec = calc_spec.parent
                     else:
                         parent_spec = calc_spec.resolve_spec('.'.join(path))
-                    # query all documents which are owners of this resource, with given parent_spec name and parent_field
 
                     if type(parent_spec) == ResourceSpec:
                         parent_spec_name = parent_spec.name
@@ -94,10 +94,12 @@ class Schema(object):
                     else:
                         raise Exception("Cannot reverse up resource %s" % (parent_spec,))
 
-                    aggregate_chain.append({"$unwind": "$_owners"})
+                    current_field_name = path.pop()
+
+                    aggregate_chain.append({"$unwind": "$_owners%s" % (reverse_path,)})
                     aggregate_chain.append(
-                        {"$match": {"_owners.owner_spec": parent_spec_name,
-                                    "_owners.owner_field": current_field_name}})
+                        {"$match": {"_owners%s.owner_spec" % (reverse_path,): parent_spec_name,
+                                    "_owners%s.owner_field" % (reverse_path,): current_field_name}})
                     aggregate_chain.append(
                         {"$lookup": {
                             "from": "resource_%s" % (parent_spec_name,),
@@ -105,22 +107,20 @@ class Schema(object):
                             "foreignField": "_id",
                             "as": "_owners%s" % (reverse_path,),
                         }})
+                    aggregate_chain.append({"$unwind": "$_owners%s" % (reverse_path,)})
 
-                    path.pop()
+                    if path and path!=['self']:
+                        reverse_path += "_" + parent_field
 
-                aggregate_chain.append(
-                    {"$project": {"_owners%s._id" % (reverse_path,): 1}}
-                )
-                cursor = calc_spec.parent._collection().aggregate(aggregate_chain)
-                resource_ids = [r._id for r in cursor]
-            import ipdb; ipdb.set_trace()
-            # update this resource
-            #if path == ['self']:
-            #    calc_field = resource.build_child(calc_spec.field_name)
-            #    resource.update({calc_spec.field_name: calc_field.calculate()})
+                #aggregate_chain.append(
+                #    {"$project": {"_owners%s._id" % (reverse_path,): 1}}
+                #)
+                cursor = field_spec.parent._collection().aggregate(aggregate_chain)
 
-            # update each one, kickoff update for each calc
-            pass
+                for resource_data in cursor:
+                    res = calc_spec.parent.build_resource('self', resource_data['_owners%s' % (reverse_path,)])
+                    res_calc = res.build_child(calc_spec.field_name)
+                    res.update({calc_spec.field_name: res_calc.calculate()})
 
     def _old_update():
         for field_name, field_spec in resource.spec.fields.items():
