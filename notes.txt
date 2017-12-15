@@ -92,3 +92,15 @@ db.resource_company.aggregate(
               'localField': '_owners_portfolio._owners.owner_id'}},
  {'$match': {'_owners_org._id': ObjectId('5a11b4763d14bf6c5b9f1926')}}
 ])
+
+
+
+[{"$lookup": {
+"from": "resource_sector",
+"localField": "_owners.owner_id",
+"foreignField": "_id",
+"as": "_owners_sector",
+}},
+{"$unwind": "$_owners_sector"},
+]
+

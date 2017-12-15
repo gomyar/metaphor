@@ -22,8 +22,8 @@ class Calc(object):
     def calculate(self, resource):
         return self.exp.calculate(resource)
 
-    def dependencies(self):
-        return set()
+    def all_resource_refs(self):
+        return self.exp.all_resource_refs()
 
 
 class Func(object):
@@ -35,8 +35,8 @@ class Func(object):
         res = self.resource_ref.create_resource(resource)
         return BUILTIN_FUNCTIONS[self.func_name](res)
 
-    def dependencies(self):
-        return set()
+    def all_resource_refs(self):
+        return self.resource_ref.all_resource_refs()
 
 
 class ConstRef(Calc):
@@ -48,6 +48,9 @@ class ConstRef(Calc):
 
     def calculate(self, resource):
         return self.value
+
+    def all_resource_refs(self):
+        return set()
 
 
 class FieldRef(Calc):
@@ -75,12 +78,8 @@ class ResourceRef(Calc):
             resource._parent = parent
         return resource
 
-
-class FunctionRef(Calc):
-    ''' Reference to built-in or extention function,
-        my_func(field1, field2)
-    '''
-    pass
+    def all_resource_refs(self):
+        return set([self.exp])
 
 
 class AddOp(Calc):
@@ -93,6 +92,9 @@ class AddOp(Calc):
     def calculate(self, resource):
         return self.lhs.calculate(resource) + self.rhs.calculate(resource)
 
+    def all_resource_refs(self):
+        return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
+
 
 class SubtractOp(Calc):
     ''' Subtract operator, field - field
@@ -103,6 +105,9 @@ class SubtractOp(Calc):
 
     def calculate(self, resource):
         return self.lhs.calculate(resource) - self.rhs.calculate(resource)
+
+    def all_resource_refs(self):
+        return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
 
 
 class MultiplyOp(Calc):
@@ -115,6 +120,9 @@ class MultiplyOp(Calc):
     def calculate(self, resource):
         return self.lhs.calculate(resource) * self.rhs.calculate(resource)
 
+    def all_resource_refs(self):
+        return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
+
 
 class DividebyOp(Calc):
     ''' Divideby operator, field / field
@@ -125,3 +133,6 @@ class DividebyOp(Calc):
 
     def calculate(self, resource):
         return self.lhs.calculate(resource) / self.rhs.calculate(resource)
+
+    def all_resource_refs(self):
+        return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())

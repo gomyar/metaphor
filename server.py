@@ -2,6 +2,9 @@
 
 import json
 
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask
 from flask import redirect
 from flask import render_template
@@ -61,7 +64,7 @@ schema.add_root('companies', CollectionSpec('company'))
 schema.add_root('organizations', CollectionSpec('org'))
 schema.add_root('portfolios', CollectionSpec('portfolio'))
 
-api = MongoApi("http://localhost:5000/api", schema, db)
+api = MongoApi("http://localhost:8000/api", schema, db)
 
 
 #@app.route("/")

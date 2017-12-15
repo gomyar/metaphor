@@ -1,6 +1,8 @@
 
 
 from metaphor.resource import ResourceSpec
+from metaphor.resource import ResourceLinkSpec
+from metaphor.resource import CollectionSpec
 
 class Schema(object):
     def __init__(self, db, version):
@@ -9,9 +11,13 @@ class Schema(object):
         self.specs = {}
         self.root_spec = ResourceSpec('root')
         self.add_resource_spec(self.root_spec)
+        self._all_calcs = []
 
     def __repr__(self):
         return "<Schema %s>" % (self.version)
+
+    def add_calc(self, calc_spec):
+        self._all_calcs.append(calc_spec)
 
     def serialize(self):
         return dict(
@@ -29,7 +35,97 @@ class Schema(object):
 
     def build_dependency_tree(self):
         deps = {}
-        for field_name, field_spec in self.specs.items():
-            deps[field_name] = field_spec.dependencies()
+#        for field_name, field_spec in self.specs.items():
+#            deps[field_name] = field_spec.dependencies()
         return deps
 
+    def kickoff_create(self, collection, resource):
+        # aggregation resources
+        # find all calc specs which refer to this collection
+        # find all resources containing said calc which rely on this collection
+        # update each one, kickoff update for each calc
+        pass
+        for field_name in resource.spec.fields.keys():
+            self.kickoff_update(resource, field_name)
+
+    def _old_kickoff():
+        for field_name, field_spec in collection.spec.fields.items():
+            field = collection.build_child(field_name)
+            deps = field.dependencies()
+            for calc_field in deps:
+                dep_res = calc_field._parent
+                dep_res.update(field_name, calc_field.calculate())
+
+    def kickoff_update(self, resource, field_name):
+        # find all calc specs which refer to this field_name
+        field_spec = resource.spec.fields[field_name]
+        found = set()
+        for calc_spec in self._all_calcs:
+            for resource_ref in calc_spec.all_resource_refs():
+                resolved_field_spec = calc_spec.resolve_spec(resource_ref)
+                if field_spec == resolved_field_spec:
+                    found.add((calc_spec, resource_ref))
+
+        # find all resources containing said calc
+        for calc_spec, resource_ref in found:
+            # walk backwards along calc spec
+            path = resource_ref.split('.')[:-1]
+            current_field_name = resource_ref.split('.')[-1]
+            reverse_path = ''
+            aggregate_chain = []
+            if path == ['self']:
+                resource_ids = [resource._id]
+            else:
+                while path:
+                    parent_field = path[-1]
+                    reverse_path += "_" + parent_field
+                    if parent_field == 'self':
+                        parent_spec = calc_spec.parent
+                    else:
+                        parent_spec = calc_spec.resolve_spec('.'.join(path))
+                    # query all documents which are owners of this resource, with given parent_spec name and parent_field
+
+                    if type(parent_spec) == ResourceSpec:
+                        parent_spec_name = parent_spec.name
+                    elif type(parent_spec) == CollectionSpec:
+                        parent_spec_name = parent_spec.parent.name
+                    elif type(parent_spec) == ResourceLinkSpec:
+                        parent_spec_name = parent_spec.parent.name
+                    else:
+                        raise Exception("Cannot reverse up resource %s" % (parent_spec,))
+
+                    aggregate_chain.append({"$unwind": "$_owners"})
+                    aggregate_chain.append(
+                        {"$match": {"_owners.owner_spec": parent_spec_name,
+                                    "_owners.owner_field": current_field_name}})
+                    aggregate_chain.append(
+                        {"$lookup": {
+                            "from": "resource_%s" % (parent_spec_name,),
+                            "localField": "_owners%s.owner_id" % (reverse_path,),
+                            "foreignField": "_id",
+                            "as": "_owners%s" % (reverse_path,),
+                        }})
+
+                    path.pop()
+
+                aggregate_chain.append(
+                    {"$project": {"_owners%s._id" % (reverse_path,): 1}}
+                )
+                cursor = calc_spec.parent._collection().aggregate(aggregate_chain)
+                resource_ids = [r._id for r in cursor]
+            import ipdb; ipdb.set_trace()
+            # update this resource
+            #if path == ['self']:
+            #    calc_field = resource.build_child(calc_spec.field_name)
+            #    resource.update({calc_spec.field_name: calc_field.calculate()})
+
+            # update each one, kickoff update for each calc
+            pass
+
+    def _old_update():
+        for field_name, field_spec in resource.spec.fields.items():
+            field = resource.build_child(field_name)
+            deps = field.dependencies()
+            for calc_field in deps:
+                dep_res = calc_field._parent
+                dep_res.update(field_name, calc_field.calculate())

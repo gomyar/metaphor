@@ -35,7 +35,7 @@ class CalcLangTest(unittest.TestCase):
 
         self.sector_spec.add_field("name", FieldSpec("string"))
         self.sector_spec.add_field("companies", CollectionSpec("company"))
-        self.sector_spec.add_field("averageAssets", CalcSpec("average(self.companies.totalAssets)"))
+        self.sector_spec.add_field("averageLiabilities", CalcSpec("average(self.companies.totalLiabilities)"))
 
         self.schema.add_root('sectors', CollectionSpec('sector'))
         self.schema.add_root('companies', CollectionSpec('company'))
@@ -73,7 +73,7 @@ class CalcLangTest(unittest.TestCase):
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 130, 'totalLiabilities': 10})
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 150, 'totalLiabilities': 10})
         resource = self.api.root.build_child("sectors/%s" % (self.sector_1,))
-        self.assertEquals(180, resource.averageAssets)
+        self.assertEquals(180, resource.data['averageLiabilities'])
 
     def test_expr_fields(self):
         company_id = self.api.post(
@@ -85,6 +85,17 @@ class CalcLangTest(unittest.TestCase):
         self.assertEquals(80, company['totalLiabilities'])
         self.assertEquals(100, company['totalCurrentAssets'])
         self.assertEquals(20, company['grossProfit'])
+
+    def test_expr_fields_update(self):
+        company_id = self.api.post(
+            'companies', dict(name='Bobs Burgers', totalAssets=100,
+                              totalLiabilities=80))
+        self.api.patch('companies/%s' % (company_id,), {'totalAssets': 200})
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals(200, company['totalAssets'])
+        self.assertEquals(80, company['totalLiabilities'])
+        self.assertEquals(200, company['totalCurrentAssets'])
+        self.assertEquals(120, company['grossProfit'])
 
     def test_lang_parser(self):
         # basic agg

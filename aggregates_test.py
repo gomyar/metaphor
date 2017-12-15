@@ -119,3 +119,6 @@ class AggregatesTest(unittest.TestCase):
             {'_id': self.company_1, 'totalAssets': 10},
             {'_id': self.company_2, 'totalAssets': 20},
         ], agg_resource.serialize("sectors/%s" % (self.sector_1,)))
+
+    def test_singleton(self):
+        self.assertEquals(999, self.api.get('config')['ppp'])

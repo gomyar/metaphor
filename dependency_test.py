@@ -43,14 +43,56 @@ class DependencyTest(unittest.TestCase):
             "grossProfit",
             CalcSpec('self.totalSales - self.totalExpenses'))
 
+        self.financial_spec.add_field(
+            "netProfit",
+            CalcSpec('self.grossProfit / 10'))
+
         self.sector_spec.add_field("name", FieldSpec("string"))
         self.sector_spec.add_field("companies", CollectionSpec("company"))
-        self.sector_spec.add_field("average", CalcSpec("average(self.companies.period.profitRatio)"))
+        self.sector_spec.add_field("totalCompanies", CalcSpec("len(companies)"))
+        self.sector_spec.add_field("allCompanies", CalcSpec("companies"))
+        self.sector_spec.add_field("allPeriods", CalcSpec("companies.periods"))
+        self.sector_spec.add_field("average", CalcSpec("average(self.companies.periods.profitRatio)"))
 
         self.schema.add_root('companies', CollectionSpec('company'))
         self.schema.add_root('sectors', CollectionSpec('sector'))
 
         self.api = MongoApi('http://server', self.schema, self.db)
+
+    def test_calcspec_deps(self):
+        profit_ratio_spec = self.period_spec.fields['profitRatio']
+        gross_profit_spec = self.financial_spec.fields['grossProfit']
+        total_companies_spec = self.sector_spec.fields['totalCompanies']
+        all_companies_spec = self.sector_spec.fields['allCompanies']
+        all_periods_spec = self.sector_spec.fields['allPeriods']
+        average_spec = self.sector_spec.fields['average']
+
+        gross_profit_spec = self.financial_spec.fields['grossProfit']
+        net_profit_spec = self.financial_spec.fields['netProfit']
+
+        profit_ratio_deps = profit_ratio_spec.dependencies()
+        self.assertEquals(set([gross_profit_spec, net_profit_spec]), profit_ratio_deps)
+
+        total_sales_spec = self.financial_spec.fields['totalSales']
+        total_expenses_spec = self.financial_spec.fields['totalExpenses']
+
+        gross_profit_deps = gross_profit_spec.dependencies()
+        self.assertEquals(set([total_sales_spec, total_expenses_spec]), gross_profit_deps)
+
+        company_collection_spec = self.schema.specs['root'].fields['companies']
+        period_collection_spec = self.schema.specs['root'].fields['companies']
+
+        self.assertEquals(set([company_collection_spec]), total_companies_spec.dependencies())
+        self.assertEquals(set([company_collection_spec]), all_companies_spec.dependencies())
+        self.assertEquals(set([company_collection_spec, period_collection_spec]), all_periods_spec.dependencies())
+        self.assertEquals(set([company_collection_spec, period_collection_spec, profit_ratio_spec]), average_spec.dependencies())
+
+    def test_check_two_collections_of_same_things(self):
+        # companies
+        # orgs/companies
+        # portfolio/companies
+        # dont get mixed up somehow?
+        pass
 
     def test_resource_spec_dependencies(self):
         self.assertEquals({'period'}, self.company_spec.dependencies())

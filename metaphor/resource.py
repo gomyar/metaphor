@@ -23,12 +23,6 @@ class ResourceSpec(object):
                 (name, field.serialize()) for (name, field) in
                 self.fields.items())}
 
-    def dependencies(self):
-        deps = set()
-        for field_name, field_spec in self.fields.items():
-            deps.update(field_spec.dependencies())
-        return deps
-
     def _db(self, collection):
         return self.schema.db[collection]
 
@@ -37,7 +31,11 @@ class ResourceSpec(object):
 
     def add_field(self, name, spec):
         self.fields[name] = spec
+        spec.field_name = name
+        spec.parent = self
         spec.schema = self.schema
+        if type(spec) == CalcSpec:
+            spec.schema.add_calc(spec)
 
     def build_resource(self, field_name, data):
         return Resource(field_name, self, data)
@@ -66,13 +64,13 @@ class ResourceLinkSpec(object):
     def default_value(self):
         return None
 
-    def dependencies(self):
-        return set([self.name])
-
 
 class CalcSpec(object):
     def __init__(self, calc_str):
         self.calc_str = calc_str
+
+    def __repr__(self):
+        return "<CalcSpec %s.%s '%s'>" % (self.parent.name, self.field_name, self.calc_str,)
 
     def build_resource(self, field_name, data):
         return CalcResource(field_name, self, data)
@@ -80,17 +78,44 @@ class CalcSpec(object):
     def parse_calc(self):
         return parser.parse(self.schema, self.calc_str)
 
-    def dependencies(self):
-        return self.parse_calc().dependencies()
+    def resolve_spec(self, resource_ref):
+        path = resource_ref.split('.')
+        if path[0] == 'self':
+            path.pop(0)
+            spec = self.parent
+        else:
+            spec = self.schema.root_spec
+        while path:
+            if type(spec) == ResourceLinkSpec:
+                spec = self.schema.specs[spec.name]
+                spec = spec.fields[path.pop(0)]
+            elif type(spec) == ResourceSpec:
+                spec = spec.fields[path.pop(0)]
+            elif type(spec) == CollectionSpec:
+                spec = spec.target_spec.fields[path.pop(0)]
+            else:
+                raise Exception("Cannot resolve spec %s" % (spec,))
+        return spec
+
+#    def dependant_fields(self):
+#        resource_refs = self.all_resource_refs()
+#        return set(self.resolve_spec(ref) for ref in resource_refs)
+
+    def all_resource_refs(self):
+        return self.parse_calc().all_resource_refs()
 
 
 class FieldSpec(object):
     def __init__(self, field_type):
         self.field_type = field_type
+        self.field_name = None
         self.schema = None
 
     def __repr__(self):
-        return "<FieldSpec %s>" % (self.field_type)
+        return "<FieldSpec %s.%s <%s>>" % (self.parent.name, self.field_name, self.field_type)
+
+    def __eq__(self, rhs):
+        return type(rhs) is FieldSpec and rhs.field_type == self.field_type and rhs.parent.name == self.parent.name and rhs.field_name == self.field_name
 
     def serialize(self):
         return {'spec': 'field', 'type': self.field_type}
@@ -100,9 +125,6 @@ class FieldSpec(object):
 
     def default_value(self):
         return None
-
-    def dependencies(self):
-        return set()
 
 
 class CollectionSpec(object):
@@ -129,9 +151,6 @@ class CollectionSpec(object):
     def default_value(self):
         return []
 
-    def dependencies(self):
-        return set([self.target_spec_name])
-
 
 # resources
 
@@ -149,6 +168,9 @@ class Resource(object):
     @property
     def _id(self):
         return self.data.get('_id')
+
+    def dependencies(self):
+        return []
 
     def serialize(self, path):
         fields = {'id': str(self._id)}
@@ -182,7 +204,10 @@ class Resource(object):
         return resource
 
     def update(self, data):
-        return self.spec._collection().update({'_id': self._id}, data)
+        self.data.update(data)
+        self.spec._collection().update({'_id': self._id}, {'$set': data})
+        for key in data:
+            self.spec.schema.kickoff_update(self, key)
 
     def _create_new_fields(self, new_data, spec):
         data = {}
@@ -236,16 +261,11 @@ class Resource(object):
         # possibly remove this as a thing
         self._create_new_embedded(resource, new_id, new_data, spec)
 
-#        self.schema.kickoff_update(resource)
+        self.spec.schema.kickoff_create(self, resource)
 
-        data.update(self._recalc_resource(resource, spec))
-
-        # kickoff update worker, join, wait for worker to finish
-        # update resource
-        #   update resources dependent on this resource
+#        data.update(self._recalc_resource(resource, spec))
 
         return new_id
-
 
     def unlink(self):
         if self._parent:
@@ -273,7 +293,6 @@ class NullResource(Resource):
 
     def serialize(self, path):
         return None
-
 
 
 class AggregateResource(Resource):
@@ -488,6 +507,9 @@ class Field(Resource):
 
     def serialize(self, path):
         return self.data
+
+    def dependencies(self):
+        return []
 
 
 class CalcResource(Resource):

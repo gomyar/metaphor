@@ -168,3 +168,17 @@ class SpikeTest(unittest.TestCase):
 
     def test_resource_link_points_to_another_resource_link(self):
         pass
+
+    def test_resource_equality_based_on_path_and_filters(self):
+        company_1 = self.api.post('companies', {'name': 'C1'})
+        company_2 = self.api.post('companies', {'name': 'C2'})
+
+        resource_1 = self.api.root.build_child('companies/%s' % (company_1,))
+        resource_2 = self.api.root.build_child('companies/%s' % (company_2,))
+
+        self.assertFalse(resource_1 == resource_2)
+
+        resource_3 = self.api.root.build_child('companies/%s/periods' % (company_1,))
+        resource_4 = self.api.root.build_child('companies/%s/periods' % (company_2,))
+
+        self.assertFalse(resource_3 == resource_4)
