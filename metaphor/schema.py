@@ -41,6 +41,20 @@ class Schema(object):
         pass
         for field_name in resource.spec.fields.keys():
             self.kickoff_update(resource, field_name)
+        # find collections affected by insert
+
+        for calc_spec in self._all_calcs:
+            for resource_ref in calc_spec.all_resource_refs():
+                spec_hier = calc_spec.resolve_spec_hier(resource_ref)
+                relative_ref = resource_ref.split('.')
+                while spec_hier:
+                    if collection.spec == spec_hier[-1]:
+                        self._update_found(
+                            [(calc_spec, '.'.join(relative_ref))],
+                            collection._parent,
+                            collection.spec)
+                    spec_hier.pop()
+                    relative_ref.pop()
 
     def kickoff_update(self, resource, field_name):
         # find all calc specs which refer to this field_name
@@ -51,6 +65,10 @@ class Schema(object):
                 resolved_field_spec = calc_spec.resolve_spec(resource_ref)
                 if field_spec == resolved_field_spec:
                     found.add((calc_spec, resource_ref))
+
+        self._update_found(found, resource, field_spec)
+
+    def _update_found(self, found, resource, starting_spec):
 
         # find all resources containing said calc
         for calc_spec, resource_ref in found:
@@ -101,7 +119,7 @@ class Schema(object):
                 #aggregate_chain.append(
                 #    {"$project": {"_owners%s._id" % (reverse_path,): 1}}
                 #)
-                cursor = field_spec.parent._collection().aggregate(aggregate_chain)
+                cursor = starting_spec.parent._collection().aggregate(aggregate_chain)
 
                 for resource_data in cursor:
                     res = calc_spec.parent.build_resource('self', resource_data['_owners%s' % (reverse_path,)])

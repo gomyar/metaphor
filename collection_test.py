@@ -51,7 +51,7 @@ class CollectionTest(unittest.TestCase):
 
         self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2017, period='YE', totalIncome=100))
         self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2016, period='YE', totalIncome=120))
-        self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2015, period='YE', totalIncome=160))
+        self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2015, period='YE', totalIncome=140))
 
         self.api.post('companies/%s/periods' % (company_id_2,), dict(year=2017, period='YE', totalIncome=180))
         self.api.post('companies/%s/periods' % (company_id_2,), dict(year=2016, period='YE', totalIncome=200))
@@ -62,14 +62,14 @@ class CollectionTest(unittest.TestCase):
 
         sector = self.api.get('sectors/%s' % (sector_id,))
         self.assertEquals(50, sector['averageCompanyAssets'])
-        self.assertEquals(170, sector['averageCompanyIncome'])
+        self.assertEquals(120, sector['averageCompanyIncome'])
 
         # add other company to sector
         self.api.post('sectors/%s/companies' % (sector_id,), {'id': company_id_2})
 
         sector = self.api.get('sectors/%s' % (sector_id,))
         self.assertEquals(75, sector['averageCompanyAssets'])
-        self.assertEquals(170, sector['averageCompanyIncome'])
+        self.assertEquals(160, sector['averageCompanyIncome'])
 
     def test_filter_by_value(self):
         ''' companies[name='bob'] '''

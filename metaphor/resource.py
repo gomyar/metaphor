@@ -78,13 +78,14 @@ class CalcSpec(object):
     def parse_calc(self):
         return parser.parse(self.schema, self.calc_str)
 
-    def resolve_spec(self, resource_ref):
+    def resolve_spec_hier(self, resource_ref):
         path = resource_ref.split('.')
         if path[0] == 'self':
             path.pop(0)
             spec = self.parent
         else:
             spec = self.schema.root_spec
+        found = [spec]
         while path:
             if type(spec) == ResourceLinkSpec:
                 spec = self.schema.specs[spec.name]
@@ -95,7 +96,12 @@ class CalcSpec(object):
                 spec = spec.target_spec.fields[path.pop(0)]
             else:
                 raise Exception("Cannot resolve spec %s" % (spec,))
-        return spec
+            found.append(spec)
+        return found
+
+    def resolve_spec(self, resource_ref):
+        found = self.resolve_spec_hier(resource_ref)
+        return found[-1]
 
     def all_resource_refs(self):
         return self.parse_calc().all_resource_refs()
@@ -245,6 +251,7 @@ class Resource(object):
 
         # mark as changed on insert
         data['_changed'] = True # node id ?
+#        data.update(self._recalc_resource(resource, spec))
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
 
