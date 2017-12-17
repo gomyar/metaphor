@@ -276,6 +276,7 @@ class Resource(object):
                     }
                 }
             })
+            self.spec.schema.kickoff_create(self._parent, self)
             return self._id
 
 

@@ -4,14 +4,48 @@
 def _calc_average(aggregate):
     total = 0
     values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [v for v in values if v is not None]
     if values:
         return sum(values) / len(values)
     else:
         return None
 
 
+def _calc_max(aggregate):
+    total = 0
+    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [v for v in values if v is not None]
+    if values:
+        return max(values)
+    else:
+        return None
+
+
+def _calc_min(aggregate):
+    total = 0
+    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [v for v in values if v is not None]
+    if values:
+        return min(values)
+    else:
+        return None
+
+
+def _calc_sum(aggregate):
+    total = 0
+    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [v for v in values if v is not None]
+    if values:
+        return sum(values)
+    else:
+        return None
+
+
 BUILTIN_FUNCTIONS = {
-    'average': _calc_average
+    'average': _calc_average,
+    'max': _calc_max,
+    'min': _calc_min,
+    'sum': _calc_sum,
 }
 
 

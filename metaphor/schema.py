@@ -38,17 +38,17 @@ class Schema(object):
         # find all calc specs which refer to this collection
         # find all resources containing said calc which rely on this collection
         # update each one, kickoff update for each calc
-        pass
         for field_name in resource.spec.fields.keys():
             self.kickoff_update(resource, field_name)
-        # find collections affected by insert
 
+        # find collections affected by insert
         for calc_spec in self._all_calcs:
             for resource_ref in calc_spec.all_resource_refs():
                 spec_hier = calc_spec.resolve_spec_hier(resource_ref)
                 relative_ref = resource_ref.split('.')
                 while spec_hier:
                     if collection.spec == spec_hier[-1]:
+                        print "Updating collection %s" % (relative_ref,)
                         self._update_found(
                             [(calc_spec, '.'.join(relative_ref))],
                             collection._parent,
@@ -66,7 +66,9 @@ class Schema(object):
                 if field_spec == resolved_field_spec:
                     found.add((calc_spec, resource_ref))
 
-        self._update_found(found, resource, field_spec)
+        if found:
+            print "Updating found %s" % (found,)
+            self._update_found(found, resource, field_spec)
 
     def _update_found(self, found, resource, starting_spec):
 
@@ -123,5 +125,6 @@ class Schema(object):
 
                 for resource_data in cursor:
                     res = calc_spec.parent.build_resource('self', resource_data['_owners%s' % (reverse_path,)])
+                    print "Updating resource %s %s.%s" % (res, res._id, calc_spec)
                     res_calc = res.build_child(calc_spec.field_name)
                     res.update({calc_spec.field_name: res_calc.calculate()})

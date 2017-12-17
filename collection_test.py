@@ -71,8 +71,26 @@ class CollectionTest(unittest.TestCase):
         self.assertEquals(75, sector['averageCompanyAssets'])
         self.assertEquals(160, sector['averageCompanyIncome'])
 
+        # update on delete
+        self.api.unlink('sectors/%s/companies/%s' % (sector_id, company_id_2,))
+
+        sector = self.api.get('sectors/%s' % (sector_id,))
+        self.assertEquals(50, sector['averageCompanyAssets'])
+        self.assertEquals(120, sector['averageCompanyIncome'])
+
+    def test_update_on_delete(self):
+        pass
+
     def test_filter_by_value(self):
         ''' companies[name='bob'] '''
 
     def test_filter_by_reference(self):
         ''' companies[sector=sectors/3] ? '''
+
+    def test_aggregate_resource_link(self):
+        # cannot aggregate periods.financial
+        pass
+
+    def test_aggregate_calc(self):
+        # cannot aggregate periods.averageAssets
+        pass
