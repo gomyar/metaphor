@@ -54,10 +54,17 @@ class ResourceLinkSpec(object):
             'name': self.name,
         }
 
+    def _collection(self):
+        return self.target_spec._collection()
+
+    @property
+    def target_spec(self):
+        return self.schema.specs[self.name]
+
     def build_resource(self, field_name, data):
-        if not data:
-            return NullResource()
         target_resource_spec = self.schema.specs[self.name]
+        if not data:
+            return NullResource(field_name, target_resource_spec, None)
         resource_data = target_resource_spec._collection().find_one({'_id': data})
         return target_resource_spec.build_resource(field_name, resource_data)
 
@@ -136,6 +143,10 @@ class CollectionSpec(object):
 
     def serialize(self):
         return {'spec': 'collection', 'target_spec': self.target_spec_name}
+
+    @property
+    def name(self):
+        return self.target_spec_name
 
     def _collection(self):
         return self.target_spec._collection()
@@ -281,14 +292,22 @@ class Resource(object):
 
 
 class NullResource(Resource):
-    def __init__(self):
-        pass
-
     def __repr__(self):
-        return "<NullResource>"
+        return "<NullResource %s %s>" % (self.field_name, self.spec)
 
     def serialize(self, path):
         return None
+
+    def create(self, new_data):
+        if 'id' in new_data:
+            return self._create_link(new_data['id'])
+        else:
+            return self._create_new(self.field_name, new_data, self.spec)
+
+    @property
+    def _id(self):
+        return None
+
 
 
 class AggregateResource(Resource):
@@ -369,6 +388,29 @@ class AggregateResource(Resource):
                 return aggregate
 
 
+class AggregateResourceLink(Resource):
+    def serialize(self, path):
+        aggregate_chain = self.build_aggregate_chain("")
+        resources = self.spec._collection().aggregate(aggregate_chain)
+        serialized = []
+        for data in resources:
+            resource = self.spec.build_resource(self.field_name, data)
+            serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
+        return serialized
+
+    def build_child(self, child_id):
+        if child_id in self.spec.fields:
+            if type(self.spec.fields[child_id]) == CollectionSpec:
+                aggregate = AggregateResource(child_id, self.spec.fields[child_id], self.spec)
+                aggregate._parent = self
+                return aggregate
+            if type(self.spec.fields[child_id]) == FieldSpec:
+                aggregate = AggregateField(child_id, self.spec.fields[child_id], self.spec)
+                aggregate._parent = self
+                return aggregate
+
+
+
 class AggregateField(AggregateResource):
     def __init__(self, field_name, spec, parent_spec):
         super(AggregateField, self).__init__(field_name, spec, parent_spec)
@@ -424,6 +466,8 @@ class CollectionResource(Resource):
                 # do nother aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
                 return AggregateResource()
+            elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
+                return AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec)
             elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self

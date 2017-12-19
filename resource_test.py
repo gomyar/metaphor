@@ -153,6 +153,25 @@ class SpikeTest(unittest.TestCase):
         financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
         self.assertEquals(100, financial['totalAssets'])
 
+    def test_post_embedded_resources_separately(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+            {'year': 2017, 'period': 'YE'})
+        financial_id = self.api.post('companies/%s/periods/%s/financial' % (company_id, period_id,), {'totalAssets': 100})
+
+        period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
+
+        self.assertEquals(2017, period['year'])
+        self.assertEquals('YE', period['period'])
+        self.assertEquals("http://server/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
+
+        financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
+        self.assertEquals(100, financial['totalAssets'])
+        self.assertEquals(financial, financial['id'])
+
+    def test_link_embedded_resources(self):
+        pass
+
     def test_save_schema(self):
         serialized = self.schema.serialize()
         self.assertTrue('root' in serialized)

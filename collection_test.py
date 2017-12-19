@@ -20,18 +20,26 @@ class CollectionTest(unittest.TestCase):
         self.company_spec = ResourceSpec('company')
         self.period_spec = ResourceSpec('period')
         self.sector_spec = ResourceSpec('sector')
+        self.ratios_spec = ResourceSpec('ratios')
 
         self.schema.add_resource_spec(self.company_spec)
         self.schema.add_resource_spec(self.period_spec)
         self.schema.add_resource_spec(self.sector_spec)
+        self.schema.add_resource_spec(self.ratios_spec)
+
+        self.ratios_spec.add_field("score", FieldSpec("int"))
 
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("assets", FieldSpec('int'))
 
+        self.company_spec.add_field("averageScore", CalcSpec("average(self.periods.ratios.score)"))
+
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("totalIncome", FieldSpec("int"))
+
+        self.period_spec.add_field("ratios", ResourceLinkSpec("ratios"))
 
         self.sector_spec.add_field("name", FieldSpec("string"))
         self.sector_spec.add_field('companies', CollectionSpec('company'))
@@ -88,8 +96,20 @@ class CollectionTest(unittest.TestCase):
         ''' companies[sector=sectors/3] ? '''
 
     def test_aggregate_resource_link(self):
+        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50))
+
+        period_1 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2017, period='YE', totalIncome=100))
+        period_2 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2016, period='YE', totalIncome=120))
+        period_3 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2015, period='YE', totalIncome=140))
+
+        self.api.post('companies/%s/periods/%s/ratios' % (company_id_1, period_1), dict({'score': 10}))
+        self.api.post('companies/%s/periods/%s/ratios' % (company_id_1, period_2), dict({'score': 30}))
+        self.api.post('companies/%s/periods/%s/ratios' % (company_id_1, period_3), dict({'score': 40}))
+
         # cannot aggregate periods.financial
-        pass
+        company = self.api.get('companies/%s' % (company_id_1,))
+
+        self.assertEquals(40, company['averageScore'])
 
     def test_aggregate_calc(self):
         # cannot aggregate periods.averageAssets
