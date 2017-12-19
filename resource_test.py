@@ -1,7 +1,7 @@
 
 import unittest
 
-from mongomock import MongoClient
+from pymongo import MongoClient
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec
@@ -11,7 +11,9 @@ from metaphor.api import MongoApi
 
 class SpikeTest(unittest.TestCase):
     def setUp(self):
-        self.db = MongoClient().db
+        client = MongoClient()
+        client.drop_database('metaphor_test_db')
+        self.db = client.metaphor_test_db
         self.schema = Schema(self.db, '0.1')
 
         self.company_spec = ResourceSpec('company')

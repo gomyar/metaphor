@@ -304,6 +304,13 @@ class NullResource(Resource):
         else:
             return self._create_new(self.field_name, new_data, self.spec)
 
+    def _create_owner_link(self):
+        return {
+            'owner_spec': self._parent.spec.name,
+            'owner_id': self._parent._id,
+            'owner_field': self.field_name
+        }
+
     @property
     def _id(self):
         return None
