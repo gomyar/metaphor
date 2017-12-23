@@ -105,7 +105,7 @@ class ResourceRef(Calc):
         root_part = parts.pop(0)
 
         if root_part != 'self':
-            resource = resource.root.build_child(root_part)
+            resource = resource.spec.schema.root.build_child(root_part)
         while parts:
             parent = resource
             resource = resource.build_child(parts.pop(0))

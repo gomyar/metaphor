@@ -2,9 +2,10 @@
 import unittest
 
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
-from metaphor.resource import ResourceLinkSpec
+from metaphor.resource import ResourceLinkSpec, CalcSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
 
@@ -30,6 +31,7 @@ class SpikeTest(unittest.TestCase):
 
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
+        self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)"))
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
@@ -44,6 +46,7 @@ class SpikeTest(unittest.TestCase):
 
         self.schema.add_root('companies', CollectionSpec('company'))
         self.schema.add_root('portfolios', CollectionSpec('portfolio'))
+        self.schema.add_root('financials', CollectionSpec('financial'))
         self.schema.add_root('config', ResourceLinkSpec('config'))
 
         self.api = MongoApi('http://server', self.schema, self.db)
@@ -72,12 +75,13 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(2017, period['year'])
 
         self.assertEquals([
-            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/companies/%s/periods' % (company_id,)}
+            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/companies/%s/periods' % (company_id,), 'totalTotalAssets': None}
         ], self.api.get('/companies'))
 
         self.assertEquals({
             'companies': 'http://server/companies',
             'portfolios': 'http://server/portfolios',
+            'financials': 'http://server/financials',
             'config': 'http://server/config',
         }, self.api.get('/'))
 
@@ -155,6 +159,15 @@ class SpikeTest(unittest.TestCase):
         financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
         self.assertEquals(100, financial['totalAssets'])
 
+        # assert financial is added to root collection
+        financials = self.api.get('financials')
+        self.assertEquals(1, len(financials))
+        self.assertEquals(100, financials[0]['totalAssets'])
+
+        # assert aggregates
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals(100, company['totalTotalAssets'])
+
     def test_post_embedded_resources_separately(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
         period_id = self.api.post('companies/%s/periods' % (company_id,),
@@ -169,9 +182,59 @@ class SpikeTest(unittest.TestCase):
 
         financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
         self.assertEquals(100, financial['totalAssets'])
-        self.assertEquals(financial, financial['id'])
+        self.assertEquals(str(financial_id), financial['id'])
 
     def test_link_embedded_resources(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+            {'year': 2017, 'period': 'YE'})
+        # add root resource
+        financial_id = self.api.post('financials', {'totalAssets': 80})
+
+        period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
+        self.assertEquals(None, period['financial'])
+
+        # link the resource
+        self.api.post('companies/%s/periods/%s/financial' % (company_id, period_id), {'id': financial_id})
+
+        # shortcut id set on resourcelink field
+        period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
+        self.assertEquals("http://server/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
+
+        # parent entry set on target
+        db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
+        self.assertEquals(period_id, db_financial['_owners'][0]['owner_id'])
+        # aggregates still work
+        self.fail()
+        pass
+
+    def test_delete_embedded_link(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+            {'year': 2017, 'period': 'YE'})
+        # add root resource
+        financial_id = self.api.post('financials', {'totalAssets': 80})
+        # link the resource
+        self.api.post('companies/%s/periods/%s/financial' % (company_id, period_id), {'id': financial_id})
+
+        # remove the link
+        self.api.unlink('companies/%s/periods/%s/financial' % (company_id, period_id))
+        # shortcut id null on resourcelink field
+        period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
+        self.assertEquals(None, period['financial'])
+
+        # parent entry removed from target
+        db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
+        self.assertEquals([], db_financial['_owners'])
+
+        # aggregates still work
+        pass
+
+    def test_replace_embedded_resource(self):
+        # shortcut id replaces on resourcelink field
+        # parent entry removed from original target
+        # parent entry added to new target
+        # aggregates still work
         pass
 
     def test_save_schema(self):

@@ -48,6 +48,9 @@ class ResourceLinkSpec(object):
     def __init__(self, name):
         self.name = name
 
+    def __repr__(self):
+        return "<ResourceLinkSpec %s>" % (self.name,)
+
     def serialize(self):
         return {
             'spec': 'resource_link',
@@ -64,8 +67,8 @@ class ResourceLinkSpec(object):
     def build_resource(self, field_name, data):
         target_resource_spec = self.schema.specs[self.name]
         if not data:
-            return NullResource(field_name, target_resource_spec, None)
-        resource_data = target_resource_spec._collection().find_one({'_id': data})
+            return LinkResource(field_name, target_resource_spec, {})
+        resource_data = target_resource_spec._collection().find_one({'_id': ObjectId(data)})
         return target_resource_spec.build_resource(field_name, resource_data)
 
     def default_value(self):
@@ -112,6 +115,9 @@ class CalcSpec(object):
 
     def all_resource_refs(self):
         return self.parse_calc().all_resource_refs()
+
+    def serialize(self):
+        return {'spec': 'calc', 'calc': self.calc_str}
 
 
 class FieldSpec(object):
@@ -241,7 +247,11 @@ class Resource(object):
         for field_name, field_spec in spec.fields.items():
             if isinstance(field_spec, ResourceLinkSpec):
                 if new_data.get(field_name):
-                    embedded_id = resource._create_new(field_name, new_data[field_name], field_spec.schema.specs[field_spec.name])
+                    embedded_id = resource._create_new(field_name, new_data[field_name], field_spec.schema.specs[field_spec.name],
+                                                       {'owner_spec': spec.name,
+                                                        'owner_id': new_id,
+                                                        'owner_field': field_name,
+                                                       })
                     spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id}})
 
     def _create_owner_link(self):
@@ -251,7 +261,7 @@ class Resource(object):
             'owner_field': self.field_name
         }
 
-    def _create_new(self, parent_field_name, new_data, spec):
+    def _create_new(self, parent_field_name, new_data, spec, owner=None):
         data = self._create_new_fields(new_data, spec)
 
         resource = spec.build_resource(parent_field_name, data)
@@ -260,9 +270,12 @@ class Resource(object):
         if self._parent:
             data['_owners'] = [self._create_owner_link()]
 
+        if owner:
+            data['_owners'] = [owner]
+
         # mark as changed on insert
         data['_changed'] = True # node id ?
-#        data.update(self._recalc_resource(resource, spec))
+
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
 
@@ -274,35 +287,68 @@ class Resource(object):
         return new_id
 
     def unlink(self):
-        if self._parent:
+        if type(self._parent) == CollectionResource:
+            parent_owner = {
+                        'owner_spec': self._parent._parent.spec.name,
+                        'owner_id': self._parent._parent._id,
+                        'owner_field': self._parent.field_name
+                    }
             self.spec._collection().update({
                 "_id": ObjectId(self._id)
             },
             {"$pull":
                 {"_owners":
-                    {
-                        'owner_spec': self._parent._parent.spec.name,
-                        'owner_id': self._parent._parent._id,
-                        'owner_field': self._parent.field_name
-                    }
+                    parent_owner
                 }
             })
             self.spec.schema.kickoff_create(self._parent, self)
-            return self._id
+        else:
+            parent_owner = {
+                        'owner_spec': self._parent.spec.name,
+                        'owner_id': self._parent._id,
+                        'owner_field': self.field_name
+                    }
+            self.spec._collection().update({
+                "_id": ObjectId(self._id)
+            },
+            {"$pull":
+                {"_owners":
+                    parent_owner
+                }
+            })
+            self.spec.schema.kickoff_create(self._parent, self)
+            self._parent.data[self.field_name] = None
+            self._parent.spec._collection().update(
+                {'_id': self._parent._id},
+                {'$set': {self.field_name: None}})
+
+        return self._id
 
 
-class NullResource(Resource):
+class LinkResource(Resource):
     def __repr__(self):
-        return "<NullResource %s %s>" % (self.field_name, self.spec)
+        return "<LinkResource %s %s>" % (self.field_name, self.spec)
 
     def serialize(self, path):
         return None
 
     def create(self, new_data):
         if 'id' in new_data:
-            return self._create_link(new_data['id'])
+            new_link = self._create_link(new_data['id'])
+            self._update_parent_link(new_data['id'])
+            return new_link
         else:
-            return self._create_new(self.field_name, new_data, self.spec)
+            new_resource = self._create_new(self.field_name, new_data, self.spec)
+            self._update_parent_link(str(new_resource))
+            return new_resource
+
+    def _update_parent_link(self, new_id):
+        self._parent.spec._collection().update({
+            "_id": ObjectId(self._parent._id)
+        },
+        {
+            "$set": {self.field_name: new_id}
+        })
 
     def _create_owner_link(self):
         return {
@@ -315,6 +361,41 @@ class NullResource(Resource):
     def _id(self):
         return None
 
+    def _create_link(self, resource_id):
+        self.spec._collection().update({
+            "_id": ObjectId(resource_id)
+        },
+        {"$push":
+            {"_owners": self._create_owner_link()}
+        })
+        resource = self._load_child_resource(resource_id)
+        self.spec.schema.kickoff_create(self, resource)
+        return resource_id
+
+    def _load_child_resource(self, child_id):
+        data = self.spec._collection().find_one(
+            {'_id': ObjectId(child_id)})
+        resource = self.spec.build_resource(
+            self.field_name, data)
+        resource._parent = self
+        return resource
+
+    def unlink(self):
+        if self._parent:
+            self.spec._collection().update({
+                "_id": ObjectId(self._id)
+            },
+            {"$pull":
+                {"_owners":
+                    {
+                        'owner_spec': self._parent.spec.name,
+                        'owner_id': self._parent._id,
+                        'owner_field': self.field_name
+                    }
+                }
+            })
+            self.spec.schema.kickoff_create(self._parent, self)
+            return self._id
 
 
 class AggregateResource(Resource):
@@ -391,6 +472,10 @@ class AggregateResource(Resource):
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate._parent = self
+                return aggregate
+            if type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
                 return aggregate
 

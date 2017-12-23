@@ -12,6 +12,7 @@ class Schema(object):
         self.root_spec = ResourceSpec('root')
         self.add_resource_spec(self.root_spec)
         self._all_calcs = []
+        self.root = self.root_spec.build_resource('root', {})
 
     def __repr__(self):
         return "<Schema %s>" % (self.version)
@@ -45,13 +46,14 @@ class Schema(object):
                 relative_ref = resource_ref.split('.')
                 while spec_hier:
                     if parent_resource.spec == spec_hier[-1]:
-                        print "Updating collection %s" % (relative_ref,)
                         self._update_found(
                             [(calc_spec, '.'.join(relative_ref))],
                             parent_resource._parent,
                             parent_resource.spec)
                     spec_hier.pop()
-                    relative_ref.pop()
+                    # may be root
+                    if relative_ref:
+                        relative_ref.pop()
 
     def kickoff_update(self, resource, field_name):
         # find all calc specs which refer to this field_name
@@ -64,7 +66,6 @@ class Schema(object):
                     found.add((calc_spec, resource_ref))
 
         if found:
-            print "Updating found %s" % (found,)
             self._update_found(found, resource, field_spec)
 
     def _update_found(self, found, resource, starting_spec):
@@ -82,7 +83,7 @@ class Schema(object):
             else:
                 reverse_path = ""
                 aggregate_chain.append({"$unwind": "$_owners"})
-                while path and path != ['self']:
+                while len(path) > 1: # and path != ['self']:
                     parent_field = path[-1]
                     if parent_field == 'self':
                         parent_spec = calc_spec.parent
@@ -115,16 +116,9 @@ class Schema(object):
                     reverse_path += "__" + parent_field
                     aggregate_chain.append({"$unwind": "$%s" % (reverse_path,)})
 
-#                    if path and path != ['self']:
-#                        reverse_path += "_" + parent_field
-
-                #aggregate_chain.append(
-                #    {"$project": {"_owners%s._id" % (reverse_path,): 1}}
-                #)
                 cursor = starting_spec.parent._collection().aggregate(aggregate_chain)
 
                 for resource_data in cursor:
                     res = calc_spec.parent.build_resource('self', resource_data['%s' % (reverse_path,)])
-                    print "Updating resource %s %s.%s" % (res, res._id, calc_spec)
                     res_calc = res.build_child(calc_spec.field_name)
                     res.update({calc_spec.field_name: res_calc.calculate()})
