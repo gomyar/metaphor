@@ -2,6 +2,7 @@
 import unittest
 
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 from metaphor.calclang import parser
 from metaphor.schema import Schema
@@ -74,6 +75,7 @@ class CalcLangTest(unittest.TestCase):
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 150, 'totalLiabilities': 30})
         resource = self.api.root.build_child("sectors/%s" % (self.sector_1,))
         self.assertEquals(20, resource.data['averageLiabilities'])
+        self.assertEquals(["sectors", str(self.sector_1)], resource.path)
 
     def test_expr_fields(self):
         company_id = self.api.post(

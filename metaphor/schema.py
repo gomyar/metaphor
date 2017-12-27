@@ -68,53 +68,56 @@ class Schema(object):
         if found:
             self._update_found(found, resource, field_spec)
 
+    def build_aggregate_chain(self, calc_spec, resource_ref):
+        path = resource_ref.split('.')[:-1]
+        current_field_name = resource_ref.split('.')[-1]
+        reverse_path = ""
+        aggregate_chain = [{"$unwind": "$_owners"}]
+        while len(path) > 1: # and path != ['self']:
+            parent_field = path[-1]
+            if parent_field == 'self':
+                parent_spec = calc_spec.parent
+            else:
+                parent_spec = calc_spec.resolve_spec('.'.join(path))
+
+            if type(parent_spec) == ResourceSpec:
+                parent_spec_name = parent_spec.name
+            elif type(parent_spec) == CollectionSpec:
+                parent_spec_name = parent_spec.parent.name
+            elif type(parent_spec) == ResourceLinkSpec:
+                parent_spec_name = parent_spec.parent.name
+            else:
+                raise Exception("Cannot reverse up resource %s" % (parent_spec,))
+
+            current_field_name = path.pop()
+
+            subowner = "%s._owners" % (reverse_path,) if reverse_path else "_owners"
+
+            aggregate_chain.append(
+                {"$match": {"%s.owner_spec" % (subowner,): parent_spec_name,
+                            "%s.owner_field" % (subowner,): current_field_name}})
+            aggregate_chain.append(
+                {"$lookup": {
+                    "from": "resource_%s" % (parent_spec_name,),
+                    "localField": "%s.owner_id" % (subowner,),
+                    "foreignField": "_id",
+                    "as": "%s" % (reverse_path + "__" + parent_field,),
+                }})
+            reverse_path += "__" + parent_field
+            aggregate_chain.append({"$unwind": "$%s" % (reverse_path,)})
+        return aggregate_chain, reverse_path
+
     def _update_found(self, found, resource, starting_spec):
 
         # find all resources containing said calc
         for calc_spec, resource_ref in found:
             # walk backwards along calc spec
             path = resource_ref.split('.')[:-1]
-            current_field_name = resource_ref.split('.')[-1]
-            reverse_path = ''
-            aggregate_chain = []
             if path == ['self']:
                 calc_field = resource.build_child(calc_spec.field_name)
                 resource.update({calc_spec.field_name: calc_field.calculate()})
             else:
-                reverse_path = ""
-                aggregate_chain.append({"$unwind": "$_owners"})
-                while len(path) > 1: # and path != ['self']:
-                    parent_field = path[-1]
-                    if parent_field == 'self':
-                        parent_spec = calc_spec.parent
-                    else:
-                        parent_spec = calc_spec.resolve_spec('.'.join(path))
-
-                    if type(parent_spec) == ResourceSpec:
-                        parent_spec_name = parent_spec.name
-                    elif type(parent_spec) == CollectionSpec:
-                        parent_spec_name = parent_spec.parent.name
-                    elif type(parent_spec) == ResourceLinkSpec:
-                        parent_spec_name = parent_spec.parent.name
-                    else:
-                        raise Exception("Cannot reverse up resource %s" % (parent_spec,))
-
-                    current_field_name = path.pop()
-
-                    subowner = "%s._owners" % (reverse_path,) if reverse_path else "_owners"
-
-                    aggregate_chain.append(
-                        {"$match": {"%s.owner_spec" % (subowner,): parent_spec_name,
-                                    "%s.owner_field" % (subowner,): current_field_name}})
-                    aggregate_chain.append(
-                        {"$lookup": {
-                            "from": "resource_%s" % (parent_spec_name,),
-                            "localField": "%s.owner_id" % (subowner,),
-                            "foreignField": "_id",
-                            "as": "%s" % (reverse_path + "__" + parent_field,),
-                        }})
-                    reverse_path += "__" + parent_field
-                    aggregate_chain.append({"$unwind": "$%s" % (reverse_path,)})
+                aggregate_chain, reverse_path = self.build_aggregate_chain(calc_spec, resource_ref)
 
                 cursor = starting_spec.parent._collection().aggregate(aggregate_chain)
 

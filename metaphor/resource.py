@@ -6,7 +6,34 @@ from bson.objectid import ObjectId
 from metaphor.calclang import parser
 
 
-class ResourceSpec(object):
+class Spec(object):
+    def resolve_spec_hier(self, resource_ref):
+        path = resource_ref.split('.')
+        if path[0] == 'self':
+            path.pop(0)
+            spec = self.parent
+        else:
+            spec = self.schema.root_spec
+        found = [spec]
+        while path:
+            if type(spec) == ResourceLinkSpec:
+                spec = self.schema.specs[spec.name]
+                spec = spec.fields[path.pop(0)]
+            elif type(spec) == ResourceSpec:
+                spec = spec.fields[path.pop(0)]
+            elif type(spec) == CollectionSpec:
+                spec = spec.target_spec.fields[path.pop(0)]
+            else:
+                raise Exception("Cannot resolve spec %s" % (spec,))
+            found.append(spec)
+        return found
+
+    def resolve_spec(self, resource_ref):
+        found = self.resolve_spec_hier(resource_ref)
+        return found[-1]
+
+
+class ResourceSpec(Spec):
     def __init__(self, name):
         self.name = name
         self.fields = {}
@@ -44,7 +71,7 @@ class ResourceSpec(object):
         return None
 
 
-class ResourceLinkSpec(object):
+class ResourceLinkSpec(Spec):
     def __init__(self, name):
         self.name = name
 
@@ -75,7 +102,7 @@ class ResourceLinkSpec(object):
         return None
 
 
-class CalcSpec(object):
+class CalcSpec(Spec):
     def __init__(self, calc_str):
         self.calc_str = calc_str
 
@@ -88,31 +115,6 @@ class CalcSpec(object):
     def parse_calc(self):
         return parser.parse(self.schema, self.calc_str)
 
-    def resolve_spec_hier(self, resource_ref):
-        path = resource_ref.split('.')
-        if path[0] == 'self':
-            path.pop(0)
-            spec = self.parent
-        else:
-            spec = self.schema.root_spec
-        found = [spec]
-        while path:
-            if type(spec) == ResourceLinkSpec:
-                spec = self.schema.specs[spec.name]
-                spec = spec.fields[path.pop(0)]
-            elif type(spec) == ResourceSpec:
-                spec = spec.fields[path.pop(0)]
-            elif type(spec) == CollectionSpec:
-                spec = spec.target_spec.fields[path.pop(0)]
-            else:
-                raise Exception("Cannot resolve spec %s" % (spec,))
-            found.append(spec)
-        return found
-
-    def resolve_spec(self, resource_ref):
-        found = self.resolve_spec_hier(resource_ref)
-        return found[-1]
-
     def all_resource_refs(self):
         return self.parse_calc().all_resource_refs()
 
@@ -120,7 +122,7 @@ class CalcSpec(object):
         return {'spec': 'calc', 'calc': self.calc_str}
 
 
-class FieldSpec(object):
+class FieldSpec(Spec):
     def __init__(self, field_type):
         self.field_type = field_type
         self.field_name = None
@@ -142,7 +144,7 @@ class FieldSpec(object):
         return None
 
 
-class CollectionSpec(object):
+class CollectionSpec(Spec):
     def __init__(self, target_spec_name):
         self.target_spec_name = target_spec_name
         self.schema = None
@@ -180,13 +182,26 @@ class Resource(object):
         self.spec = spec
         self.data = data
         self._parent = None
+        self.path = []
 
     def __repr__(self):
-        return "<Resource %s>" % (self.spec)
+        return "<Resource %s at %s>" % (self.spec, ".".join(self.path))
+
+    def create_resource_ref(self):
+        if self._parent:
+            parent_ref = self._parent.create_resource_ref()
+            if parent_ref:
+                return parent_ref + '.' + self.field_name
+            else:
+                return self.field_name
+        elif self._id:
+            return ''
+        else:
+            return 'self'
 
     @property
     def _id(self):
-        return self.data.get('_id')
+        return self.data.get('_id') if self.data else None
 
     def serialize(self, path):
         fields = {'id': str(self._id)}
@@ -217,6 +232,7 @@ class Resource(object):
         field_data = self.data.get(field_name)
         resource = field_spec.build_resource(field_name, field_data)
         resource._parent = self
+        resource.path = self.path + [field_name]
         return resource
 
     def update(self, data):
@@ -420,13 +436,14 @@ class AggregateResource(Resource):
         if type(self._parent) == AggregateResource:
             aggregate_chain.extend(self._parent.build_aggregate_chain(self.parent_spec.name))
         elif type(self._parent) == Resource:
-            aggregate_chain.append(
-                {"$match": {
-                    "_owners_%s._id" % (self.parent_spec.name,): self._parent._id
-                }},
-            )
+            if self._parent._parent:  # not root?
+                aggregate_chain.append(
+                    {"$match": {
+                        "_owners_%s._id" % (self.parent_spec.name,): self._parent._id
+                    }},
+                )
         elif type(self._parent) == CollectionResource:
-            if self._parent._parent:
+            if self._parent._parent and self._parent._parent.spec.name != 'root':
                 aggregate_chain.append(
                     {"$lookup": {
                         "from": "resource_%s" % (self._parent._parent.spec.name,),
@@ -446,12 +463,12 @@ class AggregateResource(Resource):
                         "_owners_%s" % (self.parent_spec.name,): {"$ne": []}
                     }}
                 )
-        else:  # root collection
-            aggregate_chain.append(
-                {"$match": {
-                    "_owners_%s" % (self.parent_spec.name,): {"$ne": []}
-                }}
-            )
+#        else:  # root collection
+#            aggregate_chain.append(
+#                {"$match": {
+#                    "_owners_%s" % (self.parent_spec.name,): {"$ne": []}
+#                }}
+#            )
         return aggregate_chain
 
 
@@ -469,38 +486,18 @@ class AggregateResource(Resource):
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
+                aggregate.path = self.path + [child_id]
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
+                aggregate.path = self.path + [child_id]
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
+                aggregate.path = self.path + [child_id]
                 return aggregate
-
-
-class AggregateResourceLink(Resource):
-    def serialize(self, path):
-        aggregate_chain = self.build_aggregate_chain("")
-        resources = self.spec._collection().aggregate(aggregate_chain)
-        serialized = []
-        for data in resources:
-            resource = self.spec.build_resource(self.field_name, data)
-            serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
-        return serialized
-
-    def build_child(self, child_id):
-        if child_id in self.spec.fields:
-            if type(self.spec.fields[child_id]) == CollectionSpec:
-                aggregate = AggregateResource(child_id, self.spec.fields[child_id], self.spec)
-                aggregate._parent = self
-                return aggregate
-            if type(self.spec.fields[child_id]) == FieldSpec:
-                aggregate = AggregateField(child_id, self.spec.fields[child_id], self.spec)
-                aggregate._parent = self
-                return aggregate
-
 
 
 class AggregateField(AggregateResource):
@@ -518,6 +515,8 @@ class AggregateField(AggregateResource):
         return aggregate_chain
 
     def serialize(self, path):
+        #aggregate_chain, reverse_path = self.spec.schema.build_aggregate_chain(self.spec, ".".join(self.path))
+        #aggregate_chain, reverse_path = self.spec.schema.build_aggregate_chain(self.spec, self.create_resource_ref())
         aggregate_chain = self.build_aggregate_chain("")
         resources = self._parent.spec._collection().aggregate(aggregate_chain)
         serialized = []
@@ -554,21 +553,28 @@ class CollectionResource(Resource):
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
+                aggregate.path = self.path + [child_id]
                 return aggregate
                 # do nother aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
-                return AggregateResource()
+                aggregate = AggregateResource()
+                aggregate.path = self.path + [child_id]
+                return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
-                return AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec)
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec)
+                aggregate.path = self.path + [child_id]
+                return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
+                aggregate.path = self.path + [child_id]
                 return aggregate
             else:
                 raise Exception("Cannot aggregate %s" % (
                     child_id))
         else:
             resource = self._load_child_resource(child_id)
+            resource.path = self.path + [child_id]
             return resource
 
     def _load_child_resource(self, child_id):
@@ -680,6 +686,7 @@ class RootResource(Resource):
         resource = spec.build_resource(root_name, None)
         while parts:
             resource = resource.build_child(parts.pop(0))
+            resource.path = path.split('/')
         return resource
 
     def serialize(self, path):

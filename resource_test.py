@@ -205,8 +205,9 @@ class SpikeTest(unittest.TestCase):
         db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
         self.assertEquals(period_id, db_financial['_owners'][0]['owner_id'])
         # aggregates still work
-        self.fail()
-        pass
+
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals(80, company['totalTotalAssets'])
 
     def test_delete_embedded_link(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
