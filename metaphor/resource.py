@@ -569,6 +569,11 @@ class CollectionResource(Resource):
                 aggregate._parent = self
                 aggregate.path = self.path + [child_id]
                 return aggregate
+            elif type(self.spec.target_spec.fields[child_id]) == CalcSpec:
+                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate._parent = self
+                aggregate.path = self.path + [child_id]
+                return aggregate
             else:
                 raise Exception("Cannot aggregate %s" % (
                     child_id))

@@ -46,6 +46,7 @@ company_spec.add_field("name", FieldSpec("string"))
 company_spec.add_field("periods", CollectionSpec('period'))
 company_spec.add_field("maxAssets", CalcSpec("max(self.periods.totalAssets)"))
 company_spec.add_field("minAssets", CalcSpec("min(self.periods.totalAssets)"))
+company_spec.add_field("averageGrossProfit", CalcSpec("average(self.periods.grossProfit)"))
 
 period_spec.add_field("period", FieldSpec("string"))
 period_spec.add_field("year", FieldSpec("int"))

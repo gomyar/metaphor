@@ -32,6 +32,8 @@ class CollectionTest(unittest.TestCase):
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("assets", FieldSpec('int'))
+        self.company_spec.add_field("liabilities", FieldSpec('int'))
+        self.company_spec.add_field("workingCapital", CalcSpec('self.assets - self.liabilities'))
 
         self.company_spec.add_field("averageScore", CalcSpec("average(self.periods.ratios.score)"))
 
@@ -45,6 +47,7 @@ class CollectionTest(unittest.TestCase):
         self.sector_spec.add_field('companies', CollectionSpec('company'))
         self.sector_spec.add_field("averageCompanyAssets", CalcSpec("average(self.companies.assets)"))
         self.sector_spec.add_field("averageCompanyIncome", CalcSpec("average(self.companies.periods.totalIncome)"))
+        self.sector_spec.add_field("averageCapital", CalcSpec("average(self.companies.workingCapital)"))
 
         self.schema.add_root('companies', CollectionSpec('company'))
         self.schema.add_root('sectors', CollectionSpec('sector'))
@@ -52,8 +55,8 @@ class CollectionTest(unittest.TestCase):
         self.api = MongoApi('http://server', self.schema, self.db)
 
     def test_collection_average(self):
-        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50))
-        company_id_2 = self.api.post('companies', dict(name='Neds Fries', assets=100))
+        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50, liabilities=30))
+        company_id_2 = self.api.post('companies', dict(name='Neds Fries', assets=100, liabilities=70))
 
         sector_id = self.api.post('sectors', dict(name='Marketting'))
 
@@ -96,7 +99,7 @@ class CollectionTest(unittest.TestCase):
         ''' companies[sector=sectors/3] ? '''
 
     def test_aggregate_resource_link(self):
-        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50))
+        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50, liabilities=30))
 
         period_1 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2017, period='YE', totalIncome=100))
         period_2 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2016, period='YE', totalIncome=120))
@@ -106,11 +109,26 @@ class CollectionTest(unittest.TestCase):
         self.api.post('companies/%s/periods/%s/ratios' % (company_id_1, period_2), dict({'score': 30}))
         self.api.post('companies/%s/periods/%s/ratios' % (company_id_1, period_3), dict({'score': 40}))
 
-        # cannot aggregate periods.financial
+        # test aggregation works
         company = self.api.get('companies/%s' % (company_id_1,))
 
         self.assertEquals(26, company['averageScore'])
 
     def test_aggregate_calc(self):
         # cannot aggregate periods.averageAssets
-        pass
+        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50, liabilities=20))
+        company_id_2 = self.api.post('companies', dict(name='Neds Fries', assets=100, liabilities=80))
+
+        sector_id = self.api.post('sectors', dict(name='Marketting'))
+
+        # add company to sector
+        self.api.post('sectors/%s/companies' % (sector_id,), {'id': company_id_1})
+
+        sector = self.api.get('sectors/%s' % (sector_id,))
+        self.assertEquals(30, sector['averageCapital'])
+
+        # add second company to sector
+        self.api.post('sectors/%s/companies' % (sector_id,), {'id': company_id_2})
+
+        sector = self.api.get('sectors/%s' % (sector_id,))
+        self.assertEquals(25, sector['averageCapital'])

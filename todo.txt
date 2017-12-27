@@ -21,3 +21,8 @@ collect dependencies for schema / live
 differentiate between embedded resources and linked resources on create
  - make atomic by forcing a second post call for linked resources or
  - embed the document in mongo document
+
+validate input (correct / default fields)
+alter resource atomically, then perform update, currently altering one field, updating, then another
+
+updating too much for a single change
