@@ -89,9 +89,6 @@ class CollectionTest(unittest.TestCase):
         self.assertEquals(50, sector['averageCompanyAssets'])
         self.assertEquals(120, sector['averageCompanyIncome'])
 
-    def test_update_on_delete(self):
-        pass
-
     def test_filter_by_value(self):
         ''' companies[name='bob'] '''
 

@@ -204,8 +204,8 @@ class SpikeTest(unittest.TestCase):
         # parent entry set on target
         db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
         self.assertEquals(period_id, db_financial['_owners'][0]['owner_id'])
-        # aggregates still work
 
+        # aggregates still work
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals(80, company['totalTotalAssets'])
 
@@ -220,6 +220,7 @@ class SpikeTest(unittest.TestCase):
 
         # remove the link
         self.api.unlink('companies/%s/periods/%s/financial' % (company_id, period_id))
+
         # shortcut id null on resourcelink field
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
         self.assertEquals(None, period['financial'])
@@ -229,7 +230,8 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals([], db_financial['_owners'])
 
         # aggregates still work
-        pass
+        #company = self.api.get('companies/%s' % (company_id,))
+        #self.assertEquals(None, company['totalTotalAssets'])
 
     def test_replace_embedded_resource(self):
         # shortcut id replaces on resourcelink field
@@ -269,4 +271,23 @@ class SpikeTest(unittest.TestCase):
         self.assertFalse(resource_3 == resource_4)
 
     def test_resolve_spec(self):
+        pass
+
+    def test_resource_object_path(self):
+        # single resource serializer
+        company_1 = self.api.post('companies', {'name': 'C1'})
+
+        company = self.api.build_resource('companies/%s' % (company_1,))
+
+        self.assertEquals('companies/%s' % (company_1,), company.url)
+
+    def test_resource_object_aggregate_chain_for_dependencies(self):
+        company_1 = self.api.post('companies', {'name': 'C1'})
+        company = self.api.build_resource('companies/%s' % (company_1,))
+
+        self.assertEquals([
+            {"$match": {"_id": company_1}}
+        ], company.build_aggregate_chain())
+
+    def test_resource_object_aggregate_chain_for_calcs(self):
         pass
