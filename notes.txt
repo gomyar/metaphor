@@ -104,3 +104,12 @@ db.resource_company.aggregate(
 {"$unwind": "$_owners_sector"},
 ]
 
+
+resource paths:
+                                           self
+/orgs/1/portfolios/2/companies/3/periods/4/financial.totalAssets
+            self
+/financials/5.totalAssets
+
+/sectors/6.averageTotalAssets -> /financials/totalAssets
+

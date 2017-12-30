@@ -280,14 +280,3 @@ class SpikeTest(unittest.TestCase):
         company = self.api.build_resource('companies/%s' % (company_1,))
 
         self.assertEquals('companies/%s' % (company_1,), company.url)
-
-    def test_resource_object_aggregate_chain_for_dependencies(self):
-        company_1 = self.api.post('companies', {'name': 'C1'})
-        company = self.api.build_resource('companies/%s' % (company_1,))
-
-        self.assertEquals([
-            {"$match": {"_id": company_1}}
-        ], company.build_aggregate_chain())
-
-    def test_resource_object_aggregate_chain_for_calcs(self):
-        pass
