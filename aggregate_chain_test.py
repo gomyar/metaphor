@@ -107,7 +107,6 @@ class AggregateChainTest(unittest.TestCase):
             {'$match': {'__company._id': self.company_1}}]
         , resource.build_aggregate_chain())
         self.assertEquals("resource_period", resource.collection)
-        self.assertEquals("companies/%s/periods" % (self.company_1,), resource.url)
 
     def test_resource_object_aggregate_chain_for_dependencies_2(self):
         resource = self.api.build_resource('portfolios/%s/companies/%s/periods/financial' % (self.portfolio_1, self.company_1,))
@@ -141,7 +140,6 @@ class AggregateChainTest(unittest.TestCase):
 			{'$match': {'__period__company__portfolio._id': self.portfolio_1}}]
         , resource.build_aggregate_chain())
         self.assertEquals("resource_financial", resource.collection)
-        self.assertEquals("portfolios/%s/companies/%s/periods/financial" % (self.portfolio_1, self.company_1,), resource.url)
 
     def test_resource_object_aggregate_chain_for_calcs(self):
         pass

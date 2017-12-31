@@ -272,11 +272,3 @@ class SpikeTest(unittest.TestCase):
 
     def test_resolve_spec(self):
         pass
-
-    def test_resource_object_path(self):
-        # single resource serializer
-        company_1 = self.api.post('companies', {'name': 'C1'})
-
-        company = self.api.build_resource('companies/%s' % (company_1,))
-
-        self.assertEquals('companies/%s' % (company_1,), company.url)

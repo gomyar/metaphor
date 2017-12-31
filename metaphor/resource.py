@@ -191,10 +191,16 @@ class Resource(object):
         self.spec = spec
         self.data = data
         self._parent = None
-        self.path = []
 
     def __repr__(self):
-        return "<%s %s [%s] at %s>" % (type(self), self.field_name, self.spec, ".".join(self.path))
+        return "<%s %s [%s] at %s>" % (type(self).__name__, self.field_name, self.spec, self.path)
+
+    @property
+    def path(self):
+        if self._parent:
+            return self._parent.path + '/' + self.field_name
+        else:
+            return self.field_name
 
     def build_child_from_path(self, path):
         root_name = path.pop(0)
@@ -204,12 +210,7 @@ class Resource(object):
         resource._parent = None  # specifically marking this as None
         while path:
             resource = resource.build_child(path.pop(0))
-            resource.path = path
         return resource
-
-    @property
-    def url(self):
-        return "/".join(self.path)
 
     @property
     def collection(self):
@@ -279,7 +280,6 @@ class Resource(object):
         field_data = self.data.get(field_name)
         resource = field_spec.build_resource(field_name, field_data)
         resource._parent = self
-        resource.path = self.path + [field_name]
         return resource
 
     def update(self, data):
@@ -507,17 +507,14 @@ class AggregateResource(Aggregable, Resource):
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
 
 
@@ -568,35 +565,29 @@ class CollectionResource(Aggregable, Resource):
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
                 # do nother aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
                 aggregate = AggregateResource()
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
                 aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == CalcSpec:
                 aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
                 aggregate._parent = self
-                aggregate.path = self.path + [child_id]
                 return aggregate
             else:
                 raise Exception("Cannot aggregate %s" % (
                     child_id))
         else:
             resource = self._load_child_resource(child_id)
-            resource.path = self.path + [child_id]
             return resource
 
     def _load_child_resource(self, child_id):
@@ -677,7 +668,6 @@ class RootResource(Resource):
         resource._parent = None  # specifically marking this as None
         while parts:
             resource = resource.build_child(parts.pop(0))
-            resource.path = path.split('/')
         return resource
 
     def serialize(self, path):
