@@ -119,6 +119,11 @@ class AggregatesTest(unittest.TestCase):
         self.assertEquals(10, aggregated[0]['totalAssets'])
         self.assertEquals(20, aggregated[1]['totalAssets'])
 
+    def test_agg_field_from_root(self):
+        agg_field = self.api.build_resource('companies/totalAssets')
+        chain = agg_field.build_aggregate_chain()
+        self.assertEquals([], chain)
+
     def test_singleton(self):
         pass
         #self.assertEquals(999, self.api.get('config')['ppp'])

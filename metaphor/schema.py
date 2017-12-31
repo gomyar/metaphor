@@ -74,7 +74,7 @@ class Schema(object):
         current_field_name = resource_ref.split('.')[-1]
         reverse_path = ""
         aggregate_chain = [{"$unwind": "$_owners"}]
-        while len(path) > 1: # and path != ['self']:
+        while len(path) > 1:
             parent_field = path[-1]
             if parent_field == 'self':
                 parent_spec = calc_spec.parent
