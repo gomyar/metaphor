@@ -67,8 +67,8 @@ class ResourceSpec(Spec):
         if type(spec) == CalcSpec:
             spec.schema.add_calc(spec)
 
-    def build_resource(self, field_name, data):
-        return Resource(field_name, self, data)
+    def build_resource(self, parent, field_name, data):
+        return Resource(parent, field_name, self, data)
 
     def default_value(self):
         return None
@@ -97,12 +97,12 @@ class ResourceLinkSpec(Spec):
     def target_spec(self):
         return self.schema.specs[self.name]
 
-    def build_resource(self, field_name, data):
+    def build_resource(self, parent, field_name, data):
         target_resource_spec = self.schema.specs[self.name]
         if not data:
-            return LinkResource(field_name, target_resource_spec, {})
+            return LinkResource(parent, field_name, target_resource_spec, {})
         resource_data = target_resource_spec._collection().find_one({'_id': ObjectId(data)})
-        return target_resource_spec.build_resource(field_name, resource_data)
+        return target_resource_spec.build_resource(parent, field_name, resource_data)
 
     def default_value(self):
         return None
@@ -115,8 +115,8 @@ class CalcSpec(Spec):
     def __repr__(self):
         return "<CalcSpec %s.%s '%s'>" % (self.parent.name, self.field_name, self.calc_str,)
 
-    def build_resource(self, field_name, data):
-        return CalcField(field_name, self, data)
+    def build_resource(self, parent, field_name, data):
+        return CalcField(parent, field_name, self, data)
 
     def parse_calc(self):
         return parser.parse(self.schema, self.calc_str)
@@ -143,8 +143,8 @@ class FieldSpec(Spec):
     def serialize(self):
         return {'spec': 'field', 'type': self.field_type}
 
-    def build_resource(self, field_name, data):
-        return Field(field_name, self, data)
+    def build_resource(self, parent, field_name, data):
+        return Field(parent, field_name, self, data)
 
     def default_value(self):
         return None
@@ -175,8 +175,8 @@ class CollectionSpec(Spec):
     def target_spec(self):
         return self.schema.specs[self.target_spec_name]
 
-    def build_resource(self, field_name, name):
-        return CollectionResource(field_name, self, name)
+    def build_resource(self, parent, field_name, name):
+        return CollectionResource(parent, field_name, self, name)
 
     def default_value(self):
         return []
@@ -186,11 +186,11 @@ class CollectionSpec(Spec):
 
 
 class Resource(object):
-    def __init__(self, field_name, spec, data):
+    def __init__(self, parent, field_name, spec, data):
         self.field_name = field_name
         self.spec = spec
         self.data = data
-        self._parent = None
+        self._parent = parent
 
     def __repr__(self):
         return "<%s %s [%s] at %s>" % (type(self).__name__, self.field_name, self.spec, self.path)
@@ -201,16 +201,6 @@ class Resource(object):
             return self._parent.path + '/' + self.field_name
         else:
             return self.field_name
-
-    def build_child_from_path(self, path):
-        root_name = path.pop(0)
-
-        spec = self.spec.fields[root_name]
-        resource = spec.build_resource(root_name, None)
-        resource._parent = None  # specifically marking this as None
-        while path:
-            resource = resource.build_child(path.pop(0))
-        return resource
 
     @property
     def collection(self):
@@ -254,7 +244,7 @@ class Resource(object):
     def serialize(self, path):
         fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
-            child = field_spec.build_resource(field_name, self.data.get(field_name))
+            child = field_spec.build_resource(self, field_name, self.data.get(field_name))
             if type(field_spec) == CollectionSpec:
                 fields[field_name] = os.path.join(path,
                                                   field_name)
@@ -278,9 +268,7 @@ class Resource(object):
     def build_child(self, field_name):
         field_spec = self.spec.fields[field_name]
         field_data = self.data.get(field_name)
-        resource = field_spec.build_resource(field_name, field_data)
-        resource._parent = self
-        return resource
+        return field_spec.build_resource(self, field_name, field_data)
 
     def update(self, data):
         self.data.update(data)
@@ -327,8 +315,7 @@ class Resource(object):
     def _create_new(self, parent_field_name, new_data, spec, owner=None):
         data = self._create_new_fields(new_data, spec)
 
-        resource = spec.build_resource(parent_field_name, data)
-        resource._parent = self
+        resource = spec.build_resource(self, parent_field_name, data)
 
         # this is differnt for collections
         if self._parent:
@@ -438,8 +425,7 @@ class LinkResource(Resource):
         data = self.spec._collection().find_one(
             {'_id': ObjectId(child_id)})
         resource = self.spec.build_resource(
-            self.field_name, data)
-        resource._parent = self
+            self, self.field_name, data)
         return resource
 
     def unlink(self):
@@ -488,39 +474,29 @@ class Aggregable(object):
 
 
 class AggregateResource(Aggregable, Resource):
-    def __init__(self, field_name, spec):
-        self.field_name = field_name
-        self.spec = spec
+    def __init__(self, parent, field_name, spec):
+        super(AggregateResource, self).__init__(parent, field_name, spec, None)
 
     def serialize(self, path):
         aggregate_chain = self.build_aggregate_chain("")
         resources = self.spec._collection().aggregate(aggregate_chain)
         serialized = []
         for data in resources:
-            resource = self.spec.target_spec.build_resource(self.field_name, data)
+            resource = self.spec.target_spec.build_resource(self, self.field_name, data)
             serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
         return serialized
 
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
-                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateField(self, child_id, self.spec.target_spec.fields[child_id])
             if type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
 
 
 class AggregateField(AggregateResource):
-    def __init__(self, field_name, spec):
-        super(AggregateField, self).__init__(field_name, spec)
-
     def __repr__(self):
         return "<AggregateField: %s>" % (self.field_name,)
 
@@ -555,28 +531,20 @@ class CollectionResource(Aggregable, Resource):
             resources = self.spec._collection().find()
         serialized = []
         for data in resources:
-            resource = self.spec.target_spec.build_resource(self.field_name, data)
+            resource = self.spec.target_spec.build_resource(self, self.field_name, data)
             serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
         return serialized
 
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
-                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateField(self, child_id, self.spec.target_spec.fields[child_id])
             elif type(self.spec.target_spec.fields[child_id]) == CalcSpec:
-                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id])
-                aggregate._parent = self
-                return aggregate
+                return AggregateField(self, child_id, self.spec.target_spec.fields[child_id])
             else:
                 raise Exception("Cannot aggregate %s" % (
                     child_id))
@@ -588,8 +556,7 @@ class CollectionResource(Aggregable, Resource):
         data = self.spec._collection().find_one(
             {'_id': ObjectId(child_id)})
         resource = self.spec.target_spec.build_resource(
-            self.field_name, data)
-        resource._parent = self
+            self, self.field_name, data)
         return resource
 
     def create(self, new_data):
@@ -648,7 +615,7 @@ class CalcField(Field):
 
 class RootResource(Resource):
     def __init__(self, schema):
-        super(RootResource, self).__init__('root', schema.specs["root"], {})
+        super(RootResource, self).__init__(None, 'root', schema.specs["root"], {})
 
     def __repr__(self):
         return "<RootResource>"
@@ -658,8 +625,7 @@ class RootResource(Resource):
         root_name = parts.pop(0)
 
         spec = self.spec.fields[root_name]
-        resource = spec.build_resource(root_name, None)
-        resource._parent = None  # specifically marking this as None
+        resource = spec.build_resource(None, root_name, None)
         while parts:
             resource = resource.build_child(parts.pop(0))
         return resource

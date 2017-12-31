@@ -100,16 +100,13 @@ class ResourceRef(Calc):
         return self.create_resource(resource).data
 
     def create_resource(self, resource):
-        # find thing here
         parts = self.exp.split('.')
         root_part = parts.pop(0)
 
         if root_part != 'self':
             resource = resource.spec.schema.root.build_child(root_part)
         while parts:
-            parent = resource
             resource = resource.build_child(parts.pop(0))
-            resource._parent = parent
         return resource
 
     def all_resource_refs(self):

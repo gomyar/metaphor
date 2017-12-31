@@ -122,6 +122,6 @@ class Schema(object):
                 cursor = starting_spec.parent._collection().aggregate(aggregate_chain)
 
                 for resource_data in cursor:
-                    res = calc_spec.parent.build_resource('self', resource_data['%s' % (reverse_path,)])
+                    res = calc_spec.parent.build_resource(None, 'self', resource_data['%s' % (reverse_path,)])
                     res_calc = res.build_child(calc_spec.field_name)
                     res.update({calc_spec.field_name: res_calc.calculate()})

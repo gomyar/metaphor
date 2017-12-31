@@ -63,7 +63,7 @@ class CalcLangTest(unittest.TestCase):
         self.assertEquals(7, exp_tree.calculate(None))
 
     def test_parse_resource(self):
-        resource = Resource('company', self.company_spec,
+        resource = Resource(self.schema.root, 'company', self.company_spec,
                             {'name': 'Bobs Burgers'})
         exp_tree = parser.parse(self.schema, 'self.name')
         self.assertEquals('Bobs Burgers', exp_tree.calculate(resource))
