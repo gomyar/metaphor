@@ -488,9 +488,8 @@ class Aggregable(object):
 
 
 class AggregateResource(Aggregable, Resource):
-    def __init__(self, field_name, spec, parent_spec):
+    def __init__(self, field_name, spec):
         self.field_name = field_name
-        self.parent_spec = parent_spec
         self.spec = spec
 
     def serialize(self, path):
@@ -505,22 +504,22 @@ class AggregateResource(Aggregable, Resource):
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
-                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
             if type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
 
 
 class AggregateField(AggregateResource):
-    def __init__(self, field_name, spec, parent_spec):
-        super(AggregateField, self).__init__(field_name, spec, parent_spec)
+    def __init__(self, field_name, spec):
+        super(AggregateField, self).__init__(field_name, spec)
 
     def __repr__(self):
         return "<AggregateField: %s>" % (self.field_name,)
@@ -563,24 +562,19 @@ class CollectionResource(Aggregable, Resource):
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
-                aggregate._parent = self
-                return aggregate
-                # do nother aggregate
-            elif type(self.spec.target_spec.fields[child_id]) == ResourceSpec:
-                aggregate = AggregateResource()
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
-                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id], self.spec)
+                aggregate = AggregateResource(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
-                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
             elif type(self.spec.target_spec.fields[child_id]) == CalcSpec:
-                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id], self.spec.target_spec)
+                aggregate = AggregateField(child_id, self.spec.target_spec.fields[child_id])
                 aggregate._parent = self
                 return aggregate
             else:
