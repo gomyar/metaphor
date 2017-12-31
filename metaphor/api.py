@@ -1,7 +1,6 @@
 
 import os
 
-from resource import RootResource
 
 
 class MongoApi(object):
@@ -9,7 +8,6 @@ class MongoApi(object):
         self.root_url = root_url
         self.schema = schema
         self.db = db
-        self.root = RootResource(self)
 
     def post(self, path, data):
         resource = self.build_resource(path)
@@ -25,7 +23,7 @@ class MongoApi(object):
             resource = self.build_resource(path)
             return resource.serialize(os.path.join(self.root_url, path))
         else:
-            return self.root.serialize(self.root_url)
+            return self.schema.root.serialize(self.root_url)
 
     def unlink(self, path):
         resource = self.build_resource(path)
@@ -33,4 +31,4 @@ class MongoApi(object):
         return resource._id
 
     def build_resource(self, path):
-        return self.root.build_child(path)
+        return self.schema.root.build_child(path)

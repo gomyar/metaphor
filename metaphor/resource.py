@@ -219,11 +219,12 @@ class Resource(object):
                 "%s_id" % (owner_prefix,): self._id
             }}
         )
-        aggregate_chain.extend(self._parent.build_aggregate_chain(chain_path))
+        if self._parent:
+            aggregate_chain.extend(self._parent.build_aggregate_chain(chain_path))
         return aggregate_chain
 
     def create_resource_ref(self):
-        if type(self._parent) != RootResource:
+        if self._parent:
             parent_ref = self._parent.create_resource_ref()
             if parent_ref:
                 return parent_ref + '.' + self.field_name
@@ -316,9 +317,10 @@ class Resource(object):
         data = self._create_new_fields(new_data, spec)
 
         resource = spec.build_resource(parent_field_name, data)
+        resource._parent = self
 
         # this is differnt for collections
-        if type(self._parent) != RootResource:
+        if self._parent:
             data['_owners'] = [self._create_owner_link()]
 
         if owner:
@@ -376,7 +378,7 @@ class Resource(object):
         return self._id
 
     def build_aggregate_chain_old(self, aggregate_path=""):
-        if type(self._parent) != RootResource:  # not root?
+        if self._parent:
             return [
                 {"$match": {
                     "%s_id" % ("." + aggregate_path if aggregate_path else aggregate_path): self._id
@@ -440,7 +442,7 @@ class LinkResource(Resource):
         return resource
 
     def unlink(self):
-        if type(self._parent) != RootResource:
+        if self._parent:
             self.spec._collection().update({
                 "_id": ObjectId(self._id)
             },
@@ -462,10 +464,10 @@ class Aggregable(object):
         chain_path = chain_path or ""
         aggregate_chain = []
 
-        owner_prefix = chain_path + '.' if chain_path else ""
-        new_owner_prefix = chain_path + "__" + self._parent.spec.name
 
-        if type(self._parent) != RootResource:
+        if self._parent:
+            owner_prefix = chain_path + '.' if chain_path else ""
+            new_owner_prefix = chain_path + "__" + self._parent.spec.name
             aggregate_chain = [{"$unwind": "$%s_owners" % (owner_prefix,)}]
             aggregate_chain.append(
                 {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
@@ -528,7 +530,7 @@ class AggregateResource(Aggregable, Resource):
         return aggregate_chain
 
     def serialize(self, path):
-        aggregate_chain = self.build_aggregate_chain_old("")
+        aggregate_chain = self.build_aggregate_chain("")
         resources = self.spec._collection().aggregate(aggregate_chain)
         serialized = []
         for data in resources:
@@ -563,14 +565,17 @@ class AggregateField(AggregateResource):
         return "<AggregateField: %s>" % (self.field_name,)
 
     def build_aggregate_chain_old(self, link_name):
-        aggregate_chain = self._parent.build_aggregate_chain_old(link_name)
+        aggregate_chain = self._parent.build_aggregate_chain(link_name)
         aggregate_chain.append(
             {"$project": {self.field_name: 1}}
         )
         return aggregate_chain
 
+    def build_aggregate_chain(self, link_name=None):
+        return self._parent.build_aggregate_chain(link_name)
+
     def serialize(self, path):
-        aggregate_chain = self.build_aggregate_chain_old("")
+        aggregate_chain = self.build_aggregate_chain("")
         resources = self._parent.spec._collection().aggregate(aggregate_chain)
         serialized = []
         for data in resources:
@@ -583,7 +588,7 @@ class CollectionResource(Aggregable, Resource):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
 
     def serialize(self, path):
-        if type(self._parent) != RootResource:
+        if self._parent:
             resources = self.spec._collection().find({
                 '_owners': {
                     '$elemMatch': {
@@ -732,8 +737,8 @@ class CalcResource(Resource):
 
 
 class RootResource(Resource):
-    def __init__(self, api):
-        super(RootResource, self).__init__('root', api.schema.specs["root"], {})
+    def __init__(self, schema):
+        super(RootResource, self).__init__('root', schema.specs["root"], {})
 
     def __repr__(self):
         return "<RootResource>"
@@ -744,7 +749,7 @@ class RootResource(Resource):
 
         spec = self.spec.fields[root_name]
         resource = spec.build_resource(root_name, None)
-        resource._parent = self
+        resource._parent = None  # specifically marking this as None
         while parts:
             resource = resource.build_child(parts.pop(0))
             resource.path = path.split('/')

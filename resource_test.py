@@ -260,13 +260,13 @@ class SpikeTest(unittest.TestCase):
         company_1 = self.api.post('companies', {'name': 'C1'})
         company_2 = self.api.post('companies', {'name': 'C2'})
 
-        resource_1 = self.api.root.build_child('companies/%s' % (company_1,))
-        resource_2 = self.api.root.build_child('companies/%s' % (company_2,))
+        resource_1 = self.api.build_resource('companies/%s' % (company_1,))
+        resource_2 = self.api.build_resource('companies/%s' % (company_2,))
 
         self.assertFalse(resource_1 == resource_2)
 
-        resource_3 = self.api.root.build_child('companies/%s/periods' % (company_1,))
-        resource_4 = self.api.root.build_child('companies/%s/periods' % (company_2,))
+        resource_3 = self.api.build_resource('companies/%s/periods' % (company_1,))
+        resource_4 = self.api.build_resource('companies/%s/periods' % (company_2,))
 
         self.assertFalse(resource_3 == resource_4)
 

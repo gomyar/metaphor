@@ -3,6 +3,7 @@
 from metaphor.resource import ResourceSpec
 from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import CollectionSpec
+from resource import RootResource
 
 class Schema(object):
     def __init__(self, db, version):
@@ -12,7 +13,7 @@ class Schema(object):
         self.root_spec = ResourceSpec('root')
         self.add_resource_spec(self.root_spec)
         self._all_calcs = []
-        self.root = self.root_spec.build_resource('root', {})
+        self.root = RootResource(self)
 
     def __repr__(self):
         return "<Schema %s>" % (self.version)
@@ -108,7 +109,6 @@ class Schema(object):
         return aggregate_chain, reverse_path
 
     def _update_found(self, found, resource, starting_spec):
-
         # find all resources containing said calc
         for calc_spec, resource_ref in found:
             # walk backwards along calc spec

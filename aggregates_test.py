@@ -111,14 +111,13 @@ class AggregatesTest(unittest.TestCase):
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'id': self.company_2})
         exp_tree = parser.parse(self.schema, 'self.companies.totalAssets')
 
-        sector = self.api.root.build_child("sectors/%s" % (self.sector_1,))
+        sector = self.api.build_resource("sectors/%s" % (self.sector_1,))
         agg_resource = exp_tree.exp.create_resource(sector)
         self.assertEquals(AggregateField, type(agg_resource))
 
-        self.assertEquals([
-            {'_id': self.company_1, 'totalAssets': 10},
-            {'_id': self.company_2, 'totalAssets': 20},
-        ], agg_resource.serialize("sectors/%s" % (self.sector_1,)))
+        aggregated = agg_resource.serialize("sectors/%s" % (self.sector_1,))
+        self.assertEquals(10, aggregated[0]['totalAssets'])
+        self.assertEquals(20, aggregated[1]['totalAssets'])
 
     def test_singleton(self):
         pass

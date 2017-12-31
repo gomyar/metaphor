@@ -73,7 +73,7 @@ class CalcLangTest(unittest.TestCase):
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 110, 'totalLiabilities': 10})
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 130, 'totalLiabilities': 20})
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 150, 'totalLiabilities': 30})
-        resource = self.api.root.build_child("sectors/%s" % (self.sector_1,))
+        resource = self.api.build_resource("sectors/%s" % (self.sector_1,))
         self.assertEquals(20, resource.data['averageLiabilities'])
         self.assertEquals(["sectors", str(self.sector_1)], resource.path)
 
@@ -102,10 +102,10 @@ class CalcLangTest(unittest.TestCase):
     def test_lang_parser(self):
         # basic agg
         exp_tree = parser.parse(self.schema, 'sectors.companies')
-        resource = exp_tree.exp.create_resource(self.api.root)
+        resource = exp_tree.exp.create_resource(self.schema.root)
         self.assertEquals(AggregateResource, type(resource))
 
         # agg field
         exp_tree = parser.parse(self.schema, 'sectors.companies.totalAssets')
-        resource = exp_tree.exp.create_resource(self.api.root)
+        resource = exp_tree.exp.create_resource(self.schema.root)
         self.assertEquals(AggregateField, type(resource))
