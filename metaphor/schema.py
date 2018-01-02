@@ -3,6 +3,7 @@
 from metaphor.resource import ResourceSpec
 from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import CollectionSpec
+from metaphor.resource import CollectionResource
 from resource import RootResource
 
 class Schema(object):
@@ -35,7 +36,60 @@ class Schema(object):
     def all_types(self):
         return sorted(self.specs.keys())
 
+    def find_affected_calcs_for_field(self, field):
+        found = set()
+        for calc_spec in self._all_calcs:
+            for resource_ref in calc_spec.all_resource_refs():
+                resolved_field_spec = calc_spec.resolve_spec(resource_ref)
+                if field.spec == resolved_field_spec:
+                    found.add((calc_spec, resource_ref, resource_ref.rsplit('.', 1)[0]))
+        return found
+
+    def find_affected_calcs_for_resource(self, resource):
+        found = set()
+        for calc_spec in self._all_calcs:
+            for resource_ref in calc_spec.all_resource_refs():
+                spec_hier = calc_spec.resolve_spec_hier(resource_ref)
+                relative_ref = resource_ref.split('.')
+                while len(spec_hier) > 1:
+                    if type(spec_hier[-1]) == CollectionSpec:
+                        spec = spec_hier[-1].target_spec
+                    else:
+                        spec = spec_hier[-1]
+                    if resource.spec == spec:
+                        found.add((calc_spec, resource_ref, ".".join(relative_ref)))
+                    spec_hier.pop()
+                    # may be root
+                    if relative_ref:
+                        relative_ref.pop()
+        return found
+
+    def find_altered_resource_ids(self, found, resource):
+        altered = set()
+        for calc_spec, resource_ref, relative_ref in found:
+            # collection representing changed resources
+            collection_spec = CollectionSpec(calc_spec.parent.name)
+            collection_spec.schema = self
+            root = CollectionResource(None, 'self', collection_spec, None)
+            child = root.build_child_dot(relative_ref)
+            chain = child.build_aggregate_chain()
+            cursor = child.spec._collection().aggregate(chain)
+            ids = set()
+            for data in cursor:
+                if child._parent:
+                    ids.add(data[child._parent.build_aggregate_path()]['_id'])
+                else:
+                    ids.add(data['_id'])
+            if ids:
+                altered.add((calc_spec.parent.name, calc_spec.field_name, tuple(ids)))
+        return altered
+
     def kickoff_create(self, parent_resource, new_resource):
+        found = self.find_affected_calcs_for_resource(new_resource)
+        altered_ids = self.find_altered_resource_ids(found, new_resource)
+        for spec, field_name, ids in altered_ids:
+            self.db['metaphor_updates'].insert({'spec': spec, 'field_name': field_name, 'resource_ids': list(ids)})
+
         # update each one, kickoff update for each calc
         for field_name in new_resource.spec.fields.keys():
             self.kickoff_update(new_resource, field_name)

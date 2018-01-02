@@ -206,6 +206,26 @@ class Resource(object):
     def collection(self):
         return self.spec._collection_name()
 
+    def build_child_dot(self, path):
+        parts = path.split('.')
+        root_name = parts.pop(0)
+
+        if root_name == 'self':
+            resource = self
+        else:
+            resource = self.spec.schema.root.build_child(root_name)
+
+        while parts:
+            resource = resource.build_child(parts.pop(0))
+        return resource
+
+    def build_aggregate_path(self, chain_path=None):
+        chain_path = chain_path or ""
+        if self._parent:
+            return self._parent.build_aggregate_path(chain_path + "__" + self.spec.name)
+        else:
+            return chain_path + "__" + self.spec.name
+
     def build_aggregate_chain(self, chain_path=None):
         if chain_path is None:
             raise Exception("Resource cannot be first-order aggregate")
@@ -324,9 +344,6 @@ class Resource(object):
         if owner:
             data['_owners'] = [owner]
 
-        # mark as changed on insert
-        data['_changed'] = True # node id ?
-
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
 
@@ -428,23 +445,6 @@ class LinkResource(Resource):
             self, self.field_name, data)
         return resource
 
-    def unlink(self):
-        if self._parent:
-            self.spec._collection().update({
-                "_id": ObjectId(self._id)
-            },
-            {"$pull":
-                {"_owners":
-                    {
-                        'owner_spec': self._parent.spec.name,
-                        'owner_id': self._parent._id,
-                        'owner_field': self.field_name
-                    }
-                }
-            })
-            self.spec.schema.kickoff_create(self._parent, self)
-            return self._id
-
 
 class Aggregable(object):
     def build_aggregate_chain(self, chain_path=None):
@@ -502,6 +502,9 @@ class AggregateField(AggregateResource):
 
     def build_aggregate_chain(self, link_name=None):
         return self._parent.build_aggregate_chain(link_name)
+
+    def build_aggregate_path(self, chain_path=None):
+        return self._parent.build_aggregate_path()
 
     def serialize(self, path):
         aggregate_chain = self.build_aggregate_chain("")

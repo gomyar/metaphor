@@ -119,6 +119,30 @@ class AggregatesTest(unittest.TestCase):
         self.assertEquals(10, aggregated[0]['totalAssets'])
         self.assertEquals(20, aggregated[1]['totalAssets'])
 
+    def test_agg_field_from_self_multiple_sectors(self):
+        # create sector
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        self.sector_2 = self.api.post('sectors', {'name': 'Finance'})
+        # ad 2 companies to sector
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'id': self.company_1})
+        self.api.post('sectors/%s/companies' % (self.sector_2,), {'id': self.company_2})
+        exp_tree = parser.parse(self.schema, 'self.companies.totalAssets')
+
+        sector = self.api.build_resource("sectors/%s" % (self.sector_1,))
+        agg_resource = exp_tree.exp.create_resource(sector)
+        self.assertEquals(AggregateField, type(agg_resource))
+
+        aggregated = agg_resource.serialize("")
+        self.assertEquals(10, aggregated[0]['totalAssets'])
+
+        # second sector
+        sector = self.api.build_resource("sectors/%s" % (self.sector_2,))
+        agg_resource = exp_tree.exp.create_resource(sector)
+        self.assertEquals(AggregateField, type(agg_resource))
+
+        aggregated = agg_resource.serialize("")
+        self.assertEquals(20, aggregated[0]['totalAssets'])
+
     def test_agg_field_from_root(self):
         agg_field = self.api.build_resource('companies/totalAssets')
         chain = agg_field.build_aggregate_chain()
