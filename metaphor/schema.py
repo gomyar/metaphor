@@ -1,6 +1,7 @@
 
 
 from metaphor.resource import ResourceSpec
+from metaphor.resource import Resource
 from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import CollectionSpec
 from metaphor.resource import CollectionResource
@@ -84,11 +85,38 @@ class Schema(object):
                 altered.add((calc_spec.parent.name, calc_spec.field_name, tuple(ids)))
         return altered
 
+    def _perform_update(self, update_id):
+        updates = self.db['metaphor_updates'].find({'_id': update_id})
+        for update in updates:
+            for resource_id in update['resource_ids']:
+                resource_data = self.db['resource_%s' % (update['spec'],)].find_one({'_id': resource_id})
+                resource = Resource(None, "self", self.specs[update['spec']], resource_data)
+                calc_field = resource.build_child(update['field_name'])
+                resource.data[update['field_name']] = calc_field.calculate()
+                resource.spec._collection().update({'_id': resource._id}, {'$set': {update['field_name']: calc_field.calculate()}})
+
+                # find updated resource ids
+                found = self.find_affected_calcs_for_field(calc_field)
+                altered = self.find_altered_resource_ids(found, resource)
+                # save update
+                for spec, field_name, ids in altered:
+                    inner_update_id = self._save_updates(spec, field_name, ids, update_id)
+                    self._perform_update(inner_update_id)
+
+        # perform any new updates
+
+    def _save_updates(self, spec, field_name, ids, parent_id=None):
+        update = {'spec': spec, 'field_name': field_name, 'resource_ids': list(ids)}
+        if parent_id:
+            update['parent_id'] = parent_id
+        return self.db['metaphor_updates'].insert(update)
+
     def kickoff_create(self, parent_resource, new_resource):
         found = self.find_affected_calcs_for_resource(new_resource)
         altered_ids = self.find_altered_resource_ids(found, new_resource)
         for spec, field_name, ids in altered_ids:
-            self.db['metaphor_updates'].insert({'spec': spec, 'field_name': field_name, 'resource_ids': list(ids)})
+            update_id = self._save_updates(spec, field_name, ids)
+            self._perform_update(update_id)
 
         # update each one, kickoff update for each calc
         for field_name in new_resource.spec.fields.keys():
