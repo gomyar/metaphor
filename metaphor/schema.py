@@ -52,8 +52,8 @@ class Schema(object):
             for resource_ref in calc_spec.all_resource_refs():
                 spec_hier = calc_spec.resolve_spec_hier(resource_ref)
                 relative_ref = resource_ref.split('.')
-                while len(spec_hier) > 1:
-                    if type(spec_hier[-1]) == CollectionSpec:
+                while spec_hier:
+                    if type(spec_hier[-1]) in (CollectionSpec, ResourceLinkSpec):
                         spec = spec_hier[-1].target_spec
                     else:
                         spec = spec_hier[-1]

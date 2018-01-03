@@ -198,7 +198,7 @@ class Resource(object):
     @property
     def path(self):
         if self._parent:
-            return self._parent.path + '/' + self.field_name
+            return self._parent.path + '/' + (str(self._id) if self._id else self.field_name)
         else:
             return self.field_name
 
