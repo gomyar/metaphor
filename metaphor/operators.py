@@ -3,7 +3,7 @@
 
 def _calc_average(aggregate):
     total = 0
-    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [res.get(aggregate.field_name) for res in aggregate.serialize('')]
     values = [v for v in values if v is not None]
     if values:
         return sum(values) / len(values)
@@ -13,7 +13,7 @@ def _calc_average(aggregate):
 
 def _calc_max(aggregate):
     total = 0
-    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [res.get(aggregate.field_name) for res in aggregate.serialize('')]
     values = [v for v in values if v is not None]
     if values:
         return max(values)
@@ -23,7 +23,7 @@ def _calc_max(aggregate):
 
 def _calc_min(aggregate):
     total = 0
-    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [res.get(aggregate.field_name) for res in aggregate.serialize('')]
     values = [v for v in values if v is not None]
     if values:
         return min(values)
@@ -33,7 +33,7 @@ def _calc_min(aggregate):
 
 def _calc_sum(aggregate):
     total = 0
-    values = [res[aggregate.field_name] for res in aggregate.serialize('')]
+    values = [res.get(aggregate.field_name) for res in aggregate.serialize('')]
     values = [v for v in values if v is not None]
     if values:
         return sum(values)
