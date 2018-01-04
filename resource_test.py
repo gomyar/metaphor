@@ -230,8 +230,8 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals([], db_financial['_owners'])
 
         # aggregates still work
-        #company = self.api.get('companies/%s' % (company_id,))
-        #self.assertEquals(None, company['totalTotalAssets'])
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals(None, company['totalTotalAssets'])
 
     def test_replace_embedded_resource(self):
         # shortcut id replaces on resourcelink field
@@ -252,9 +252,6 @@ class SpikeTest(unittest.TestCase):
         self.api.post('config', {'ppp': 100})
         after = self.api.get('config')
         self.assertEquals(100, after['ppp'])
-
-    def test_resource_link_points_to_another_resource_link(self):
-        pass
 
     def test_resource_equality_based_on_path_and_filters(self):
         company_1 = self.api.post('companies', {'name': 'C1'})

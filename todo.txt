@@ -26,3 +26,7 @@ validate input (correct / default fields)
 alter resource atomically, then perform update, currently altering one field, updating, then another
 
 updating too much for a single change
+
+other stuff:
+ - enum type (raises error if incorrect values used in calc or filter)
+   - ie type=['dog','cat'] /animals?type='goose' raises exception

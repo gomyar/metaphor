@@ -111,12 +111,18 @@ class Schema(object):
             update['parent_id'] = parent_id
         return self.db['metaphor_updates'].insert(update)
 
-    def kickoff_create(self, parent_resource, new_resource):
-        found = self.find_affected_calcs_for_resource(new_resource)
-        altered_ids = self.find_altered_resource_ids(found, new_resource)
-        for spec, field_name, ids in altered_ids:
+    def find_dependent_resources_for_resource(self, resource):
+        found = self.find_affected_calcs_for_resource(resource)
+        return self.find_altered_resource_ids(found, resource)
+
+    def perform_update_for(self, altered):
+        for spec, field_name, ids in altered:
             update_id = self._save_updates(spec, field_name, ids)
             self._perform_update(update_id)
+
+    def kickoff_create_update(self, parent_resource, new_resource):
+        altered = self.find_dependent_resources_for_resource(new_resource)
+        self.perform_update_for(altered)
 
     def kickoff_update(self, resource, field_name):
         found = self.find_affected_calcs_for_field(resource.build_child(field_name))

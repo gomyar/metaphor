@@ -350,12 +350,14 @@ class Resource(object):
         # possibly remove this as a thing
         self._create_new_embedded(resource, new_id, new_data, spec)
 
-        self.spec.schema.kickoff_create(self, resource)
+        self.spec.schema.kickoff_create_update(self, resource)
 
         return new_id
 
     def unlink(self):
         if type(self._parent) == CollectionResource:
+            altered = self.spec.schema.find_dependent_resources_for_resource(self)
+
             parent_owner = {
                         'owner_spec': self._parent._parent.spec.name,
                         'owner_id': self._parent._parent._id,
@@ -365,12 +367,14 @@ class Resource(object):
                 "_id": ObjectId(self._id)
             },
             {"$pull":
-                {"_owners":
-                    parent_owner
-                }
+                {"_owners": parent_owner}
             })
-            self.spec.schema.kickoff_create(self._parent, self)
+
+            self.spec.schema.perform_update_for(altered)
+
         else:
+            altered = self.spec.schema.find_dependent_resources_for_resource(self)
+
             parent_owner = {
                         'owner_spec': self._parent.spec.name,
                         'owner_id': self._parent._id,
@@ -380,15 +384,14 @@ class Resource(object):
                 "_id": ObjectId(self._id)
             },
             {"$pull":
-                {"_owners":
-                    parent_owner
-                }
+                {"_owners": parent_owner}
             })
             self._parent.data[self.field_name] = None
             self._parent.spec._collection().update(
                 {'_id': self._parent._id},
                 {'$set': {self.field_name: None}})
-            self.spec.schema.kickoff_create(self._parent, self)
+
+            self.spec.schema.perform_update_for(altered)
 
         return self._id
 
@@ -435,7 +438,7 @@ class LinkResource(Resource):
             {"_owners": self._create_owner_link()}
         })
         resource = self._load_child_resource(resource_id)
-        self.spec.schema.kickoff_create(self, resource)
+        self.spec.schema.kickoff_create_update(self, resource)
         return resource_id
 
     def _load_child_resource(self, child_id):
@@ -589,7 +592,7 @@ class CollectionResource(Aggregable, Resource):
             }
         })
         resource = self._load_child_resource(resource_id)
-        self.spec.schema.kickoff_create(self, resource)
+        self.spec.schema.kickoff_create_update(self, resource)
         return resource_id
 
 
