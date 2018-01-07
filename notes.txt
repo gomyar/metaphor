@@ -113,3 +113,16 @@ resource paths:
 
 /sectors/6.averageTotalAssets -> /financials/totalAssets
 
+
+atomic updates
+resource:
+    altered:
+        - null
+        - {'state': 'altered', 'at': 20181212T235959}
+        - {'state': 'altered-updating', 'update': ObjectId('update1234', 'at': 20181212T235959)
+
+update:
+ - ObjectId('update1234')
+ - resource_id: ObjectId("resource1234")
+ - parent_update_id: ObjectId("update9876")
+ - ids

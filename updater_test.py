@@ -1,5 +1,7 @@
 
 import unittest
+import datetime
+from mock import patch
 
 from pymongo import MongoClient
 
@@ -48,13 +50,13 @@ class UpdaterTest(unittest.TestCase):
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'id': self.company_1})
 
         company = self.api.build_resource('companies/%s' % (self.company_1,))
-        found = self.schema.find_affected_calcs_for_resource(company)
+        found = self.schema.updater.find_affected_calcs_for_resource(company)
 
         self.assertEquals(set([
             (self.average_assets_calc, 'self.companies.assets', 'self.companies')
         ]), found)
 
-        resource_ids = self.schema.find_altered_resource_ids(found, company)
+        resource_ids = self.schema.updater.find_altered_resource_ids(found, company)
         self.assertEquals(set([
             ('sector', 'averageAssets', (self.sector_1,))
         ]), resource_ids)
@@ -67,3 +69,19 @@ class UpdaterTest(unittest.TestCase):
              'field_name': 'averageAssets',
              'resource_ids': [self.sector_1]}
         ], [updated for updated in self.db['metaphor_updates'].find({}, {'_id': 0})])
+
+    @patch('metaphor.resource.datetime')
+    def test_run_pending_updates_on_start(self, dt):
+        dt.now.return_value = datetime.datetime(2018, 1, 1, 1, 1, 1)
+        company_id = self.db['resource_company'].insert({
+            "_updated" : {
+                "fields" : ["name"],
+                "at" : datetime.datetime(2018, 1, 1, 1, 0, 55)
+            },
+            "name" : "Bob2",
+            "totalAssets": 30})
+
+        self.assertEquals(None, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
+        self.schema.updater.start_updater()
+        self.schema.updater.wait_for_updates()
+        self.assertEquals(20, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])

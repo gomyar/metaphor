@@ -5,6 +5,8 @@ import json
 from gevent import monkey
 monkey.patch_all()
 
+import atexit
+
 from flask import Flask
 from flask import redirect
 from flask import render_template
@@ -22,15 +24,22 @@ client = MongoClient('localhost', 27017)
 db = client['metaphor3']
 
 
+schema = Schema(db, "0.1")
+
+
+def exit_app():
+    schema.updater.wait_for_updates()
+
+
 def create_app():
     app = Flask(__name__)
     app.secret_key = 'keepitsecretkeepitsafe'
+    atexit.register(exit_app)
+    schema.updater.start_updater()
     return app
 
 
 app = create_app()
-
-schema = Schema(db, "0.1")
 
 company_spec = ResourceSpec('company')
 period_spec = ResourceSpec('period')
@@ -65,11 +74,6 @@ schema.add_root('organizations', CollectionSpec('org'))
 schema.add_root('portfolios', CollectionSpec('portfolio'))
 
 api = MongoApi("http://localhost:8000/api", schema, db)
-
-
-#@app.route("/")
-#def index():
-#    return render_template("index.html")
 
 
 @app.route("/schema")

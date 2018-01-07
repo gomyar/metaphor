@@ -5,6 +5,8 @@ from bson.objectid import ObjectId
 
 from metaphor.calclang import parser
 
+from datetime import datetime
+
 
 class Spec(object):
     def resolve_spec_hier(self, resource_ref):
@@ -292,9 +294,14 @@ class Resource(object):
 
     def update(self, data):
         self.data.update(data)
-        self.spec._collection().update({'_id': self._id}, {'$set': data})
+        update = data.copy()
+        update['_updated'] = self._update_dict(data.keys())
+        self.spec._collection().update({'_id': self._id}, {'$set': update})
         for key in data:
             self.spec.schema.kickoff_update(self, key)
+
+    def _update_dict(self, field_names):
+        return {'at': datetime.now(), 'fields': field_names}
 
     def _create_new_fields(self, new_data, spec):
         data = {}
@@ -323,7 +330,8 @@ class Resource(object):
                                                         'owner_id': new_id,
                                                         'owner_field': field_name,
                                                        })
-                    spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id}})
+                    spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id,
+                                                                         '_updated': self._update_dict([field_name])}})
 
     def _create_owner_link(self):
         return {
@@ -344,6 +352,8 @@ class Resource(object):
         if owner:
             data['_owners'] = [owner]
 
+        data['_updated'] = self._update_dict(data.keys())
+
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
 
@@ -356,7 +366,7 @@ class Resource(object):
 
     def unlink(self):
         if type(self._parent) == CollectionResource:
-            altered = self.spec.schema.find_dependent_resources_for_resource(self)
+            updater_ids = self.spec.schema.create_updaters(self)
 
             parent_owner = {
                         'owner_spec': self._parent._parent.spec.name,
@@ -370,10 +380,9 @@ class Resource(object):
                 {"_owners": parent_owner}
             })
 
-            self.spec.schema.perform_update_for(altered)
-
+            self.spec.schema.run_updaters(updater_ids)
         else:
-            altered = self.spec.schema.find_dependent_resources_for_resource(self)
+            updater_ids = self.spec.schema.create_updaters(self)
 
             parent_owner = {
                         'owner_spec': self._parent.spec.name,
@@ -391,7 +400,7 @@ class Resource(object):
                 {'_id': self._parent._id},
                 {'$set': {self.field_name: None}})
 
-            self.spec.schema.perform_update_for(altered)
+            self.spec.schema.run_updaters(updater_ids)
 
         return self._id
 
