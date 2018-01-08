@@ -30,3 +30,9 @@ updating too much for a single change
 other stuff:
  - enum type (raises error if incorrect values used in calc or filter)
    - ie type=['dog','cat'] /animals?type='goose' raises exception
+
+
+architecture
+ - schema written to DB and propagted from another DB (greater version only applies if it passes checks)
+ - separate DBs for different customers (linked using DB references)
+ - security enforced through keys for each individual DB

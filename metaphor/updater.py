@@ -1,6 +1,7 @@
 
 import gevent
-import datetime
+from datetime import datetime
+from datetime import timedelta
 
 from metaphor.resource import Resource
 from metaphor.resource import ResourceLinkSpec
@@ -16,24 +17,30 @@ class Updater(object):
 
     def start_updater(self):
         self._running = True
-        self._updater_gthread = gevent.spawn(self._updater_gthread)
+        self._updater_gthread = gevent.spawn(self._run_updater)
 
     def wait_for_updates(self):
         self._running = False
         self._updater_gthread.join()
 
-    def _updater_gthread(self):
+    def _run_updater(self):
         while self._running:
-            # find resources updated > 3 seconds ago
-            for spec_name in self.schema.specs:
-                resource = self.schema.db['resource_%s' % spec_name].find_and_modify(
-                    query={'_updated.at': datetime.datetime.now() - datetime.timedelta(seconds=3)},
-                    update={'$set': {'_updated.at': datetime.datetime.now()}}
-                )
-                updater_ids = self.create_updaters(resource)
-            # find updaters updated > 3 seconds ago
+            self._do_update()
 
-            gevent.sleep(1.0)
+    def _do_update(self):
+        # find resources updated > 3 seconds ago
+        for spec_name in self.schema.specs:
+            resource_data = self.schema.db['resource_%s' % spec_name].find_and_modify(
+                query={'_updated.at': {'$gt': datetime.now() - timedelta(seconds=3)}},
+                update={'$set': {'_updated.at': datetime.now()}}
+            )
+            if resource_data:
+                resource = Resource(None, "self", self.schema.specs[spec_name], resource_data)
+                updater_ids = self.create_updaters(resource)
+                self.run_updaters(updater_ids)
+        # find updaters updated > 3 seconds ago
+
+        gevent.sleep(0.1)
 
     def create_updaters(self, resource):
         found = self.find_affected_calcs_for_resource(resource)
@@ -96,6 +103,10 @@ class Updater(object):
             if ids:
                 altered.add((calc_spec.parent.name, calc_spec.field_name, tuple(ids)))
         return altered
+
+    def run_updaters(self, updater_ids):
+        for update_id in updater_ids:
+            self.perform_update(update_id)
 
     def perform_update(self, update_id):
         update = self.schema.db['metaphor_updates'].find_one({'_id': update_id})

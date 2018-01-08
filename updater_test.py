@@ -1,6 +1,6 @@
 
 import unittest
-import datetime
+from datetime import datetime
 from mock import patch
 
 from pymongo import MongoClient
@@ -70,18 +70,23 @@ class UpdaterTest(unittest.TestCase):
              'resource_ids': [self.sector_1]}
         ], [updated for updated in self.db['metaphor_updates'].find({}, {'_id': 0})])
 
-    @patch('metaphor.resource.datetime')
+    @patch('metaphor.updater.datetime')
     def test_run_pending_updates_on_start(self, dt):
-        dt.now.return_value = datetime.datetime(2018, 1, 1, 1, 1, 1)
+        dt.now.return_value = datetime(2018, 1, 1, 1, 1, 1)
         company_id = self.db['resource_company'].insert({
             "_updated" : {
                 "fields" : ["name"],
-                "at" : datetime.datetime(2018, 1, 1, 1, 0, 55)
+                "at" : datetime(2018, 1, 1, 1, 0, 55)
             },
             "name" : "Bob2",
-            "totalAssets": 30})
+            "assets": 30,
+            "_owners": [
+                {"owner_spec": "sector",
+                 "owner_field": "companies",
+                 "owner_id": self.sector_1}
+            ]
+        })
 
         self.assertEquals(None, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
-        self.schema.updater.start_updater()
-        self.schema.updater.wait_for_updates()
-        self.assertEquals(20, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
+        self.schema.updater._do_update()
+        self.assertEquals(30, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
