@@ -150,7 +150,6 @@ class SpikeTest(unittest.TestCase):
             {'_id': company_id,
              'name': u'Norman',
              'totalTotalAssets': None,
-             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
     def test_embedded_financials_create(self):

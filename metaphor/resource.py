@@ -295,13 +295,9 @@ class Resource(object):
     def update(self, data):
         self.data.update(data)
         update = data.copy()
-        update['_updated'] = self._update_dict(data.keys())
+        updater_ids = self.spec.schema.updater.create_updaters_on_patch(self, data.keys())
         self.spec._collection().update({'_id': self._id}, {'$set': update})
-        for key in data:
-            self.spec.schema.kickoff_update(self, key)
-
-    def _update_dict(self, field_names):
-        return {'at': datetime.now(), 'fields': field_names}
+        self.spec.schema.run_updaters(updater_ids)
 
     def _create_new_fields(self, new_data, spec):
         data = {}
@@ -330,8 +326,8 @@ class Resource(object):
                                                         'owner_id': new_id,
                                                         'owner_field': field_name,
                                                        })
-                    spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id,
-                                                                         '_updated': self._update_dict([field_name])}})
+                    # TODO: put in an updater instead
+                    spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id}})
 
     def _create_owner_link(self):
         return {
@@ -352,7 +348,8 @@ class Resource(object):
         if owner:
             data['_owners'] = [owner]
 
-        data['_updated'] = self._update_dict(data.keys())
+        data['_created'] = datetime.now()
+        data['_created_dirtyflag'] = datetime.now()
 
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
@@ -360,13 +357,14 @@ class Resource(object):
         # possibly remove this as a thing
         self._create_new_embedded(resource, new_id, new_data, spec)
 
-        self.spec.schema.kickoff_create_update(self, resource)
+        updater_ids = self.spec.schema.updater.create_updaters_on_post(resource)
+        self.spec.schema.run_updaters(updater_ids)
 
         return new_id
 
     def unlink(self):
         if type(self._parent) == CollectionResource:
-            updater_ids = self.spec.schema.create_updaters(self)
+            updater_ids = self.spec.schema.updater.create_updaters_on_delete(self)
 
             parent_owner = {
                         'owner_spec': self._parent._parent.spec.name,
@@ -382,7 +380,7 @@ class Resource(object):
 
             self.spec.schema.run_updaters(updater_ids)
         else:
-            updater_ids = self.spec.schema.create_updaters(self)
+            updater_ids = self.spec.schema.updater.create_updaters_on_delete(self)
 
             parent_owner = {
                         'owner_spec': self._parent.spec.name,
@@ -403,7 +401,6 @@ class Resource(object):
             self.spec.schema.run_updaters(updater_ids)
 
         return self._id
-
 
 
 class LinkResource(Resource):
@@ -440,14 +437,16 @@ class LinkResource(Resource):
         return None
 
     def _create_link(self, resource_id):
+        resource = self._load_child_resource(resource_id)
         self.spec._collection().update({
             "_id": ObjectId(resource_id)
         },
         {"$push":
             {"_owners": self._create_owner_link()}
         })
-        resource = self._load_child_resource(resource_id)
-        self.spec.schema.kickoff_create_update(self, resource)
+        # TODO: Need a state pattern for updaters
+        updater_ids = self.spec.schema.create_updaters(resource)
+        self.spec.schema.run_updaters(updater_ids)
         return resource_id
 
     def _load_child_resource(self, child_id):
@@ -601,7 +600,7 @@ class CollectionResource(Aggregable, Resource):
             }
         })
         resource = self._load_child_resource(resource_id)
-        self.spec.schema.kickoff_create_update(self, resource)
+        self.spec.schema.kickoff_create_update(resource)
         return resource_id
 
 

@@ -40,10 +40,22 @@ class Updater(object):
                 self.run_updaters(updater_ids)
         # find updaters updated > 3 seconds ago
 
+        # find newly created resources > 3 seconds ago
+
         gevent.sleep(0.1)
 
     def create_updaters(self, resource):
         found = self.find_affected_calcs_for_resource(resource)
+        altered = self.find_altered_resource_ids(found, resource)
+        updater_ids = []
+        for spec, field_name, ids in altered:
+            updater_ids.append(self._save_updates(spec, field_name, ids))
+        return updater_ids
+
+    def create_updaters_for_fields(self, resource, field_names):
+        found = set()
+        for field_name in field_names:
+            found = found.union(self.find_affected_calcs_for_field(resource.build_child(field_name)))
         altered = self.find_altered_resource_ids(found, resource)
         updater_ids = []
         for spec, field_name, ids in altered:
@@ -122,7 +134,6 @@ class Updater(object):
             {'_id': resource._id},
             {'$set': {
                 update['field_name']: calc_field.calculate(),
-                '_updated': resource._update_dict([update['field_name']]),
             }})
 
         found = self.find_affected_calcs_for_field(calc_field)

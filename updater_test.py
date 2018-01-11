@@ -74,10 +74,6 @@ class UpdaterTest(unittest.TestCase):
     def test_run_pending_updates_on_start(self, dt):
         dt.now.return_value = datetime(2018, 1, 1, 1, 1, 1)
         company_id = self.db['resource_company'].insert({
-            "_updated" : {
-                "fields" : ["name"],
-                "at" : datetime(2018, 1, 1, 1, 0, 55)
-            },
             "name" : "Bob2",
             "assets": 30,
             "_owners": [
@@ -86,7 +82,57 @@ class UpdaterTest(unittest.TestCase):
                  "owner_id": self.sector_1}
             ]
         })
+        updater_id = self.db['metaphor_updates'].insert({
+            "resource_ids" : [
+                company_id
+            ],
+            "field_name" : "averageAssets",
+            "spec" : "sector",
+            "active_at": datetime(2018, 1, 1, 1, 1, 1),
+        })
 
         self.assertEquals(None, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
         self.schema.updater._do_update()
         self.assertEquals(30, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
+
+    def test_post_creates_updater(self):
+        self.assertEquals(None, self.db['metaphor_updates'].find_one())
+
+        company_1 = self.api.post('companies', {'name': 'Company 1', 'totalAssets': 10})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'_id': company_1})
+
+        updates = list(self.db['metaphor_updates'].find())
+        self.assertEquals(1, len(updates))
+        self.assertEquals('averageAssets', updates[0]['field_name'])
+        self.assertEquals('created', updates[0]['_state'])
+        self.assertEquals(datetime(2018, 1, 1, 1, 1, 1), updates[0]['_updating_at'])
+        self.assertEquals([self.sector_1], updates[0]['resource_ids'])
+        self.assertEquals('sector', updates[0]['spec'])
+
+    def test_patch_creates_updater(self):
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'_id': self.company_1})
+        self.db['metaphor_updates'].drop()
+
+        self.api.patch('companies/%s' % (self.company_1,), {'totalAssets': 42})
+
+        updates = list(self.db['metaphor_updates'].find())
+        self.assertEquals(1, len(updates))
+        self.assertEquals('averageAssets', updates[0]['field_name'])
+        self.assertEquals('altered', updates[0]['_state'])
+        self.assertEquals(datetime(2018, 1, 1, 1, 1, 1), updates[0]['_updating_at'])
+        self.assertEquals([self.sector_1], updates[0]['resource_ids'])
+        self.assertEquals('sector', updates[0]['spec'])
+
+    def test_delete_creates_updater(self):
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'_id': self.company_1})
+        self.db['metaphor_updates'].drop()
+
+        self.api.unlink('companies/%s' % (self.company_1,))
+
+        updates = list(self.db['metaphor_updates'].find())
+        self.assertEquals(1, len(updates))
+        self.assertEquals('averageAssets', updates[0]['field_name'])
+        self.assertEquals('deleted', updates[0]['_state'])
+        self.assertEquals(datetime(2018, 1, 1, 1, 1, 1), updates[0]['_updating_at'])
+        self.assertEquals([self.sector_1], updates[0]['resource_ids'])
+        self.assertEquals('sector', updates[0]['spec'])
