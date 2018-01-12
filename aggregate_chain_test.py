@@ -65,8 +65,8 @@ class AggregateChainTest(unittest.TestCase):
         self.period_1 = self.api.post('companies/%s/periods' % (self.company_1,), {'year': 2017, 'period': 'YE', 'totalAssets': 10})
         self.period_2 = self.api.post('companies/%s/periods' % (self.company_2,), {'year': 2017, 'period': 'YE', 'totalAssets': 20})
 
-        self.api.post('companies/%s/periods/%s/financial' % (self.company_1, self.period_1), {'grossProfit': 20})
-        self.api.post('companies/%s/periods/%s/financial' % (self.company_1, self.period_2), {'grossProfit': 20})
+        self.api.post('companies/%s/periods/%s/financial' % (self.company_1, self.period_1), {'grossProfit': 40})
+        self.api.post('companies/%s/periods/%s/financial' % (self.company_1, self.period_2), {'grossProfit': 50})
 
     def test_aggregate_chain(self):
         periods_resource = self.api.build_resource('portfolios/companies/periods')
@@ -112,13 +112,10 @@ class AggregateChainTest(unittest.TestCase):
         resource = self.api.build_resource('portfolios/%s/companies/%s/periods/financial' % (self.portfolio_1, self.company_1,))
 
         self.assertEquals([
-			{'$unwind': '$_owners'},
-			{'$match': {'_owners.owner_field': 'financial',
-						'_owners.owner_spec': 'period'}},
 			{'$lookup': {'as': '__period',
-						'foreignField': '_id',
-						'from': 'resource_period',
-						'localField': '_owners.owner_id'}},
+              'foreignField': 'financial',
+              'from': 'resource_period',
+              'localField': '_id'}},
 			{'$unwind': '$__period'},
 			{'$unwind': '$__period._owners'},
 			{'$match': {'__period._owners.owner_field': 'periods',

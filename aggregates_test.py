@@ -34,6 +34,7 @@ class AggregatesTest(unittest.TestCase):
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("totalAssets", FieldSpec('int'))
+        self.company_spec.add_field("latestPeriod", ResourceLinkSpec('period'))
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))

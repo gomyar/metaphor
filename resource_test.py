@@ -35,6 +35,7 @@ class SpikeTest(unittest.TestCase):
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)"))
+#        self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)'))
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
@@ -214,11 +215,11 @@ class SpikeTest(unittest.TestCase):
 
         # parent entry set on target
         db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
-        self.assertEquals(period_id, db_financial['_owners'][0]['owner_id'])
 
         # aggregates still work
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals(80, company['totalTotalAssets'])
+#        self.assertEquals(80, company['totalFinancialsAssets'])
 
     def test_delete_embedded_link(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
@@ -235,10 +236,6 @@ class SpikeTest(unittest.TestCase):
         # shortcut id null on resourcelink field
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
         self.assertEquals(None, period['financial'])
-
-        # parent entry removed from target
-        db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
-        self.assertEquals([], db_financial['_owners'])
 
         # aggregates still work
         company = self.api.get('companies/%s' % (company_id,))
@@ -279,4 +276,10 @@ class SpikeTest(unittest.TestCase):
         self.assertFalse(resource_3 == resource_4)
 
     def test_resolve_spec(self):
+        pass
+
+    def test_remove_updater_on_success(self):
+        pass
+
+    def test_remove_updater_on_error(self):
         pass

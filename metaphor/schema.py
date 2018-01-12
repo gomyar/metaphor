@@ -41,7 +41,7 @@ class Schema(object):
     def run_updaters(self, updater_ids):
         self.updater.run_updaters(updater_ids)
 
-    def kickoff_create_update(self, parent_resource, new_resource):
+    def kickoff_create_update(self, new_resource):
         updater_ids = self.create_updaters(new_resource)
         self.run_updaters(updater_ids)
 

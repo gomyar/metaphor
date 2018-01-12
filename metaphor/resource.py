@@ -204,6 +204,14 @@ class Resource(object):
         else:
             return self.field_name
 
+    def _am_link(self):
+        if self._parent:
+            parent_spec = self._parent.spec
+            if type(parent_spec) == CollectionSpec:
+                parent_spec = parent_spec.target_spec
+            return type(parent_spec.fields[self.field_name]) == ResourceLinkSpec
+        return False
+
     @property
     def collection(self):
         return self.spec._collection_name()
@@ -360,7 +368,7 @@ class Resource(object):
         # possibly remove this as a thing
         self._create_new_embedded(resource, new_id, new_data, spec)
 
-        self.spec.schema.kickoff_create_update(self, resource)
+        self.spec.schema.kickoff_create_update(resource)
 
         return new_id
 
@@ -412,20 +420,21 @@ class LinkResource(Resource):
 
     def create(self, new_data):
         if 'id' in new_data:
-            new_link = self._create_link(new_data['id'])
             self._update_parent_link(new_data['id'])
-            return new_link
+            self._parent.spec.schema.kickoff_create_update(self._parent.build_child(self.field_name))
+            return new_data['id']
         else:
-            new_resource = self._create_new(self.field_name, new_data, self.spec)
-            self._update_parent_link(str(new_resource))
-            return new_resource
+            new_id = self._create_new(self.field_name, new_data, self.spec)
+            self._update_parent_link(str(new_id))
+            self._parent.spec.schema.kickoff_create_update(self._parent.build_child(self.field_name))
+            return new_id
 
     def _update_parent_link(self, new_id):
         self._parent.spec._collection().update({
             "_id": ObjectId(self._parent._id)
         },
         {
-            "$set": {self.field_name: new_id}
+            "$set": {self.field_name: ObjectId(new_id)}
         })
 
     def _create_owner_link(self):
@@ -447,7 +456,7 @@ class LinkResource(Resource):
             {"_owners": self._create_owner_link()}
         })
         resource = self._load_child_resource(resource_id)
-        self.spec.schema.kickoff_create_update(self, resource)
+        self.spec.schema.kickoff_create_update(resource)
         return resource_id
 
     def _load_child_resource(self, child_id):
@@ -467,17 +476,27 @@ class Aggregable(object):
         if self._parent:
             owner_prefix = chain_path + '.' if chain_path else ""
             new_owner_prefix = chain_path + "__" + self._parent.spec.name
-            aggregate_chain = [{"$unwind": "$%s_owners" % (owner_prefix,)}]
-            aggregate_chain.append(
-                {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
-                            "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
-            aggregate_chain.append(
-                {"$lookup": {
-                    "from": self._parent.collection,
-                    "localField": "%s_owners.owner_id" % (owner_prefix,),
-                    "foreignField": "_id",
-                    "as": new_owner_prefix,
-                }})
+
+
+            if self._am_link():
+                aggregate_chain = [
+                    {'$lookup': {
+                        'as': new_owner_prefix,
+                        'foreignField': self.field_name,
+                        'from': self._parent.collection,
+                        'localField': '_id'}}]
+            else:
+                aggregate_chain = [{"$unwind": "$%s_owners" % (owner_prefix,)}]
+                aggregate_chain.append(
+                    {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
+                                "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
+                aggregate_chain.append(
+                    {"$lookup": {
+                        "from": self._parent.collection,
+                        "localField": "%s_owners.owner_id" % (owner_prefix,),
+                        "foreignField": "_id",
+                        "as": new_owner_prefix,
+                    }})
             aggregate_chain.append(
                 {"$unwind": "$%s" % (new_owner_prefix,)}
             )
@@ -601,7 +620,7 @@ class CollectionResource(Aggregable, Resource):
             }
         })
         resource = self._load_child_resource(resource_id)
-        self.spec.schema.kickoff_create_update(self, resource)
+        self.spec.schema.kickoff_create_update(resource)
         return resource_id
 
 
