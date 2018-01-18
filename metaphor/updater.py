@@ -87,22 +87,30 @@ class Updater(object):
     def find_altered_resource_ids(self, found, resource):
         altered = set()
         for calc_spec, resource_ref, relative_ref in found:
+            ids = set()
             # collection representing changed resources
             collection_spec = CollectionSpec(calc_spec.parent.name)
             collection_spec.schema = self.schema
-            # need to distinguish between 'self' starting calcs and root collection calcs
-            root = CollectionResource(None, 'self', collection_spec, None)
-            child = root.build_child_dot(relative_ref)
-            chain = child.build_aggregate_chain()
+
+            # if ref begins with 'self' then aggregate relevant resources to be changed
             if resource_ref.startswith('self.'):
+                # need to distinguish between 'self' starting calcs and root collection calcs
+                root = CollectionResource(None, 'self', collection_spec, None)
+                child = root.build_child_dot(relative_ref)
+                chain = child.build_aggregate_chain()
                 chain.insert(0, {'$match': {'_id': resource._id}})
-            cursor = child.spec._collection().aggregate(chain)
-            ids = set()
-            for data in cursor:
-                if child._parent:
-                    ids.add(data[child._parent.build_aggregate_path()]['_id'])
-                else:
+                cursor = child.spec._collection().aggregate(chain)
+                for data in cursor:
+                    if child._parent:
+                        ids.add(data[child._parent.build_aggregate_path()]['_id'])
+                    else:
+                        ids.add(data['_id'])
+            # if ref is global (starts with root-level collection) then change applies to all members in calc_spec resource
+            else:
+                cursor = collection_spec._collection().find()
+                for data in cursor:
                     ids.add(data['_id'])
+
             if ids:
                 altered.add((calc_spec.parent.name, calc_spec.field_name, tuple(ids)))
         return altered

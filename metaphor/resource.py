@@ -191,7 +191,7 @@ class Resource(object):
     def __init__(self, parent, field_name, spec, data):
         self.field_name = field_name
         self.spec = spec
-        self.data = data
+        self.data = data or {}
         self._parent = parent
 
     def __repr__(self):
@@ -630,6 +630,12 @@ class CollectionResource(Aggregable, Resource):
 
 
 class Field(Resource):
+    def __init__(self, parent, field_name, spec, data):
+        self.field_name = field_name
+        self.spec = spec
+        self.data = data
+        self._parent = parent
+
     def __repr__(self):
         return "<Field %s>" % (self.data,)
 

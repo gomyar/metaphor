@@ -35,7 +35,7 @@ class SpikeTest(unittest.TestCase):
         self.company_spec.add_field("name", FieldSpec("string"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)"))
-#        self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)'))
+        self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)'))
 
         self.period_spec.add_field("period", FieldSpec("string"))
         self.period_spec.add_field("year", FieldSpec("int"))
@@ -79,7 +79,7 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(2017, period['year'])
 
         self.assertEquals([
-            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/companies/%s/periods' % (company_id,), 'totalTotalAssets': None}
+            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/companies/%s/periods' % (company_id,), 'totalTotalAssets': None, 'totalFinancialsAssets': None}
         ], self.api.get('/companies'))
 
         self.assertEquals({
@@ -219,7 +219,7 @@ class SpikeTest(unittest.TestCase):
         # aggregates still work
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals(80, company['totalTotalAssets'])
-#        self.assertEquals(80, company['totalFinancialsAssets'])
+        self.assertEquals(80, company['totalFinancialsAssets'])
 
     def test_delete_embedded_link(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
