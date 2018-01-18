@@ -236,7 +236,7 @@ class Resource(object):
         else:
             return chain_path + "__" + self.spec.name
 
-    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, chain_path=None):
+    def build_aggregate_chain(self, chain_path=None):
         if chain_path is None:
             raise Exception("Resource cannot be first-order aggregate")
 
@@ -252,7 +252,7 @@ class Resource(object):
             }}
         )
         if self._parent:
-            aggregate_chain.extend(self._parent.build_aggregate_chain(updated_resource, updated_relative_ref, chain_path))
+            aggregate_chain.extend(self._parent.build_aggregate_chain(chain_path))
         return aggregate_chain
 
     def create_resource_ref(self):
@@ -469,7 +469,7 @@ class LinkResource(Resource):
 
 
 class Aggregable(object):
-    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, chain_path=None):
+    def build_aggregate_chain(self, chain_path=None):
         chain_path = chain_path or ""
         aggregate_chain = []
 
@@ -505,7 +505,7 @@ class Aggregable(object):
             aggregate_chain.append(
                 {"$unwind": "$%s" % (new_owner_prefix,)}
             )
-            aggregate_chain.extend(self._parent.build_aggregate_chain(updated_resource, updated_relative_ref, new_owner_prefix))
+            aggregate_chain.extend(self._parent.build_aggregate_chain(new_owner_prefix))
         return aggregate_chain
 
 
@@ -536,8 +536,8 @@ class AggregateField(AggregateResource):
     def __repr__(self):
         return "<AggregateField: %s>" % (self.field_name,)
 
-    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, link_name=None):
-        return self._parent.build_aggregate_chain(updated_resource, updated_relative_ref, link_name)
+    def build_aggregate_chain(self, link_name=None):
+        return self._parent.build_aggregate_chain(link_name)
 
     def build_aggregate_path(self, chain_path=None):
         return self._parent.build_aggregate_path()
@@ -675,5 +675,5 @@ class RootResource(Resource):
             fields[field_name] = os.path.join(path, field_name)
         return fields
 
-    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, chain_path=None):
+    def build_aggregate_chain(self, chain_path=None):
         return []

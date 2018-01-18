@@ -93,7 +93,7 @@ class Updater(object):
             # need to distinguish between 'self' starting calcs and root collection calcs
             root = CollectionResource(None, 'self', collection_spec, None)
             child = root.build_child_dot(relative_ref)
-            chain = child.build_aggregate_chain(resource, relative_ref)
+            chain = child.build_aggregate_chain()
             if resource_ref.startswith('self.'):
                 chain.insert(0, {'$match': {'_id': resource._id}})
             cursor = child.spec._collection().aggregate(chain)
