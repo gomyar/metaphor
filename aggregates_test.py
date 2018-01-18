@@ -72,11 +72,11 @@ class AggregatesTest(unittest.TestCase):
         self.api.post('portfolios/%s/companies' % (self.portfolio_2,), {'id': self.company_3})
         self.api.post('portfolios/%s/companies' % (self.portfolio_2,), {'id': self.company_4})
 
-        self.api.post('companies/%s/periods' % (self.company_1,), {'year': 2017, 'period': 'YE', 'totalAssets': 10})
-        self.api.post('companies/%s/periods' % (self.company_2,), {'year': 2017, 'period': 'YE', 'totalAssets': 20})
-        self.api.post('companies/%s/periods' % (self.company_3,), {'year': 2017, 'period': 'YE', 'totalAssets': 30})
-        self.api.post('companies/%s/periods' % (self.company_4,), {'year': 2017, 'period': 'YE', 'totalAssets': 40})
-        self.api.post('companies/%s/periods' % (self.company_5,), {'year': 2017, 'period': 'YE', 'totalAssets': 50})
+        self.period_1 = self.api.post('companies/%s/periods' % (self.company_1,), {'year': 2017, 'period': 'YE', 'totalAssets': 10})
+        self.period_2 = self.api.post('companies/%s/periods' % (self.company_2,), {'year': 2017, 'period': 'YE', 'totalAssets': 20})
+        self.period_3 = self.api.post('companies/%s/periods' % (self.company_3,), {'year': 2017, 'period': 'YE', 'totalAssets': 30})
+        self.period_4 = self.api.post('companies/%s/periods' % (self.company_4,), {'year': 2017, 'period': 'YE', 'totalAssets': 40})
+        self.period_5 = self.api.post('companies/%s/periods' % (self.company_5,), {'year': 2017, 'period': 'YE', 'totalAssets': 50})
 
     def test_portfolio_sizes(self):
         all_companies = self.api.get('companies')
@@ -143,6 +143,25 @@ class AggregatesTest(unittest.TestCase):
 
         aggregated = agg_resource.serialize("")
         self.assertEquals(20, aggregated[0]['totalAssets'])
+
+    def test_only_update_immediate_parents(self):
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        self.sector_2 = self.api.post('sectors', {'name': 'Finance'})
+        # ad 2 companies to sector
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'id': self.company_1})
+        self.api.post('sectors/%s/companies' % (self.sector_2,), {'id': self.company_2})
+
+        self.assertEquals(10, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
+        self.assertEquals(20, self.api.get('sectors/%s' % (self.sector_2,))['averageAssets'])
+
+        # dummy out average fields:
+        self.db['resource_sector'].update({'_id': self.sector_1}, {'averageAssets': None})
+        self.db['resource_sector'].update({'_id': self.sector_2}, {'averageAssets': None})
+
+        self.api.patch('companies/%s' % (self.company_1,), {'totalAssets': 50})
+
+        self.assertEquals(50, self.api.get('sectors/%s' % (self.sector_1,))['averageAssets'])
+        self.assertEquals(None, self.api.get('sectors/%s' % (self.sector_2,))['averageAssets'])
 
     def test_agg_field_from_root(self):
         agg_field = self.api.build_resource('companies/totalAssets')

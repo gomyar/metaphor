@@ -31,6 +31,23 @@ other stuff:
  - enum type (raises error if incorrect values used in calc or filter)
    - ie type=['dog','cat'] /animals?type='goose' raises exception
 
+on doing two things:
+ where we do two things, ie: post to a link with the new document to link to as a subdocument
+   - store the linked doc as a subdocument and run an updater to 1) create the new link and 2) change the link
+
+possibly have a rule which removes resources with no owners or links
+ - root level resources should have the root resource as their parent (from the appropriate collection)
+ - can send delete(resource, cascase=True) to remove the resource from all linked / owner resources
+ - in the event that a root resource is deleted but with cascade=False, it is deleted from mongo whenever its remaining owner links have been removed
+
+edge case:
+ - check: 
+   1. update begins
+   2. new resource created (which should have been included in previous update)
+   3. new resource is updated
+   possible fix: the creation of updaters should happen after post / patch (but still before delete)
+     (maybe add a double-check to delete case where updaters add missing ids when kicked off)
+
 
 architecture
  - schema written to DB and propagted from another DB (greater version only applies if it passes checks)

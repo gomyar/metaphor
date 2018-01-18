@@ -248,6 +248,10 @@ class SpikeTest(unittest.TestCase):
         # aggregates still work
         pass
 
+    def test_unlink_linked_resource(self):
+        # assert ObjectId link is None
+        pass
+
     def test_save_schema(self):
         serialized = self.schema.serialize()
         self.assertTrue('root' in serialized)

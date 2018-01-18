@@ -195,7 +195,7 @@ class Resource(object):
         self._parent = parent
 
     def __repr__(self):
-        return "<%s %s [%s] at %s>" % (type(self).__name__, self.field_name, self.spec, self.path)
+        return "<%s %s \"%s\" at %s>" % (type(self).__name__, self.spec, self.field_name, self.path)
 
     @property
     def path(self):
@@ -236,7 +236,7 @@ class Resource(object):
         else:
             return chain_path + "__" + self.spec.name
 
-    def build_aggregate_chain(self, chain_path=None):
+    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, chain_path=None):
         if chain_path is None:
             raise Exception("Resource cannot be first-order aggregate")
 
@@ -252,7 +252,7 @@ class Resource(object):
             }}
         )
         if self._parent:
-            aggregate_chain.extend(self._parent.build_aggregate_chain(chain_path))
+            aggregate_chain.extend(self._parent.build_aggregate_chain(updated_resource, updated_relative_ref, chain_path))
         return aggregate_chain
 
     def create_resource_ref(self):
@@ -430,6 +430,7 @@ class LinkResource(Resource):
             return new_id
 
     def _update_parent_link(self, new_id):
+        self._parent.data[self.field_name] = new_id
         self._parent.spec._collection().update({
             "_id": ObjectId(self._parent._id)
         },
@@ -446,7 +447,7 @@ class LinkResource(Resource):
 
     @property
     def _id(self):
-        return None
+        return self._parent.data[self.field_name] if self._parent else None
 
     def _create_link(self, resource_id):
         self.spec._collection().update({
@@ -468,7 +469,7 @@ class LinkResource(Resource):
 
 
 class Aggregable(object):
-    def build_aggregate_chain(self, chain_path=None):
+    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, chain_path=None):
         chain_path = chain_path or ""
         aggregate_chain = []
 
@@ -477,16 +478,20 @@ class Aggregable(object):
             owner_prefix = chain_path + '.' if chain_path else ""
             new_owner_prefix = chain_path + "__" + self._parent.spec.name
 
+            aggregate_chain = []
+
+#            if self._id:
+#                aggregate_chain.append({"$match": {"%s_id" % (owner_prefix,): self._id}})
 
             if self._am_link():
-                aggregate_chain = [
+                aggregate_chain.append(
                     {'$lookup': {
                         'as': new_owner_prefix,
                         'foreignField': self.field_name,
                         'from': self._parent.collection,
-                        'localField': '_id'}}]
+                        'localField': '_id'}})
             else:
-                aggregate_chain = [{"$unwind": "$%s_owners" % (owner_prefix,)}]
+                aggregate_chain.append({"$unwind": "$%s_owners" % (owner_prefix,)})
                 aggregate_chain.append(
                     {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
                                 "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
@@ -500,7 +505,7 @@ class Aggregable(object):
             aggregate_chain.append(
                 {"$unwind": "$%s" % (new_owner_prefix,)}
             )
-            aggregate_chain.extend(self._parent.build_aggregate_chain(new_owner_prefix))
+            aggregate_chain.extend(self._parent.build_aggregate_chain(updated_resource, updated_relative_ref, new_owner_prefix))
         return aggregate_chain
 
 
@@ -509,7 +514,7 @@ class AggregateResource(Aggregable, Resource):
         super(AggregateResource, self).__init__(parent, field_name, spec, None)
 
     def serialize(self, path):
-        aggregate_chain = self.build_aggregate_chain("")
+        aggregate_chain = self.build_aggregate_chain()
         resources = self.spec._collection().aggregate(aggregate_chain)
         serialized = []
         for data in resources:
@@ -531,14 +536,14 @@ class AggregateField(AggregateResource):
     def __repr__(self):
         return "<AggregateField: %s>" % (self.field_name,)
 
-    def build_aggregate_chain(self, link_name=None):
-        return self._parent.build_aggregate_chain(link_name)
+    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, link_name=None):
+        return self._parent.build_aggregate_chain(updated_resource, updated_relative_ref, link_name)
 
     def build_aggregate_path(self, chain_path=None):
         return self._parent.build_aggregate_path()
 
     def serialize(self, path):
-        aggregate_chain = self.build_aggregate_chain("")
+        aggregate_chain = self.build_aggregate_chain()
         resources = self._parent.spec._collection().aggregate(aggregate_chain)
         serialized = []
         for data in resources:
@@ -670,5 +675,5 @@ class RootResource(Resource):
             fields[field_name] = os.path.join(path, field_name)
         return fields
 
-    def build_aggregate_chain(self, chain_path=None):
+    def build_aggregate_chain(self, updated_resource=None, updated_relative_ref=None, chain_path=None):
         return []

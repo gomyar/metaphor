@@ -90,9 +90,12 @@ class Updater(object):
             # collection representing changed resources
             collection_spec = CollectionSpec(calc_spec.parent.name)
             collection_spec.schema = self.schema
+            # need to distinguish between 'self' starting calcs and root collection calcs
             root = CollectionResource(None, 'self', collection_spec, None)
             child = root.build_child_dot(relative_ref)
-            chain = child.build_aggregate_chain()
+            chain = child.build_aggregate_chain(resource, relative_ref)
+            if resource_ref.startswith('self.'):
+                chain.insert(0, {'$match': {'_id': resource._id}})
             cursor = child.spec._collection().aggregate(chain)
             ids = set()
             for data in cursor:
