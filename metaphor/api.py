@@ -2,7 +2,6 @@
 import os
 
 
-
 class MongoApi(object):
     def __init__(self, root_url, schema, db):
         self.root_url = root_url
@@ -32,3 +31,22 @@ class MongoApi(object):
 
     def build_resource(self, path):
         return self.schema.root.build_child(path)
+
+
+class SchemaApi(object):
+    def __init__(self, root_url, schema, db):
+        self.root_url = root_url
+        self.schema = schema
+        self.db = db
+
+    def post(self, path, data):
+        pass
+
+    def patch(self, path, data):
+        pass
+
+    def get(self, path):
+        pass
+
+    def unlink(self, path):
+        pass

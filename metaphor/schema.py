@@ -25,6 +25,9 @@ class Schema(object):
         return dict(
             (name, spec.serialize()) for (name, spec) in self.specs.items())
 
+    def add_resource_from_data(self, spec_name, fields):
+        pass
+
     def add_resource_spec(self, resource_spec):
         self.specs[resource_spec.name] = resource_spec
         resource_spec.schema = self

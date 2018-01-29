@@ -73,39 +73,7 @@ schema.add_root('companies', CollectionSpec('company'))
 schema.add_root('organizations', CollectionSpec('org'))
 schema.add_root('portfolios', CollectionSpec('portfolio'))
 
-api = MongoApi("http://localhost:8000/api", schema, db)
-
-
-@app.route("/schema")
-def schema():
-    return jsonify({
-        'functions': {
-            'space_periods': {'module': 'extensions.space_periods',
-                              'args': ['periods'],
-            },
-        },
-        'root': {
-            'companies': {'type': 'collection', 'target': 'company'},
-        },
-        'resources': {
-            'company': {
-                'fields': {
-                    'name': {'type': 'str'},
-                    'address': {'type': 'str'},
-                    'periods': {'type': 'collection', 'target': 'period'},
-                    'spaced_periods': {'type': 'collection', 'calc': 'space_periods(self.periods)'},
-                    'sector': {'type': 'link', 'target': {'type': 'sector'}},
-            }},
-            'period': {
-                'year': {'type': 'int'},
-                'period': {'type': 'str'},
-                'total_assets': {'type': 'float'},
-                'total_liabilities': {'type': 'float'},
-                'net_assets': {'type': 'float', 'calc': 'total_assets - total_liabilities'},
-                'previous_year_period': {'type': 'link', 'calc': 'self.company.spaced_periods[-4]'},
-                'previous_quarter_period': {'type': 'link', 'calc': 'self.company.spaced_periods[-1]'},
-            }
-        }})
+api = MongoApi("http://localhost:8000", schema, db)
 
 
 @app.route("/api")
@@ -126,3 +94,24 @@ def api_call(path):
     else:
         resource = api.get(path)
         return jsonify(resource)
+
+
+@app.route("/schema")
+def schema_list():
+    return [spec.serializer() for spec in schema.specs]
+
+
+@app.route("/schema/<spec_name>", methods=['GET', 'POST', 'DELETE', 'PATCH'])
+def schema_update(spec_name):
+    if request.method == 'GET':
+        return schema.specs[name].serialize()
+    elif request.method == 'POST':
+        pass
+
+
+@app.route("/")
+def root():
+    return jsonify({
+        "schema": "/schema",
+        "api": "/api",
+    })
