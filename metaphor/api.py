@@ -20,9 +20,9 @@ class MongoApi(object):
         path = path.strip('/')
         if path:
             resource = self.build_resource(path)
-            return resource.serialize(os.path.join(self.root_url, path))
+            return resource.serialize(os.path.join(self.root_url, 'api', path))
         else:
-            return self.schema.root.serialize(self.root_url)
+            return self.schema.root.serialize(os.path.join(self.root_url, 'api'))
 
     def unlink(self, path):
         resource = self.build_resource(path)

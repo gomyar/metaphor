@@ -16,6 +16,7 @@ from flask import send_from_directory
 
 from metaphor.api import MongoApi
 from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
 from metaphor.resource import ResourceLinkSpec
 
@@ -24,7 +25,13 @@ client = MongoClient('localhost', 27017)
 db = client['metaphor3']
 
 
-schema = Schema(db, "0.1")
+if 'metaphor_schema' in db.collection_names():
+    schema_data = db['metaphor_schema'].find_one({})
+    schema = SchemaFactory().create_schema(db, "0.1", schema_data)
+else:
+    schema_data = json.loads(open("default_schema.json").read())
+    schema = SchemaFactory().create_schema(db, "0.1", schema_data)
+    db['metaphor_schema'].insert(schema_data)
 
 
 def exit_app():
@@ -41,37 +48,6 @@ def create_app():
 
 app = create_app()
 
-company_spec = ResourceSpec('company')
-period_spec = ResourceSpec('period')
-org_spec = ResourceSpec('org')
-portfolio_spec = ResourceSpec('portfolio')
-
-schema.add_resource_spec(company_spec)
-schema.add_resource_spec(period_spec)
-schema.add_resource_spec(org_spec)
-schema.add_resource_spec(portfolio_spec)
-
-company_spec.add_field("name", FieldSpec("string"))
-company_spec.add_field("periods", CollectionSpec('period'))
-company_spec.add_field("maxAssets", CalcSpec("max(self.periods.totalAssets)"))
-company_spec.add_field("minAssets", CalcSpec("min(self.periods.totalAssets)"))
-company_spec.add_field("averageGrossProfit", CalcSpec("average(self.periods.grossProfit)"))
-
-period_spec.add_field("period", FieldSpec("string"))
-period_spec.add_field("year", FieldSpec("int"))
-period_spec.add_field("totalAssets", FieldSpec("int"))
-period_spec.add_field("totalLiabilities", FieldSpec("int"))
-period_spec.add_field("grossProfit", CalcSpec("self.totalAssets - self.totalLiabilities"))
-
-org_spec.add_field("name", FieldSpec("string"))
-org_spec.add_field("portfolios", CollectionSpec('portfolio'))
-
-portfolio_spec.add_field("name", FieldSpec("string"))
-portfolio_spec.add_field("companies", CollectionSpec('company'))
-
-schema.add_root('companies', CollectionSpec('company'))
-schema.add_root('organizations', CollectionSpec('org'))
-schema.add_root('portfolios', CollectionSpec('portfolio'))
 
 api = MongoApi("http://localhost:8000", schema, db)
 
@@ -112,6 +88,6 @@ def schema_update(spec_name):
 @app.route("/")
 def root():
     return jsonify({
-        "schema": "/schema",
-        "api": "/api",
+        "schema": api.root_url + "/schema",
+        "api": api.root_url + "/api",
     })
