@@ -1,0 +1,43 @@
+{
+    "specs": {
+        "company": {
+            "type": "resource",
+            "fields": {
+                "name": {"type": "str"},
+                "periods": {"type": "collection", "target": "period"},
+                "maxAssets": {"type": "calc", "calc": "max(self.periods.totalAssets)"},
+                "minAssets": {"type": "calc", "calc": "min(self.periods.totalAssets)"},
+                "averageGrossProfit": {"type": "calc", "calc": "average(self.periods.grossProfit)"}
+            }
+        },
+        "period":{
+            "type": "resource",
+            "fields": {
+                "year": {"type": "int"},
+                "period": {"type": "str"},
+                "totalAssets": {"type": "int"},
+                "totalLiabilities": {"type": "int"},
+                "grossProfit": {"type": "calc", "calc": "self.totalAssets - self.totalLiabilities"}
+            }
+        },
+        "org": {
+            "type": "resource",
+            "fields": {
+                "name": {"type": "str"},
+                "portfolios": {"type": "collection", "target": "portfolio"}
+            }
+        },
+        "portfolio": {
+            "type": "resource",
+            "fields": {
+                "name": {"type": "str"},
+                "companies": {"type": "collection", "target": "company"}
+            }
+        }
+    },
+    "roots": {
+        "companies": {"type": "collection", "target": "company"},
+        "portfolios": {"type": "collection", "target": "portfolio"},
+        "organizations": {"type": "collection", "target": "org"}
+    }
+}

@@ -1,6 +1,8 @@
 
 import os
 
+from metaphor.schema_factory import SchemaFactory
+
 
 class MongoApi(object):
     def __init__(self, root_url, schema, db):
@@ -40,7 +42,7 @@ class SchemaApi(object):
         self.db = db
 
     def post(self, path, data):
-        pass
+        SchemaFactory().add_resource_to_schema(self.schema, data['name'], data.get('fields', {}))
 
     def patch(self, path, data):
         pass

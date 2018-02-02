@@ -10,10 +10,6 @@ from metaphor.schema import Schema
 
 class SchemaFactory(object):
     def __init__(self):
-        self.builders = {
-            'resource': self._build_resource,
-            'collection': self._build_collection,
-        }
         self.field_builders ={
             'link': self._build_link,
             'str': self._build_field,
@@ -21,21 +17,20 @@ class SchemaFactory(object):
             'calc': self._build_calc,
             'collection': self._build_collection_field,
         }
+
     def create_schema(self, db, version, data):
         schema = Schema(db, version)
         for resource_name, resource_data in data['specs'].items():
-            spec = self.builders[resource_data['type']](resource_name, resource_data)
-            schema.add_resource_spec(spec)
-            for field_name, field_data in resource_data.get('fields', {}).items():
-                spec.add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
+            self.add_resource_to_schema(schema, resource_name, resource_data.get('fields', {}))
         for root_name, resource_data in data['roots'].items():
             schema.add_root(root_name, self._build_collection(None, resource_data))
         return schema
 
-    def _build_resource(self, type_name, data=None):
-        data = data or {}
-        spec = ResourceSpec(type_name)
-        return spec
+    def add_resource_to_schema(self, schema, resource_name, resource_fields):
+        spec = ResourceSpec(resource_name)
+        schema.add_resource_spec(spec)
+        for field_name, field_data in resource_fields.items():
+            spec.add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
 
     def _build_collection(self, type_name, data=None):
         return CollectionSpec(data['target'])

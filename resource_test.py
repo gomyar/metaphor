@@ -68,10 +68,10 @@ class SpikeTest(unittest.TestCase):
 
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals("Bobs Burgers", company['name'])
-        self.assertEquals("http://server/companies/%s/periods" % (company_id,),
+        self.assertEquals("http://server/api/companies/%s/periods" % (company_id,),
             company['periods'])
         self.assertEquals(
-            "http://server/companies/%s/periods" % (company_id,),
+            "http://server/api/companies/%s/periods" % (company_id,),
             company['periods'])
 
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
@@ -79,14 +79,14 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(2017, period['year'])
 
         self.assertEquals([
-            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/companies/%s/periods' % (company_id,), 'totalTotalAssets': None, 'totalFinancialsAssets': None}
+            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/api/companies/%s/periods' % (company_id,), 'totalTotalAssets': None, 'totalFinancialsAssets': None}
         ], self.api.get('/companies'))
 
         self.assertEquals({
-            'companies': 'http://server/companies',
-            'portfolios': 'http://server/portfolios',
-            'financials': 'http://server/financials',
-            'config': 'http://server/config',
+            'companies': 'http://server/api/companies',
+            'portfolios': 'http://server/api/portfolios',
+            'financials': 'http://server/api/financials',
+            'config': 'http://server/api/config',
         }, self.api.get('/'))
 
     def test_add_data(self):
@@ -166,7 +166,7 @@ class SpikeTest(unittest.TestCase):
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
         self.assertEquals(2017, period['year'])
         self.assertEquals('YE', period['period'])
-        self.assertEquals("http://server/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
+        self.assertEquals("http://server/api/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
 
         financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
         self.assertEquals(100, financial['totalAssets'])
@@ -190,7 +190,7 @@ class SpikeTest(unittest.TestCase):
 
         self.assertEquals(2017, period['year'])
         self.assertEquals('YE', period['period'])
-        self.assertEquals("http://server/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
+        self.assertEquals("http://server/api/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
 
         financial = self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))
         self.assertEquals(100, financial['totalAssets'])
@@ -211,7 +211,7 @@ class SpikeTest(unittest.TestCase):
 
         # shortcut id set on resourcelink field
         period = self.api.get('companies/%s/periods/%s' % (company_id, period_id))
-        self.assertEquals("http://server/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
+        self.assertEquals("http://server/api/companies/%s/periods/%s/financial" % (company_id, period_id), period['financial'])
 
         # parent entry set on target
         db_financial = self.db['resource_financial'].find_one({'_id': ObjectId(financial_id)})
