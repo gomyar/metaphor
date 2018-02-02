@@ -44,8 +44,9 @@ class SchemaApi(object):
     def post(self, path, data):
         SchemaFactory().add_resource_to_schema(self.schema, data['name'], data.get('fields', {}))
 
-    def patch(self, path, data):
-        pass
+    def patch(self, spec_name, data):
+        for field_name, field_data in data.items():
+            SchemaFactory().add_field_to_spec(self.schema, spec_name, field_name, field_data)
 
     def get(self, path):
         pass

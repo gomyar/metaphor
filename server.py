@@ -74,7 +74,8 @@ def api_call(path):
 
 @app.route("/schema")
 def schema_list():
-    return jsonify([spec.serialize() for spec in schema.specs.values()])
+    if request.method == 'GET':
+        return jsonify([spec.serialize() for spec in schema.specs.values()])
 
 
 @app.route("/schema/<spec_name>", methods=['GET', 'POST', 'DELETE', 'PATCH'])

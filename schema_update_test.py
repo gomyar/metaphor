@@ -29,13 +29,27 @@ class SchemaUpdateTest(unittest.TestCase):
 #        self.app.secret_key = "1234test"
         self.client = app.test_client()
 
-
-    def test_add_root(self):
+    def test_add_resource(self):
         self.assertEquals(1, len(self.schema.specs))
         self.schema_api.post('specs', {'name': 'company'})
         self.assertEquals(2, len(self.schema.specs))
 
         self.assertEquals('company', self.schema.specs['company'].name)
+
+    def test_add_resource_with_fields(self):
+        self.assertEquals(1, len(self.schema.specs))
+        self.schema_api.post('specs', {'name': 'company', 'fields': {'name': {'type': 'str'}}})
+        self.assertEquals(2, len(self.schema.specs))
+
+        self.assertEquals('company', self.schema.specs['company'].name)
+        self.assertEquals('str', self.schema.specs['company'].fields['name'].field_type)
+
+    def test_update_resource_spec(self):
+        self.schema_api.post('specs', {'name': 'company'})
+        self.schema_api.patch('company', {'assets': {'type': 'int'}})
+
+        self.assertEquals('company', self.schema.specs['company'].name)
+        self.assertEquals('int', self.schema.specs['company'].fields['assets'].field_type)
 
     def test_server_default(self):
         res = self.client.get('/schema')

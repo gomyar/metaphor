@@ -30,7 +30,11 @@ class SchemaFactory(object):
         spec = ResourceSpec(resource_name)
         schema.add_resource_spec(spec)
         for field_name, field_data in resource_fields.items():
-            spec.add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
+            self.add_field_to_spec(schema, resource_name, field_name, field_data)
+
+    def add_field_to_spec(self, schema, resource_name, field_name, field_data):
+        spec = schema.specs[resource_name]
+        spec.add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
 
     def _build_collection(self, type_name, data=None):
         return CollectionSpec(data['target'])
