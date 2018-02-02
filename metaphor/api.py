@@ -53,3 +53,13 @@ class SchemaApi(object):
 
     def unlink(self, path):
         pass
+
+
+class RootsApi(object):
+    def __init__(self, root_url, schema, db):
+        self.root_url = root_url
+        self.schema = schema
+        self.db = db
+
+    def post(self, root_name, spec_name):
+        self.schema.add_root(root_name, schema.specs[spec_name])

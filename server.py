@@ -14,7 +14,7 @@ from flask import jsonify
 from flask import request
 from flask import send_from_directory
 
-from metaphor.api import MongoApi
+from metaphor.api import MongoApi, SchemaApi, RootsApi
 from metaphor.schema import Schema
 from metaphor.schema_factory import SchemaFactory
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec, CalcSpec
@@ -29,7 +29,7 @@ if 'metaphor_schema' in db.collection_names():
     schema_data = db['metaphor_schema'].find_one({})
     schema = SchemaFactory().create_schema(db, "0.1", schema_data)
 else:
-    schema_data = json.loads(open("default_schema.json").read())
+    schema_data = {'specs': {}, 'roots': {}}
     schema = SchemaFactory().create_schema(db, "0.1", schema_data)
     db['metaphor_schema'].insert(schema_data)
 
@@ -49,7 +49,10 @@ def create_app():
 app = create_app()
 
 
-api = MongoApi("http://localhost:8000", schema, db)
+root_url = "http://localhost:8000"
+api = MongoApi(root_url, schema, db)
+schema_api = SchemaApi(root_url, schema, db)
+roots_api = RootsApi(root_url, schema, db)
 
 
 @app.route("/api")
@@ -84,6 +87,12 @@ def schema_update(spec_name):
         return schema.specs[name].serialize()
     elif request.method == 'POST':
         pass
+
+
+@app.route("/roots")
+def roots_list():
+    if request.method == 'POST':
+        roots_api.post(request.data['name'], request.data['target'])
 
 
 @app.route("/")
