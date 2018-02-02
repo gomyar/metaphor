@@ -1,8 +1,19 @@
 
+need support for:
+ - calc which returns reference to resource
+ - calc which returns collection
+
+ - field types:
+   - enumeration
+   - iso date
+   - string / int / float / currency?
+
  - enter calculated fields
    - string / int
+   - lookup (if > 20 : 'A' if < 20 : 'B' etc..)
    - collection (collection filters / functions that return a collection)
    - resource link (min max median - functions that take a collection and return 1 result)
+   - pluggable function call
 
 add recalc worker
  - field dependencies
