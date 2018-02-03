@@ -63,36 +63,41 @@ def api_root():
 @app.route("/api/<path:path>", methods=['GET', 'POST', 'DELETE', 'PATCH'])
 def api_call(path):
     if request.method == 'POST':
-        data = json.loads(request.data)
-        return jsonify({'id': str(api.post(path, data))})
+        return jsonify({'id': str(api.post(path, request.json))})
     elif request.method == 'DELETE':
         return jsonify({'id': str(api.unlink(path))})
     elif request.method == 'PATCH':
-        data = json.loads(request.data)
-        return jsonify({'id': str(api.patch(path, data))})
+        return jsonify({'id': str(api.patch(path, request.json))})
     else:
         resource = api.get(path)
         return jsonify(resource)
 
 
-@app.route("/schema")
+@app.route("/schema", methods=['GET', 'POST'])
 def schema_list():
+    if request.method == 'POST':
+        schema_api.post(None, request.json)
+        return jsonify({})
     if request.method == 'GET':
         return jsonify([spec.serialize() for spec in schema.specs.values()])
 
 
-@app.route("/schema/<spec_name>", methods=['GET', 'POST', 'DELETE', 'PATCH'])
+@app.route("/schema/<spec_name>", methods=['GET', 'PATCH'])
 def schema_update(spec_name):
     if request.method == 'GET':
         return schema.specs[name].serialize()
-    elif request.method == 'POST':
-        pass
+    elif request.method == 'PATCH':
+        schema_api.patch(spec_name, request.json)
+        return jsonify({})
 
 
-@app.route("/roots")
+@app.route("/roots", methods=['GET', 'POST'])
 def roots_list():
+    if request.method == 'GET':
+        return jsonify([spec.serialize for spec in schema.root_spec.fields.values()])
     if request.method == 'POST':
-        roots_api.post(request.data['name'], request.data['target'])
+        roots_api.post(request.json['name'], request.json['target'])
+        return jsonify({})
 
 
 @app.route("/")
@@ -100,4 +105,5 @@ def root():
     return jsonify({
         "schema": api.root_url + "/schema",
         "api": api.root_url + "/api",
+        "roots": api.root_url + "/roots",
     })

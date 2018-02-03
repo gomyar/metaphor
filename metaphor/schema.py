@@ -8,6 +8,9 @@ class Schema(object):
     def __init__(self, db, version):
         self.db = db
         self.version = version
+        self.reset()
+
+    def reset(self):
         self.specs = {}
         self.root_spec = ResourceSpec('root')
         self.add_resource_spec(self.root_spec)

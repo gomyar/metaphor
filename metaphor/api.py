@@ -2,6 +2,7 @@
 import os
 
 from metaphor.schema_factory import SchemaFactory
+from metaphor.resource import CollectionSpec
 
 
 class MongoApi(object):
@@ -62,4 +63,4 @@ class RootsApi(object):
         self.db = db
 
     def post(self, root_name, spec_name):
-        self.schema.add_root(root_name, schema.specs[spec_name])
+        self.schema.add_root(root_name, CollectionSpec(spec_name))
