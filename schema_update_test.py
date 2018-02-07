@@ -31,11 +31,18 @@ class SchemaUpdateTest(unittest.TestCase):
         self.client = app.test_client()
 
     def test_add_resource(self):
+        self.assertEquals(None, self.db['metaphor_schema'].find_one())
         self.assertEquals(1, len(schema.specs))
         self.schema_api.post('specs', {'name': 'company'})
         self.assertEquals(2, len(schema.specs))
 
         self.assertEquals('company', schema.specs['company'].name)
+
+        saved_schema = self.db['metaphor_schema'].find_one()
+        self.assertEquals({
+            'company': {'fields': {}, 'type': 'resource'},
+            'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+        self.assertEquals({}, saved_schema['roots'])
 
     def test_add_resource_with_fields(self):
         self.assertEquals(1, len(schema.specs))
@@ -45,6 +52,18 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals('company', schema.specs['company'].name)
         self.assertEquals('str', schema.specs['company'].fields['name'].field_type)
 
+        saved_schema = self.db['metaphor_schema'].find_one()
+        self.assertEquals(
+            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'},
+             'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+        self.assertEquals({}, saved_schema['roots'])
+
+        saved_schema = self.db['metaphor_schema'].find_one()
+        self.assertEquals(
+            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'},
+             'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+        self.assertEquals({}, saved_schema['roots'])
+
     def test_update_resource_spec(self):
         self.schema_api.post('specs', {'name': 'company'})
         self.schema_api.patch('company', {'assets': {'type': 'int'}})
@@ -52,10 +71,16 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals('company', schema.specs['company'].name)
         self.assertEquals('int', schema.specs['company'].fields['assets'].field_type)
 
+        saved_schema = self.db['metaphor_schema'].find_one()
+        self.assertEquals({
+            'company': {'fields': {}, 'type': 'resource'},
+            'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+        self.assertEquals({}, saved_schema['roots'])
+
     def test_server_default(self):
         res = self.client.get('/schema')
         self.assertEquals(200, res.status_code)
-        expected = [{u'fields': {}, u'name': u'root', u'spec': u'resource'}]
+        expected = [{'fields': {}, 'name': 'root', 'spec': 'resource'}]
         self.assertEquals(expected, json.loads(res.data))
 
     def test_add_root_and_post(self):
@@ -63,3 +88,9 @@ class SchemaUpdateTest(unittest.TestCase):
         self.roots_api.post('companies', 'company')
 
         self.api.post('companies', {'name': 'Fred'})
+
+        saved_schema = self.db['metaphor_schema'].find_one()
+        self.assertEquals(
+            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'},
+             'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+        self.assertEquals({'companies': {'type': 'company'}}, saved_schema['roots'])

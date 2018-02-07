@@ -10,12 +10,19 @@ from metaphor.schema import Schema
 
 class SchemaFactory(object):
     def __init__(self):
-        self.field_builders ={
+        self.field_builders = {
             'link': self._build_link,
             'str': self._build_field,
             'int': self._build_field,
             'calc': self._build_calc,
             'collection': self._build_collection_field,
+        }
+        self.field_serializers = {
+            'link': self._serialize_link,
+            'str': self._serialize_field,
+            'int': self._serialize_field,
+            'calc': self._serialize_calc,
+            'collection': self._serialize_collection_field,
         }
 
     def create_schema(self, db, version, data):
@@ -50,3 +57,30 @@ class SchemaFactory(object):
 
     def _build_collection_field(self, type_name, data=None):
         return CollectionSpec(data['target'])
+
+    def serialize_schema(self, schema):
+        specs = dict([(name, self._serialize_spec(data)) for (name, data) in schema.specs.items()])
+        roots = dict([(name, spec.target_spec_name) for (name, spec) in schema.specs['root'].fields.items()])
+        return {'specs': specs, 'roots': roots}
+
+    def _serialize_spec(self, spec):
+        fields = dict([(name, self.field_serializers[field.field_type](field)) for (name, field) in spec.fields.items()])
+        return {'type': 'resource', 'fields': fields}
+
+    def _serialize_collection(self, collection):
+        return {'type': 'collection', 'target': collection.target_spec_name}
+
+    def _serialize_link(self, link):
+        return {'type': 'link', 'target': link.name}
+
+    def _serialize_field(self, field):
+        return {'type': field.field_type}
+
+    def _serialize_calc(self, calc):
+        return {'calc': calc.calc_str}
+
+    def _serialize_collection_field(self, collection):
+        return {'type': 'collection', 'target': collection.target_spec_name}
+
+    def save_schema(self, schema):
+        schema.db['metaphor_schema'].find_and_modify({}, SchemaFactory().serialize_schema(schema))

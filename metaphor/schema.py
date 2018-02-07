@@ -8,9 +8,17 @@ class Schema(object):
     def __init__(self, db, version):
         self.db = db
         self.version = version
+        self.specs = None
+        self.root_spec = None
+        self._all_calcs = []
+        self.root = None
+        self.updater = None
+
         self.reset()
 
     def reset(self):
+        if self.updater:
+            self.updater.wait_for_updates()
         self.specs = {}
         self.root_spec = ResourceSpec('root')
         self.add_resource_spec(self.root_spec)
@@ -56,3 +64,6 @@ class Schema(object):
             updater_ids.append(self.updater._save_updates(spec, field_name, ids))
 
         self.run_updaters(updater_ids)
+
+    def save(self):
+        self.db['metaphor_schema'].insert(schema_data)

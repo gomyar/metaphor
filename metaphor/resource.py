@@ -161,6 +161,10 @@ class CollectionSpec(Spec):
         return {'spec': 'collection', 'target_spec': self.target_spec_name}
 
     @property
+    def field_type(self):
+        return 'collection'
+
+    @property
     def name(self):
         return self.target_spec_name
 

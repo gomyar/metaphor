@@ -44,6 +44,7 @@ class SchemaApi(object):
 
     def post(self, path, data):
         SchemaFactory().add_resource_to_schema(self.schema, data['name'], data.get('fields', {}))
+        SchemaFactory().save_schema(self.schema)
 
     def patch(self, spec_name, data):
         for field_name, field_data in data.items():
@@ -64,3 +65,4 @@ class RootsApi(object):
 
     def post(self, root_name, spec_name):
         self.schema.add_root(root_name, CollectionSpec(spec_name))
+        SchemaFactory().save_schema(self.schema)

@@ -25,13 +25,12 @@ client = MongoClient('localhost', 27017)
 db = client['metaphor3']
 
 
-if 'metaphor_schema' in db.collection_names():
-    schema_data = db['metaphor_schema'].find_one({})
+schema_data = db['metaphor_schema'].find_one({})
+if schema_data:
     schema = SchemaFactory().create_schema(db, "0.1", schema_data)
 else:
-    schema_data = {'specs': {}, 'roots': {}}
-    schema = SchemaFactory().create_schema(db, "0.1", schema_data)
-    db['metaphor_schema'].insert(schema_data)
+    schema = Schema(db, "0.1")
+    db['metaphor_schema'].insert(SchemaFactory().serialize_schema(schema))
 
 
 def exit_app():
