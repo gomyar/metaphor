@@ -60,8 +60,8 @@ class SchemaFactory(object):
 
     def serialize_schema(self, schema):
         specs = dict([(name, self._serialize_spec(data)) for (name, data) in schema.specs.items()])
-        roots = dict([(name, spec.target_spec_name) for (name, spec) in schema.specs['root'].fields.items()])
-        return {'specs': specs, 'roots': roots}
+        roots = dict([(name, {'type': 'collection', 'target': spec.target_spec_name}) for (name, spec) in schema.specs['root'].fields.items()])
+        return {'specs': specs, 'roots': roots, 'version': schema.version}
 
     def _serialize_spec(self, spec):
         fields = dict([(name, self.field_serializers[field.field_type](field)) for (name, field) in spec.fields.items()])
@@ -83,4 +83,6 @@ class SchemaFactory(object):
         return {'type': 'collection', 'target': collection.target_spec_name}
 
     def save_schema(self, schema):
-        schema.db['metaphor_schema'].find_and_modify({}, SchemaFactory().serialize_schema(schema))
+        save_data = SchemaFactory().serialize_schema(schema)
+        schema.db['metaphor_schema'].find_and_modify(
+            sort={'version': 1}, update=save_data, upsert=True)
