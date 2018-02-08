@@ -59,7 +59,7 @@ class SchemaFactory(object):
         return CollectionSpec(data['target'])
 
     def serialize_schema(self, schema):
-        specs = dict([(name, self._serialize_spec(data)) for (name, data) in schema.specs.items()])
+        specs = dict([(name, self._serialize_spec(data)) for (name, data) in schema.specs.items() if name != 'root'])
         roots = dict([(name, {'type': 'collection', 'target': spec.target_spec_name}) for (name, spec) in schema.specs['root'].fields.items()])
         return {'specs': specs, 'roots': roots, 'version': schema.version}
 

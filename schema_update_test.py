@@ -46,8 +46,7 @@ class SchemaUpdateTest(unittest.TestCase):
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals({
-            'company': {'fields': {}, 'type': 'resource'},
-            'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+            'company': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
         self.assertEquals({}, saved_schema['roots'])
 
     def test_add_resource_with_fields(self):
@@ -60,14 +59,12 @@ class SchemaUpdateTest(unittest.TestCase):
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals(
-            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'},
-             'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'}}, saved_schema['specs'])
         self.assertEquals({}, saved_schema['roots'])
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals(
-            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'},
-             'root': {'fields': {}, 'type': 'resource'}}, saved_schema['specs'])
+            {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'}}, saved_schema['specs'])
         self.assertEquals({}, saved_schema['roots'])
 
     def test_update_resource_spec(self):
@@ -79,8 +76,8 @@ class SchemaUpdateTest(unittest.TestCase):
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals(
-            {u'company': {u'fields': {u'assets': {u'type': u'int'}}, u'type': u'resource'},
-             u'root': {u'fields': {}, u'type': u'resource'}}, saved_schema['specs'])
+            {u'company': {u'fields': {u'assets': {u'type': u'int'}}, u'type': u'resource'}
+            }, saved_schema['specs'])
         self.assertEquals({}, saved_schema['roots'])
 
     def test_server_default(self):
@@ -97,9 +94,6 @@ class SchemaUpdateTest(unittest.TestCase):
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals(
-             {u'company': {u'fields': {u'name': {u'type': u'str'}}, u'type': u'resource'},
-              u'root': {u'fields': {u'companies': {u'target': u'company',
-                                                   u'type': u'collection'}},
-                                                            u'type': u'resource'}},
+             {u'company': {u'fields': {u'name': {u'type': u'str'}}, u'type': u'resource'}},
              saved_schema['specs'])
         self.assertEquals({'companies': {'type': 'collection', 'target': 'company'}}, saved_schema['roots'])

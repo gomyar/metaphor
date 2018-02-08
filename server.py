@@ -25,11 +25,15 @@ from metaphor.schema_bp import schema_bp
 
 from pymongo import MongoClient
 
-def exit_app():
-    schema.updater.wait_for_updates()
-
 
 root_url = "http://localhost:8000"
+
+schema = None
+
+
+def exit_app():
+    if schema:
+        schema.updater.wait_for_updates()
 
 
 def create_app():
@@ -43,8 +47,6 @@ def create_app():
     else:
         schema = Schema(db, "0.1")
 
-    db['metaphor_schema'].insert(SchemaFactory().serialize_schema(schema))
-
     app = Flask(__name__)
     app.secret_key = 'keepitsecretkeepitsafe'
 
@@ -54,13 +56,12 @@ def create_app():
     app.register_blueprint(api_bp)
     app.register_blueprint(schema_bp)
 
-    atexit.register(exit_app)
     schema.updater.start_updater()
     return app
 
 
 app = create_app()
-
+atexit.register(exit_app)
 
 
 @app.route("/")
