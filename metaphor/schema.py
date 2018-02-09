@@ -13,6 +13,7 @@ class Schema(object):
         self._all_calcs = []
         self.root = None
         self.updater = None
+        self._functions = dict()
 
         self.reset()
 
@@ -67,3 +68,9 @@ class Schema(object):
 
     def save(self):
         self.db['metaphor_schema'].insert(schema_data)
+
+    def register_function(self, func_name, func):
+        self._functions[func_name] = func
+
+    def execute_function(self, func_name, resource):
+        return self._functions[func_name](resource)

@@ -41,11 +41,7 @@ def create_app():
                          os.environ.get('METAPHOR_MONGO_PORT', 27017))
     db = client[os.environ['METAPHOR_DBNAME']]
 
-    schema_data = db['metaphor_schema'].find_one({})
-    if schema_data:
-        schema = SchemaFactory().create_schema(db, "0.1", schema_data)
-    else:
-        schema = Schema(db, "0.1")
+    schema = SchemaFactory().load_schema(db)
 
     app = Flask(__name__)
     app.secret_key = 'keepitsecretkeepitsafe'

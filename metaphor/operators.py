@@ -67,7 +67,10 @@ class Func(object):
 
     def calculate(self, resource):
         res = self.resource_ref.create_resource(resource)
-        return BUILTIN_FUNCTIONS[self.func_name](res)
+        if self.func_name in BUILTIN_FUNCTIONS:
+            return BUILTIN_FUNCTIONS[self.func_name](res)
+        else:
+            return res.spec.schema.execute_function(self.func_name, res)
 
     def all_resource_refs(self):
         return self.resource_ref.all_resource_refs()

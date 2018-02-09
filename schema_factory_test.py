@@ -5,6 +5,12 @@ import unittest
 from pymongo import MongoClient
 
 from metaphor.schema_factory import SchemaFactory
+from metaphor.schema import Schema
+from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
+
+
+def _test_func(res):
+    pass
 
 
 class SchemaFactoryTest(unittest.TestCase):
@@ -102,3 +108,26 @@ class SchemaFactoryTest(unittest.TestCase):
         self.assertEquals(['companies'], schema.specs['root'].fields.keys())
         self.assertEquals('str', schema.specs['company'].fields['name'].field_type)
         self.assertEquals('self.name', schema.specs['company'].fields['otherName'].calc_str)
+
+    def test_save_load(self):
+        schema = Schema(self.db, "1.2")
+        test_spec = ResourceSpec('test_spec')
+        test_spec.add_field("name", FieldSpec("str"))
+
+        schema.add_resource_spec(test_spec)
+        schema.add_root('specs', CollectionSpec('test_spec'))
+
+        schema.register_function('test_func', _test_func)
+
+        self.factory.save_schema(schema)
+
+        schema_data = self.db['metaphor_schema'].find_one()
+        self.assertEquals({'specs': {'target': 'test_spec', 'type': 'collection'}}, schema_data['roots'])
+        self.assertEquals({'test_spec': {'fields': {'name': {'type': 'str'}},
+                                         'type': 'resource'}}, schema_data['specs'])
+        self.assertEquals({'test_func': 'schema_factory_test._test_func'}, schema_data['registered_functions'])
+
+        schema2 = self.factory.load_schema(self.db)
+
+        self.assertEquals("str", schema2.specs['test_spec'].fields['name'].field_type)
+        self.assertEquals(_test_func, schema2._functions['test_func'])

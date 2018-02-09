@@ -122,7 +122,7 @@ class Updater(object):
     def perform_update(self, update_id):
         update = self.schema.db['metaphor_updates'].find_one({'_id': update_id})
         threads = [gevent.spawn(self._perform_update, update, update_id, resource_id) for resource_id in update['resource_ids']]
-        gevent.joinall(threads)
+        gevent.joinall(threads, raise_error=True)
 
     def _perform_update(self, update, update_id, resource_id):
         resource_data = self.schema.db['resource_%s' % (update['spec'],)].find_one({'_id': resource_id})
