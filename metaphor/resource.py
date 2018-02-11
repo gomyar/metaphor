@@ -96,6 +96,10 @@ class ResourceLinkSpec(Spec):
         return self.target_spec._collection_name()
 
     @property
+    def field_type(self):
+        return 'link'
+
+    @property
     def target_spec(self):
         return self.schema.specs[self.name]
 
@@ -108,6 +112,9 @@ class ResourceLinkSpec(Spec):
 
     def default_value(self):
         return None
+
+    def check_type(self, value):
+        return False
 
 
 class CalcSpec(Spec):
@@ -129,12 +136,21 @@ class CalcSpec(Spec):
     def serialize(self):
         return {'spec': 'calc', 'calc': self.calc_str}
 
+    def check_type(self, value):
+        return False
+
 
 class FieldSpec(Spec):
     def __init__(self, field_type):
         self.field_type = field_type
         self.field_name = None
         self.schema = None
+        self._allowed_types = {
+            'str': [str, unicode],
+            'int': [int],
+            'float': [float, int],
+            'bool': [bool],
+        }
 
     def __repr__(self):
         return "<FieldSpec %s.%s <%s>>" % (self.parent.name, self.field_name, self.field_type)
@@ -150,6 +166,9 @@ class FieldSpec(Spec):
 
     def default_value(self):
         return None
+
+    def check_type(self, value):
+        return type(value) in self._allowed_types.get(self.field_type, [])
 
 
 class CollectionSpec(Spec):
@@ -186,6 +205,9 @@ class CollectionSpec(Spec):
 
     def default_value(self):
         return []
+
+    def check_type(self, value):
+        return False
 
 
 # resources
@@ -304,7 +326,15 @@ class Resource(object):
         field_data = self.data.get(field_name)
         return field_spec.build_resource(self, field_name, field_data)
 
+    def _validate_fields(self, data):
+        for name, value in data.items():
+            if name not in self.spec.fields:
+                raise TypeError('%s not a field of %s' % (name, self.spec.name))
+            if not self.spec.fields[name].check_type(value):
+                raise TypeError('field type %s cannot be set on %s' % (type(value), self.spec.fields[name]))
+
     def update(self, data):
+        self._validate_fields(data)
         self.data.update(data)
         update = data.copy()
         update['_updated'] = self._update_dict(data.keys())

@@ -3,6 +3,7 @@ import unittest
 
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+from requests.exceptions import HTTPError
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, CalcSpec
@@ -32,18 +33,19 @@ class SpikeTest(unittest.TestCase):
         self.schema.add_resource_spec(self.financial_spec)
         self.schema.add_resource_spec(self.config_spec)
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
+        self.company_spec.add_field("public", FieldSpec("bool"))
         self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)"))
         self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)'))
 
-        self.period_spec.add_field("period", FieldSpec("string"))
+        self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("financial", ResourceLinkSpec("financial"))
 
         self.financial_spec.add_field("totalAssets", FieldSpec("int"))
 
-        self.portfolio_spec.add_field("name", FieldSpec("string"))
+        self.portfolio_spec.add_field("name", FieldSpec("str"))
         self.portfolio_spec.add_field("companies", CollectionSpec('company'))
 
         self.config_spec.add_field("ppp", FieldSpec("int"))
@@ -57,10 +59,10 @@ class SpikeTest(unittest.TestCase):
 
     def test_find(self):
         company_id = self.db['resource_company'].insert(
-            {'name': 'Bobs Burgers'})
+            {'name': 'Bobs Burgers', 'public': True})
 
         period_id = self.db['resource_period'].insert(
-            {'year': 2017, 'period': 'YE', '_owners': [
+            {'year': 2017, 'period': 'YE', 'public': True, '_owners': [
                 {'owner_field': 'periods',
                  'owner_id': company_id,
                  'owner_spec': 'company'}
@@ -79,7 +81,7 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(2017, period['year'])
 
         self.assertEquals([
-            {'id': str(company_id), 'name': 'Bobs Burgers', 'periods': 'http://server/api/companies/%s/periods' % (company_id,), 'totalTotalAssets': None, 'totalFinancialsAssets': None}
+            {'id': str(company_id), 'name': 'Bobs Burgers', 'public': True, 'periods': 'http://server/api/companies/%s/periods' % (company_id,), 'totalTotalAssets': None, 'totalFinancialsAssets': None}
         ], self.api.get('/companies'))
 
         self.assertEquals({
@@ -150,6 +152,7 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(
             {'_id': company_id,
              'name': u'Norman',
+             'public': None,
              'totalTotalAssets': None,
              '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
@@ -286,4 +289,23 @@ class SpikeTest(unittest.TestCase):
         pass
 
     def test_remove_updater_on_error(self):
+        pass
+
+    def test_validate_fields(self):
+        try:
+            self.api.post('companies', {'name': 1.1})
+        except HTTPError as hte:
+            self.assertEquals(400, hte.status_code)
+
+        try:
+            self.api.post('companies', {'nonexistant': 'C1'})
+        except HTTPError as hte:
+            self.assertEquals(400, hte.status_code)
+
+        try:
+            self.api.post('companies', {'totalTotalAssets': 100})
+        except HTTPError as hte:
+            self.assertEquals(400, hte.status_code)
+
+    def test_unlink_resource_from_root_collection(self):
         pass

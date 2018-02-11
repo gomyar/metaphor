@@ -15,6 +15,8 @@ class SchemaFactory(object):
             'link': self._build_link,
             'str': self._build_field,
             'int': self._build_field,
+            'float': self._build_field,
+            'bool': self._build_field,
             'calc': self._build_calc,
             'collection': self._build_collection_field,
         }
@@ -22,6 +24,8 @@ class SchemaFactory(object):
             'link': self._serialize_link,
             'str': self._serialize_field,
             'int': self._serialize_field,
+            'float': self._serialize_field,
+            'bool': self._serialize_field,
             'calc': self._serialize_calc,
             'collection': self._serialize_collection_field,
         }
