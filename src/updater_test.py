@@ -26,10 +26,10 @@ class UpdaterTest(unittest.TestCase):
         self.schema.add_resource_spec(self.company_spec)
         self.schema.add_resource_spec(self.sector_spec)
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("assets", FieldSpec('int'))
 
-        self.sector_spec.add_field("name", FieldSpec("string"))
+        self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field("companies", CollectionSpec("company"))
         self.average_assets_calc = CalcSpec("average(self.companies.assets)")
         self.sector_spec.add_field("averageAssets", self.average_assets_calc)
@@ -41,8 +41,8 @@ class UpdaterTest(unittest.TestCase):
 
         self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
 
-        self.company_1 = self.api.post('companies', {'name': 'Bob1', 'totalAssets': 10})
-        self.company_2 = self.api.post('companies', {'name': 'Bob2', 'totalAssets': 20})
+        self.company_1 = self.api.post('companies', {'name': 'Bob1', 'assets': 10})
+        self.company_2 = self.api.post('companies', {'name': 'Bob2', 'assets': 20})
 
         self.db['metaphor_updates'].drop()
 

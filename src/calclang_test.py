@@ -25,7 +25,7 @@ class CalcLangTest(unittest.TestCase):
         self.schema.add_resource_spec(self.company_spec)
         self.schema.add_resource_spec(self.sector_spec)
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("totalAssets", FieldSpec('int'))
         self.company_spec.add_field("totalLiabilities", FieldSpec('int'))
         self.company_spec.add_field("totalCurrentAssets",
@@ -34,7 +34,7 @@ class CalcLangTest(unittest.TestCase):
             "grossProfit",
             CalcSpec('self.totalAssets - self.totalLiabilities'))
 
-        self.sector_spec.add_field("name", FieldSpec("string"))
+        self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field("companies", CollectionSpec("company"))
         self.sector_spec.add_field("averageLiabilities", CalcSpec("average(self.companies.totalLiabilities)"))
 

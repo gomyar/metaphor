@@ -30,17 +30,17 @@ class AggregateChainTest(unittest.TestCase):
         self.schema.add_resource_spec(self.financial_spec)
         self.schema.add_resource_spec(self.config_spec)
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
 
-        self.period_spec.add_field("period", FieldSpec("string"))
+        self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("totalAssets", FieldSpec("int"))
         self.period_spec.add_field("financial", ResourceLinkSpec("financial"))
 
         self.financial_spec.add_field("grossProfit", FieldSpec("int"))
 
-        self.portfolio_spec.add_field("name", FieldSpec("string"))
+        self.portfolio_spec.add_field("name", FieldSpec("str"))
         self.portfolio_spec.add_field("companies", CollectionSpec('company'))
 
         self.config_spec.add_field("ppp", FieldSpec("int"))

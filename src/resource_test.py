@@ -298,21 +298,26 @@ class SpikeTest(unittest.TestCase):
     def test_remove_updater_on_error(self):
         pass
 
-    def test_validate_fields(self):
+    def test_validate_fields_wrong_value(self):
         try:
             self.api.post('companies', {'name': 1.1})
-        except HTTPError as hte:
-            self.assertEquals(400, hte.status_code)
+            self.fail("Should have thrown")
+        except TypeError as hte:
+            self.assertEquals("field type <type 'float'> cannot be set on <FieldSpec company.name <str>>", str(hte))
 
+    def test_validate_fields_nonexistant_field(self):
         try:
             self.api.post('companies', {'nonexistant': 'C1'})
-        except HTTPError as hte:
-            self.assertEquals(400, hte.status_code)
+            self.fail("Should have thrown")
+        except TypeError as hte:
+            self.assertEquals("nonexistant not a field of company", str(hte))
 
+    def test_validate_fields_calc_update(self):
         try:
             self.api.post('companies', {'totalTotalAssets': 100})
-        except HTTPError as hte:
-            self.assertEquals(400, hte.status_code)
+            self.fail("Should have thrown")
+        except TypeError as hte:
+            self.assertEquals("field type <type 'int'> cannot be set on <CalcSpec company.totalTotalAssets 'sum(companies.periods.financial.totalAssets)'>", str(hte))
 
     def test_unlink_resource_from_root_collection(self):
         pass

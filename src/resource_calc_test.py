@@ -27,7 +27,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.schema.add_resource_spec(self.company_spec)
         self.schema.add_resource_spec(self.period_spec)
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field(
             "latestPeriod",

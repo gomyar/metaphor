@@ -114,7 +114,7 @@ class ResourceLinkSpec(Spec):
         return None
 
     def check_type(self, value):
-        return False
+        return value is None or type(value) is dict
 
 
 class CalcSpec(Spec):
@@ -145,11 +145,18 @@ class FieldSpec(Spec):
         self.field_type = field_type
         self.field_name = None
         self.schema = None
+        self.nullable = True
         self._allowed_types = {
             'str': [str, unicode],
             'int': [int],
             'float': [float, int],
             'bool': [bool],
+        }
+        self._parse_string = {
+            'str': lambda s: s,
+            'int': lambda s: int(s),
+            'float': lambda s: float(s),
+            'bool': lambda s: s[:1].lower() in ('t', '1'),
         }
 
     def __repr__(self):
@@ -168,8 +175,10 @@ class FieldSpec(Spec):
         return None
 
     def check_type(self, value):
-        return type(value) in self._allowed_types.get(self.field_type, [])
+        return self.nullable and value is None or type(value) in self._allowed_types.get(self.field_type, [])
 
+    def from_string(self, str_val):
+        return self._parse_string[self.field_type](str_val)
 
 class CollectionSpec(Spec):
     def __init__(self, target_spec_name):
@@ -346,15 +355,11 @@ class Resource(object):
     def _update_dict(self, field_names):
         return {'at': datetime.now(), 'fields': field_names}
 
-    def _create_new_fields(self, new_data, spec):
-        data = {}
+    def _add_field_defaults(self, new_data, spec):
         for field_name, field_spec in spec.fields.items():
             if isinstance(field_spec, FieldSpec):
-                if field_name in new_data:
-                    data[field_name] = new_data[field_name]
-                else:
-                    data[field_name] = field_spec.default_value()
-        return data
+                if field_name not in new_data:
+                    new_data[field_name] = field_spec.default_value()
 
     def _recalc_resource(self, resource, spec):
         data = {}
@@ -383,10 +388,11 @@ class Resource(object):
             'owner_field': self.field_name
         }
 
-    def _create_new(self, parent_field_name, new_data, spec, owner=None):
-        data = self._create_new_fields(new_data, spec)
+    def _create_new(self, parent_field_name, data, spec, owner=None):
+        self._add_field_defaults(data, spec)
 
         resource = spec.build_resource(self, parent_field_name, data)
+        resource._validate_fields(data)
 
         # this is differnt for collections
         if self._parent:
@@ -401,7 +407,7 @@ class Resource(object):
         resource.data['_id'] = new_id
 
         # possibly remove this as a thing
-        self._create_new_embedded(resource, new_id, new_data, spec)
+        self._create_new_embedded(resource, new_id, data, spec)
 
         self.spec.schema.kickoff_create_update(resource)
 
@@ -591,8 +597,12 @@ class CollectionResource(Aggregable, Resource):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
 
     def serialize(self, path, query=None):
+        if query:
+            for key, value in query.items():
+                query[key] = self.spec.target_spec.fields[key].from_string(value)
         if self._parent:
-            resources = self.spec._collection().find({
+            query = query or {}
+            query.update({
                 '_owners': {
                     '$elemMatch': {
                         'owner_spec': self._parent.spec.name,
@@ -601,8 +611,7 @@ class CollectionResource(Aggregable, Resource):
                     }
                 }
             })
-        else:
-            resources = self.spec._collection().find(query)
+        resources = self.spec._collection().find(query)
         serialized = []
         for data in resources:
             resource = self.spec.target_spec.build_resource(self, self.field_name, data)

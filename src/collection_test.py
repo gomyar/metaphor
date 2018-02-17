@@ -29,7 +29,7 @@ class CollectionTest(unittest.TestCase):
 
         self.ratios_spec.add_field("score", FieldSpec("int"))
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("assets", FieldSpec('int'))
         self.company_spec.add_field("liabilities", FieldSpec('int'))
@@ -37,13 +37,13 @@ class CollectionTest(unittest.TestCase):
 
         self.company_spec.add_field("averageScore", CalcSpec("average(self.periods.ratios.score)"))
 
-        self.period_spec.add_field("period", FieldSpec("string"))
+        self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("totalIncome", FieldSpec("int"))
 
         self.period_spec.add_field("ratios", ResourceLinkSpec("ratios"))
 
-        self.sector_spec.add_field("name", FieldSpec("string"))
+        self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field('companies', CollectionSpec('company'))
         self.sector_spec.add_field("averageCompanyAssets", CalcSpec("average(self.companies.assets)"))
         self.sector_spec.add_field("averageCompanyIncome", CalcSpec("average(self.companies.periods.totalIncome)"))
@@ -90,7 +90,6 @@ class CollectionTest(unittest.TestCase):
         self.assertEquals(120, sector['averageCompanyIncome'])
 
     def test_filter_by_value(self):
-        ''' companies[name='bob'] '''
         company_id_1 = self.api.post('companies', dict(name='argle', assets=10, liabilities=10))
         company_id_2 = self.api.post('companies', dict(name='bargle', assets=20, liabilities=20))
         company_id_3 = self.api.post('companies', dict(name='arg', assets=30, liabilities=30))
@@ -99,6 +98,22 @@ class CollectionTest(unittest.TestCase):
 
         self.assertEquals(1, len(search))
         self.assertEquals(30, search[0]['assets'])
+
+        search = self.api.get('companies?assets=20')
+
+        self.assertEquals(1, len(search))
+        self.assertEquals('bargle', search[0]['name'])
+
+    def test_filter_by_value_sub_resources(self):
+        company_id_1 = self.api.post('companies', dict(name='argle', assets=10, liabilities=10))
+        period_1 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2017, period='Q1', totalIncome=100))
+        period_2 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2016, period='Q2', totalIncome=120))
+        period_3 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2015, period='Q3', totalIncome=140))
+
+        search = self.api.get('companies/%s/periods?period=Q2' % (company_id_1,))
+
+        self.assertEquals(1, len(search))
+        self.assertEquals(2016, search[0]['year'])
 
     def test_filter_by_reference(self):
         ''' companies[sector=sectors/3] ? '''

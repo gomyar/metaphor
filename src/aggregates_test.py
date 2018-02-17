@@ -31,19 +31,19 @@ class AggregatesTest(unittest.TestCase):
         self.schema.add_resource_spec(self.config_spec)
         self.schema.add_resource_spec(self.sector_spec)
 
-        self.company_spec.add_field("name", FieldSpec("string"))
+        self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("totalAssets", FieldSpec('int'))
         self.company_spec.add_field("latestPeriod", ResourceLinkSpec('period'))
 
-        self.period_spec.add_field("period", FieldSpec("string"))
+        self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("totalAssets", FieldSpec("int"))
 
-        self.portfolio_spec.add_field("name", FieldSpec("string"))
+        self.portfolio_spec.add_field("name", FieldSpec("str"))
         self.portfolio_spec.add_field("companies", CollectionSpec('company'))
 
-        self.sector_spec.add_field("name", FieldSpec("string"))
+        self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field("companies", CollectionSpec("company"))
         self.sector_spec.add_field("averageAssets", CalcSpec("average(self.companies.totalAssets)"))
 
