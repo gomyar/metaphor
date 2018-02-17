@@ -55,7 +55,7 @@ class SpikeTest(unittest.TestCase):
         self.schema.add_root('financials', CollectionSpec('financial'))
         self.schema.add_root('config', ResourceLinkSpec('config'))
 
-        self.api = MongoApi('http://server', self.schema, self.db)
+        self.api = MongoApi('server', self.schema, self.db)
 
     def test_find(self):
         company_id = self.db['resource_company'].insert(

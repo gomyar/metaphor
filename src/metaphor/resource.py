@@ -297,7 +297,7 @@ class Resource(object):
     def _id(self):
         return self.data.get('_id') if self.data else None
 
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
             child = field_spec.build_resource(self, field_name, self.data.get(field_name))
@@ -449,7 +449,7 @@ class Resource(object):
 
 
 class LinkResource(Resource):
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         return None
 
     def create(self, new_data):
@@ -547,7 +547,7 @@ class AggregateResource(Aggregable, Resource):
     def __init__(self, parent, field_name, spec):
         super(AggregateResource, self).__init__(parent, field_name, spec, None)
 
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         aggregate_chain = self.build_aggregate_chain()
         resources = self.spec._collection().aggregate(aggregate_chain)
         serialized = []
@@ -576,7 +576,7 @@ class AggregateField(AggregateResource):
     def build_aggregate_path(self, chain_path=None):
         return self._parent.build_aggregate_path()
 
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         aggregate_chain = self.build_aggregate_chain()
         resources = self._parent.spec._collection().aggregate(aggregate_chain)
         serialized = []
@@ -589,7 +589,7 @@ class CollectionResource(Aggregable, Resource):
     def __repr__(self):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
 
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         if self._parent:
             resources = self.spec._collection().find({
                 '_owners': {
@@ -601,7 +601,7 @@ class CollectionResource(Aggregable, Resource):
                 }
             })
         else:
-            resources = self.spec._collection().find()
+            resources = self.spec._collection().find(query)
         serialized = []
         for data in resources:
             resource = self.spec.target_spec.build_resource(self, self.field_name, data)
@@ -678,7 +678,7 @@ class Field(Resource):
             '%s is not a traversable resource, its a %s' % (
                 self.name, self.spec))
 
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         return self.data
 
 
@@ -709,7 +709,7 @@ class RootResource(Resource):
             resource = resource.build_child(parts.pop(0))
         return resource
 
-    def serialize(self, path):
+    def serialize(self, path, query=None):
         fields = {}
         for field_name, field_spec in self.spec.fields.items():
             fields[field_name] = os.path.join(path, field_name)

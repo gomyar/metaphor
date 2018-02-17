@@ -91,6 +91,14 @@ class CollectionTest(unittest.TestCase):
 
     def test_filter_by_value(self):
         ''' companies[name='bob'] '''
+        company_id_1 = self.api.post('companies', dict(name='argle', assets=10, liabilities=10))
+        company_id_2 = self.api.post('companies', dict(name='bargle', assets=20, liabilities=20))
+        company_id_3 = self.api.post('companies', dict(name='arg', assets=30, liabilities=30))
+
+        search = self.api.get('companies?name=arg')
+
+        self.assertEquals(1, len(search))
+        self.assertEquals(30, search[0]['assets'])
 
     def test_filter_by_reference(self):
         ''' companies[sector=sectors/3] ? '''

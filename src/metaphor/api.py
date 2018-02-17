@@ -1,5 +1,6 @@
 
 import os
+from urlparse import parse_qsl
 
 from metaphor.schema_factory import SchemaFactory
 from metaphor.resource import CollectionSpec
@@ -20,10 +21,15 @@ class MongoApi(object):
         return resource.update(data)
 
     def get(self, path):
+        if '?' in path:
+            path, params = path.split('?')
+        else:
+            params = None
         path = path.strip('/')
         if path:
             resource = self.build_resource(path)
-            return resource.serialize(os.path.join("http://", self.root_url, 'api', path))
+            params = dict(parse_qsl(params)) if params else None
+            return resource.serialize(os.path.join("http://", self.root_url, 'api', path), params)
         else:
             return self.schema.root.serialize(os.path.join("http://", self.root_url, 'api'))
 
