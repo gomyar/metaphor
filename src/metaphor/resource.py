@@ -312,6 +312,7 @@ class Resource(object):
                     fields[field_name] = None
             else:
                 fields[field_name] = child.serialize(os.path.join(path, field_name))
+        fields['self'] = path
         return fields
 
     @property
