@@ -11,7 +11,7 @@ api_bp = Blueprint('api', __name__, template_folder='templates',
 
 @api_bp.route("/")
 def api_root():
-    return jsonify(current_app.config['api'].get('/'))
+    return jsonify(current_app.config['api'].get('/', dict(request.args.items())))
 
 
 @api_bp.route("/<path:path>", methods=['GET', 'POST', 'DELETE', 'PATCH'])
@@ -23,5 +23,5 @@ def api_call(path):
     elif request.method == 'PATCH':
         return jsonify({'id': str(current_app.config['api'].patch(path, request.json))})
     else:
-        resource = current_app.config['api'].get(path)
+        resource = current_app.config['api'].get(path, dict(request.args.items()))
         return jsonify(resource)

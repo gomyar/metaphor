@@ -20,16 +20,11 @@ class MongoApi(object):
         resource = self.build_resource(path)
         return resource.update(data)
 
-    def get(self, path):
-        if '?' in path:
-            path, params = path.split('?')
-        else:
-            params = None
+    def get(self, path, args=None):
         path = path.strip('/')
         if path:
             resource = self.build_resource(path)
-            params = dict(parse_qsl(params)) if params else None
-            return resource.serialize(os.path.join("http://", self.root_url, 'api', path), params)
+            return resource.serialize(os.path.join("http://", self.root_url, 'api', path), args)
         else:
             return self.schema.root.serialize(os.path.join("http://", self.root_url, 'api'))
 

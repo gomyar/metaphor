@@ -94,12 +94,12 @@ class CollectionTest(unittest.TestCase):
         company_id_2 = self.api.post('companies', dict(name='bargle', assets=20, liabilities=20))
         company_id_3 = self.api.post('companies', dict(name='arg', assets=30, liabilities=30))
 
-        search = self.api.get('companies?name=arg')
+        search = self.api.get('companies', dict(name='arg'))
 
         self.assertEquals(1, len(search))
         self.assertEquals(30, search[0]['assets'])
 
-        search = self.api.get('companies?assets=20')
+        search = self.api.get('companies', dict(assets=20))
 
         self.assertEquals(1, len(search))
         self.assertEquals('bargle', search[0]['name'])
@@ -110,7 +110,7 @@ class CollectionTest(unittest.TestCase):
         period_2 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2016, period='Q2', totalIncome=120))
         period_3 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2015, period='Q3', totalIncome=140))
 
-        search = self.api.get('companies/%s/periods?period=Q2' % (company_id_1,))
+        search = self.api.get('companies/%s/periods' % (company_id_1,), dict(period='Q2'))
 
         self.assertEquals(1, len(search))
         self.assertEquals(2016, search[0]['year'])
