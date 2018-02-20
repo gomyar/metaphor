@@ -20,6 +20,10 @@ class MongoApi(object):
         resource = self.build_resource(path)
         return resource.update(data)
 
+    def put(self, path, data):
+        resource = self.build_resource(path)
+        return resource.update(data)
+
     def get(self, path, args=None):
         path = path.strip('/')
         if path:

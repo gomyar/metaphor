@@ -164,6 +164,21 @@ class SpikeTest(unittest.TestCase):
              '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
+    @patch('metaphor.resource.datetime')
+    def test_put(self, dt):
+        dt.now.return_value = datetime(2018, 1, 2, 3, 4, 5)
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        self.api.put('companies/%s' % (company_id,), {'name': 'Fred', 'public': False})
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals('Fred', company['name'])
+        self.assertEquals(
+            {'_id': company_id,
+             'name': u'Fred',
+             'public': False,
+             'totalTotalAssets': None,
+             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name', 'public']}
+            }, self.db['resource_company'].find_one({'_id': company_id}))
+
     def test_embedded_financials_create(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
         period_id = self.api.post('companies/%s/periods' % (company_id,),
