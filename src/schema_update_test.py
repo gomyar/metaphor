@@ -97,3 +97,23 @@ class SchemaUpdateTest(unittest.TestCase):
              {u'company': {u'fields': {u'name': {u'type': u'str'}}, u'type': u'resource'}},
              saved_schema['specs'])
         self.assertEquals({'companies': {'type': 'collection', 'target': 'company'}}, saved_schema['roots'])
+
+    def test_patch_and_put(self):
+        resp = self.client.post('/schema/specs', data=json.dumps({'name': 'company', 'fields': {'name': {'type': 'str'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        resp = self.client.post('api/companies', data=json.dumps({'name': 'Fred'}), content_type='application/json')
+        company_id = json.loads(resp.data)['id']
+        resp = self.client.put('api/companies/%s' % (company_id,), data=json.dumps({'name': 'Ned'}), content_type='application/json')
+
+        ned = self.db['resource_company'].find_one()
+        self.assertEquals(
+            'Ned',
+            ned['name'])
+
+        resp = self.client.patch('api/companies/%s' % (company_id,), data=json.dumps({'name': 'Neddy'}), content_type='application/json')
+
+        ned = self.db['resource_company'].find_one()
+        self.assertEquals(
+            'Neddy',
+            ned['name'])

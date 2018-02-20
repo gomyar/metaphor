@@ -14,12 +14,14 @@ def api_root():
     return jsonify(current_app.config['api'].get('/', dict(request.args.items())))
 
 
-@api_bp.route("/<path:path>", methods=['GET', 'POST', 'DELETE', 'PATCH'])
+@api_bp.route("/<path:path>", methods=['GET', 'POST', 'DELETE', 'PUT', 'PATCH'])
 def api_call(path):
     if request.method == 'POST':
         return jsonify({'id': str(current_app.config['api'].post(path, request.json))})
     elif request.method == 'DELETE':
         return jsonify({'id': str(current_app.config['api'].unlink(path))})
+    elif request.method == 'PUT':
+        return jsonify({'id': str(current_app.config['api'].put(path, request.json))})
     elif request.method == 'PATCH':
         return jsonify({'id': str(current_app.config['api'].patch(path, request.json))})
     else:
