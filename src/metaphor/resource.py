@@ -596,12 +596,29 @@ class CollectionResource(Aggregable, Resource):
     def __repr__(self):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
 
-    def serialize(self, path, query=None):
-        if query:
-            for key, value in query.items():
+    def compile_filter_query(self, filter_str):
+        query = dict()
+        if filter_str:
+            filter_items = [f.split('=', 1) for f in filter_str.split(',')]
+            filter_query = dict(filter_items)
+            for key, value in filter_query.items():
                 query[key] = self.spec.target_spec.fields[key].from_string(value)
+        return query
+
+    def compile_ordering(self, ordering_str):
+        sort_query = []
+        ordering = ordering_str.split(',')
+        for order in ordering:
+            if order.startswith('-'):
+                sort_query.append((order.lstrip('-'), -1))
+            else:
+                sort_query.append((order, 1))
+        return sort_query
+
+    def serialize(self, path, params=None):
+        params = params or {}
+        query = self.compile_filter_query(params.get('filter', ''))
         if self._parent:
-            query = query or {}
             query.update({
                 '_owners': {
                     '$elemMatch': {
@@ -612,6 +629,9 @@ class CollectionResource(Aggregable, Resource):
                 }
             })
         resources = self.spec._collection().find(query)
+        if 'ordering' in params:
+            sort_query = self.compile_ordering(params['ordering'])
+            resources = resources.sort(sort_query)
         serialized = []
         for data in resources:
             resource = self.spec.target_spec.build_resource(self, self.field_name, data)
