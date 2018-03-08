@@ -87,7 +87,7 @@ class SchemaFactory(object):
         return {'type': field.field_type}
 
     def _serialize_calc(self, calc):
-        return {'calc': calc.calc_str}
+        return {'type': 'calc', 'calc': calc.calc_str}
 
     def _serialize_collection_field(self, collection):
         return {'type': 'collection', 'target': collection.target_spec_name}

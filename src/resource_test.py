@@ -296,8 +296,8 @@ class SpikeTest(unittest.TestCase):
                 'periods': {'target': 'period',
                 'type': 'collection'},
                 'public': {'type': 'bool'},
-                'totalFinancialsAssets': {'calc': 'sum(financials.totalAssets)'},
-                'totalTotalAssets': {'calc': 'sum(companies.periods.financial.totalAssets)'}},
+                'totalFinancialsAssets': {'type': 'calc', 'calc': 'sum(financials.totalAssets)'},
+                'totalTotalAssets': {'type': 'calc', 'calc': 'sum(companies.periods.financial.totalAssets)'}},
                 'type': 'resource'},
             'config': {
                 'fields': {'ppp': {'type': 'int'}}, 'type': 'resource'},
