@@ -9,6 +9,7 @@ from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, CalcSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
+from metaphor.schema_factory import SchemaFactory
 
 from datetime import datetime
 from mock import patch
@@ -282,6 +283,40 @@ class SpikeTest(unittest.TestCase):
         self.assertTrue('root' in serialized)
         self.assertEquals(['company', 'config', 'financial', 'period', 'portfolio', 'root'],
                           sorted(serialized.keys()))
+        save_data = SchemaFactory().serialize_schema(self.schema)
+        self.assertEquals({
+            'registered_functions': {},
+            'roots': {
+                'companies': {'target': 'company', 'type': 'collection'},
+                'config': {'target': 'config', 'type': 'collection'},
+                'financials': {'target': 'financial', 'type': 'collection'},
+                'portfolios': {'target': 'portfolio', 'type': 'collection'}},
+            'specs': {
+                'company': {'fields': {'name': {'type': 'str'},
+                'periods': {'target': 'period',
+                'type': 'collection'},
+                'public': {'type': 'bool'},
+                'totalFinancialsAssets': {'calc': 'sum(financials.totalAssets)'},
+                'totalTotalAssets': {'calc': 'sum(companies.periods.financial.totalAssets)'}},
+                'type': 'resource'},
+            'config': {
+                'fields': {'ppp': {'type': 'int'}}, 'type': 'resource'},
+            'financial': {
+                'fields': {'totalAssets': {'type': 'int'}},
+                'type': 'resource'},
+            'period': {
+                'fields': {'financial': {'target': 'financial',
+                'type': 'link'},
+                'period': {'type': 'str'},
+                'year': {'type': 'int'}},
+                'type': 'resource'},
+            'portfolio': {
+                'fields': {
+                    'companies': {'target': 'company',
+                                  'type': 'collection'},
+                                  'name': {'type': 'str'}},
+                    'type': 'resource'}},
+            'version': '0.1'}, save_data)
 
     def _test_resource_at_root(self):
         before = self.api.get('config')

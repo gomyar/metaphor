@@ -103,6 +103,10 @@ class ResourceLinkSpec(Spec):
     def target_spec(self):
         return self.schema.specs[self.name]
 
+    @property
+    def target_spec_name(self):
+        return self.target_spec.name
+
     def build_resource(self, parent, field_name, data):
         target_resource_spec = self.schema.specs[self.name]
         if not data:
@@ -120,6 +124,7 @@ class ResourceLinkSpec(Spec):
 class CalcSpec(Spec):
     def __init__(self, calc_str):
         self.calc_str = calc_str
+        self.field_type = 'calc'
 
     def __repr__(self):
         return "<CalcSpec %s.%s '%s'>" % (self.parent.name, self.field_name, self.calc_str,)
