@@ -23,7 +23,7 @@ class Spec(object):
                 spec = spec.fields[path.pop(0)]
             elif type(spec) == ResourceSpec:
                 spec = spec.fields[path.pop(0)]
-            elif type(spec) == CollectionSpec:
+            elif type(spec) in (CollectionSpec, LinkCollectionSpec):
                 spec = spec.target_spec.fields[path.pop(0)]
             else:
                 raise Exception("Cannot resolve spec %s" % (spec,))
@@ -289,6 +289,15 @@ class CollectionSpec(Spec):
         return False
 
 
+class LinkCollectionSpec(CollectionSpec):
+    @property
+    def field_type(self):
+        return 'linkcollection'
+
+    def build_resource(self, parent, field_name, name):
+        return LinkCollectionResource(parent, field_name, self, name)
+
+
 # resources
 
 
@@ -312,7 +321,7 @@ class Resource(object):
     def _am_link(self):
         if self._parent:
             parent_spec = self._parent.spec
-            if type(parent_spec) == CollectionSpec:
+            if type(parent_spec) in (CollectionSpec, LinkCollectionSpec):
                 parent_spec = parent_spec.target_spec
             return (type(parent_spec) == ReverseLinkSpec or
                     type(parent_spec.fields[self.field_name]) == ResourceLinkSpec)
@@ -381,7 +390,7 @@ class Resource(object):
         fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
             child = field_spec.build_resource(self, field_name, self.data.get(field_name))
-            if type(field_spec) == CollectionSpec:
+            if type(field_spec) in (CollectionSpec, LinkCollectionSpec):
                 fields[field_name] = os.path.join(path,
                                                   field_name)
             elif type(field_spec) == ResourceLinkSpec:
@@ -485,7 +494,7 @@ class Resource(object):
         return new_id
 
     def unlink(self):
-        if type(self._parent) == CollectionResource:
+        if type(self._parent) == LinkCollectionResource:
             updater_ids = self.spec.schema.create_updaters(self)
 
             parent_owner = {
@@ -499,6 +508,12 @@ class Resource(object):
             {"$pull":
                 {"_owners": parent_owner}
             })
+
+            self.spec.schema.run_updaters(updater_ids)
+        elif type(self._parent) == CollectionResource:
+            updater_ids = self.spec.schema.create_updaters(self)
+
+            self.spec._collection().delete_one({"_id": ObjectId(self._id)})
 
             self.spec.schema.run_updaters(updater_ids)
         else:
@@ -592,9 +607,6 @@ class Aggregable(object):
 
             aggregate_chain = []
 
-#            if self._id:
-#                aggregate_chain.append({"$match": {"%s_id" % (owner_prefix,): self._id}})
-
             if self._am_link():
                 aggregate_chain.append(
                     {'$lookup': {
@@ -641,7 +653,7 @@ class AggregateResource(Aggregable, Resource):
 
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
-            if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
+            if type(self.spec.target_spec.fields[child_id]) in (CollectionSpec, LinkCollectionSpec):
                 return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             if type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 return AggregateField(self, child_id, self.spec.target_spec.fields[child_id])
@@ -716,7 +728,7 @@ class CollectionResource(Aggregable, Resource):
 
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
-            if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
+            if type(self.spec.target_spec.fields[child_id]) in (CollectionSpec, LinkCollectionSpec):
                 return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
                 return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
@@ -741,10 +753,7 @@ class CollectionResource(Aggregable, Resource):
         return resource
 
     def create(self, new_data):
-        if 'id' in new_data:
-            return self._create_link(new_data['id'])
-        else:
-            return self._create_new(self.field_name, new_data, self.spec.target_spec)
+        return self._create_new(self.field_name, new_data, self.spec.target_spec)
 
     def _create_owner_link(self):
         return {
@@ -752,6 +761,11 @@ class CollectionResource(Aggregable, Resource):
             'owner_id': self._parent._id,
             'owner_field': self.field_name
         }
+
+
+class LinkCollectionResource(CollectionResource):
+    def create(self, new_data):
+        return self._create_link(new_data['id'])
 
     def _create_link(self, resource_id):
         self.spec._collection().update({

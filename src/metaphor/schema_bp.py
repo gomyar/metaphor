@@ -17,7 +17,7 @@ schema_bp = Blueprint('schema', __name__, template_folder='templates',
 def roots_list():
     schema = current_app.config['schema']
     if request.method == 'GET':
-        return jsonify([spec.serialize for spec in schema.root_spec.fields.values()])
+        return jsonify([spec.serialize() for spec in schema.root_spec.fields.values()])
     if request.method == 'POST':
         schema.add_root(request.json['name'], CollectionSpec(request.json['target']))
         SchemaFactory().save_schema(schema)
@@ -28,7 +28,7 @@ def roots_list():
 def schema_update(spec_name):
     schema = current_app.config['schema']
     if request.method == 'GET':
-        return schema.specs[name].serialize()
+        return jsonify(schema.specs[spec_name].serialize())
     elif request.method == 'PATCH':
         data = request.json
         for field_name, field_data in data.items():
@@ -61,4 +61,7 @@ def schema_list():
 def root_get():
     schema = current_app.config['schema']
     if request.method == 'GET':
-        return jsonify([spec.serialize() for spec in schema.specs.values()])
+        return jsonify({
+            'specs': request.base_url + 'specs',
+            'root': request.base_url + 'root',
+        })

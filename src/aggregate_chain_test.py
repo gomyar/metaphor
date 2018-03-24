@@ -6,7 +6,7 @@ from pymongo import MongoClient
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, AggregateResource
-from metaphor.resource import AggregateField
+from metaphor.resource import AggregateField, LinkCollectionSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
 
@@ -41,7 +41,7 @@ class AggregateChainTest(unittest.TestCase):
         self.financial_spec.add_field("grossProfit", FieldSpec("int"))
 
         self.portfolio_spec.add_field("name", FieldSpec("str"))
-        self.portfolio_spec.add_field("companies", CollectionSpec('company'))
+        self.portfolio_spec.add_field("companies", LinkCollectionSpec('company'))
 
         self.config_spec.add_field("ppp", FieldSpec("int"))
 

@@ -7,6 +7,7 @@ from pymongo import MongoClient
 from metaphor.calclang import parser
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, AggregateResource
+from metaphor.resource import LinkCollectionSpec
 from metaphor.resource import AggregateField, CalcSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
@@ -41,10 +42,10 @@ class AggregatesTest(unittest.TestCase):
         self.period_spec.add_field("totalAssets", FieldSpec("int"))
 
         self.portfolio_spec.add_field("name", FieldSpec("str"))
-        self.portfolio_spec.add_field("companies", CollectionSpec('company'))
+        self.portfolio_spec.add_field("companies", LinkCollectionSpec('company'))
 
         self.sector_spec.add_field("name", FieldSpec("str"))
-        self.sector_spec.add_field("companies", CollectionSpec("company"))
+        self.sector_spec.add_field("companies", LinkCollectionSpec("company"))
         self.sector_spec.add_field("averageAssets", CalcSpec("average(self.companies.totalAssets)"))
 
         self.config_spec.add_field("ppp", FieldSpec("int"))

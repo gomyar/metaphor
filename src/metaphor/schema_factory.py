@@ -7,6 +7,7 @@ from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CalcSpec
 from metaphor.resource import FieldSpec
 from metaphor.resource import CollectionSpec
+from metaphor.resource import LinkCollectionSpec
 from metaphor.schema import Schema
 
 
@@ -20,6 +21,7 @@ class SchemaFactory(object):
             'bool': self._build_field,
             'calc': self._build_calc,
             'collection': self._build_collection_field,
+            'linkcollection': self._build_link_collection_field,
         }
         self.field_serializers = {
             'link': self._serialize_link,
@@ -29,6 +31,7 @@ class SchemaFactory(object):
             'bool': self._serialize_field,
             'calc': self._serialize_calc,
             'collection': self._serialize_collection_field,
+            'linkcollection': self._serialize_link_collection_field,
         }
 
     def create_schema(self, db, version, data):
@@ -37,10 +40,6 @@ class SchemaFactory(object):
         self._add_reverse_links(schema)
         for root_name, resource_data in data['roots'].items():
             schema.add_root(root_name, self._build_collection(None, resource_data))
-        for name, import_path in data.get('registered_functions', {}).items():
-            func_module, func_name = import_path.rsplit('.', 1)
-            mod = importlib.import_module(func_module)
-            schema.register_function(name, getattr(mod, func_name))
         return schema
 
     def _add_specs_from_data(self, schema, spec_data):
@@ -88,11 +87,13 @@ class SchemaFactory(object):
     def _build_collection_field(self, type_name, data=None):
         return CollectionSpec(data['target'])
 
+    def _build_link_collection_field(self, type_name, data=None):
+        return LinkCollectionSpec(data['target'])
+
     def serialize_schema(self, schema):
         specs = dict([(name, self._serialize_spec(data)) for (name, data) in schema.specs.items() if name != 'root'])
         roots = dict([(name, {'type': 'collection', 'target': spec.target_spec_name}) for (name, spec) in schema.specs['root'].fields.items()])
-        registered_functions = dict([(name, "%s.%s" % (func.__module__, func.__name__)) for (name, func) in schema._functions.items()])
-        return {'specs': specs, 'roots': roots, 'version': schema.version, 'registered_functions': registered_functions}
+        return {'specs': specs, 'roots': roots, 'version': schema.version}
 
     def _serialize_spec(self, spec):
         fields = dict([(name, self.field_serializers[field.field_type](field)) for (name, field) in spec.fields.items() if type(field) != ReverseLinkSpec])
@@ -112,6 +113,9 @@ class SchemaFactory(object):
 
     def _serialize_collection_field(self, collection):
         return {'type': 'collection', 'target': collection.target_spec_name}
+
+    def _serialize_link_collection_field(self, collection):
+        return {'type': 'linkcollection', 'target': collection.target_spec_name}
 
     def save_schema(self, schema):
         save_data = SchemaFactory().serialize_schema(schema)

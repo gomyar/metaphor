@@ -144,12 +144,8 @@ class SchemaFactoryTest(unittest.TestCase):
             'size': {'type': 'int'},
             'yesno': {'type': 'bool'}},
             'type': 'resource'},
-                'test_spec_2': {
-                    'fields': {
-                }, 'type': 'resource'}}, schema_data['specs'])
-        self.assertEquals({'test_func': 'schema_factory_test._test_func'}, schema_data['registered_functions'])
+            'test_spec_2': {'fields': {}, 'type': 'resource'}}, schema_data['specs'])
 
         schema2 = self.factory.load_schema(self.db)
 
         self.assertEquals("str", schema2.specs['test_spec'].fields['name'].field_type)
-        self.assertEquals(_test_func, schema2._functions['test_func'])

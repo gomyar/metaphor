@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from metaphor.calclang import parser
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, AggregateResource
+from metaphor.resource import LinkCollectionSpec
 from metaphor.resource import AggregateField, CalcSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
@@ -30,7 +31,7 @@ class UpdaterTest(unittest.TestCase):
         self.company_spec.add_field("assets", FieldSpec('int'))
 
         self.sector_spec.add_field("name", FieldSpec("str"))
-        self.sector_spec.add_field("companies", CollectionSpec("company"))
+        self.sector_spec.add_field("companies", LinkCollectionSpec("company"))
         self.average_assets_calc = CalcSpec("average(self.companies.assets)")
         self.sector_spec.add_field("averageAssets", self.average_assets_calc)
 

@@ -8,6 +8,7 @@ from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CollectionSpec
 from metaphor.resource import CollectionResource
+from metaphor.resource import LinkCollectionSpec
 
 
 class Updater(object):
@@ -73,7 +74,7 @@ class Updater(object):
                 spec_hier = calc_spec.resolve_spec_hier(resource_ref)
                 relative_ref = resource_ref.split('.')
                 while spec_hier:
-                    if type(spec_hier[-1]) in (CollectionSpec, ResourceLinkSpec, ReverseLinkSpec):
+                    if type(spec_hier[-1]) in (CollectionSpec, ResourceLinkSpec, ReverseLinkSpec, LinkCollectionSpec):
                         spec = spec_hier[-1].target_spec
                     else:
                         spec = spec_hier[-1]

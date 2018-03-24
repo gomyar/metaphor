@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
-from metaphor.resource import ResourceLinkSpec
+from metaphor.resource import ResourceLinkSpec, LinkCollectionSpec
 from metaphor.resource import CalcSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
@@ -44,7 +44,7 @@ class CollectionTest(unittest.TestCase):
         self.period_spec.add_field("ratios", ResourceLinkSpec("ratios"))
 
         self.sector_spec.add_field("name", FieldSpec("str"))
-        self.sector_spec.add_field('companies', CollectionSpec('company'))
+        self.sector_spec.add_field('companies', LinkCollectionSpec('company'))
         self.sector_spec.add_field("averageCompanyAssets", CalcSpec("average(self.companies.assets)"))
         self.sector_spec.add_field("averageCompanyIncome", CalcSpec("average(self.companies.periods.totalIncome)"))
         self.sector_spec.add_field("averageCapital", CalcSpec("average(self.companies.workingCapital)"))

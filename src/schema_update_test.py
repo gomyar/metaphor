@@ -76,14 +76,15 @@ class SchemaUpdateTest(unittest.TestCase):
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals(
-            {u'company': {u'fields': {u'assets': {u'type': u'int'}}, u'type': u'resource'}
+            {'company': {'fields': {'assets': {'type': 'int'}}, 'type': 'resource'}
             }, saved_schema['specs'])
         self.assertEquals({}, saved_schema['roots'])
 
     def test_server_default(self):
         res = self.client.get('/schema/')
         self.assertEquals(200, res.status_code)
-        expected = [{'fields': {}, 'name': 'root', 'spec': 'resource'}]
+        expected = {'root': 'http://localhost/schema/root',
+                    'specs': 'http://localhost/schema/specs'}
         self.assertEquals(expected, json.loads(res.data))
 
     def test_add_root_and_post(self):
@@ -94,10 +95,7 @@ class SchemaUpdateTest(unittest.TestCase):
 
         saved_schema = self.db['metaphor_schema'].find_one()
         self.assertEquals(
-             {'company': {
-                'fields': {
-                    'name': {'type': 'str'},
-                }, 'type': 'resource'}},
+             {'company': {'fields': {'name': {'type': 'str'}}, 'type': 'resource'}},
              saved_schema['specs'])
         self.assertEquals({'companies': {'type': 'collection', 'target': 'company'}}, saved_schema['roots'])
 

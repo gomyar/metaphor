@@ -1,7 +1,24 @@
 
+
+add calc strict typing
+add required field
+add parent relationship for collections
+ - test aggregation for "_parent_owner"
+move linked collections to LinkCollection resource specifically
+
+we might? need:
+ - add embedded resource
+ - add separate, nullable, "embedded" resource which uses parent
+but LinkCollection might do it
+
+something for app specific functionality across many resources:
+ - report for -> resource where resource count > 10000 without creating report as an embedded resource across all
+ - iterative collection of reports? (for resource in collection create corresponding resource in this collection)
+
 need support for:
  - calc which returns reference to resource
  - calc which returns collection
+
 
  - field types:
    - enumeration

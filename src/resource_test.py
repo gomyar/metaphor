@@ -7,6 +7,7 @@ from requests.exceptions import HTTPError
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, CalcSpec
+from metaphor.resource import LinkCollectionSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
 from metaphor.schema_factory import SchemaFactory
@@ -48,7 +49,7 @@ class SpikeTest(unittest.TestCase):
         self.financial_spec.add_field("totalAssets", FieldSpec("int"))
 
         self.portfolio_spec.add_field("name", FieldSpec("str"))
-        self.portfolio_spec.add_field("companies", CollectionSpec('company'))
+        self.portfolio_spec.add_field("companies", LinkCollectionSpec('company'))
 
         self.config_spec.add_field("ppp", FieldSpec("int"))
 
@@ -288,7 +289,6 @@ class SpikeTest(unittest.TestCase):
                           sorted(serialized.keys()))
         save_data = SchemaFactory().serialize_schema(self.schema)
         self.assertEquals({
-            'registered_functions': {},
             'roots': {
                 'companies': {'target': 'company', 'type': 'collection'},
                 'config': {'target': 'config', 'type': 'collection'},
@@ -325,7 +325,7 @@ class SpikeTest(unittest.TestCase):
             'portfolio': {
                 'fields': {
                     'companies': {'target': 'company',
-                                  'type': 'collection'},
+                                  'type': 'linkcollection'},
                                   'name': {'type': 'str'}},
                     'type': 'resource'}},
             'version': '0.1'}, save_data)
