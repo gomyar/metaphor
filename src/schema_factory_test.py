@@ -113,16 +113,19 @@ class SchemaFactoryTest(unittest.TestCase):
     def test_save_load(self):
         schema = Schema(self.db, "1.2")
         test_spec = ResourceSpec('test_spec')
+        test_spec.schema = schema
         test_spec.add_field("name", FieldSpec("str"))
         test_spec.add_field("size", FieldSpec("int"))
         test_spec.add_field("money", FieldSpec("float"))
         test_spec.add_field("yesno", FieldSpec("bool"))
-        test_spec.add_field("other", ResourceLinkSpec("test_spec_2"))
 
         test_spec_2 = ResourceSpec('test_spec_2')
 
         schema.add_resource_spec(test_spec)
         schema.add_resource_spec(test_spec_2)
+
+        test_spec.add_field("other", ResourceLinkSpec("test_spec_2"))
+
         schema.add_root('specs', CollectionSpec('test_spec'))
         schema.add_root('others', CollectionSpec('test_spec_2'))
 
@@ -134,14 +137,16 @@ class SchemaFactoryTest(unittest.TestCase):
         self.assertEquals({'others': {'target': 'test_spec_2', 'type': 'collection'},
                            'specs': {'target': 'test_spec', 'type': 'collection'}}, schema_data['roots'])
         self.assertEquals({
-            'test_spec': {'fields': {'money': {'type': 'float'},
+            'test_spec': {'fields':
+                {'money': {'type': 'float'},
             'name': {'type': 'str'},
-            'other': {'target': 'test_spec_2',
-            'type': 'link'},
+            'other': {'target': 'test_spec_2', 'type': 'link'},
             'size': {'type': 'int'},
             'yesno': {'type': 'bool'}},
             'type': 'resource'},
-            'test_spec_2': {'fields': {}, 'type': 'resource'}}, schema_data['specs'])
+                'test_spec_2': {
+                    'fields': {
+                }, 'type': 'resource'}}, schema_data['specs'])
         self.assertEquals({'test_func': 'schema_factory_test._test_func'}, schema_data['registered_functions'])
 
         schema2 = self.factory.load_schema(self.db)

@@ -43,6 +43,7 @@ class SpikeTest(unittest.TestCase):
         self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("financial", ResourceLinkSpec("financial"))
+        self.period_spec.add_field("companyName", CalcSpec("self.link_company_periods.name"))
 
         self.financial_spec.add_field("totalAssets", FieldSpec("int"))
 
@@ -84,6 +85,8 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals([
             {
                 'id': str(company_id),
+                'link_portfolio_companies': None,
+                'link_root_companies': None,
                 'name': 'Bobs Burgers',
                 'public': True,
                 'periods': 'http://server/api/companies/%s/periods' % (company_id,),
@@ -106,7 +109,7 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals("Bobs Burgers", new_company['name'])
 
         period_id = self.api.post('companies/%s/periods' % (company_id,),
-                                    dict(year=2017, period='YE'))
+                                  dict(year=2017, period='YE'))
 
         company = self.db['resource_company'].find_one({'_id': company_id})
         self.assertEquals('Bobs Burgers', company['name'])
@@ -292,23 +295,32 @@ class SpikeTest(unittest.TestCase):
                 'financials': {'target': 'financial', 'type': 'collection'},
                 'portfolios': {'target': 'portfolio', 'type': 'collection'}},
             'specs': {
-                'company': {'fields': {'name': {'type': 'str'},
-                'periods': {'target': 'period',
-                'type': 'collection'},
-                'public': {'type': 'bool'},
-                'totalFinancialsAssets': {'type': 'calc', 'calc': 'sum(financials.totalAssets)'},
-                'totalTotalAssets': {'type': 'calc', 'calc': 'sum(companies.periods.financial.totalAssets)'}},
+                'company': {
+                    'fields': {
+                        'name': {'type': 'str'},
+                        'periods': {'target': 'period',
+                        'type': 'collection'},
+                        'public': {'type': 'bool'},
+                        'totalFinancialsAssets': {'type': 'calc', 'calc': 'sum(financials.totalAssets)'},
+                        'totalTotalAssets': {'type': 'calc', 'calc': 'sum(companies.periods.financial.totalAssets)'},
+                    },
                 'type': 'resource'},
             'config': {
-                'fields': {'ppp': {'type': 'int'}}, 'type': 'resource'},
+                'fields': {
+                    'ppp': {'type': 'int'},
+                }, 'type': 'resource'},
             'financial': {
-                'fields': {'totalAssets': {'type': 'int'}},
+                'fields': {
+                    'totalAssets': {'type': 'int'},
+                    },
                 'type': 'resource'},
             'period': {
-                'fields': {'financial': {'target': 'financial',
-                'type': 'link'},
-                'period': {'type': 'str'},
-                'year': {'type': 'int'}},
+                'fields': {
+                    'financial': {'target': 'financial', 'type': 'link'},
+                    'period': {'type': 'str'},
+                    'year': {'type': 'int'},
+                    'companyName': {"calc": "self.link_company_periods.name", "type": "calc"},
+                    },
                 'type': 'resource'},
             'portfolio': {
                 'fields': {
@@ -339,6 +351,31 @@ class SpikeTest(unittest.TestCase):
 
         self.assertFalse(resource_3 == resource_4)
 
+    def test_reverse_links(self):
+        portfolio_id = self.api.post('portfolios', {'name': 'Portfolio 1'})
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+                                  dict(year=2017, period='YE'))
+        financial_id = self.api.post('companies/%s/periods/%s/financial' % (company_id, period_id,), {'totalAssets': 100})
+
+        self.api.post('portfolios/%s/companies' % (portfolio_id,), {'id': company_id})
+
+        #        self.assertEquals("http://server/api/portfolios/%s" % portfolio_id,
+        #                          self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
+        self.assertEquals({
+            'companies': 'http://server/api/companies/%s/link_portfolio_companies/companies' % (company_id),
+            'id': str(portfolio_id),
+            'link_root_portfolios': None,
+            'name': u'Portfolio 1',
+            'self': 'http://server/api/companies/%s/link_portfolio_companies' % (company_id)},
+            self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
+        self.assertEquals(str(company_id),
+                          self.api.get('companies/%s/periods/%s' % (company_id, period_id))['link_company_periods']['id'])
+        self.assertEquals(str(period_id),
+                          self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id,))['link_period_financial']['id'])
+
+        self.assertEquals('Neds Fries', self.api.get('companies/%s/periods/%s' % (company_id, period_id))['companyName'])
+
     def test_resolve_spec(self):
         pass
 
@@ -346,6 +383,15 @@ class SpikeTest(unittest.TestCase):
         pass
 
     def test_remove_updater_on_error(self):
+        pass
+
+    def test_replace_existing_link_with_another(self):
+        pass
+
+    def test_set_link_with_patch_to_parent(self):
+        ''' self.api.patch('companies/%s' % (company_id),
+                       {'financial': financial_id})
+        '''
         pass
 
     def test_validate_fields_wrong_value(self):
@@ -370,4 +416,8 @@ class SpikeTest(unittest.TestCase):
             self.assertEquals("field type <type 'int'> cannot be set on <CalcSpec company.totalTotalAssets 'sum(companies.periods.financial.totalAssets)'>", str(hte))
 
     def test_unlink_resource_from_root_collection(self):
+        pass
+
+    def test_aggregates_of_aggregates(self):
+        # company.periods.financial.totalAssets was broken
         pass

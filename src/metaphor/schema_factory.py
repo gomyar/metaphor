@@ -3,6 +3,7 @@ import importlib
 
 from metaphor.resource import ResourceSpec
 from metaphor.resource import ResourceLinkSpec
+from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CalcSpec
 from metaphor.resource import FieldSpec
 from metaphor.resource import CollectionSpec
@@ -32,8 +33,8 @@ class SchemaFactory(object):
 
     def create_schema(self, db, version, data):
         schema = Schema(db, version)
-        for resource_name, resource_data in data['specs'].items():
-            self.add_resource_to_schema(schema, resource_name, resource_data.get('fields', {}))
+        self._add_specs_from_data(schema, data['specs'])
+        self._add_reverse_links(schema)
         for root_name, resource_data in data['roots'].items():
             schema.add_root(root_name, self._build_collection(None, resource_data))
         for name, import_path in data.get('registered_functions', {}).items():
@@ -42,11 +43,30 @@ class SchemaFactory(object):
             schema.register_function(name, getattr(mod, func_name))
         return schema
 
+    def _add_specs_from_data(self, schema, spec_data):
+        for resource_name, resource_data in spec_data.items():
+            self._add_spec(schema, resource_name, resource_data.get('fields', {}))
+
     def add_resource_to_schema(self, schema, resource_name, resource_fields):
+        self._add_spec(schema, resource_name, resource_fields)
+        self._add_reverse_links_for_fields(schema, resource_name, resource_fields)
+
+    def _add_reverse_links(self, schema):
+        for name, spec in schema.specs.items():
+            for field_name, field_spec in spec.fields.items():
+                spec._link_field(field_name, field_spec)
+
+    def _add_spec(self, schema, resource_name, resource_fields):
         spec = ResourceSpec(resource_name)
         schema.add_resource_spec(spec)
         for field_name, field_data in resource_fields.items():
-            self.add_field_to_spec(schema, resource_name, field_name, field_data)
+            spec = schema.specs[resource_name]
+            spec._add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
+
+    def _add_reverse_links_for_fields(self, schema, resource_name, resource_fields):
+        for field_name, field_data in resource_fields.items():
+            spec = schema.specs[resource_name]
+            spec._link_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
 
     def add_field_to_spec(self, schema, resource_name, field_name, field_data):
         spec = schema.specs[resource_name]
@@ -74,7 +94,7 @@ class SchemaFactory(object):
         return {'specs': specs, 'roots': roots, 'version': schema.version, 'registered_functions': registered_functions}
 
     def _serialize_spec(self, spec):
-        fields = dict([(name, self.field_serializers[field.field_type](field)) for (name, field) in spec.fields.items()])
+        fields = dict([(name, self.field_serializers[field.field_type](field)) for (name, field) in spec.fields.items() if type(field) != ReverseLinkSpec])
         return {'type': 'resource', 'fields': fields}
 
     def _serialize_collection(self, collection):

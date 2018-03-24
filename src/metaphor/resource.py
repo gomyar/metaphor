@@ -18,7 +18,7 @@ class Spec(object):
             spec = self.schema.root_spec
         found = [spec]
         while path:
-            if type(spec) == ResourceLinkSpec:
+            if type(spec) in (ResourceLinkSpec, ReverseLinkSpec):
                 spec = self.schema.specs[spec.name]
                 spec = spec.fields[path.pop(0)]
             elif type(spec) == ResourceSpec:
@@ -62,12 +62,21 @@ class ResourceSpec(Spec):
         return 'resource_%s' % (self.name,)
 
     def add_field(self, name, spec):
+        self._add_field(name, spec)
+        self._link_field(name, spec)
+
+    def _add_field(self, name, spec):
         self.fields[name] = spec
         spec.field_name = name
         spec.parent = self
         spec.schema = self.schema
         if type(spec) == CalcSpec:
             spec.schema.add_calc(spec)
+
+    def _link_field(self, name, spec):
+        if type(spec) in (CollectionSpec, ResourceLinkSpec):
+            spec.target_spec.add_field("link_%s_%s" % (self.name, name),
+                                       ReverseLinkSpec(self.name, name))
 
     def build_resource(self, parent, field_name, data):
         return Resource(parent, field_name, self, data)
@@ -110,7 +119,7 @@ class ResourceLinkSpec(Spec):
     def build_resource(self, parent, field_name, data):
         target_resource_spec = self.schema.specs[self.name]
         if not data:
-            return LinkResource(parent, field_name, target_resource_spec, {})
+            return NullLinkResource(parent, field_name, target_resource_spec, {})
         resource_data = target_resource_spec._collection().find_one({'_id': ObjectId(data)})
         return target_resource_spec.build_resource(parent, field_name, resource_data)
 
@@ -143,6 +152,61 @@ class CalcSpec(Spec):
 
     def check_type(self, value):
         return False
+
+
+
+class ReverseLinkSpec(ResourceLinkSpec):
+    def __init__(self, target_spec_name, target_field_name):
+        self.name = target_spec_name
+        self.target_field_name = target_field_name
+
+    def __repr__(self):
+        return "<ReverseLinkSpec %s.%s>" % (self.name, self.target_field_name)
+
+    def serialize(self):
+        return {
+            'spec': 'reverse_link',
+            'name': '%s.%s' % (self.name, self.target_field_name),
+        }
+
+    @property
+    def field_name(self):
+        return self.name
+
+    @field_name.setter
+    def field_name(self, value):
+        pass
+
+    def _collection(self):
+        return self.target_spec._collection()
+
+    def _collection_name(self):
+        return self.target_spec._collection_name()
+
+    @property
+    def field_type(self):
+        return 'link'
+
+    @property
+    def target_spec(self):
+        return self.schema.specs[self.name]
+
+    def build_resource(self, parent, field_name, data):
+        target_resource_spec = self.schema.specs[self.name]
+        if isinstance(parent.data.get('_owners', []), list):
+            links = [l for l in parent.data.get('_owners', []) if (l['owner_spec'] == self.name and l['owner_field'] == self.target_field_name)]
+            if links:
+                link = links[0]
+                resource_data = target_resource_spec._collection().find_one({'_id': link['owner_id']})
+                return target_resource_spec.build_resource(parent, field_name, resource_data)
+
+        return NullLinkResource(parent, field_name, target_resource_spec, {})
+
+    def default_value(self):
+        return None
+
+    def check_type(self, value):
+        return value is None or type(value) is dict
 
 
 class FieldSpec(Spec):
@@ -249,7 +313,8 @@ class Resource(object):
             parent_spec = self._parent.spec
             if type(parent_spec) == CollectionSpec:
                 parent_spec = parent_spec.target_spec
-            return type(parent_spec.fields[self.field_name]) == ResourceLinkSpec
+            return (type(parent_spec) == ReverseLinkSpec or
+                    type(parent_spec.fields[self.field_name]) == ResourceLinkSpec)
         return False
 
     @property
@@ -459,8 +524,7 @@ class Resource(object):
         return self._id
 
 
-
-class LinkResource(Resource):
+class NullLinkResource(Resource):
     def serialize(self, path, query=None):
         return None
 
@@ -472,6 +536,7 @@ class LinkResource(Resource):
         else:
             new_id = self._create_new(self.field_name, new_data, self.spec)
             self._update_parent_link(str(new_id))
+            # may be a problem with links here (also happens twice as _create_new also calls update)
             self._parent.spec.schema.kickoff_create_update(self._parent.build_child(self.field_name))
             return new_id
 
@@ -538,9 +603,14 @@ class Aggregable(object):
                         'localField': '_id'}})
             else:
                 aggregate_chain.append({"$unwind": "$%s_owners" % (owner_prefix,)})
-                aggregate_chain.append(
-                    {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
-                                "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
+                if type(self.spec) == ReverseLinkSpec:
+                    aggregate_chain.append(
+                        {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
+                                    "%s_owners.owner_field" % (owner_prefix,): self.spec.target_field_name}})
+                else:
+                    aggregate_chain.append(
+                        {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
+                                    "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
                 aggregate_chain.append(
                     {"$lookup": {
                         "from": self._parent.collection,
@@ -648,6 +718,8 @@ class CollectionResource(Aggregable, Resource):
             if type(self.spec.target_spec.fields[child_id]) == CollectionSpec:
                 return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             elif type(self.spec.target_spec.fields[child_id]) == ResourceLinkSpec:
+                return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
+            elif type(self.spec.target_spec.fields[child_id]) == ReverseLinkSpec:
                 return AggregateResource(self, child_id, self.spec.target_spec.fields[child_id])
             elif type(self.spec.target_spec.fields[child_id]) == FieldSpec:
                 return AggregateField(self, child_id, self.spec.target_spec.fields[child_id])
