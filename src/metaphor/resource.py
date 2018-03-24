@@ -74,7 +74,7 @@ class ResourceSpec(Spec):
             spec.schema.add_calc(spec)
 
     def _link_field(self, name, spec):
-        if type(spec) in (CollectionSpec, ResourceLinkSpec):
+        if type(spec) in (CollectionSpec, ResourceLinkSpec, LinkCollectionSpec):
             spec.target_spec.add_field("link_%s_%s" % (self.name, name),
                                        ReverseLinkSpec(self.name, name))
 
@@ -574,7 +574,7 @@ class NullLinkResource(Resource):
 
     @property
     def _id(self):
-        return self._parent.data[self.field_name] if self._parent else None
+        return self._parent.data.get(self.field_name) if self._parent else None
 
     def _create_link(self, resource_id):
         self.spec._collection().update({
