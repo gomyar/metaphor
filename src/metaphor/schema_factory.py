@@ -59,6 +59,7 @@ class SchemaFactory(object):
     def _add_spec(self, schema, resource_name, resource_fields):
         spec = ResourceSpec(resource_name)
         schema.add_resource_spec(spec)
+        spec.schema = schema
         for field_name, field_data in resource_fields.items():
             spec = schema.specs[resource_name]
             spec._add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
@@ -66,7 +67,7 @@ class SchemaFactory(object):
     def _add_reverse_links_for_fields(self, schema, resource_name, resource_fields):
         for field_name, field_data in resource_fields.items():
             spec = schema.specs[resource_name]
-            spec._link_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
+            spec._link_field(field_name, spec.fields[field_name])
 
     def add_field_to_spec(self, schema, resource_name, field_name, field_data):
         spec = schema.specs[resource_name]

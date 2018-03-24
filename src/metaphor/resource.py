@@ -227,12 +227,13 @@ class FieldSpec(Spec):
             'float': lambda s: float(s),
             'bool': lambda s: s[:1].lower() in ('t', '1'),
         }
+        self.parent = None
 
     def __repr__(self):
-        return "<FieldSpec %s.%s <%s>>" % (self.parent.name, self.field_name, self.field_type)
+        return "<FieldSpec %s.%s <%s>>" % (self.parent, self.field_name, self.field_type)
 
     def __eq__(self, rhs):
-        return type(rhs) is FieldSpec and rhs.field_type == self.field_type and rhs.parent.name == self.parent.name and rhs.field_name == self.field_name
+        return type(rhs) is FieldSpec and rhs.field_type == self.field_type and rhs.parent == self.parent and rhs.field_name == self.field_name
 
     def serialize(self):
         return {'spec': 'field', 'type': self.field_type}

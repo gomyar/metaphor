@@ -399,7 +399,7 @@ class SpikeTest(unittest.TestCase):
             self.api.post('companies', {'name': 1.1})
             self.fail("Should have thrown")
         except TypeError as hte:
-            self.assertEquals("field type <type 'float'> cannot be set on <FieldSpec company.name <str>>", str(hte))
+            self.assertEquals("field type <type 'float'> cannot be set on <FieldSpec <ResourceSpec company>.name <str>>", str(hte))
 
     def test_validate_fields_nonexistant_field(self):
         try:

@@ -45,6 +45,17 @@ def schema_list():
         SchemaFactory().add_resource_to_schema(schema, data['name'], data.get('fields', {}))
         SchemaFactory().save_schema(schema)
         return jsonify({})
+    if request.method == 'GET':
+        info = '''
+            POST {"name": "resource_name", "fields": {"field_name": {"type": "field_type", ...}}}
+            to /schema/specs to add a resource.
+            "fields" may contain the following for "type": %s
+
+            POST {"name": "root_name", "target": "resource_name"}
+            to /schema/root to add a root collection.
+        ''' % (SchemaFactory().field_builders.keys())
+
+        return jsonify({'info': info})
 
 @schema_bp.route("/", methods=['GET'])
 def root_get():
