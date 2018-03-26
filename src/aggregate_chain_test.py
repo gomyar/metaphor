@@ -112,10 +112,13 @@ class AggregateChainTest(unittest.TestCase):
         resource = self.api.build_resource('portfolios/%s/companies/%s/periods/financial' % (self.portfolio_1, self.company_1,))
 
         self.assertEquals([
-			{'$lookup': {'as': '__period',
-              'foreignField': 'financial',
-              'from': 'resource_period',
-              'localField': '_id'}},
+            {'$unwind': '$_owners'},
+            {'$match': {'_owners.owner_field': 'financial',
+                        '_owners.owner_spec': 'period'}},
+            {'$lookup': {'as': '__period',
+                        'foreignField': '_id',
+                        'from': 'resource_period',
+                        'localField': '_owners.owner_id'}},
 			{'$unwind': '$__period'},
 			{'$unwind': '$__period._owners'},
 			{'$match': {'__period._owners.owner_field': 'periods',

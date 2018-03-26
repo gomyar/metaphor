@@ -356,18 +356,14 @@ class SpikeTest(unittest.TestCase):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
         period_id = self.api.post('companies/%s/periods' % (company_id,),
                                   dict(year=2017, period='YE'))
-        financial_id = self.api.post('companies/%s/periods/%s/financial' % (company_id, period_id,), {'totalAssets': 100})
+        financial_id = self.api.post('financials', {'totalAssets': 100})
+        self.api.post('companies/%s/periods/%s/financial' % (company_id, period_id), {'id': financial_id})
 
         self.api.post('portfolios/%s/companies' % (portfolio_id,), {'id': company_id})
 
         #        self.assertEquals("http://server/api/portfolios/%s" % portfolio_id,
         #                          self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
-        self.assertEquals({
-            'companies': 'http://server/api/companies/%s/link_portfolio_companies/companies' % (company_id),
-            'id': str(portfolio_id),
-            'link_root_portfolios': None,
-            'name': u'Portfolio 1',
-            'self': 'http://server/api/companies/%s/link_portfolio_companies' % (company_id)},
+        self.assertEquals(portfolio_id,
             self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
         self.assertEquals(str(company_id),
                           self.api.get('companies/%s/periods/%s' % (company_id, period_id))['link_company_periods']['id'])

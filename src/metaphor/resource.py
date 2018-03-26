@@ -34,6 +34,44 @@ class Spec(object):
         found = self.resolve_spec_hier(resource_ref)
         return found[-1]
 
+    def load_data(self, object_id):
+        aggregate_chain = [
+            {'$match': {'_id': ObjectId(str(object_id))}},
+        ]
+        for field_name, field_spec in self.fields.items():
+            if type(field_spec) in (ResourceLinkSpec,):
+                aggregate_chain.append(
+                    {"$lookup": {
+                        "from": "resource_%s" % (field_spec.target_spec.name),
+                        "localField": "_id",
+                        "foreignField": "_owners.owner_id",
+                        "as": field_name,
+                    }}
+                )
+                aggregate_chain.append(
+                    {"$unwind": {
+                        "path": "$%s" % (field_name),
+                        "preserveNullAndEmptyArrays": True,
+                    }}
+                )
+                aggregate_chain.append(
+                    {"$match": {
+                        "$or": [
+                            {"%s._owners.owner_spec" % field_name: self.name,
+                             "%s._owners.owner_field" % field_name: field_name},
+                            {field_name: None},
+                        ]
+                    }}
+                )
+        aggregate_chain.append(
+            {'$limit': 1}
+        )
+        result = self._collection().aggregate(aggregate_chain)
+        try:
+            return result.next()
+        except StopIteration:
+            return None
+
 
 class ResourceSpec(Spec):
     def __init__(self, name):
@@ -120,7 +158,7 @@ class ResourceLinkSpec(Spec):
         target_resource_spec = self.schema.specs[self.name]
         if not data:
             return NullLinkResource(parent, field_name, target_resource_spec, {})
-        resource_data = target_resource_spec._collection().find_one({'_id': ObjectId(data)})
+        resource_data = target_resource_spec.load_data(data['_id'])
         return target_resource_spec.build_resource(parent, field_name, resource_data)
 
     def default_value(self):
@@ -197,7 +235,7 @@ class ReverseLinkSpec(ResourceLinkSpec):
             links = [l for l in parent.data.get('_owners', []) if (l['owner_spec'] == self.name and l['owner_field'] == self.target_field_name)]
             if links:
                 link = links[0]
-                resource_data = target_resource_spec._collection().find_one({'_id': link['owner_id']})
+                resource_data = target_resource_spec.load_data(link['owner_id'])
                 return target_resource_spec.build_resource(parent, field_name, resource_data)
 
         return NullLinkResource(parent, field_name, target_resource_spec, {})
@@ -254,6 +292,7 @@ class CollectionSpec(Spec):
     def __init__(self, target_spec_name):
         self.target_spec_name = target_spec_name
         self.schema = None
+        self.fields = {}
 
     def serialize(self):
         return {'spec': 'collection', 'target_spec': self.target_spec_name}
@@ -287,6 +326,44 @@ class CollectionSpec(Spec):
 
     def check_type(self, value):
         return False
+
+    def load_data(self, object_id):
+        aggregate_chain = [
+            {'$match': {'_id': ObjectId(str(object_id))}},
+        ]
+        for field_name, field_spec in self.target_spec.fields.items():
+            if type(field_spec) in (ResourceLinkSpec,):
+                aggregate_chain.append(
+                    {"$lookup": {
+                        "from": "resource_%s" % (field_spec.target_spec.name),
+                        "localField": "_id",
+                        "foreignField": "_owners.owner_id",
+                        "as": field_name,
+                    }}
+                )
+                aggregate_chain.append(
+                    {"$unwind": {
+                        "path": "$%s" % (field_name),
+                        "preserveNullAndEmptyArrays": True,
+                    }}
+                )
+                aggregate_chain.append(
+                    {"$match": {
+                        "$or": [
+                            {"%s._owners.owner_spec" % field_name: self.name,
+                             "%s._owners.owner_field" % field_name: field_name},
+                            {field_name: None},
+                        ]
+                    }}
+                )
+        aggregate_chain.append(
+            {'$limit': 1}
+        )
+        result = self._collection().aggregate(aggregate_chain)
+        try:
+            return result.next()
+        except StopIteration:
+            return None
 
 
 class LinkCollectionSpec(CollectionSpec):
@@ -389,17 +466,15 @@ class Resource(object):
     def serialize(self, path, query=None):
         fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
-            child = field_spec.build_resource(self, field_name, self.data.get(field_name))
             if type(field_spec) in (CollectionSpec, LinkCollectionSpec):
-                fields[field_name] = os.path.join(path,
-                                                  field_name)
-            elif type(field_spec) == ResourceLinkSpec:
+                fields[field_name] = os.path.join(path, field_name)
+            elif type(field_spec) in (ResourceLinkSpec, ReverseLinkSpec):
                 if self.data.get(field_name):
-                    fields[field_name] = os.path.join(path,
-                                                    field_name)
+                    fields[field_name] = os.path.join(path, field_name)
                 else:
                     fields[field_name] = None
             else:
+                child = field_spec.build_resource(self, field_name, self.data.get(field_name))
                 fields[field_name] = child.serialize(os.path.join(path, field_name))
         fields['self'] = path
         return fields
@@ -546,24 +621,14 @@ class NullLinkResource(Resource):
 
     def create(self, new_data):
         if 'id' in new_data:
-            self._update_parent_link(new_data['id'])
+            self._create_link(new_data['id'])
             self._parent.spec.schema.kickoff_create_update(self._parent.build_child(self.field_name))
             return new_data['id']
         else:
             new_id = self._create_new(self.field_name, new_data, self.spec)
-            self._update_parent_link(str(new_id))
             # may be a problem with links here (also happens twice as _create_new also calls update)
             self._parent.spec.schema.kickoff_create_update(self._parent.build_child(self.field_name))
             return new_id
-
-    def _update_parent_link(self, new_id):
-        self._parent.data[self.field_name] = new_id
-        self._parent.spec._collection().update({
-            "_id": ObjectId(self._parent._id)
-        },
-        {
-            "$set": {self.field_name: ObjectId(new_id)}
-        })
 
     def _create_owner_link(self):
         return {
@@ -590,6 +655,7 @@ class NullLinkResource(Resource):
     def _load_child_resource(self, child_id):
         data = self.spec._collection().find_one(
             {'_id': ObjectId(child_id)})
+        #data = self.spec.load_data(child_id)
         resource = self.spec.build_resource(
             self, self.field_name, data)
         return resource
@@ -607,30 +673,22 @@ class Aggregable(object):
 
             aggregate_chain = []
 
-            if self._am_link():
+            aggregate_chain.append({"$unwind": "$%s_owners" % (owner_prefix,)})
+            if type(self.spec) == ReverseLinkSpec:
                 aggregate_chain.append(
-                    {'$lookup': {
-                        'as': new_owner_prefix,
-                        'foreignField': self.field_name,
-                        'from': self._parent.collection,
-                        'localField': '_id'}})
+                    {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
+                                "%s_owners.owner_field" % (owner_prefix,): self.spec.target_field_name}})
             else:
-                aggregate_chain.append({"$unwind": "$%s_owners" % (owner_prefix,)})
-                if type(self.spec) == ReverseLinkSpec:
-                    aggregate_chain.append(
-                        {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
-                                    "%s_owners.owner_field" % (owner_prefix,): self.spec.target_field_name}})
-                else:
-                    aggregate_chain.append(
-                        {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
-                                    "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
                 aggregate_chain.append(
-                    {"$lookup": {
-                        "from": self._parent.collection,
-                        "localField": "%s_owners.owner_id" % (owner_prefix,),
-                        "foreignField": "_id",
-                        "as": new_owner_prefix,
-                    }})
+                    {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
+                                "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
+            aggregate_chain.append(
+                {"$lookup": {
+                    "from": self._parent.collection,
+                    "localField": "%s_owners.owner_id" % (owner_prefix,),
+                    "foreignField": "_id",
+                    "as": new_owner_prefix,
+                }})
             aggregate_chain.append(
                 {"$unwind": "$%s" % (new_owner_prefix,)}
             )
@@ -746,8 +804,8 @@ class CollectionResource(Aggregable, Resource):
             return resource
 
     def _load_child_resource(self, child_id):
-        data = self.spec._collection().find_one(
-            {'_id': ObjectId(child_id)})
+        data = self.spec.load_data(child_id)
+
         resource = self.spec.target_spec.build_resource(
             self, self.field_name, data)
         return resource
