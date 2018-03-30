@@ -149,6 +149,7 @@ class AggregatesTest(unittest.TestCase):
         self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
         self.sector_2 = self.api.post('sectors', {'name': 'Finance'})
         # ad 2 companies to sector
+        import ipdb; ipdb.set_trace()
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'id': self.company_1})
         self.api.post('sectors/%s/companies' % (self.sector_2,), {'id': self.company_2})
 
