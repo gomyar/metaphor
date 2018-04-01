@@ -82,7 +82,7 @@ class SchemaFactory(object):
         return FieldSpec(data.get('type'))
 
     def _build_calc(self, type_name, data=None):
-        return CalcSpec(data['calc'])
+        return CalcSpec(data['calc'], data['calc_type'])
 
     def _build_collection_field(self, type_name, data=None):
         return CollectionSpec(data['target'])
@@ -109,7 +109,7 @@ class SchemaFactory(object):
         return {'type': field.field_type}
 
     def _serialize_calc(self, calc):
-        return {'type': 'calc', 'calc': calc.calc_str}
+        return {'type': 'calc', 'calc': calc.calc_str, 'calc_type': calc.calc_type}
 
     def _serialize_collection_field(self, collection):
         return {'type': 'collection', 'target': collection.target_spec_name}

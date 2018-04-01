@@ -96,7 +96,7 @@ class SchemaFactoryTest(unittest.TestCase):
             'specs': {
                 'company': {'type': 'resource', 'fields': {
                             'name': {'type': 'str'},
-                            'otherName': {'type': 'calc', 'calc': 'self.name'},
+                            'otherName': {'type': 'calc', 'calc': 'self.name', 'calc_type': 'str'},
                 }},
             },
             'roots': {
@@ -109,6 +109,7 @@ class SchemaFactoryTest(unittest.TestCase):
         self.assertEquals(['companies'], schema.specs['root'].fields.keys())
         self.assertEquals('str', schema.specs['company'].fields['name'].field_type)
         self.assertEquals('self.name', schema.specs['company'].fields['otherName'].calc_str)
+        self.assertEquals('str', schema.specs['company'].fields['otherName'].calc_type)
 
     def test_save_load(self):
         schema = Schema(self.db, "1.2")

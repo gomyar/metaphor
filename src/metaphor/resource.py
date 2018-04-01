@@ -123,6 +123,9 @@ class ResourceLinkSpec(Spec):
         resource_data = target_resource_spec._collection().find_one({'_id': ObjectId(data)})
         return target_resource_spec.build_resource(parent, field_name, resource_data)
 
+    def build_field(self, parent, field_name, data):
+        return self.build_resource(parent, field_name, data)
+
     def default_value(self):
         return None
 
@@ -131,14 +134,26 @@ class ResourceLinkSpec(Spec):
 
 
 class CalcSpec(Spec):
-    def __init__(self, calc_str):
+    def __init__(self, calc_str, calc_type):
         self.calc_str = calc_str
         self.field_type = 'calc'
+        self.calc_type = calc_type
 
     def __repr__(self):
-        return "<CalcSpec %s.%s '%s'>" % (self.parent.name, self.field_name, self.calc_str,)
+        return "<CalcSpec %s.%s '%s' [%s]>" % (self.parent.name, self.field_name, self.calc_str, self.calc_type)
+
+    def is_primitive(self):
+        return self.calc_type in ['str', 'float', 'int', 'bool']
 
     def build_resource(self, parent, field_name, data):
+        if self.is_primitive():
+            return CalcField(parent, field_name, self, data)
+        else:
+            spec = self.schema.specs[self.calc_type]
+            resource_data = spec._collection().find_one({'_id': data})
+            return CalcField(parent, field_name, self, resource_data)
+
+    def build_field(self, parent, field_name, data):
         return CalcField(parent, field_name, self, data)
 
     def parse_calc(self):
@@ -191,16 +206,26 @@ class ReverseLinkSpec(ResourceLinkSpec):
     def target_spec(self):
         return self.schema.specs[self.name]
 
-    def build_resource(self, parent, field_name, data):
-        target_resource_spec = self.schema.specs[self.name]
+    def _get_link_data(self, parent):
         if isinstance(parent.data.get('_owners', []), list):
             links = [l for l in parent.data.get('_owners', []) if (l['owner_spec'] == self.name and l['owner_field'] == self.target_field_name)]
             if links:
-                link = links[0]
-                resource_data = target_resource_spec._collection().find_one({'_id': link['owner_id']})
-                return target_resource_spec.build_resource(parent, field_name, resource_data)
+                return links[0]
+        return None
 
-        return NullLinkResource(parent, field_name, target_resource_spec, {})
+    def build_resource(self, parent, field_name, data):
+        target_resource_spec = self.schema.specs[self.name]
+        link_data = self._get_link_data(parent)
+        if link_data:
+            resource_data = target_resource_spec._collection().find_one({'_id': link_data['owner_id']})
+            return target_resource_spec.build_resource(parent, field_name, resource_data)
+        else:
+            return NullLinkResource(parent, field_name, target_resource_spec, {})
+
+    def build_field(self, parent, field_name, data):
+        link_data = self._get_link_data(parent)
+        owner_id = link_data['owner_id'] if link_data else None
+        return LinkField(parent, field_name, self, owner_id)
 
     def default_value(self):
         return None
@@ -240,6 +265,9 @@ class FieldSpec(Spec):
 
     def build_resource(self, parent, field_name, data):
         return Field(parent, field_name, self, data)
+
+    def build_field(self, parent, field_name, data):
+        return self.build_resource(parent, field_name, data)
 
     def default_value(self):
         return None
@@ -282,6 +310,9 @@ class CollectionSpec(Spec):
     def build_resource(self, parent, field_name, name):
         return CollectionResource(parent, field_name, self, name)
 
+    def build_field(self, parent, field_name, name):
+        return self.build_resource(parent, field_name, name)
+
     def default_value(self):
         return []
 
@@ -296,6 +327,9 @@ class LinkCollectionSpec(CollectionSpec):
 
     def build_resource(self, parent, field_name, name):
         return LinkCollectionResource(parent, field_name, self, name)
+
+    def build_field(self, parent, field_name, data):
+        return self.build_resource(parent, field_name, data)
 
 
 # resources
@@ -389,18 +423,17 @@ class Resource(object):
     def serialize(self, path, query=None):
         fields = {'id': str(self._id)}
         for field_name, field_spec in self.spec.fields.items():
-            child = field_spec.build_resource(self, field_name, self.data.get(field_name))
+            child = field_spec.build_field(self, field_name, self.data.get(field_name))
             if type(field_spec) in (CollectionSpec, LinkCollectionSpec):
                 fields[field_name] = os.path.join(path,
                                                   field_name)
             elif type(field_spec) == ResourceLinkSpec:
                 if self.data.get(field_name):
-                    fields[field_name] = os.path.join(path,
-                                                    field_name)
+                    fields[field_name] = os.path.join(path, field_name)
                 else:
                     fields[field_name] = None
             else:
-                fields[field_name] = child.serialize(os.path.join(path, field_name))
+                fields[field_name] = child.serialize_field(os.path.join(path, field_name))
         fields['self'] = path
         return fields
 
@@ -541,7 +574,7 @@ class Resource(object):
 
 
 class NullLinkResource(Resource):
-    def serialize(self, path, query=None):
+    def serialize_field(self, path, query=None):
         return None
 
     def create(self, new_data):
@@ -703,7 +736,7 @@ class CollectionResource(Aggregable, Resource):
                 sort_query.append((order, 1))
         return sort_query
 
-    def serialize(self, path, params=None):
+    def load_collection_data(self, params=None):
         params = params or {}
         query = self.compile_filter_query(params.get('filter', ''))
         if self._parent:
@@ -720,6 +753,10 @@ class CollectionResource(Aggregable, Resource):
         if 'ordering' in params:
             sort_query = self.compile_ordering(params['ordering'])
             resources = resources.sort(sort_query)
+        return resources
+
+    def serialize(self, path, params=None):
+        resources = self.load_collection_data(params)
         serialized = []
         for data in resources:
             resource = self.spec.target_spec.build_resource(self, self.field_name, data)
@@ -800,8 +837,16 @@ class Field(Resource):
             '%s is not a traversable resource, its a %s' % (
                 self.name, self.spec))
 
-    def serialize(self, path, query=None):
+    def serialize_field(self, path, query=None):
         return self.data
+
+
+class LinkField(Resource):
+    def serialize_field(self, path, query=None):
+        if self.data:
+            return path
+        else:
+            return None
 
 
 class CalcField(Field):
@@ -812,6 +857,15 @@ class CalcField(Field):
     def calculate(self):
         calc = self.spec.parse_calc()
         return calc.calculate(self._parent)
+
+    def serialize_field(self, path, query=None):
+        if self.spec.is_primitive():
+            return self.data
+        elif self.data:
+            return path
+
+    def serialize(self, path, query=None):
+        return path
 
 
 class RootResource(Resource):

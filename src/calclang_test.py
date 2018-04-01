@@ -29,14 +29,14 @@ class CalcLangTest(unittest.TestCase):
         self.company_spec.add_field("totalAssets", FieldSpec('int'))
         self.company_spec.add_field("totalLiabilities", FieldSpec('int'))
         self.company_spec.add_field("totalCurrentAssets",
-                                    CalcSpec('self.totalAssets'))
+                                    CalcSpec('self.totalAssets', 'int'))
         self.company_spec.add_field(
             "grossProfit",
-            CalcSpec('self.totalAssets - self.totalLiabilities'))
+            CalcSpec('self.totalAssets - self.totalLiabilities', 'int'))
 
         self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field("companies", CollectionSpec("company"))
-        self.sector_spec.add_field("averageLiabilities", CalcSpec("average(self.companies.totalLiabilities)"))
+        self.sector_spec.add_field("averageLiabilities", CalcSpec("average(self.companies.totalLiabilities)", 'int'))
 
         self.schema.add_root('sectors', CollectionSpec('sector'))
         self.schema.add_root('companies', CollectionSpec('company'))

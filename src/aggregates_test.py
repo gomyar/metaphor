@@ -46,7 +46,7 @@ class AggregatesTest(unittest.TestCase):
 
         self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field("companies", LinkCollectionSpec("company"))
-        self.sector_spec.add_field("averageAssets", CalcSpec("average(self.companies.totalAssets)"))
+        self.sector_spec.add_field("averageAssets", CalcSpec("average(self.companies.totalAssets)", 'int'))
 
         self.config_spec.add_field("ppp", FieldSpec("int"))
 

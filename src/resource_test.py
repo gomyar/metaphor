@@ -38,13 +38,13 @@ class SpikeTest(unittest.TestCase):
         self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("public", FieldSpec("bool"))
-        self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)"))
-        self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)'))
+        self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)", 'int'))
+        self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)', 'int'))
 
         self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("financial", ResourceLinkSpec("financial"))
-        self.period_spec.add_field("companyName", CalcSpec("self.link_company_periods.name"))
+        self.period_spec.add_field("companyName", CalcSpec("self.link_company_periods.name", 'str'))
 
         self.financial_spec.add_field("totalAssets", FieldSpec("int"))
 
@@ -301,8 +301,8 @@ class SpikeTest(unittest.TestCase):
                         'periods': {'target': 'period',
                         'type': 'collection'},
                         'public': {'type': 'bool'},
-                        'totalFinancialsAssets': {'type': 'calc', 'calc': 'sum(financials.totalAssets)'},
-                        'totalTotalAssets': {'type': 'calc', 'calc': 'sum(companies.periods.financial.totalAssets)'},
+                        'totalFinancialsAssets': {'type': 'calc', 'calc': 'sum(financials.totalAssets)', 'calc_type': 'int'},
+                        'totalTotalAssets': {'type': 'calc', 'calc': 'sum(companies.periods.financial.totalAssets)', 'calc_type': 'int'},
                     },
                 'type': 'resource'},
             'config': {
@@ -319,7 +319,7 @@ class SpikeTest(unittest.TestCase):
                     'financial': {'target': 'financial', 'type': 'link'},
                     'period': {'type': 'str'},
                     'year': {'type': 'int'},
-                    'companyName': {"calc": "self.link_company_periods.name", "type": "calc"},
+                    'companyName': {"calc": "self.link_company_periods.name", "type": "calc", 'calc_type': 'str'},
                     },
                 'type': 'resource'},
             'portfolio': {
@@ -362,17 +362,12 @@ class SpikeTest(unittest.TestCase):
 
         #        self.assertEquals("http://server/api/portfolios/%s" % portfolio_id,
         #                          self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
-        self.assertEquals({
-            'companies': 'http://server/api/companies/%s/link_portfolio_companies/companies' % (company_id),
-            'id': str(portfolio_id),
-            'link_root_portfolios': None,
-            'name': u'Portfolio 1',
-            'self': 'http://server/api/companies/%s/link_portfolio_companies' % (company_id)},
+        self.assertEquals('http://server/api/companies/%s/link_portfolio_companies' % (company_id),
             self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
-        self.assertEquals(str(company_id),
-                          self.api.get('companies/%s/periods/%s' % (company_id, period_id))['link_company_periods']['id'])
+        self.assertEquals('http://server/api/companies/%s' % (company_id),
+                          self.api.get('companies/%s/periods/%s' % (company_id, period_id))['link_company_periods'])
         self.assertEquals(str(period_id),
-                          self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id,))['link_period_financial']['id'])
+                          self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id,))['link_period_financial'])
 
         self.assertEquals('Neds Fries', self.api.get('companies/%s/periods/%s' % (company_id, period_id))['companyName'])
 
@@ -413,7 +408,7 @@ class SpikeTest(unittest.TestCase):
             self.api.post('companies', {'totalTotalAssets': 100})
             self.fail("Should have thrown")
         except TypeError as hte:
-            self.assertEquals("field type <type 'int'> cannot be set on <CalcSpec company.totalTotalAssets 'sum(companies.periods.financial.totalAssets)'>", str(hte))
+            self.assertEquals("field type <type 'int'> cannot be set on <CalcSpec company.totalTotalAssets 'sum(companies.periods.financial.totalAssets)' [int]>", str(hte))
 
     def test_unlink_resource_from_root_collection(self):
         pass

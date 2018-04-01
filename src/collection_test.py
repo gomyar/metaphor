@@ -33,9 +33,9 @@ class CollectionTest(unittest.TestCase):
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("assets", FieldSpec('int'))
         self.company_spec.add_field("liabilities", FieldSpec('int'))
-        self.company_spec.add_field("workingCapital", CalcSpec('self.assets - self.liabilities'))
+        self.company_spec.add_field("workingCapital", CalcSpec('self.assets - self.liabilities', 'int'))
 
-        self.company_spec.add_field("averageScore", CalcSpec("average(self.periods.ratios.score)"))
+        self.company_spec.add_field("averageScore", CalcSpec("average(self.periods.ratios.score)", 'int'))
 
         self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
@@ -45,9 +45,9 @@ class CollectionTest(unittest.TestCase):
 
         self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field('companies', LinkCollectionSpec('company'))
-        self.sector_spec.add_field("averageCompanyAssets", CalcSpec("average(self.companies.assets)"))
-        self.sector_spec.add_field("averageCompanyIncome", CalcSpec("average(self.companies.periods.totalIncome)"))
-        self.sector_spec.add_field("averageCapital", CalcSpec("average(self.companies.workingCapital)"))
+        self.sector_spec.add_field("averageCompanyAssets", CalcSpec("average(self.companies.assets)", 'int'))
+        self.sector_spec.add_field("averageCompanyIncome", CalcSpec("average(self.companies.periods.totalIncome)", 'int'))
+        self.sector_spec.add_field("averageCapital", CalcSpec("average(self.companies.workingCapital)", 'int'))
 
         self.schema.add_root('companies', CollectionSpec('company'))
         self.schema.add_root('sectors', CollectionSpec('sector'))

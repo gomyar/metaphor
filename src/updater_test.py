@@ -32,7 +32,7 @@ class UpdaterTest(unittest.TestCase):
 
         self.sector_spec.add_field("name", FieldSpec("str"))
         self.sector_spec.add_field("companies", LinkCollectionSpec("company"))
-        self.average_assets_calc = CalcSpec("average(self.companies.assets)")
+        self.average_assets_calc = CalcSpec("average(self.companies.assets)", 'int')
         self.sector_spec.add_field("averageAssets", self.average_assets_calc)
 
         self.schema.add_root('companies', CollectionSpec('company'))

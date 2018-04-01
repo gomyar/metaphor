@@ -31,18 +31,19 @@ class ResourceCalcTest(unittest.TestCase):
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field(
             "latestPeriod",
-            CalcSpec('latest_period(self.periods)'))
+            CalcSpec('latest_period(self.periods)', 'period'))
 
         self.period_spec.add_field("year", FieldSpec("int"))
 
         self.schema.add_root('companies', CollectionSpec('company'))
 
-        self.api = MongoApi('http://server', self.schema, self.db)
+        self.api = MongoApi('server', self.schema, self.db)
 
     def _latest_period_func(self, periods):
-        period_resources = periods.serialize('')
-        if period_resources:
-            return max(period_resources, key=lambda p: p['year'])
+        period_resources = periods.load_collection_data()
+        if period_resources.count():
+            max_period = max(period_resources, key=lambda p: p['year'])
+            return max_period['_id']
         else:
             return None
 
@@ -52,15 +53,20 @@ class ResourceCalcTest(unittest.TestCase):
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals(None, company['latestPeriod'])
 
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2015})
+        period_2015_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2015})
 
         company = self.api.get('companies/%s' % (company_id,))
-        self.assertEquals(2015, company['latestPeriod']['year'])
+        self.assertEquals('http://server/api/companies/%s/latestPeriod' % (company_id,), company['latestPeriod'])
+        latest = self.api.get('companies/%s/latestPeriod' % (company_id,))
+        self.assertEquals(period_2015_id, latest['id'])
+        self.assertEquals(2015, latest['year'])
 
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016})
+        period_2016_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016})
 
         company = self.api.get('companies/%s' % (company_id,))
-        self.assertEquals(2016, company['latestPeriod']['year'])
+        self.assertEquals('http://server/api/companies/%s/latestPeriod' % (company_id,), company['latestPeriod'])
+        latest = self.api.get('companies/%s/latestPeriod' % (company_id,))
+        self.assertEquals({'id': period_2016_id, 'year': 2016}, latest)
 
     def test_function_works_with_delete(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
