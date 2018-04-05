@@ -55,7 +55,7 @@ def schema_list():
             to /schema/root to add a root collection.
         ''' % (SchemaFactory().field_builders.keys())
 
-        return jsonify({'info': info})
+        return jsonify({'info': info, 'specs': dict([(spec_name, spec.serialize()) for (spec_name, spec) in schema.specs.items()])})
 
 @schema_bp.route("/", methods=['GET'])
 def root_get():

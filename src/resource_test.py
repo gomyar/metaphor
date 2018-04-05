@@ -364,10 +364,10 @@ class SpikeTest(unittest.TestCase):
         #                          self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
         self.assertEquals('http://server/api/companies/%s/link_portfolio_companies' % (company_id),
             self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
-        self.assertEquals('http://server/api/companies/%s' % (company_id),
+        self.assertEquals('http://server/api/companies/%s/periods/%s/link_company_periods' % (company_id, period_id),
                           self.api.get('companies/%s/periods/%s' % (company_id, period_id))['link_company_periods'])
-        self.assertEquals(str(period_id),
-                          self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id,))['link_period_financial'])
+        self.assertEquals('http://server/api/companies/%s/periods/%s/financial/link_period_financial' % (company_id, period_id),
+                          self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))['link_period_financial'])
 
         self.assertEquals('Neds Fries', self.api.get('companies/%s/periods/%s' % (company_id, period_id))['companyName'])
 

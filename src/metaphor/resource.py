@@ -865,7 +865,12 @@ class CalcField(Field):
             return path
 
     def serialize(self, path, query=None):
-        return path
+        if self.data:
+            data = self.data.copy()
+            data['id'] = str(data.pop('_id'))
+            return data
+        else:
+            return None
 
 
 class RootResource(Resource):

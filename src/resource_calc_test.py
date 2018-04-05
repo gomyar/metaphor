@@ -58,7 +58,7 @@ class ResourceCalcTest(unittest.TestCase):
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals('http://server/api/companies/%s/latestPeriod' % (company_id,), company['latestPeriod'])
         latest = self.api.get('companies/%s/latestPeriod' % (company_id,))
-        self.assertEquals(period_2015_id, latest['id'])
+        self.assertEquals(str(period_2015_id), latest['id'])
         self.assertEquals(2015, latest['year'])
 
         period_2016_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016})
@@ -66,7 +66,8 @@ class ResourceCalcTest(unittest.TestCase):
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals('http://server/api/companies/%s/latestPeriod' % (company_id,), company['latestPeriod'])
         latest = self.api.get('companies/%s/latestPeriod' % (company_id,))
-        self.assertEquals({'id': period_2016_id, 'year': 2016}, latest)
+        self.assertEquals(str(period_2016_id), latest['id'])
+        self.assertEquals(2016, latest['year'])
 
     def test_function_works_with_delete(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
