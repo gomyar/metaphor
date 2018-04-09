@@ -66,11 +66,14 @@ class Func(object):
         self.resource_ref = resource_ref
 
     def calculate(self, resource):
-        res = self.resource_ref.create_resource(resource)
-        if self.func_name in BUILTIN_FUNCTIONS:
-            return BUILTIN_FUNCTIONS[self.func_name](res)
-        else:
-            return res.spec.schema.execute_function(self.func_name, res)
+        try:
+            res = self.resource_ref.create_resource(resource)
+            if self.func_name in BUILTIN_FUNCTIONS:
+                return BUILTIN_FUNCTIONS[self.func_name](res)
+            else:
+                return res.spec.schema.execute_function(self.func_name, res)
+        except:
+            return float('nan')
 
     def all_resource_refs(self):
         return self.resource_ref.all_resource_refs()
@@ -124,7 +127,11 @@ class AddOp(Calc):
         self.rhs = rhs
 
     def calculate(self, resource):
-        return self.lhs.calculate(resource) + self.rhs.calculate(resource)
+        lhs_val = self.lhs.calculate(resource)
+        rhs_val = self.rhs.calculate(resource)
+        if lhs_val == None or rhs_val == None:
+            return None
+        return lhs_val + rhs_val
 
     def all_resource_refs(self):
         return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
@@ -138,7 +145,11 @@ class SubtractOp(Calc):
         self.rhs = rhs
 
     def calculate(self, resource):
-        return self.lhs.calculate(resource) - self.rhs.calculate(resource)
+        lhs_val = self.lhs.calculate(resource)
+        rhs_val = self.rhs.calculate(resource)
+        if lhs_val == None or rhs_val == None:
+            return None
+        return lhs_val - rhs_val
 
     def all_resource_refs(self):
         return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
@@ -152,7 +163,11 @@ class MultiplyOp(Calc):
         self.rhs = rhs
 
     def calculate(self, resource):
-        return self.lhs.calculate(resource) * self.rhs.calculate(resource)
+        lhs_val = self.lhs.calculate(resource)
+        rhs_val = self.rhs.calculate(resource)
+        if lhs_val == None or rhs_val == None:
+            return None
+        return lhs_val * rhs_val
 
     def all_resource_refs(self):
         return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
@@ -166,7 +181,11 @@ class DividebyOp(Calc):
         self.rhs = rhs
 
     def calculate(self, resource):
-        return self.lhs.calculate(resource) / self.rhs.calculate(resource)
+        lhs_val = self.lhs.calculate(resource)
+        rhs_val = self.rhs.calculate(resource)
+        if lhs_val == None or rhs_val == None or rhs_val == 0:
+            return None
+        return lhs_val / rhs_val
 
     def all_resource_refs(self):
         return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())

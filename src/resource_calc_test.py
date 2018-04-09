@@ -30,16 +30,15 @@ class ResourceCalcTest(unittest.TestCase):
 
         self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
-        self.company_spec.add_field(
-            "latestPeriod",
-            CalcSpec('latest_period(self.periods)', 'period'))
+        self.company_spec.add_field("latestPeriod", CalcSpec('latest_period(self.periods)', 'period'))
         self.company_spec.add_field("yearPeriods", CalcSpec('year_periods(self.periods)', 'period', is_collection=True))
-        self.company_spec.add_field(
-            "latestPeriod_year",
-            CalcSpec('self.latestPeriod.year', 'int'))
+        self.company_spec.add_field("latestPeriod_year", CalcSpec('self.latestPeriod.year', 'int'))
 
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("period", FieldSpec("str"))
+        self.period_spec.add_field("score", FieldSpec("int"))
+        self.period_spec.add_field("otherscore", FieldSpec("int"))
+        self.period_spec.add_field("delta", CalcSpec('self.score - self.otherscore', 'int'))
 
         self.schema.add_root('companies', CollectionSpec('company'))
 
