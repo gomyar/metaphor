@@ -906,7 +906,8 @@ class CalcField(Field):
 
     def build_child(self, name):
         if not self.spec.is_primitive():
-            return self.spec.schema.specs[self.spec.calc_type].build_resource(self, self.field_name, self.data)
+            resource = self.spec.schema.specs[self.spec.calc_type].build_resource(self, self.field_name, self.data)
+            return resource.build_child(name)
 
 
 class CalcLinkCollectionResource(CollectionResource, CalcField):
