@@ -31,7 +31,7 @@ class Updater(object):
 
     def _do_update(self):
         # find resources updated > 3 seconds ago
-        for spec_name in self.schema.specs:
+        for spec_name in self.schema.specs.keys():
             resource_data = self.schema.db['resource_%s' % spec_name].find_and_modify(
                 query={'_updated.at': {'$gt': datetime.now() - timedelta(seconds=3)}},
                 update={'$set': {'_updated.at': datetime.now()}}
