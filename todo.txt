@@ -1,6 +1,9 @@
 
+add cached link collection for calcs
+ - accessible through url: /root/employees/1234/sorted_scores
+ - might need to specify the fields for every get call
 
-add calc strict typing
+add calc strict typing - done
 add required field
 add parent relationship for collections
  - test aggregation for "_parent_owner"
