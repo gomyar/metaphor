@@ -34,6 +34,9 @@ class ResourceCalcTest(unittest.TestCase):
             "latestPeriod",
             CalcSpec('latest_period(self.periods)', 'period'))
         self.company_spec.add_field("yearPeriods", CalcSpec('year_periods(self.periods)', 'period', is_collection=True))
+        self.company_spec.add_field(
+            "latestPeriod_year",
+            CalcSpec('self.latestPeriod.year', 'int'))
 
         self.period_spec.add_field("year", FieldSpec("int"))
         self.period_spec.add_field("period", FieldSpec("str"))

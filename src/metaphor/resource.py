@@ -197,6 +197,12 @@ class CalcSpec(Spec):
     def check_type(self, value):
         return False
 
+    def create_child_spec(self, child_id):
+        spec = FieldSpec(child_id)
+        spec.parent = self
+        spec.schema = self.schema
+        return spec
+
     @property
     def target_spec(self):
         if not self.is_primitive():
@@ -897,6 +903,10 @@ class CalcField(Field):
             return data
         else:
             return None
+
+    def build_child(self, name):
+        if not self.spec.is_primitive():
+            return self.spec.schema.specs[self.spec.calc_type].build_resource(self, self.field_name, self.data)
 
 
 class CalcLinkCollectionResource(CollectionResource, CalcField):
