@@ -1,4 +1,6 @@
 
+doesn't kick off an update on a schema change
+
 add cached link collection for calcs
  - accessible through url: /root/employees/1234/sorted_scores
  - might need to specify the fields for every get call

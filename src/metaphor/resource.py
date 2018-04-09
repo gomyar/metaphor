@@ -30,7 +30,7 @@ class Spec(object):
         return self._collection().find_one({'_id': ObjectId(object_id)})
 
     def create_child_spec(self, child_id):
-        raise NotImplemented('Cannot create child spec for %s.%s' % (self, child_id))
+        raise NotImplementedError('Cannot create child spec for %s.%s' % (self, child_id))
 
     def is_link(self):
         return False
