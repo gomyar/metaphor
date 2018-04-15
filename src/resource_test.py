@@ -411,7 +411,7 @@ class SpikeTest(unittest.TestCase):
             self.api.post('companies', {'totalTotalAssets': 100})
             self.fail("Should have thrown")
         except TypeError as hte:
-            self.assertEquals("field type <type 'int'> cannot be set on <CalcSpec company.totalTotalAssets 'sum(companies.periods.financial.totalAssets)' [int]>", str(hte))
+            self.assertEquals("field type <type 'int'> cannot be set on <CalcSpec company.totalTotalAssets = 'sum(companies.periods.financial.totalAssets)' [int]>", str(hte))
 
     def test_unlink_resource_from_root_collection(self):
         pass

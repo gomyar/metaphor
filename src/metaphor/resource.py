@@ -155,7 +155,7 @@ class CalcSpec(Spec):
         self.is_collection = is_collection
 
     def __repr__(self):
-        return "<CalcSpec %s.%s '%s' [%s]>" % (self.parent.name, self.field_name, self.calc_str, self.calc_type)
+        return "<CalcSpec %s.%s = '%s' [%s]>" % (self.parent.name, self.field_name, self.calc_str, self.calc_type)
 
     def is_primitive(self):
         return self.calc_type in ['str', 'float', 'int', 'bool']
@@ -168,10 +168,12 @@ class CalcSpec(Spec):
             return CalcField(parent, field_name, self, data)
         if self.is_collection:
             return CalcLinkCollectionResource(parent, field_name, self, self.calc_type, data)
-        else:
+        elif data:
             spec = self.schema.specs[self.calc_type]
             resource_data = spec.load_data(data)
             return CalcField(parent, field_name, self, resource_data)
+        else:
+            return CalcField(parent, field_name, self, None)
 
     def build_aggregate_resource(self, parent):
         if self.is_primitive():
@@ -198,10 +200,7 @@ class CalcSpec(Spec):
         return False
 
     def create_child_spec(self, child_id):
-        spec = FieldSpec(child_id)
-        spec.parent = self
-        spec.schema = self.schema
-        return spec
+        return self
 
     @property
     def target_spec(self):
@@ -460,7 +459,8 @@ class Resource(object):
 
     @property
     def _id(self):
-        return self.data.get('_id') if self.data else None
+        # slight kludge
+        return self.data.get('_id') if self.data and type(self.data) == dict else None
 
     def serialize(self, path, query=None):
         fields = {'id': str(self._id)}

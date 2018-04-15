@@ -9,6 +9,7 @@ from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CollectionSpec
 from metaphor.resource import CollectionResource
 from metaphor.resource import LinkCollectionSpec
+from metaphor.resource import CalcSpec
 
 
 class Updater(object):
@@ -63,7 +64,7 @@ class Updater(object):
         for calc_spec in self.schema._all_calcs:
             for resource_ref in calc_spec.all_resource_refs():
                 resolved_field_spec = calc_spec.resolve_spec(resource_ref)
-                if field.spec == resolved_field_spec:
+                if field.spec == resolved_field_spec: # or field.spec == resolved_field_spec.parent:
                     found.add((calc_spec, resource_ref, resource_ref.rsplit('.', 1)[0]))
         return found
 
@@ -100,7 +101,10 @@ class Updater(object):
                 root = CollectionResource(None, 'self', collection_spec, None)
                 child = root.build_child_dot(relative_ref)
                 chain = child.build_aggregate_chain()
-                chain.insert(0, {'$match': {'_id': resource._id}})
+                if type(child.spec) == CalcSpec and not child.spec.is_primitive():
+                    chain.append({'$match': {'%s._id' % (child._parent.build_aggregate_path(),): resource._id}})
+                else:
+                    chain.insert(0, {'$match': {'_id': resource._id}})
                 cursor = child.spec._collection().aggregate(chain)
                 for data in cursor:
                     if child._parent:
@@ -122,6 +126,14 @@ class Updater(object):
             self.perform_update(update_id)
 
     def perform_update(self, update_id):
+        self._perform_update_single(update_id)
+
+    def _perform_update_single(self, update_id):
+        update = self.schema.db['metaphor_updates'].find_one({'_id': update_id})
+        for resource_id in update['resource_ids']:
+            self._perform_update(update, update_id, resource_id)
+
+    def _perform_update_async(self, update_id):
         update = self.schema.db['metaphor_updates'].find_one({'_id': update_id})
         threads = [gevent.spawn(self._perform_update, update, update_id, resource_id) for resource_id in update['resource_ids']]
         gevent.joinall(threads, raise_error=True)

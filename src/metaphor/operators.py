@@ -72,7 +72,7 @@ class Func(object):
                 return BUILTIN_FUNCTIONS[self.func_name](res)
             else:
                 return res.spec.schema.execute_function(self.func_name, res)
-        except:
+        except TypeError as te:
             return float('nan')
 
     def all_resource_refs(self):
@@ -102,8 +102,9 @@ class FieldRef(Calc):
 class ResourceRef(Calc):
     ''' Reference to resource, self.companies[0]
     '''
-    def calculate(self, resource):
-        return self.create_resource(resource).data
+    def calculate(self, parent):
+        resource = self.create_resource(parent)
+        return resource._id if resource._id else resource.data
 
     def create_resource(self, resource):
         parts = self.exp.split('.')
