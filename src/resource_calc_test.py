@@ -198,6 +198,15 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(None, period_6['yearlyDelta_score'])
         self.assertEquals(None, period_6['quarterlyDelta_score'])
 
+        # double check child resource
+        previousYear = self.api.get('companies/%s/periods/%s/previousYear' % (company_id, period_1_id))
+        self.assertEquals(2017, previousYear['year'])
+
+        previousQuarter = self.api.get('companies/%s/periods/%s/previousQuarter' % (company_id, period_1_id))
+        self.assertEquals(2017, previousQuarter['year'])
+        self.assertEquals('YE', previousQuarter['period'])
+        self.assertEquals('http://server/api/companies/%s/periods/%s/previousQuarter/previousQuarter' % (company_id, period_1_id), previousQuarter['previousQuarter'])
+
     def test_aggregate_link_collection_calc_field(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})

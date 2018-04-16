@@ -898,9 +898,12 @@ class CalcField(Field):
 
     def serialize(self, path, query=None):
         if self.data:
-            data = self.data.copy()
-            data['id'] = str(data.pop('_id'))
-            return data
+            fields = {'id': str(self._id)}
+            for field_name, field_spec in self.spec.target_spec.fields.items():
+                child = field_spec.build_field(self, field_name, self.data.get(field_name))
+                fields[field_name] = child.serialize_field(os.path.join(path, field_name))
+            fields['self'] = path
+            return fields
         else:
             return None
 
