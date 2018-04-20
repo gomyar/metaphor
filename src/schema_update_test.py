@@ -118,3 +118,66 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals(
             'Neddy',
             ned['name'])
+
+    def test_recalc_on_update(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.post('/api/companies', data=json.dumps({'name': 'Bobs Burgers', 'assets': 100, 'liabilities': 80}), content_type='application/json')
+        company_id_1 = json.loads(response.data)['id']
+        response = self.client.post('/api/companies', data=json.dumps({'name': 'Neds Fries', 'assets': 50, 'liabilities': 40}), content_type='application/json')
+        company_id_2 = json.loads(response.data)['id']
+
+        self.client.patch('/schema/specs/company', data=json.dumps(
+            {'profit': {'type': 'calc', 'calc': 'self.assets - self.liabilities', 'calc_type': 'int'}}), content_type='application/json')
+
+        response = self.client.get('/api/companies/%s' % (company_id_1,))
+        company_1 = json.loads(response.data)
+        response = self.client.get('/api/companies/%s' % (company_id_2,))
+        company_2 = json.loads(response.data)
+
+        self.assertEquals(20, company_1['profit'])
+        self.assertEquals(10, company_2['profit'])
+
+    def test_cannot_add_invalid_calc(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'profit': {'type': 'calc', 'calc': 'self.NONEXISTANT - self.liabilities', 'calc_type': 'int'}}), content_type='application/json')
+
+        self.assertEquals(400, response.status_code)
+        self.assertEquals({"error": "u'NONEXISTANT'"}, json.loads(response.data))
+
+    def test_cannot_add_invalid_type(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'profit': {'type': 'nonexistant'}}), content_type='application/json')
+
+        self.assertEquals(400, response.status_code)
+        self.assertEquals({"error": "u'nonexistant'"}, json.loads(response.data))
+
+    def test_cannot_add_reserved_word(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'self': {'type': 'nonexistant'}}), content_type='application/json')
+        self.assertEquals(400, response.status_code)
+        self.assertEquals({"error": "u'nonexistant'"}, json.loads(response.data))
+
+    def test_cannot_add_link_prefixed_field(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'link_something': {'type': 'company'}}), content_type='application/json')
+        self.assertEquals(400, response.status_code)
+        self.assertEquals({u'error': u"Fields cannot start with 'link_' (reserved for interal use)"}, json.loads(response.data))

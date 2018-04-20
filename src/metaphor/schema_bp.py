@@ -31,8 +31,19 @@ def schema_update(spec_name):
         return jsonify(schema.specs[spec_name].serialize())
     elif request.method == 'PATCH':
         data = request.json
+
+        try:
+            for field_name, field_data in data.items():
+                SchemaFactory().validate_field_spec(schema, spec_name, field_name, field_data)
+        except Exception as e:
+            response = jsonify({'error': str(e)})
+            response.status_code = 400
+            return response
         for field_name, field_data in data.items():
             SchemaFactory().add_field_to_spec(schema, spec_name, field_name, field_data)
+        for field_name, field_data in data.items():
+            if field_data['type'] == 'calc':
+                schema.kickoff_update_for_spec(schema.specs[spec_name], field_name)
         SchemaFactory().save_schema(schema)
         return jsonify({})
 

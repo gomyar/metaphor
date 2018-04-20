@@ -66,6 +66,12 @@ class Schema(object):
 
         self.run_updaters(updater_ids)
 
+    def kickoff_update_for_spec(self, spec, field_name):
+        resources = spec._collection().find({}, {'_id': 1})
+        resource_ids = [res['_id'] for res in resources]
+        updater_id = self.updater._save_updates(spec.name, field_name, resource_ids)
+        self.run_updaters([updater_id])
+
     def save(self):
         self.db['metaphor_schema'].insert(schema_data)
 

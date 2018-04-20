@@ -72,6 +72,18 @@ class SchemaFactory(object):
         spec = schema.specs[resource_name]
         spec.add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
 
+    def validate_field_spec(self, schema, resource_name, field_name, field_data):
+        if field_name.startswith('link_'):
+            raise Exception("Fields cannot start with 'link_' (reserved for interal use)")
+        calc = self.field_builders[field_data['type']](field_name, field_data)
+        parent_spec = schema.specs[resource_name]
+        if field_data['type'] == 'calc':
+            calc.schema = schema
+            calc.parent = parent_spec
+            calc.field_name = field_name
+            for resource_ref in calc.all_resource_refs():
+                calc.resolve_spec(resource_ref)
+
     def _build_collection(self, type_name, data=None):
         return CollectionSpec(data['target'])
 
