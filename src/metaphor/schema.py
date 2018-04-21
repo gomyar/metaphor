@@ -1,6 +1,7 @@
 
 from metaphor.resource import ResourceSpec
 from metaphor.resource import RootResource
+from metaphor.resource import CalcSpec
 from metaphor.updater import Updater
 
 
@@ -26,6 +27,18 @@ class Schema(object):
         self._all_calcs = []
         self.root = RootResource(self)
         self.updater = Updater(self)
+
+    def dependency_tree(self):
+        deps = {}
+        for spec_name, spec in self.specs.items():
+            for field_name, spec in spec.fields.items():
+                if type(spec) == CalcSpec:
+                    spec_deps = set()
+                    for resource_ref in spec.all_resource_refs():
+                        ref_spec = spec.resolve_spec(resource_ref)
+                        spec_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+                    deps["%s.%s" % (spec_name, field_name)] = spec_deps
+        return deps
 
     def __repr__(self):
         return "<Schema %s>" % (self.version)

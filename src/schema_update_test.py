@@ -181,3 +181,47 @@ class SchemaUpdateTest(unittest.TestCase):
             {'link_something': {'type': 'company'}}), content_type='application/json')
         self.assertEquals(400, response.status_code)
         self.assertEquals({u'error': u"Fields cannot start with 'link_' (reserved for interal use)"}, json.loads(response.data))
+
+    def test_cannot_add_circular_dependency(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'allAssets': {'type': 'calc', 'calc': 'self.assets', 'calc_type': 'int'}}), content_type='application/json')
+        self.assertEquals(200, response.status_code)
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'totalAssets': {'type': 'calc', 'calc': 'self.allAssets', 'calc_type': 'int'}}), content_type='application/json')
+        self.assertEquals(200, response.status_code)
+
+        # re-patch allAssets to refer to totalAssets
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'allAssets': {'type': 'calc', 'calc': 'self.totalAssets', 'calc_type': 'int'}}), content_type='application/json')
+        self.assertEquals(400, response.status_code)
+        self.assertEquals({"error": "Circular dependencies exist among these items: {u'company.allAssets':set([u'company.totalAssets']), u'company.totalAssets':set([u'company.allAssets'])}"}, json.loads(response.data))
+
+    def test_cannot_add_circular_dependency_from_other_resources(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {
+                'name': {'type': 'str'},
+                'assets': {'type': 'int'},
+            }}), content_type='application/json')
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'other_company', 'fields': {
+                'name': {'type': 'str'},
+                'company': {'type': 'link', 'target': 'company'},
+                'company_assets': {'type': 'calc', 'calc': 'self.company.assets', 'calc_type': 'int'},
+            }}), content_type='application/json')
+
+        self.assertEquals(200, resp.status_code)
+
+        resp = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'other_company': {'type': 'link', 'target': 'other_company'},
+            }), content_type='application/json')
+        resp = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'assets': {'type': 'calc', 'calc': 'self.other_company.company_assets', 'calc_type': 'int'},
+            }), content_type='application/json')
+
+        self.assertEquals(400, resp.status_code)
+        self.assertEquals({"error": "Circular dependencies exist among these items: {u'company.assets':set([u'other_company.company_assets']), u'other_company.company_assets':set([u'company.assets'])}"}, json.loads(resp.data))

@@ -7,3 +7,4 @@ mongomock==3.8.0
 ply==3.10
 gevent==1.2.2
 gunicorn==19.7.1
+toposort==1.0

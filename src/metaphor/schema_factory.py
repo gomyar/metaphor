@@ -1,6 +1,8 @@
 
 import importlib
 
+from toposort import toposort
+
 from metaphor.resource import ResourceSpec
 from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import ReverseLinkSpec
@@ -81,8 +83,13 @@ class SchemaFactory(object):
             calc.schema = schema
             calc.parent = parent_spec
             calc.field_name = field_name
+            new_deps = set()
             for resource_ref in calc.all_resource_refs():
-                calc.resolve_spec(resource_ref)
+                ref_spec = calc.resolve_spec(resource_ref)
+                new_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+            deps = schema.dependency_tree()
+            deps["%s.%s" % (parent_spec.name, field_name)] = new_deps
+            list(toposort(deps))
 
     def _build_collection(self, type_name, data=None):
         return CollectionSpec(data['target'])
