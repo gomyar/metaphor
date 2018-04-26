@@ -81,11 +81,15 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals({}, saved_schema['roots'])
 
     def test_server_default(self):
-        res = self.client.get('/schema/')
+        res = self.client.get('/schema/', headers={'accept': 'application/json'})
         self.assertEquals(200, res.status_code)
         expected = {'root': 'http://localhost/schema/root',
                     'specs': 'http://localhost/schema/specs'}
         self.assertEquals(expected, json.loads(res.data))
+
+        # assert html option
+        res = self.client.get('/schema/')
+        self.assertTrue(res.data.startswith("<html"))
 
     def test_add_root_and_post(self):
         resp = self.client.post('/schema/specs', data=json.dumps({'name': 'company', 'fields': {'name': {'type': 'str'}}}), content_type='application/json')
@@ -225,3 +229,42 @@ class SchemaUpdateTest(unittest.TestCase):
 
         self.assertEquals(400, resp.status_code)
         self.assertEquals({"error": "Circular dependencies exist among these items: {u'company.assets':set([u'other_company.company_assets']), u'other_company.company_assets':set([u'company.assets'])}"}, json.loads(resp.data))
+
+    def test_circular_dependency_with_self(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {
+                'assets': {'type': 'int'},
+                'assets_plus_one': {'type': 'calc', 'calc': 'self.assets + 1', 'calc_type': 'int'},
+                'assets_plus_four': {'type': 'calc', 'calc': 'self.assets_plus_four+ 1', 'calc_type': 'int'},
+            }}), content_type='application/json')
+
+        self.assertEquals(400, resp.status_code)
+        self.assertEquals({"error": "Calc cannot depend on itself: company.assets_plus_four"}, json.loads(resp.data))
+
+    def test_interdependent_fields_added_together(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {
+                'assets': {'type': 'int'},
+                'assets_plus_four': {'type': 'calc', 'calc': 'self.assets_plus_three + 1', 'calc_type': 'int'},
+                'assets_plus_three': {'type': 'calc', 'calc': 'self.assets_plus_two + 1', 'calc_type': 'int'},
+                'assets_plus_two': {'type': 'calc', 'calc': 'self.assets_plus_one + 1', 'calc_type': 'int'},
+                'assets_plus_one': {'type': 'calc', 'calc': 'self.assets + 1', 'calc_type': 'int'},
+            }}), content_type='application/json')
+
+        self.assertEquals(200, resp.status_code)
+
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+        self.assertEquals(200, resp.status_code)
+
+        post_resp = self.client.post('/api/companies', data=json.dumps({'assets': 1}), content_type='application/json')
+        self.assertEquals(200, post_resp.status_code)
+        company_id_1 = json.loads(post_resp.data)['id']
+
+        response = self.client.get('/api/companies/%s' % (company_id_1,))
+        company = json.loads(response.data)
+
+        self.assertEquals(1, company['assets'])
+        self.assertEquals(2, company['assets_plus_one'])
+        self.assertEquals(3, company['assets_plus_two'])
+        self.assertEquals(4, company['assets_plus_three'])
+        self.assertEquals(5, company['assets_plus_four'])

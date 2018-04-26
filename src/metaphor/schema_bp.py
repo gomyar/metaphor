@@ -1,16 +1,32 @@
 
+import os
+import logging
+log = logging.getLogger('metaphor')
 
 from flask import Blueprint
 from flask import current_app
 from flask import request
 from flask import jsonify
+from flask import render_template
 
 from metaphor.schema_factory import SchemaFactory
 from metaphor.resource import CollectionSpec
 
 
-schema_bp = Blueprint('schema', __name__, template_folder='templates',
-                      static_folder='static', url_prefix='/schema')
+schema_bp = Blueprint(
+    'schema',
+    __name__,
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
+    static_folder=os.path.join(os.path.dirname(__file__), 'static/metaphor'),
+    static_url_path='/static/metaphor', url_prefix='/schema')
+
+
+def request_wants_json():
+    best = request.accept_mimetypes \
+        .best_match(['application/json', 'text/html'])
+    return best == 'application/json' and \
+        request.accept_mimetypes[best] > \
+        request.accept_mimetypes['text/html']
 
 
 @schema_bp.route("/root", methods=['GET', 'POST'])
@@ -33,9 +49,11 @@ def schema_update(spec_name):
         data = request.json
 
         try:
+            spec = schema.specs[spec_name]
             for field_name, field_data in data.items():
-                SchemaFactory().validate_field_spec(schema, spec_name, field_name, field_data)
+                SchemaFactory().validate_field_spec(schema, spec, field_name, field_data)
         except Exception as e:
+            log.exception("Exception calling /specs/%s", spec_name)
             response = jsonify({'error': str(e)})
             response.status_code = 400
             return response
@@ -50,29 +68,44 @@ def schema_update(spec_name):
 
 @schema_bp.route("/specs", methods=['GET', 'POST'])
 def schema_list():
-    schema = current_app.config['schema']
-    if request.method == 'POST':
-        data = request.json
-        SchemaFactory().add_resource_to_schema(schema, data['name'], data.get('fields', {}))
-        SchemaFactory().save_schema(schema)
-        return jsonify({})
-    if request.method == 'GET':
-        info = '''
-            POST {"name": "resource_name", "fields": {"field_name": {"type": "field_type", ...}}}
-            to /schema/specs to add a resource.
-            "fields" may contain the following for "type": %s
+    try:
+        schema = current_app.config['schema']
+        if request.method == 'POST':
+            data = request.json
+            spec_name = data['name']
+            fields = data.get('fields', {})
+            SchemaFactory().add_resource_to_schema(schema, spec_name, fields)
+            SchemaFactory().save_schema(schema)
+            return jsonify({})
+        if request.method == 'GET':
+            info = '''
+                POST {"name": "resource_name", "fields": {"field_name": {"type": "field_type", ...}}}
+                to /schema/specs to add a resource.
+                "fields" may contain the following for "type": %s
 
-            POST {"name": "root_name", "target": "resource_name"}
-            to /schema/root to add a root collection.
-        ''' % (SchemaFactory().field_builders.keys())
+                POST {"name": "root_name", "target": "resource_name"}
+                to /schema/root to add a root collection.
+            ''' % (SchemaFactory().field_builders.keys())
 
-        return jsonify({'info': info, 'specs': dict([(spec_name, spec.serialize()) for (spec_name, spec) in schema.specs.items()])})
+            return jsonify({
+                'version': schema.version,
+                'info': info,
+                'specs': dict([(spec_name, spec.serialize()) for (spec_name, spec) in schema.specs.items()])})
+    except Exception as e:
+        log.exception("Exception calling /specs")
+        response = jsonify({'error': str(e)})
+        response.status_code = 400
+        return response
+
 
 @schema_bp.route("/", methods=['GET'])
 def root_get():
-    schema = current_app.config['schema']
-    if request.method == 'GET':
-        return jsonify({
-            'specs': request.base_url + 'specs',
-            'root': request.base_url + 'root',
-        })
+    if request_wants_json():
+        schema = current_app.config['schema']
+        if request.method == 'GET':
+            return jsonify({
+                'specs': request.base_url + 'specs',
+                'root': request.base_url + 'root',
+            })
+    else:
+        return render_template('metaphor/schema.html')

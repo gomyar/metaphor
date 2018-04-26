@@ -49,6 +49,33 @@ class SchemaFactory(object):
             self._add_spec(schema, resource_name, resource_data.get('fields', {}))
 
     def add_resource_to_schema(self, schema, resource_name, resource_fields):
+        # create new resource spec
+        spec = ResourceSpec(resource_name)
+        spec.schema = schema
+        for field_name, field_data in resource_fields.items():
+            spec._add_field(field_name, self._create_field(field_name, field_data))
+
+        # validate fields
+        deps = schema.dependency_tree()
+        for field_name, field_data in resource_fields.items():
+            if field_data['type'] == 'calc':
+                field = spec.fields[field_name]
+                new_deps = set()
+                for resource_ref in field.all_resource_refs():
+                    ref_spec = field.resolve_spec(resource_ref)
+                    if ref_spec.parent:
+                        new_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+                    else:
+                        new_deps.add(ref_spec.name)
+                deps["%s.%s" % (spec.name, field_name)] = new_deps
+        # check for self references
+        for dep_name, dep_list in deps.items():
+            if dep_name in dep_list:
+                raise Exception("Calc cannot depend on itself: %s" % (dep_name,))
+        # check for circular deps
+        list(toposort(deps))
+
+        # add spec
         self._add_spec(schema, resource_name, resource_fields)
         self._add_reverse_links_for_fields(schema, resource_name, resource_fields)
 
@@ -60,35 +87,40 @@ class SchemaFactory(object):
     def _add_spec(self, schema, resource_name, resource_fields):
         spec = ResourceSpec(resource_name)
         schema.add_resource_spec(spec)
-        spec.schema = schema
         for field_name, field_data in resource_fields.items():
             spec = schema.specs[resource_name]
-            spec._add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
+            spec._add_field(field_name, self._create_field(field_name, field_data))
 
     def _add_reverse_links_for_fields(self, schema, resource_name, resource_fields):
         for field_name, field_data in resource_fields.items():
             spec = schema.specs[resource_name]
             spec._link_field(field_name, spec.fields[field_name])
 
+    def _create_field(self, field_name, field_data):
+        return self.field_builders[field_data['type']](field_name, field_data)
+
     def add_field_to_spec(self, schema, resource_name, field_name, field_data):
         spec = schema.specs[resource_name]
-        spec.add_field(field_name, self.field_builders[field_data['type']](field_name, field_data))
+        field = self._create_field(field_name, field_data)
+        spec.add_field(field_name, field)
 
-    def validate_field_spec(self, schema, resource_name, field_name, field_data):
+    def validate_field_spec(self, schema, spec, field_name, field_data):
         if field_name.startswith('link_'):
             raise Exception("Fields cannot start with 'link_' (reserved for interal use)")
-        calc = self.field_builders[field_data['type']](field_name, field_data)
-        parent_spec = schema.specs[resource_name]
+        field = self._create_field(field_name, field_data)
         if field_data['type'] == 'calc':
-            calc.schema = schema
-            calc.parent = parent_spec
-            calc.field_name = field_name
+            field.schema = schema
+            field.parent = spec
+            field.field_name = field_name
             new_deps = set()
-            for resource_ref in calc.all_resource_refs():
-                ref_spec = calc.resolve_spec(resource_ref)
-                new_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+            for resource_ref in field.all_resource_refs():
+                ref_spec = field.resolve_spec(resource_ref)
+                if ref_spec.parent:
+                    new_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+                else:
+                    new_deps.add(ref_spec.name)
             deps = schema.dependency_tree()
-            deps["%s.%s" % (parent_spec.name, field_name)] = new_deps
+            deps["%s.%s" % (spec.name, field_name)] = new_deps
             list(toposort(deps))
 
     def _build_collection(self, type_name, data=None):

@@ -41,6 +41,7 @@ class ResourceSpec(Spec):
         self.name = name
         self.fields = {}
         self.schema = None
+        self.parent = None
 
     def __repr__(self):
         return "<ResourceSpec %s>" % (self.name)

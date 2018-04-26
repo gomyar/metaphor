@@ -36,7 +36,10 @@ class Schema(object):
                     spec_deps = set()
                     for resource_ref in spec.all_resource_refs():
                         ref_spec = spec.resolve_spec(resource_ref)
-                        spec_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+                        if ref_spec.parent:
+                            spec_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
+                        else:
+                            spec_deps.add(ref_spec.name)
                     deps["%s.%s" % (spec_name, field_name)] = spec_deps
         return deps
 
