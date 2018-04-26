@@ -1,0 +1,31 @@
+
+
+div.schema_list {
+    margin-top : 10px;
+}
+
+div.schema_name {
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+div.fields_header
+{
+    margin-left: 10px;
+}
+
+
+div.fields {
+    margin-left: 10px;
+}
+
+div.fields div.field{
+    margin-left: 10px;
+}
+
+
+div.fields div.field div span
+{
+    width : 150px;
+    display: inline-block;
+}
