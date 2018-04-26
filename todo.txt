@@ -1,9 +1,10 @@
 
-order calc updates by dependency topsort
-
-allow updates and validation of multiple resources in schema
-
 doesn't kick off an update on a schema change
+
+add gui
+
+order calc updates by dependency topsort
+allow updates and validation of multiple resources in schema
 
 add verify to calc re: dependencies, do not allow update if calc cannot run - done
 

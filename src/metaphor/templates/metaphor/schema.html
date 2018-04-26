@@ -3,7 +3,7 @@
 <head>
 
 <script src="https://code.jquery.com/jquery-1.12.4.js" integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU=" crossorigin="anonymous"></script>
-<script src="https://rawgit.com/gomyar/turtlegui/v0.1.4/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v0.1.8/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/static/metaphor/netutils.js"></script>
 <script src="/static/metaphor/schema.js"></script>
 <link rel="stylesheet" type="text/css" href="/static/metaphor/schema.css"/>
@@ -23,7 +23,7 @@ Schema version: <span data-gui-text="schema.version"></span>
         <div class="fields_header">Fields:</div>
         <div class="fields" data-gui-list="spec.fields" data-gui-item="field" data-gui-key="field_name">
             <div class="field">
-                <div><span>Field:</span><span class="field_name" data-gui-text="field_name"></span></div>
+                <div><span>Field:</span><span class="field_name" data-gui-text="field_name" data-gui-ordering="field.type"></span></div>
                 <div><span>Type:</span><span class="field_type" data-gui-text="field.type"></span></div>
             </div>
         </div>

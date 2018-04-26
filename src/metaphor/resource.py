@@ -154,6 +154,12 @@ class CalcSpec(Spec):
         self.field_type = 'calc'
         self.calc_type = calc_type
         self.is_collection = is_collection
+#        self._allowed_types = {
+#            'str': [str, unicode],
+#            'int': [int],
+#            'float': [float, int],
+#            'bool': [bool],
+#        }
 
     def __repr__(self):
         return "<CalcSpec %s.%s = '%s' [%s]>" % (self.parent.name, self.field_name, self.calc_str, self.calc_type)
@@ -198,6 +204,7 @@ class CalcSpec(Spec):
         return {'spec': 'calc', 'calc': self.calc_str}
 
     def check_type(self, value):
+        # return type(value) in self._allowed_types.get(self.calc_type, [])
         return False
 
     def create_child_spec(self, child_id):
