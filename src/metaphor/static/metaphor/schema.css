@@ -7,13 +7,21 @@ div.schema_list {
 div.schema_name {
     font-weight: bold;
     margin-left: 10px;
+    margin-top : 5px;
+    margin-bottom: 5px;
 }
 
-div.fields_header
+div.fields_headers
 {
-    margin-left: 10px;
+    margin-left: 20px;
 }
 
+div.fields_headers span
+{
+    width : 150px;
+    display: inline-block;
+    font-weight: bold;
+}
 
 div.fields {
     margin-left: 10px;
@@ -23,9 +31,74 @@ div.fields div.field{
     margin-left: 10px;
 }
 
-
 div.fields div.field div span
 {
     width : 150px;
     display: inline-block;
+}
+
+div.button
+{
+    display : inline-block;
+    background-color : darkblue;
+    color : white;
+    font-weight: bold;
+    font-size : 12px;
+    border 1px solid white;
+    padding : 2px 4px 2px 4px;
+    text-align : center;
+}
+
+div.field_ops
+{
+    margin: 3px 0px 2px 20px;
+    width : 100px;
+}
+
+div.button:hover
+{
+    background-color : lightblue;
+    cursor : pointer;
+}
+
+div.popup {
+    margin: auto;
+    width: 50%;
+    border : 1px solid black;
+    background-color : white;
+    padding : 10px;
+
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+div.popupwrapper {
+    display : none;
+
+    background-color: rgba(255, 255, 255, 0.5);
+    position : absolute;
+    top : 0px;
+    left : 0px;
+    width : 100%;
+    height : 100%;
+    overflow: hidden;
+}
+
+div.popupbuttons {
+    text-align: right;
+}
+
+div#loading {
+    position: absolute;
+    top : 0px;
+    left : 0px;
+    width : 100%;
+    height : 100%;
+    background-color: rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+    text-align : center;
+    font-size : 14px;
+    font-weight : bold;
+    padding : 40px;
 }

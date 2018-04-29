@@ -20,16 +20,87 @@ Schema version: <span data-gui-text="schema.version"></span>
 
     <div class="spec">
         <div class="schema_name" data-gui-text="spec_name"></div>
-        <div class="fields_header">Fields:</div>
+        <div class="fields_headers">
+            <span></span>
+            <span>field:</span>
+            <span>type:</span>
+        </div>
         <div class="fields" data-gui-list="spec.fields" data-gui-item="field" data-gui-key="field_name">
-            <div class="field">
-                <div><span>Field:</span><span class="field_name" data-gui-text="field_name" data-gui-ordering="field.type"></span></div>
-                <div><span>Type:</span><span class="field_type" data-gui-text="field.type"></span></div>
+            <div class="field" data-gui-id="'field_' + spec_name + '_' + field_name">
+                <div>
+                    <span>
+                        <span data-gui-show="field.type != 'reverse_link'"><div class="button" data-gui-click="gui.delete_field(spec_name, field_name)">Delete</div></span>
+                    </span>
+                    <span data-gui-text="field_name"></span>
+                    <span data-gui-text="field.type"></span>
+                    <span data-gui-text="field.target_spec" data-gui-show="['link', 'collection'].includes(field.type)"></span>
+                    <span data-gui-text="field.calc_type" data-gui-show="['calc'].includes(field.type)"></span>
+                    <span data-gui-text="field.calc" data-gui-show="['calc'].includes(field.type)"></span>
+                </div>
             </div>
+        </div>
+        <div class="field_ops">
+            <div class="button" data-gui-click="gui.show_new_field_popup(spec_name)">New Field</div>
         </div>
     </div>
 
 </div>
+
+<div id="popup_field" class="popupwrapper" data-gui-show="gui.popup_field">
+    <div class="popup">
+        <div class="fields_headers">
+            <span>Add field(s) to: </span><span data-gui-text="gui.workingfield.spec_name"></span>
+        </div>
+        <hr></hr>
+        <div class="fields_headers">
+            <span>Field name: </span>
+            <span>
+                <input type="text" data-gui-val="gui.workingfield.name"></input>
+            </span>
+        </div>
+        <div class="fields_headers">
+            <span>Field type: </span>
+            <span>
+                <select data-gui-list="gui.field_types" data-gui-item="field_type" data-gui-val="gui.workingfield.type" data-gui-change="turtlegui.reload()">
+                    <option data-gui-val="field_type" data-gui-text="field_type"></option>
+                </select>
+            </span>
+        </div>
+
+        <div  class="fields_headers" data-gui-show="['link', 'collection'].includes(gui.workingfield.type)">
+            <span>Target: </span>
+            <span>
+                <select data-gui-list="schema.specs" data-gui-item="type_spec" data-gui-val="gui.workingfield.target">
+                    <option data-gui-val="type_spec.name" data-gui-text="type_spec.name"></input>
+                </select>
+            </span>
+        </div>
+
+        <div class="fields_headers" data-gui-show="gui.workingfield.type == 'calc'">
+            <span>Calc: </span>
+            <span>
+                <input type="text" data-gui-val="gui.workingfield.calc"></input>
+            </span>
+        </div>
+ 
+        <div  class="fields_headers" data-gui-show="gui.workingfield.type == 'calc'">
+            <span>Calc Type: </span>
+            <span>
+                <select data-gui-list="gui.calc_types" data-gui-item="type_spec" data-gui-val="gui.workingfield.calc_type">
+                    <option data-gui-val="type_spec" data-gui-text="type_spec"></input>
+                </select>
+            </span>
+        </div>
+
+
+        <div class="popupbuttons">
+            <div class="button" data-gui-click='gui.create_field();'>Create</div>
+            <div class="button" data-gui-click='gui.popup_field = false; turtlegui.reload();'>Close</div>
+        </div>
+    </div>
+</div>
+
+<div id="loading" data-gui-show="net.loading">Loading...</div>
 
 </body>
 

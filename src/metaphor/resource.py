@@ -105,6 +105,7 @@ class ResourceLinkSpec(Spec):
         return {
             'spec': 'resource_link',
             'name': self.name,
+            'target_spec': self.target_spec_name,
         }
 
     def _collection(self):
@@ -201,7 +202,7 @@ class CalcSpec(Spec):
         return self.parse_calc().all_resource_refs()
 
     def serialize(self):
-        return {'spec': 'calc', 'calc': self.calc_str}
+        return {'spec': 'calc', 'calc': self.calc_str, 'type': 'calc', 'calc_type': self.calc_type}
 
     def check_type(self, value):
         # return type(value) in self._allowed_types.get(self.calc_type, [])
@@ -228,6 +229,7 @@ class ReverseLinkSpec(ResourceLinkSpec):
         return {
             'spec': 'reverse_link',
             'name': '%s.%s' % (self.name, self.target_field_name),
+            'type': 'reverse_link',
         }
 
     @property
@@ -339,7 +341,7 @@ class CollectionSpec(Spec):
         return self.target_spec.fields[child_id]
 
     def serialize(self):
-        return {'spec': 'collection', 'target_spec': self.target_spec_name}
+        return {'spec': 'collection', 'target_spec': self.target_spec_name, 'type': 'collection'}
 
     @property
     def field_type(self):

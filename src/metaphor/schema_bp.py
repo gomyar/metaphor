@@ -66,6 +66,14 @@ def schema_update(spec_name):
         return jsonify({})
 
 
+@schema_bp.route("/specs/<spec_name>/<field_name>", methods=['DELETE'])
+def schema_delete_field(spec_name, field_name):
+    schema = current_app.config['schema']
+    schema.specs[spec_name].fields.pop(field_name)
+    SchemaFactory().save_schema(schema)
+    return jsonify({})
+
+
 @schema_bp.route("/specs", methods=['GET', 'POST'])
 def schema_list():
     try:

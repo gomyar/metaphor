@@ -1,6 +1,11 @@
 
 doesn't kick off an update on a schema change
 
+check for dependencies when deleting a field
+
+need to tie up checking of different calls (post patch etc)
+ - i.e. shouldn't be able to patch a collection
+
 add gui
 
 order calc updates by dependency topsort
