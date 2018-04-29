@@ -31,10 +31,19 @@ div.fields div.field{
     margin-left: 10px;
 }
 
+div.fields div.field:hover{
+    background-color : lightgrey;
+}
+
 div.fields div.field div span
 {
     width : 150px;
     display: inline-block;
+}
+
+div.fields div.field div span.calcstr
+{
+    width: auto;
 }
 
 div.button

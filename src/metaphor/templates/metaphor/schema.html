@@ -16,6 +16,8 @@
 Schema version: <span data-gui-text="schema.version"></span>
 </div>
 
+<div class="button" data-gui-click="gui.popup_spec = true; turtlegui.reload();">New Spec</div>
+
 <div class="schema_list" data-gui-list="schema.specs"  data-gui-item="spec" data-gui-key="spec_name">
 
     <div class="spec">
@@ -35,7 +37,7 @@ Schema version: <span data-gui-text="schema.version"></span>
                     <span data-gui-text="field.type"></span>
                     <span data-gui-text="field.target_spec" data-gui-show="['link', 'collection'].includes(field.type)"></span>
                     <span data-gui-text="field.calc_type" data-gui-show="['calc'].includes(field.type)"></span>
-                    <span data-gui-text="field.calc" data-gui-show="['calc'].includes(field.type)"></span>
+                    <span class="calcstr" data-gui-text="field.calc" data-gui-show="['calc'].includes(field.type)"></span>
                 </div>
             </div>
         </div>
@@ -44,6 +46,26 @@ Schema version: <span data-gui-text="schema.version"></span>
         </div>
     </div>
 
+</div>
+
+<div id="popup_spec" class="popupwrapper" data-gui-show="gui.popup_spec">
+    <div class="popup">
+        <div class="fields_headers">
+            <span>Create spec: </span>
+        </div>
+        <hr></hr>
+        <div class="fields_headers">
+            <span>Spec name: </span>
+            <span>
+                <input type="text" data-gui-val="gui.working_spec.name"></input>
+            </span>
+        </div>
+
+        <div class="popupbuttons">
+            <div class="button" data-gui-click='gui.create_spec();'>Create</div>
+            <div class="button" data-gui-click='gui.popup_spec = false; turtlegui.reload();'>Close</div>
+        </div>
+    </div>
 </div>
 
 <div id="popup_field" class="popupwrapper" data-gui-show="gui.popup_field">
