@@ -1,6 +1,4 @@
 
-doesn't kick off an update on a schema change
-
 check for dependencies when deleting a field / spec
 
 doesn't remove calc from schema calc list in memory when calc field deleted

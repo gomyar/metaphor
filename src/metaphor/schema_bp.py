@@ -69,6 +69,17 @@ def schema_update(spec_name):
 @schema_bp.route("/specs/<spec_name>/<field_name>", methods=['DELETE'])
 def schema_delete_field(spec_name, field_name):
     schema = current_app.config['schema']
+
+    dep_name = "%s.%s" % (spec_name, field_name)
+    deps = schema.dependency_tree()
+
+    for calc_res, calc_deps in deps.items():
+        if dep_name in calc_deps:
+            response = jsonify({'error': "%s depended upon by %s" % (
+                dep_name, calc_res)})
+            response.status_code = 400
+            return response
+
     schema.specs[spec_name].fields.pop(field_name)
     SchemaFactory().save_schema(schema)
     return jsonify({})

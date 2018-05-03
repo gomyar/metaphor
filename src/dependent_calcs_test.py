@@ -67,3 +67,39 @@ class ResourceCalcTest(unittest.TestCase):
         employee = json.loads(response.data)
         self.assertEquals('BobMac', employee['address_name'])
         self.assertEquals('BobMacNew York', employee['address_full'])
+
+    def test_dependent_calcs_on_delete(self):
+        self.client.post('/schema/specs', data=json.dumps({
+            'name': 'employee', 'fields': {
+            "first_name": {'type': "str"},
+            "last_name": {'type': "str"},
+            "full_name": {'type': 'calc', 'calc': "self.first_name + self.last_name", 'calc_type': "str"},
+            "position": {'type': "str"},
+            "address_name": {'type': 'calc', 'calc': "self.full_name", "calc_type": "str"},
+            "address_city": {'type': "str"},
+            "address_full": {'type': 'calc', 'calc': "self.address_name + self.address_city", "calc_type": "str"},
+        }}), content_type='application/json')
+
+        resp = self.client.delete('/schema/specs/employee/address_name')
+        self.assertEquals(400, resp.status_code)
+        self.assertEquals({
+            "error": "employee.address_name depended upon by employee.address_full"},
+            json.loads(resp.data))
+
+    def test_dependent_calcs_on_field_delete(self):
+        self.client.post('/schema/specs', data=json.dumps({
+            'name': 'employee', 'fields': {
+            "first_name": {'type': "str"},
+            "last_name": {'type': "str"},
+            "full_name": {'type': 'calc', 'calc': "self.first_name + self.last_name", 'calc_type': "str"},
+            "position": {'type': "str"},
+            "address_name": {'type': 'calc', 'calc': "self.full_name", "calc_type": "str"},
+            "address_city": {'type': "str"},
+            "address_full": {'type': 'calc', 'calc': "self.address_name + self.address_city", "calc_type": "str"},
+        }}), content_type='application/json')
+
+        resp = self.client.delete('/schema/specs/employee/address_city')
+        self.assertEquals(400, resp.status_code)
+        self.assertEquals({
+            "error": "employee.address_city depended upon by employee.address_full"},
+            json.loads(resp.data))
