@@ -18,9 +18,20 @@ gui.working_spec = {
 gui.field_types = ['str', 'int', 'float', 'collection', 'link', 'calc'];
 gui.calc_types = ['str', 'int', 'float'];
 
+
+gui.report_error = function(errorText, jqXHR) {
+    try {
+        alert("Error: " + jqXHR.responseJSON['error']);
+    } catch (e) {
+        alert("Error: " + jqXHR.responseText);
+    }
+}
+
+
 gui.delete_field = function(spec_name, field_name) {
     if (confirm('Are you sure you want to delete ' + field_name + '?')) {
-        net.perform_delete("/schema/specs/" + spec_name + "/" + field_name, gui.load_specs)
+        net.perform_delete("/schema/specs/" + spec_name + "/" + field_name, gui.load_specs,
+            gui.report_error)
     }
 }
 
@@ -31,9 +42,7 @@ gui.load_specs = function(onload) {
         if (onload) {
             onload();
         }
-    }, function(errorText, jqXHR) {
-        alert("Error: " + jqXHR.responseText);
-    });
+    }, gui.report_error);
 }
 
 gui.show_new_field_popup = function(spec_name) {
@@ -52,9 +61,7 @@ gui.create_field = function() {
                 field_div.hide();
                 field_div.fadeIn();
             });
-        }, function(errorText, jqXHR) {
-        alert("Error: " + jqXHR.responseText);
-    });
+        }, gui.report_error);
 }
 
 gui.create_spec = function() {

@@ -21,14 +21,6 @@ schema_bp = Blueprint(
     static_url_path='/static/metaphor', url_prefix='/schema')
 
 
-def request_wants_json():
-    best = request.accept_mimetypes \
-        .best_match(['application/json', 'text/html'])
-    return best == 'application/json' and \
-        request.accept_mimetypes[best] > \
-        request.accept_mimetypes['text/html']
-
-
 @schema_bp.route("/root", methods=['GET', 'POST'])
 def roots_list():
     schema = current_app.config['schema']
@@ -117,14 +109,22 @@ def schema_list():
         return response
 
 
+@schema_bp.route("/specfor", methods=['GET'], defaults={'path': None})
+@schema_bp.route("/specfor/<path:path>", methods=['GET'])
+def spec_for(path):
+    api = current_app.config['api']
+    if path:
+        resource = api.build_resource(path)
+    else:
+        resource = api.schema.root
+    return jsonify(resource.spec.serialize())
+
+
 @schema_bp.route("/", methods=['GET'])
 def root_get():
-    if request_wants_json():
-        schema = current_app.config['schema']
-        if request.method == 'GET':
-            return jsonify({
-                'specs': request.base_url + 'specs',
-                'root': request.base_url + 'root',
-            })
-    else:
-        return render_template('metaphor/schema.html')
+    schema = current_app.config['schema']
+    if request.method == 'GET':
+        return jsonify({
+            'specs': request.base_url + 'specs',
+            'root': request.base_url + 'root',
+        })

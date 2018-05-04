@@ -18,6 +18,10 @@ net.perform_get = function(url, callback, onerror)
             if (onerror)
                 onerror(errorText, jqXHR);
         },
+        'contentType': "application/json",
+        'headers': {
+            'accept': "application/json; charset=utf-8"
+        },
         'type': 'GET'
     });
 }
@@ -40,6 +44,9 @@ net.perform_post = function(url, data, callback, onerror, method)
             console.log("Error calling "+url+" : "+errorText);
             if (onerror)
                 onerror(errorText, jqXHR);
+        },
+        'headers': {
+            'accept': "application/json; charset=utf-8"
         },
         'type': method ? method : 'POST'
     });
@@ -66,6 +73,9 @@ net.perform_delete = function(url, callback, onerror)
             console.log("Error calling "+url+" : "+errorText);
             if (onerror)
                 onerror(errorText, jqXHR);
+        },
+        'headers': {
+            'accept': "application/json; charset=utf-8"
         },
         'type': 'DELETE'
     });

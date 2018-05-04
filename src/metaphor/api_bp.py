@@ -3,6 +3,9 @@ from flask import Blueprint
 from flask import current_app
 from flask import request
 from flask import jsonify
+from flask import render_template
+
+from metaphor.resource import CollectionSpec, ResourceLinkSpec
 
 
 api_bp = Blueprint('api', __name__, template_folder='templates',
@@ -16,14 +19,15 @@ def api_root():
 
 @api_bp.route("/<path:path>", methods=['GET', 'POST', 'DELETE', 'PUT', 'PATCH'])
 def api_call(path):
+    api = current_app.config['api']
     if request.method == 'POST':
-        return jsonify({'id': str(current_app.config['api'].post(path, request.json))})
+        return jsonify({'id': str(api.post(path, request.json))})
     elif request.method == 'DELETE':
-        return jsonify({'id': str(current_app.config['api'].unlink(path))})
+        return jsonify({'id': str(api.unlink(path))})
     elif request.method == 'PUT':
-        return jsonify({'id': str(current_app.config['api'].put(path, request.json))})
+        return jsonify({'id': str(api.put(path, request.json))})
     elif request.method == 'PATCH':
-        return jsonify({'id': str(current_app.config['api'].patch(path, request.json))})
+        return jsonify({'id': str(api.patch(path, request.json))})
     else:
-        resource = current_app.config['api'].get(path, dict(request.args.items()))
-        return jsonify(resource)
+        resource_data = api.get(path, dict(request.args.items()))
+        return jsonify(resource_data)

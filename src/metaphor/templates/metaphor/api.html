@@ -1,0 +1,37 @@
+<html>
+
+<head>
+
+<script src="https://code.jquery.com/jquery-1.12.4.js" integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU=" crossorigin="anonymous"></script>
+<!--<script src="https://rawgit.com/gomyar/turtlegui/v0.1.8/turtlegui.js" crossorigin="anonymous"></script>-->
+<script src="/static/metaphor/turtlegui.js"></script>
+<script src="/static/metaphor/netutils.js"></script>
+<script src="/static/metaphor/api.js"></script>
+<link rel="stylesheet" type="text/css" href="/static/metaphor/schema.css"/>
+
+</head>
+
+<body>
+
+<div class="title">
+    <span data-gui-text="api.resource.name"></span>
+</div>
+
+<div class="resource">
+    <div class="resource_name" data-gui-text="api.spec.name"></div>
+
+    <div class="resource_form" data-gui-list="api.spec.fields" data-gui-item="field" data-gui-key="field_name">
+        <div class="field" data-gui-id="'field_' + api.spec.name + '_' + field_name">
+            <span data-gui-text="field_name"></span>
+            <span data-gui-text="field.type"></span> of 
+            <span data-gui-text="field.target_spec.name" data-gui-show="['link', 'collection'].includes(field.type)"></span>
+            <span data-gui-show="['link', 'collection'].includes(field.type)"><div class="button" data-gui-click="api.load_link_field(field_name)" data-gui-text="field_name"></div></span>
+        </div>
+    </div>
+</div>
+
+<div id="loading" data-gui-show="net.loading">Loading...</div>
+
+</body>
+
+</html>

@@ -16,6 +16,7 @@ from metaphor.schema import Schema
 from metaphor.schema_factory import SchemaFactory
 from metaphor.api_bp import api_bp
 from metaphor.schema_bp import schema_bp
+from metaphor.admin_bp import admin_bp
 
 
 def create_app():
@@ -32,6 +33,7 @@ def create_app():
 
     app.register_blueprint(api_bp)
     app.register_blueprint(schema_bp)
+    app.register_blueprint(admin_bp)
 
     schema.updater.start_updater()
 

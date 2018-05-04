@@ -105,7 +105,7 @@ class ResourceLinkSpec(Spec):
         return {
             'spec': 'resource_link',
             'name': self.name,
-            'target_spec': self.target_spec_name,
+            'target_spec': self.target_spec.serialize(),
         }
 
     def _collection(self):
@@ -341,7 +341,7 @@ class CollectionSpec(Spec):
         return self.target_spec.fields[child_id]
 
     def serialize(self):
-        return {'spec': 'collection', 'target_spec': self.target_spec_name, 'type': 'collection'}
+        return {'spec': 'collection', 'target_spec': self.target_spec.serialize(), 'type': 'collection'}
 
     @property
     def field_type(self):

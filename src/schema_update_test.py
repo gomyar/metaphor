@@ -80,17 +80,6 @@ class SchemaUpdateTest(unittest.TestCase):
             }, saved_schema['specs'])
         self.assertEquals({}, saved_schema['roots'])
 
-    def test_server_default(self):
-        res = self.client.get('/schema/', headers={'accept': 'application/json'})
-        self.assertEquals(200, res.status_code)
-        expected = {'root': 'http://localhost/schema/root',
-                    'specs': 'http://localhost/schema/specs'}
-        self.assertEquals(expected, json.loads(res.data))
-
-        # assert html option
-        res = self.client.get('/schema/')
-        self.assertTrue(res.data.startswith("<html"))
-
     def test_add_root_and_post(self):
         resp = self.client.post('/schema/specs', data=json.dumps({'name': 'company', 'fields': {'name': {'type': 'str'}}}), content_type='application/json')
         resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
@@ -268,3 +257,34 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals(3, company['assets_plus_two'])
         self.assertEquals(4, company['assets_plus_three'])
         self.assertEquals(5, company['assets_plus_four'])
+
+    def test_include_spec_in_api_call(self):
+        self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'employer', 'fields': {
+                'name': {'type': 'str'},
+            }}), content_type='application/json')
+
+        self.client.post('/schema/root', data=json.dumps({'name': 'employers', 'target': 'employer'}), content_type='application/json')
+
+        resp = self.client.get("/schema/specfor/employers", content_type='application/json')
+        self.assertEquals(200, resp.status_code)
+
+        employer_spec = json.loads(resp.data)
+        self.assertEquals(
+            {'spec': 'collection',
+             'target_spec': {
+                'name': 'employer',
+                'spec': 'resource',
+                'fields': {
+                    'link_root_employers': {
+                        'name': 'root.employers',
+                        'spec': 'reverse_link',
+                        'type': 'reverse_link',
+                    },
+                    'name': {
+                        'spec': 'field', 'type': 'str',
+                    },
+                },
+            },
+            'type': 'collection'},
+            employer_spec)
