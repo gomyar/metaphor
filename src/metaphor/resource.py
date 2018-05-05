@@ -7,6 +7,17 @@ from metaphor.calclang import parser
 
 from datetime import datetime
 
+import urlparse
+from urllib import urlencode
+
+
+def _update_params(url, params):
+    url_parts = list(urlparse.urlparse(url))
+    query = dict(urlparse.parse_qsl(url_parts[4]))
+    query.update(params)
+    url_parts[4] = urlencode(query)
+    return urlparse.urlunparse(url_parts)
+
 
 class Spec(object):
     def resolve_spec_hier(self, resource_ref):
@@ -155,12 +166,6 @@ class CalcSpec(Spec):
         self.field_type = 'calc'
         self.calc_type = calc_type
         self.is_collection = is_collection
-#        self._allowed_types = {
-#            'str': [str, unicode],
-#            'int': [int],
-#            'float': [float, int],
-#            'bool': [bool],
-#        }
 
     def __repr__(self):
         return "<CalcSpec %s.%s = '%s' [%s]>" % (self.parent.name, self.field_name, self.calc_str, self.calc_type)
@@ -731,13 +736,29 @@ class AggregateResource(Aggregable, Resource):
         super(AggregateResource, self).__init__(parent, field_name, spec, None)
 
     def serialize(self, path, query=None):
+        query = query or {}
         aggregate_chain = self.build_aggregate_chain()
+
+        if query.get('page'):
+            page_offset = int(query.get('page')) - 1
+            aggregate_chain.append({'$skip': page_offset * 100})
+        aggregate_chain.append({'$limit': 100})
+
         resources = self.spec._collection().aggregate(aggregate_chain)
+
+        page = int(query.get('page', '1'))
         serialized = []
         for data in resources:
             resource = self.spec.target_spec.build_resource(self, self.field_name, data)
             serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
-        return serialized
+
+        next_link = None
+        if len(serialized) >= 100:
+            next_link = _update_params(path, {'page': page + 1})
+        return {
+            'results': serialized,
+            'next': next_link,
+        }
 
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
@@ -805,15 +826,28 @@ class CollectionResource(Aggregable, Resource):
         if 'ordering' in params:
             sort_query = self.compile_ordering(params['ordering'])
             resources = resources.sort(sort_query)
+        if params.get('page'):
+            page_offset = int(params.get('page')) - 1
+            resources = resources.skip(page_offset * 100)
+        resources = resources.limit(100)
         return resources
 
     def serialize(self, path, params=None):
+        params = params or {}
         resources = self.load_collection_data(params)
+        page = int(params.get('page', '1'))
+        next_link = None
+        if resources.count() >= page * 100:
+            next_link = _update_params(path, {'page': page + 1})
         serialized = []
         for data in resources:
             resource = self.spec.target_spec.build_resource(self, self.field_name, data)
             serialized.append(resource.serialize(os.path.join(path, str(resource._id))))
-        return serialized
+        return {
+            'results': serialized,
+            'count': resources.count(),
+            'next': next_link,
+        }
 
     def serialize_field(self, path, params=None):
         return path

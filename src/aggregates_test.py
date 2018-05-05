@@ -81,29 +81,29 @@ class AggregatesTest(unittest.TestCase):
 
     def test_portfolio_sizes(self):
         all_companies = self.api.get('companies')
-        self.assertEquals(5, len(all_companies))
+        self.assertEquals(5, all_companies['count'])
 
-        self.assertEquals(2, len(self.api.get('portfolios/%s/companies' % (self.portfolio_1,))))
-        self.assertEquals(2, len(self.api.get('portfolios/%s/companies' % (self.portfolio_2,))))
+        self.assertEquals(2, self.api.get('portfolios/%s/companies' % (self.portfolio_1,))['count'])
+        self.assertEquals(2, self.api.get('portfolios/%s/companies' % (self.portfolio_2,))['count'])
 
     def test_aggregate_portfolio_companies(self):
         all_companies = self.api.get('portfolios/companies')
-        self.assertEquals(4, len(all_companies))
+        self.assertEquals(4, len(all_companies['results']))
 
-        self.assertEquals('Bob1', all_companies[0]['name'])
-        self.assertEquals('Bob2', all_companies[1]['name'])
-        self.assertEquals('Bob3', all_companies[2]['name'])
-        self.assertEquals('Bob4', all_companies[3]['name'])
+        self.assertEquals('Bob1', all_companies['results'][0]['name'])
+        self.assertEquals('Bob2', all_companies['results'][1]['name'])
+        self.assertEquals('Bob3', all_companies['results'][2]['name'])
+        self.assertEquals('Bob4', all_companies['results'][3]['name'])
 
     def test_aggregate_portfolio_companies_periods(self):
         all_periods = self.api.get('portfolios/companies/periods')
 
-        self.assertEquals(4, len(all_periods))
+        self.assertEquals(4, len(all_periods['results']))
 
-        self.assertEquals(2017, all_periods[0]['year'])
-        self.assertEquals(2017, all_periods[1]['year'])
-        self.assertEquals(2017, all_periods[2]['year'])
-        self.assertEquals(2017, all_periods[3]['year'])
+        self.assertEquals(2017, all_periods['results'][0]['year'])
+        self.assertEquals(2017, all_periods['results'][1]['year'])
+        self.assertEquals(2017, all_periods['results'][2]['year'])
+        self.assertEquals(2017, all_periods['results'][3]['year'])
 
     def test_agg_field_from_self(self):
         # create sector

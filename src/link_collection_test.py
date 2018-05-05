@@ -63,14 +63,14 @@ class CollectionTest(unittest.TestCase):
 
         self.api.post('sections/%s/companies' % (section_id,), {'id': company_id_1})
 
-        self.assertEquals(2, len(self.api.get('organizations/%s/companies' % (self.org_1,))))
-        self.assertEquals(1, len(self.api.get('sections/%s/companies' % (section_id,))))
+        self.assertEquals(2, self.api.get('organizations/%s/companies' % (self.org_1,))['count'])
+        self.assertEquals(1, self.api.get('sections/%s/companies' % (section_id,))['count'])
 
         # delete the linked version
         self.api.unlink('sections/%s/companies/%s' % (section_id, company_id_1))
 
-        self.assertEquals(2, len(self.api.get('organizations/%s/companies' % (self.org_1,))))
-        self.assertEquals(0, len(self.api.get('sections/%s/companies' % (section_id,))))
+        self.assertEquals(2, self.api.get('organizations/%s/companies' % (self.org_1,))['count'])
+        self.assertEquals(0, self.api.get('sections/%s/companies' % (section_id,))['count'])
 
     def test_delete_original(self):
         self.org_1 = self.api.post('organizations', dict(name='Super Org'))
@@ -81,14 +81,14 @@ class CollectionTest(unittest.TestCase):
 
         self.api.post('sections/%s/companies' % (section_id,), {'id': company_id_1})
 
-        self.assertEquals(1, len(self.api.get('organizations/%s/companies' % (self.org_1,))))
-        self.assertEquals(1, len(self.api.get('sections/%s/companies' % (section_id,))))
+        self.assertEquals(1, self.api.get('organizations/%s/companies' % (self.org_1,))['count'])
+        self.assertEquals(1, self.api.get('sections/%s/companies' % (section_id,))['count'])
 
         # delete the original version
         self.api.unlink('organizations/%s/companies/%s' % (self.org_1, company_id_1))
 
-        self.assertEquals(0, len(self.api.get('organizations/%s/companies' % (self.org_1,))))
-        self.assertEquals(0, len(self.api.get('sections/%s/companies' % (section_id,))))
+        self.assertEquals(0, self.api.get('organizations/%s/companies' % (self.org_1,))['count'])
+        self.assertEquals(0, self.api.get('sections/%s/companies' % (section_id,))['count'])
 
         self.assertEquals(0, self.schema.db['resource_company'].count())
 

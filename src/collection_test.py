@@ -96,13 +96,13 @@ class CollectionTest(unittest.TestCase):
 
         search = self.api.get('companies', dict(filter='name=arg'))
 
-        self.assertEquals(1, len(search))
-        self.assertEquals(30, search[0]['assets'])
+        self.assertEquals(1, search['count'])
+        self.assertEquals(30, search['results'][0]['assets'])
 
         search = self.api.get('companies', dict(filter='assets=20'))
 
-        self.assertEquals(1, len(search))
-        self.assertEquals('bargle', search[0]['name'])
+        self.assertEquals(1, search['count'])
+        self.assertEquals('bargle', search['results'][0]['name'])
 
     def test_filter_by_value_sub_resources(self):
         company_id_1 = self.api.post('companies', dict(name='argle', assets=10, liabilities=10))
@@ -112,8 +112,8 @@ class CollectionTest(unittest.TestCase):
 
         search = self.api.get('companies/%s/periods' % (company_id_1,), dict(filter="period=Q2"))
 
-        self.assertEquals(1, len(search))
-        self.assertEquals(2016, search[0]['year'])
+        self.assertEquals(1, search['count'])
+        self.assertEquals(2016, search['results'][0]['year'])
 
     def test_filter_by_multiple_values(self):
         company_id_1 = self.api.post('companies', dict(name='argle', assets=10, liabilities=10))
@@ -123,11 +123,11 @@ class CollectionTest(unittest.TestCase):
 
         search = self.api.get('companies/%s/periods' % (company_id_1,), dict(filter="totalIncome=100"))
 
-        self.assertEquals(2, len(search))
+        self.assertEquals(2, search['count'])
 
         search = self.api.get('companies/%s/periods' % (company_id_1,), dict(filter="totalIncome=100,period=Q2"))
 
-        self.assertEquals(1, len(search))
+        self.assertEquals(1, search['count'])
 
     def test_order_by(self):
         company_id_1 = self.api.post('companies', dict(name='argle', assets=10, liabilities=10))
@@ -136,24 +136,24 @@ class CollectionTest(unittest.TestCase):
         period_3 = self.api.post('companies/%s/periods' % (company_id_1,), dict(year=2015, period='Q3', totalIncome=140))
 
         ordered = self.api.get('companies/%s/periods' % (company_id_1,), dict(ordering="year"))
-        self.assertEquals(2015, ordered[0]['year'])
-        self.assertEquals(2016, ordered[1]['year'])
-        self.assertEquals(2017, ordered[2]['year'])
+        self.assertEquals(2015, ordered['results'][0]['year'])
+        self.assertEquals(2016, ordered['results'][1]['year'])
+        self.assertEquals(2017, ordered['results'][2]['year'])
 
         ordered = self.api.get('companies/%s/periods' % (company_id_1,), dict(ordering="-year"))
-        self.assertEquals(2017, ordered[0]['year'])
-        self.assertEquals(2016, ordered[1]['year'])
-        self.assertEquals(2015, ordered[2]['year'])
+        self.assertEquals(2017, ordered['results'][0]['year'])
+        self.assertEquals(2016, ordered['results'][1]['year'])
+        self.assertEquals(2015, ordered['results'][2]['year'])
 
         ordered = self.api.get('companies/%s/periods' % (company_id_1,), dict(ordering="period"))
-        self.assertEquals(2017, ordered[0]['year'])
-        self.assertEquals(2016, ordered[1]['year'])
-        self.assertEquals(2015, ordered[2]['year'])
+        self.assertEquals(2017, ordered['results'][0]['year'])
+        self.assertEquals(2016, ordered['results'][1]['year'])
+        self.assertEquals(2015, ordered['results'][2]['year'])
 
         ordered = self.api.get('companies/%s/periods' % (company_id_1,), dict(ordering="year,period"))
-        self.assertEquals(2015, ordered[0]['year'])
-        self.assertEquals(2016, ordered[1]['year'])
-        self.assertEquals(2017, ordered[2]['year'])
+        self.assertEquals(2015, ordered['results'][0]['year'])
+        self.assertEquals(2016, ordered['results'][1]['year'])
+        self.assertEquals(2017, ordered['results'][2]['year'])
 
     def test_filter_by_reference(self):
         ''' companies[sector=sectors/3] ? '''

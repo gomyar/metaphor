@@ -83,7 +83,10 @@ class SpikeTest(unittest.TestCase):
 
         self.assertEquals(2017, period['year'])
 
-        self.assertEquals([
+        self.assertEquals({
+            'count': 1,
+            'next': None,
+            'results': [
             {
                 'id': str(company_id),
                 'link_portfolio_companies': None,
@@ -94,7 +97,7 @@ class SpikeTest(unittest.TestCase):
                 'self': 'http://server/api/companies/%s' % (company_id,),
                 'totalTotalAssets': None,
                 'totalFinancialsAssets': None}
-        ], self.api.get('/companies'))
+        ]}, self.api.get('/companies'))
 
         self.assertEquals({
             'companies': 'http://server/api/companies',
@@ -131,18 +134,20 @@ class SpikeTest(unittest.TestCase):
                         {'id': company_id})
 
         p1_companies = self.api.get('portfolios/%s/companies' % (portfolio_1_id,))
-        self.assertEquals(1, len(p1_companies))
-        self.assertEquals('Neds Fries', p1_companies[0]['name'])
+        self.assertEquals(1, len(p1_companies['results']))
+        self.assertEquals(1, p1_companies['count'])
+        self.assertEquals('Neds Fries', p1_companies['results'][0]['name'])
 
         p2_companies = self.api.get('portfolios/%s/companies' % (portfolio_2_id,))
-        self.assertEquals(0, len(p2_companies))
+        self.assertEquals(0, len(p2_companies['results']))
+        self.assertEquals(0, p2_companies['count'])
 
         self.assertEquals('Neds Fries', self.api.get('portfolios/%s/companies/%s' % (portfolio_1_id, company_id))['name'])
 
         self.api.unlink('portfolios/%s/companies/%s' % (portfolio_1_id, company_id))
 
         p1_companies = self.api.get('portfolios/%s/companies' % (portfolio_1_id,))
-        self.assertEquals(0, len(p1_companies))
+        self.assertEquals(0, len(p1_companies['results']))
 
     def test_embedded_financials_default(self):
         company_id = self.api.post('companies', {'name': 'Neds Fries'})
@@ -203,8 +208,8 @@ class SpikeTest(unittest.TestCase):
 
         # assert financial is added to root collection
         financials = self.api.get('financials')
-        self.assertEquals(1, len(financials))
-        self.assertEquals(100, financials[0]['totalAssets'])
+        self.assertEquals(1, len(financials['results']))
+        self.assertEquals(100, financials['results'][0]['totalAssets'])
 
         # assert aggregates
         company = self.api.get('companies/%s' % (company_id,))
