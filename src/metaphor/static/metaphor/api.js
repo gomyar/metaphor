@@ -3,8 +3,8 @@ var api = {};
 
 api.path = '';
 
-api.spec = null;
-api.resource = null;
+api.show_postform = false;
+api.current_resource = {};
 
 api.report_error = function(errorText, jqXHR) {
     try {
@@ -14,16 +14,16 @@ api.report_error = function(errorText, jqXHR) {
     }
 }
 
-api.load_resource = function(resource_path) {
-    if (resource_path) {
-        api.path = resource_path;
-    }
-    net.perform_get('/schema/specfor' + api.path, function(data) {
-        api.spec = data;
-        net.perform_get('/api' + api.path, function(data) {
-            api.resource = data;
-            turtlegui.reload();
-        }, api.report_error);
+api.reload_resource = function() {
+    net.perform_get(window.location.pathname, function(data) {
+        api.resource = data;
+        turtlegui.reload();
+    }, api.report_error);
+}
+
+api.post_resource = function() {
+    net.perform_post(window.location.pathname, api.current_resource, function(e) {
+        api.reload_resource();
     }, api.report_error);
 }
 

@@ -1,5 +1,7 @@
 
-check for dependencies when deleting a field / spec
+add required field
+
+check for dependencies when deleting a field / spec - done
 
 doesn't remove calc from schema calc list in memory when calc field deleted
 
@@ -20,7 +22,6 @@ add cached link collection for calcs
  - might need to specify the fields for every get call
 
 add calc strict typing - done
-add required field
 add parent relationship for collections
  - test aggregation for "_parent_owner"
 move linked collections to LinkCollection resource specifically

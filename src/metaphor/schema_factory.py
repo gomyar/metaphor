@@ -107,6 +107,8 @@ class SchemaFactory(object):
     def validate_field_spec(self, schema, spec, field_name, field_data):
         if field_name.startswith('link_'):
             raise Exception("Fields cannot start with 'link_' (reserved for interal use)")
+        if field_name.startswith('_'):
+            raise Exception("Fields cannot start with '_' (reserved for interal use)")
         field = self._create_field(field_name, field_data)
         if field_data['type'] == 'calc':
             field.schema = schema

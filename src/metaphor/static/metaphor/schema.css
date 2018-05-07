@@ -35,18 +35,18 @@ div.fields div.field:hover{
     background-color : lightgrey;
 }
 
-div.fields div.field div span
+div.fields div.field span
 {
     width : 150px;
     display: inline-block;
 }
 
-div.fields div.field div span.calcstr
+div.fields div.field span.calcstr
 {
     width: auto;
 }
 
-div.button
+.button
 {
     display : inline-block;
     background-color : darkblue;
@@ -64,7 +64,7 @@ div.field_ops
     width : 100px;
 }
 
-div.button:hover
+.button:hover
 {
     background-color : lightblue;
     cursor : pointer;
@@ -94,7 +94,7 @@ div.popupwrapper {
     overflow: hidden;
 }
 
-div.popupbuttons {
+.popupbuttons {
     text-align: right;
 }
 

@@ -175,6 +175,16 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals(400, response.status_code)
         self.assertEquals({u'error': u"Fields cannot start with 'link_' (reserved for interal use)"}, json.loads(response.data))
 
+    def test_cannot_add_underscore_prefixed(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')
+        resp = self.client.post('/schema/root', data=json.dumps({'name': 'companies', 'target': 'company'}), content_type='application/json')
+
+        response = self.client.patch('/schema/specs/company', data=json.dumps(
+            {'_something': {'type': 'company'}}), content_type='application/json')
+        self.assertEquals(400, response.status_code)
+        self.assertEquals({u'error': u"Fields cannot start with '_' (reserved for interal use)"}, json.loads(response.data))
+
     def test_cannot_add_circular_dependency(self):
         resp = self.client.post('/schema/specs', data=json.dumps(
             {'name': 'company', 'fields': {'name': {'type': 'str'}, 'assets': {'type': 'int'}, 'liabilities': {'type': 'int'}}}), content_type='application/json')

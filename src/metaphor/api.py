@@ -38,6 +38,7 @@ class MongoApi(object):
         return resource._id
 
     def build_resource(self, path):
+        path = path.strip('/')
         return self.schema.root.build_child(path)
 
 
