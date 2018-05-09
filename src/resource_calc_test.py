@@ -222,3 +222,25 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals('YE', agg['results'][1]['period'])
         self.assertEquals(2015, agg['results'][2]['year'])
         self.assertEquals('YE', agg['results'][2]['period'])
+
+    def test_link_change_new_link(self):
+        company_id = self.api.post('companies', {'name': 'Bob'})
+        period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})
+        period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE'})
+
+        self.assertEquals(2017, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
+
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 'YE'})
+
+        self.assertEquals(2018, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
+
+    def test_link_target_change(self):
+        company_id = self.api.post('companies', {'name': 'Bob'})
+        period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})
+        period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE'})
+
+        self.assertEquals(2017, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
+
+        self.api.patch('companies/%s/periods/%s' % (company_id, period_1), {'year': 2018})
+
+        self.assertEquals(2018, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])

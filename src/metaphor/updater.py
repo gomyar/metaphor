@@ -10,6 +10,7 @@ from metaphor.resource import CollectionSpec
 from metaphor.resource import CollectionResource
 from metaphor.resource import LinkCollectionSpec
 from metaphor.resource import CalcSpec
+from metaphor.resource import LinkResource
 
 
 class Updater(object):
@@ -66,6 +67,8 @@ class Updater(object):
                 resolved_field_spec = calc_spec.resolve_spec(resource_ref)
                 if field.spec == resolved_field_spec: # or field.spec == resolved_field_spec.parent:
                     found.add((calc_spec, resource_ref, resource_ref.rsplit('.', 1)[0]))
+        if type(field) == LinkResource:
+            found = found.union(self.find_affected_calcs_for_resource(field))
         return found
 
     def find_affected_calcs_for_resource(self, resource):

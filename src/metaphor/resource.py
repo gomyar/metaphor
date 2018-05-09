@@ -115,6 +115,7 @@ class ResourceLinkSpec(Spec):
     def serialize(self):
         return {
             'spec': 'resource_link',
+            'type': 'link',
             'name': self.name,
             'target_spec': self.target_spec.serialize(),
         }
@@ -157,7 +158,7 @@ class ResourceLinkSpec(Spec):
         return None
 
     def check_type(self, value):
-        return value is None or type(value) is dict
+        return value is None or type(value) in (unicode, str)
 
 
 class CalcSpec(Spec):
@@ -503,6 +504,8 @@ class Resource(object):
                 raise TypeError('%s not a field of %s' % (name, self.spec.name))
             if not self.spec.fields[name].check_type(value):
                 raise TypeError('field type %s cannot be set on %s' % (type(value), self.spec.fields[name]))
+            if data.get(name) and type(self.spec.fields[name]) == ResourceLinkSpec:
+                data[name] = ObjectId(data[name])
 
     def update(self, data):
         self._validate_fields(data)
@@ -530,18 +533,6 @@ class Resource(object):
                 data[field_name] = calc_field.calculate()
         return data
 
-    def _create_new_embedded(self, resource, new_id, new_data, spec):
-        for field_name, field_spec in spec.fields.items():
-            if isinstance(field_spec, ResourceLinkSpec):
-                if new_data.get(field_name):
-                    embedded_id = resource._create_new(field_name, new_data[field_name], field_spec.schema.specs[field_spec.name],
-                                                       {'owner_spec': spec.name,
-                                                        'owner_id': new_id,
-                                                        'owner_field': field_name,
-                                                       })
-                    spec._collection().update({'_id': new_id}, {"$set": {field_name: embedded_id,
-                                                                         '_updated': self._update_dict([field_name])}})
-
     def _create_owner_link(self):
         return {
             'owner_spec': self.spec.name,
@@ -566,9 +557,6 @@ class Resource(object):
 
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
-
-        # possibly remove this as a thing
-        self._create_new_embedded(resource, new_id, data, spec)
 
         self.spec.schema.kickoff_create_update(resource)
 

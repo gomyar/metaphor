@@ -1,4 +1,11 @@
 
+add gui
+ - required / default for schema + api
+ - add all field types:
+  - calc
+  - link
+ - need to be able to tell if an aggregate (disable post/delete - links dont work /collection/collection/individual)
+
 add required field
 
 check for dependencies when deleting a field / spec - done
@@ -9,8 +16,6 @@ delete entire spec
 
 need to tie up checking of different calls (post patch etc)
  - i.e. shouldn't be able to patch a collection
-
-add gui
 
 order calc updates by dependency topsort
 allow updates and validation of multiple resources in schema

@@ -27,6 +27,12 @@ api.post_resource = function() {
     }, api.report_error);
 }
 
+api.delete_resource = function(resource) {
+    if (confirm("Are you sure you wish to delete this resource?")) {
+        net.perform_delete(resource.self, api.reload_resource, api.report_error);
+    }
+}
+
 $(document).ready(function() {
     console.log("initing");
 

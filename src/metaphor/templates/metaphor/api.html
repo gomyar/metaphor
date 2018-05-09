@@ -28,7 +28,8 @@ api.spec = {{ spec|tojson|safe }};
     <div class="fields" data-gui-list="api.spec.fields" data-gui-item="field" data-gui-key="field_name">
         <div class="field">
             <span data-gui-text="field_name"></span>
-            <span data-gui-text="api.resource[field_name]" data-gui-show="field.type=='resource'"></span>
+            <span data-gui-text="api.resource[field_name]" data-gui-show="['str', 'int', 'float'].includes(field.type)"></span>
+            <span data-gui-text="api.resource[field_name]" data-gui-show="['calc'].includes(field.type)"></span>
             <span data-gui-show="['link', 'collection'].includes(field.type)"><a class="button" data-gui-attr='"href"' data-gui-attrval="api.resource[field_name]" data-gui-text="field_name"></a></span>
         </div>
     </div>
@@ -42,10 +43,12 @@ api.spec = {{ spec|tojson|safe }};
     <div data-gui-list="api.resource.results" data-gui-item="resource">
         <div class="resource">
             <hr></hr>
+            <div class="button" data-gui-click="api.delete_resource(resource)">DELETE</div>
             <div class="fields" data-gui-list="api.spec.target_spec.fields" data-gui-item="field" data-gui-key="field_name">
                 <div class="field">
                     <span data-gui-text="field_name"></span>
                     <span data-gui-text="resource[field_name]" data-gui-show="['str', 'int', 'float'].includes(field.type)"></span>
+                    <span data-gui-text="resource[field_name]" data-gui-show="['calc'].includes(field.type)"></span>
                     <span data-gui-show="['link', 'collection'].includes(field.type)"><a class="button" data-gui-attr='"href"' data-gui-attrval="resource[field_name]" data-gui-text="field_name"></a></span>
                 </div>
             </div>
@@ -82,6 +85,10 @@ api.spec = {{ spec|tojson|safe }};
                 <div class="field" data-gui-show="field.type=='float'">
                     <span data-gui-text="field_name"></span>
                     <span><input type="text" data-gui-val="api.current_resource[field_name]" data-gui-parse-func="parseFloat"></input></span>
+                </div>
+                <div class="field" data-gui-show="field.type=='link'">
+                    <span data-gui-text="field_name"></span>
+                    <span><input type="text" data-gui-val="api.current_resource[field_name]"></input></span>
                 </div>
                 </div>
             </div>
