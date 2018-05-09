@@ -32,12 +32,14 @@ class ResourceCalcTest(unittest.TestCase):
 
         self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
-        self.company_spec.add_field("latestPeriod", CalcSpec('latest_period(self.periods)', 'period'))
-        self.company_spec.add_field("yearPeriods", CalcSpec('year_periods(self.periods)', 'period', is_collection=True))
+        self.company_spec.add_field("latestPeriod", CalcSpec('latest_period(self.periods.period_index)', 'period'))
+        self.company_spec.add_field("yearPeriods", CalcSpec('year_periods(self.periods.period_index)', 'period', is_collection=True))
         self.company_spec.add_field("latestPeriod_year", CalcSpec('self.latestPeriod.year', 'int'))
 
         self.period_spec.add_field("year", FieldSpec("int"))
-        self.period_spec.add_field("period", FieldSpec("str"))
+        self.period_spec.add_field("period", FieldSpec("float"))
+        self.period_spec.add_field("period_index", CalcSpec("self.year + (self.period-1) / 4", "float"))
+
         self.period_spec.add_field("score", FieldSpec("int"))
 
         self.period_spec.add_field("previousYear", CalcSpec('previous_year_period(self)', 'period'))
@@ -50,45 +52,37 @@ class ResourceCalcTest(unittest.TestCase):
 
         self.api = MongoApi('server', self.schema, self.db)
 
-    def _latest_period_func(self, periods):
-        period_resources = periods.load_collection_data()
+    def _latest_period_func(self, period_field_agg):
+        period_resources = period_field_agg._parent.load_collection_data()
         if period_resources.count():
-            max_period = max(period_resources, key=lambda p: p['year'])
+            max_period = max(period_resources, key=lambda p: p.get('period_index'))
             return max_period['_id']
         else:
             return None
 
     def _previous_year_period(self, period):
-        if not period.data.get('year') or not period.data.get('period'):
+        if not period.data.get('period_index'):
             return None
-        year = period.data['year']
-        fperiod = period.data['period']
+        period_index = period.data['period_index']
 
-        previous = self._lookup_period(period, year - 1, fperiod)
+        previous = self._lookup_period(period, period_index - 1.0)
         return previous['_id'] if previous else None
 
     def _previous_quarter_period(self, period):
-        if not period.data.get('year') or not period.data.get('period'):
+        if not period.data.get('period_index'):
             return None
-        year = period.data['year']
-        fperiod = period.data['period']
+        period_index = period.data['period_index']
 
-        PERIOD_KEYS = ['Q1', 'Q2', 'Q3', 'YE']
-        deltaPeriod = PERIOD_KEYS[PERIOD_KEYS.index(fperiod) - 1]
+        previous = self._lookup_period(period, period_index - 0.25)
+        return previous['_id'] if previous else None
 
-        if fperiod == 'Q1':
-            year -= 1
-        previous = self._lookup_period(period, year, deltaPeriod)
-        return previous['_id'] if previous else previous
-
-    def _lookup_period(self, period, year, fperiod):
+    def _lookup_period(self, period, period_index):
         owners = [owner for owner in period.data['_owners'] if owner['owner_spec'] =='company']
         if owners:
             company_id = owners[0]['owner_id']
 
             found = self.schema.db['resource_period'].find_one({
-                'year': year,
-                'period': fperiod,
+                'period_index': period_index,
                 '_owners.owner_spec': 'company',
                 '_owners.owner_id': company_id,
             })
@@ -96,8 +90,8 @@ class ResourceCalcTest(unittest.TestCase):
         return None
 
     def _filter_year_periods(self, periods):
-        period_data = [p for p in periods.load_collection_data()]
-        yearly_periods = [p for p in period_data if p['period'] == 'YE']
+        period_data = [p for p in periods._parent.load_collection_data()]
+        yearly_periods = [p for p in period_data if p['period'] == 4]
         sorted_periods = sorted(yearly_periods, key=lambda p: p['year'])
         return [p['_id'] for p in sorted_periods]
 
@@ -107,7 +101,7 @@ class ResourceCalcTest(unittest.TestCase):
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals(None, company['latestPeriod'])
 
-        period_2015_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2015})
+        period_2015_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2015, 'period': 4})
 
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals('http://server/api/companies/%s/latestPeriod' % (company_id,), company['latestPeriod'])
@@ -115,7 +109,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(str(period_2015_id), latest['id'])
         self.assertEquals(2015, latest['year'])
 
-        period_2016_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016})
+        period_2016_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
 
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals('http://server/api/companies/%s/latestPeriod' % (company_id,), company['latestPeriod'])
@@ -134,32 +128,32 @@ class ResourceCalcTest(unittest.TestCase):
 
     def test_link_collection_calc(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 'Q1'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'Q3'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'Q2'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'Q1'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'Q1'})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 1})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 3})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 2})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 1})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 1})
 
         company = self.api.get("companies/%s" % (company_id,))
         self.assertEquals("http://server/api/companies/%s/yearPeriods" % (company_id,), company['yearPeriods'])
 
         year_periods = self.api.get("companies/%s/yearPeriods" % (company_id,))
         self.assertEquals(2, len(year_periods))
-        self.assertEquals('YE', year_periods[0]['period'])
+        self.assertEquals(4, year_periods[0]['period'])
         self.assertEquals(2017, year_periods[0]['year'])
-        self.assertEquals('YE', year_periods[1]['period'])
+        self.assertEquals(4, year_periods[1]['period'])
         self.assertEquals(2016, year_periods[1]['year'])
 
     def test_multiple_calcs(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
-        period_1_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 'Q1', 'score': 50})
-        period_2_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE', 'score': 45})
-        period_3_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'Q3', 'score': 38})
-        period_4_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'Q2', 'score': 43})
-        period_5_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'Q1', 'score': 40})
-        period_6_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE', 'score': 55})
+        period_1_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 1, 'score': 50})
+        period_2_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4, 'score': 45})
+        period_3_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 3, 'score': 38})
+        period_4_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 2, 'score': 43})
+        period_5_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 1, 'score': 40})
+        period_6_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4, 'score': 55})
 
         period_1 = self.api.get('companies/%s/periods/%s' % (company_id, period_1_id))
         period_2 = self.api.get('companies/%s/periods/%s' % (company_id, period_2_id))
@@ -204,40 +198,40 @@ class ResourceCalcTest(unittest.TestCase):
 
         previousQuarter = self.api.get('companies/%s/periods/%s/previousQuarter' % (company_id, period_1_id))
         self.assertEquals(2017, previousQuarter['year'])
-        self.assertEquals('YE', previousQuarter['period'])
+        self.assertEquals(4, previousQuarter['period'])
         self.assertEquals('http://server/api/companies/%s/periods/%s/previousQuarter/previousQuarter' % (company_id, period_1_id), previousQuarter['previousQuarter'])
 
     def test_aggregate_link_collection_calc_field(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
 
         company_id_2 = self.api.post('companies', {'name': 'Ned'})
-        self.api.post('companies/%s/periods' % (company_id_2,), {'year': 2015, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (company_id_2,), {'year': 2015, 'period': 4})
 
         agg = self.api.get("companies/yearPeriods")
         self.assertEquals(2017, agg['results'][0]['year'])
-        self.assertEquals('YE', agg['results'][0]['period'])
+        self.assertEquals(4, agg['results'][0]['period'])
         self.assertEquals(2016, agg['results'][1]['year'])
-        self.assertEquals('YE', agg['results'][1]['period'])
+        self.assertEquals(4, agg['results'][1]['period'])
         self.assertEquals(2015, agg['results'][2]['year'])
-        self.assertEquals('YE', agg['results'][2]['period'])
+        self.assertEquals(4, agg['results'][2]['period'])
 
     def test_link_change_new_link(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
-        period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})
-        period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE'})
+        period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
+        period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
 
         self.assertEquals(2017, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
 
-        self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 'YE'})
+        self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 4})
 
         self.assertEquals(2018, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
 
     def test_link_target_change(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
-        period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 'YE'})
-        period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 'YE'})
+        period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
+        period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
 
         self.assertEquals(2017, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
 
