@@ -507,17 +507,27 @@ class Resource(object):
             if data.get(name) and type(self.spec.fields[name]) == ResourceLinkSpec:
                 data[name] = ObjectId(data[name])
 
+    def _follow_local_dependencies(self, fields, data):
+        local_deps = self.local_field_dependencies(fields)
+        local_fields = [dep[0].field_name for dep in local_deps]
+        if local_fields:
+            recalced_fields = self._recalc_fields(local_fields)
+            data.update(recalced_fields)
+            self._follow_local_dependencies(local_fields, data)
+
     def update(self, data):
         self._validate_fields(data)
         self.data.update(data)
         update = data.copy()
-        update['_updated'] = self._update_dict(data.keys())
+        self._follow_local_dependencies(update.keys(), update)
+#        update['_updated'] = self._update_dict(data.keys())
         self.spec._collection().update({'_id': self._id}, {'$set': update})
-        for key in data:
-            self.spec.schema.kickoff_update(self, key)
+        found = self.foreign_field_dependencies(update.keys())
+        self.spec.schema.kickoff_update(self, found)
+
 
     def _update_dict(self, field_names):
-        return {'at': datetime.now(), 'fields': field_names}
+        return {'update_id': ObjectId(), 'at': datetime.now(), 'fields': field_names}
 
     def _add_field_defaults(self, new_data, spec):
         for field_name, field_spec in spec.fields.items():
@@ -525,12 +535,11 @@ class Resource(object):
                 if field_name not in new_data:
                     new_data[field_name] = field_spec.default_value()
 
-    def _recalc_resource(self, resource, spec):
+    def _recalc_fields(self, fields):
         data = {}
-        for field_name, field_spec in spec.fields.items():
-            if isinstance(field_spec, CalcSpec):
-                calc_field = resource.build_child(field_name)
-                data[field_name] = calc_field.calculate()
+        for field_name in fields:
+            calc_field = self.build_child(field_name)
+            data[field_name] = calc_field.calculate()
         return data
 
     def _create_owner_link(self):
@@ -553,7 +562,7 @@ class Resource(object):
         if owner:
             data['_owners'] = [owner]
 
-        data['_updated'] = self._update_dict(data.keys())
+#        data['_updated'] = self._update_dict(data.keys())
 
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
@@ -607,6 +616,22 @@ class Resource(object):
             self.spec.schema.run_updaters(updater_ids)
 
         return self._id
+
+    def field_dependencies(self, fields):
+        found_deps = set()
+        for field_name in fields:
+            field = self.build_child(field_name)
+            found = self.spec.schema.updater.find_affected_calcs_for_field(field)
+            found_deps = found_deps.union(found)
+        return found_deps
+
+    def local_field_dependencies(self, fields):
+        found_deps = self.field_dependencies(fields)
+        return set([dep for dep in found_deps if dep[2] == 'self'])
+
+    def foreign_field_dependencies(self, fields):
+        found_deps = self.field_dependencies(fields)
+        return set([dep for dep in found_deps if dep[2] != 'self'])
 
 
 class LinkResource(Resource):

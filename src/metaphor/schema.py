@@ -73,8 +73,8 @@ class Schema(object):
         updater_ids = self.create_updaters(new_resource)
         self.run_updaters(updater_ids)
 
-    def kickoff_update(self, resource, field_name):
-        found = self.updater.find_affected_calcs_for_field(resource.build_child(field_name))
+    def kickoff_update(self, resource, found):
+        #found = self.updater.find_affected_calcs_for_field(resource.build_child(field_name))
         altered = self.updater.find_altered_resource_ids(found, resource)
         updater_ids = []
         for spec, field_name, ids in altered:

@@ -1,4 +1,9 @@
 
+fix multiple updates
+ - topsort
+
+fix 3 second re-updater (constantly running updates)
+
 add gui
  - required / default for schema + api
  - add all field types:

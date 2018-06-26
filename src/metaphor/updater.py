@@ -150,7 +150,7 @@ class Updater(object):
             {'_id': resource._id},
             {'$set': {
                 update['field_name']: calc_field.calculate(),
-                '_updated': resource._update_dict([update['field_name']]),
+#                '_updated': resource._update_dict([update['field_name']]),
             }})
 
         found = self.find_affected_calcs_for_field(calc_field)

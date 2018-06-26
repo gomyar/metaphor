@@ -171,7 +171,7 @@ class SpikeTest(unittest.TestCase):
              'name': u'Norman',
              'public': None,
              'totalTotalAssets': None,
-             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
+#             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
     @patch('metaphor.resource.datetime')
@@ -186,7 +186,7 @@ class SpikeTest(unittest.TestCase):
              'name': u'Fred',
              'public': False,
              'totalTotalAssets': None,
-             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name', 'public']}
+#             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name', 'public']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
     def test_embedded_financials_create(self):

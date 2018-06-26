@@ -34,10 +34,15 @@ class SpikeTest(unittest.TestCase):
         self.schema.add_resource_spec(self.financial_spec)
 
         self.company_spec.add_field("name", FieldSpec("str"))
+        self.company_spec.add_field("surname", FieldSpec("str"))
+        self.company_spec.add_field("full_name", CalcSpec("self.name + self.surname", "str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("public", FieldSpec("bool"))
         self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)", 'int'))
         self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)', 'int'))
+        self.company_spec.add_field("address_line_1", FieldSpec("str"))
+        self.company_spec.add_field("address_line_2", FieldSpec("str"))
+        self.company_spec.add_field("full_address", CalcSpec("self.address_line_1 + self.address_line_2", "str"))
 
         self.period_spec.add_field("period", FieldSpec("str"))
         self.period_spec.add_field("year", FieldSpec("int"))
@@ -60,4 +65,47 @@ class SpikeTest(unittest.TestCase):
             'company.totalTotalAssets': set(['financial.totalAssets']),
             'company.totalFinancialsAssets': set(['financial.totalAssets']),
             'period.companyName': set(['company.name']),
+            'company.full_address': set(['company.address_line_1',
+                                         'company.address_line_2']),
+            'company.full_name': set(['company.name', 'company.surname']),
         }, self.schema.dependency_tree())
+
+    def test_field_dependencies_fields(self):
+        company_id = self.api.post('companies', {'name': 'Bob'})
+        company = self.api.build_resource('companies/%s' % (company_id,))
+
+        expected = set([
+            (self.company_spec.fields['full_address'], 'self.address_line_1', 'self')
+        ])
+        self.assertEquals(expected, company.field_dependencies(['address_line_1']))
+
+        expected = set([
+            (self.company_spec.fields['full_address'], 'self.address_line_1', 'self'),
+            (self.company_spec.fields['full_name'], 'self.name', 'self'),
+            (self.period_spec.fields['companyName'], 'self.link_company_periods.name', 'self.link_company_periods'),
+        ])
+        self.assertEquals(expected, company.field_dependencies(['address_line_1', 'name']))
+
+    def test_self_dependencies(self):
+        company_id = self.api.post('companies', {'name': 'Bob'})
+        company = self.api.build_resource('companies/%s' % (company_id,))
+
+        expected = set([
+            (self.company_spec.fields['full_address'], 'self.address_line_1', 'self'),
+            (self.company_spec.fields['full_name'], 'self.name', 'self'),
+        ])
+        self.assertEquals(expected, company.local_field_dependencies(['address_line_1', 'name']))
+
+
+        expected = set([
+            (self.period_spec.fields['companyName'], 'self.link_company_periods.name', 'self.link_company_periods'),
+        ])
+        self.assertEquals(expected, company.foreign_field_dependencies(['address_line_1', 'name']))
+
+    def test_update_mongo_once_then_construct_updater(self):
+        # send > 1 fields to be updated
+
+        # assert single update sent to mongo
+
+        # assert updater(s) refers to dependencies only
+        pass
