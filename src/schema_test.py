@@ -3,7 +3,6 @@ import unittest
 
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from requests.exceptions import HTTPError
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, CalcSpec

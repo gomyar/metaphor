@@ -109,3 +109,13 @@ class CalcLangTest(unittest.TestCase):
         exp_tree = parser.parse(self.schema, 'sectors.companies.totalAssets')
         resource = exp_tree.exp.create_resource(self.schema.root)
         self.assertEquals(AggregateField, type(resource))
+
+    def test_none_values(self):
+        company_id = self.api.post(
+            'companies', dict(name='Bobs Burgers', totalAssets=100))
+
+        company = self.api.get('companies/%s' % (company_id,))
+        self.assertEquals(100, company['totalAssets'])
+        self.assertEquals(None, company['totalLiabilities'])
+        self.assertEquals(100, company['totalCurrentAssets'])
+        self.assertEquals(100, company['grossProfit'])

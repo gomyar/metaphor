@@ -130,8 +130,12 @@ class AddOp(Calc):
     def calculate(self, resource):
         lhs_val = self.lhs.calculate(resource)
         rhs_val = self.rhs.calculate(resource)
-        if lhs_val == None or rhs_val == None:
+        if lhs_val == None and rhs_val == None:
             return None
+        if lhs_val == None:
+            return rhs_val
+        if rhs_val == None:
+            return lhs_val
         return lhs_val + rhs_val
 
     def all_resource_refs(self):
@@ -148,8 +152,12 @@ class SubtractOp(Calc):
     def calculate(self, resource):
         lhs_val = self.lhs.calculate(resource)
         rhs_val = self.rhs.calculate(resource)
-        if lhs_val == None or rhs_val == None:
+        if lhs_val == None and rhs_val == None:
             return None
+        if lhs_val == None:
+            return -rhs_val
+        if rhs_val == None:
+            return lhs_val
         return lhs_val - rhs_val
 
     def all_resource_refs(self):

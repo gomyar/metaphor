@@ -513,18 +513,19 @@ class Resource(object):
         if local_fields:
             recalced_fields = self._recalc_fields(local_fields)
             data.update(recalced_fields)
+            self.data.update(recalced_fields)
             self._follow_local_dependencies(local_fields, data)
 
     def update(self, data):
         self._validate_fields(data)
-        self.data.update(data)
-        update = data.copy()
-        self._follow_local_dependencies(update.keys(), update)
-#        update['_updated'] = self._update_dict(data.keys())
-        self.spec._collection().update({'_id': self._id}, {'$set': update})
-        found = self.foreign_field_dependencies(update.keys())
+        updated_data = data.copy()
+        self.data.update(updated_data)
+        self._follow_local_dependencies(updated_data.keys(), updated_data)
+        self.spec._collection().update({'_id': self._id}, {
+            '$set': updated_data,
+        })
+        found = self.foreign_field_dependencies(updated_data.keys())
         self.spec.schema.kickoff_update(self, found)
-
 
     def _update_dict(self, field_names):
         return {'update_id': ObjectId(), 'at': datetime.now(), 'fields': field_names}

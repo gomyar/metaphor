@@ -3,7 +3,6 @@ import unittest
 
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from requests.exceptions import HTTPError
 
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
 from metaphor.resource import ResourceLinkSpec, CalcSpec
@@ -60,6 +59,26 @@ class SpikeTest(unittest.TestCase):
         self.assertEquals(16, employee['total_tonnes'])
         self.assertEquals(16000, employee['total_kg'])
         self.assertEquals(116, employee['total_debt'])
+
+    def test_affected_resources(self):
+        job = self.api.build_resource('employees/%s/jobs/%s' % (self.employee_id, self.job_id))
+
+        found = self.schema.updater.find_affected_calcs_for_field(job.build_child('tonnes'))
+
+        self.assertEquals(set([
+            (self.job_spec.fields['kg'], 'self.tonnes', 'self'),
+            (self.employee_spec.fields['total_tonnes'], 'self.jobs.tonnes', 'self.jobs'),
+            (self.employee_spec.fields['total_debt'], 'self.jobs.tonnes', 'self.jobs'),
+        ]), found)
+
+        resource_ids = self.schema.updater.find_altered_resource_ids(found, job)
+        self.assertEquals(set([
+            ('job', 'kg', (self.job_id,)),
+            ('employee', 'total_tonnes', (self.employee_id,)),
+            ('employee', 'total_debt', (self.employee_id,)),
+        ]), resource_ids)
+
+
 
     def test_update_mongo_once_then_construct_updater(self):
         self.api.patch("employees/%s/jobs/%s" % (self.employee_id, self.job_id), {'tonnes': 32, 'fuel': 1})

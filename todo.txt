@@ -49,6 +49,9 @@ need support for:
  - calc which returns reference to resource
  - calc which returns collection
 
+ - need way of validating calc function parameter types (simple, resource, aggregatecollection, aggregatefield all respond differently)
+   - impossible to check right now if type if correct for a given calc function
+
 
  - field types:
    - enumeration
@@ -105,6 +108,7 @@ edge case:
    3. new resource is updated
    possible fix: the creation of updaters should happen after post / patch (but still before delete)
      (maybe add a double-check to delete case where updaters add missing ids when kicked off)
+   NOTE: This may be a non-issue: subsequent creates will be based on the initially updated data
 
 
 architecture

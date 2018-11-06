@@ -202,7 +202,7 @@ class SchemaUpdateTest(unittest.TestCase):
         response = self.client.patch('/schema/specs/company', data=json.dumps(
             {'allAssets': {'type': 'calc', 'calc': 'self.totalAssets', 'calc_type': 'int'}}), content_type='application/json')
         self.assertEquals(400, response.status_code)
-        self.assertEquals({"error": "Circular dependencies exist among these items: {u'company.allAssets':set([u'company.totalAssets']), u'company.totalAssets':set([u'company.allAssets'])}"}, json.loads(response.data))
+        self.assertEquals({"error": "Cyclic dependencies exist among these items: (u'company.allAssets', set([u'company.totalAssets'])), (u'company.totalAssets', set([u'company.allAssets']))"}, json.loads(response.data))
 
     def test_cannot_add_circular_dependency_from_other_resources(self):
         resp = self.client.post('/schema/specs', data=json.dumps(
@@ -227,7 +227,9 @@ class SchemaUpdateTest(unittest.TestCase):
             }), content_type='application/json')
 
         self.assertEquals(400, resp.status_code)
-        self.assertEquals({"error": "Circular dependencies exist among these items: {u'company.assets':set([u'other_company.company_assets']), u'other_company.company_assets':set([u'company.assets'])}"}, json.loads(resp.data))
+        self.assertEquals(
+            {u'error': u"Cyclic dependencies exist among these items: (u'company.assets', set([u'other_company.company_assets'])), (u'other_company.company_assets', set([u'company.assets']))"},
+            json.loads(resp.data))
 
     def test_circular_dependency_with_self(self):
         resp = self.client.post('/schema/specs', data=json.dumps(
