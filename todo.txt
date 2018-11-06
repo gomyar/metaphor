@@ -4,6 +4,14 @@ fix multiple updates
 
 fix 3 second re-updater (constantly running updates)
 
+updaters:
+ - {
+ ... resource ...
+ _updated: true,
+ _updated_at: 2017-01-01T00:00:00
+ _updated_fields: {'name', 'desc', etc...}
+ }
+
 add gui
  - required / default for schema + api
  - add all field types:
@@ -48,9 +56,6 @@ something for app specific functionality across many resources:
 need support for:
  - calc which returns reference to resource
  - calc which returns collection
-
- - need way of validating calc function parameter types (simple, resource, aggregatecollection, aggregatefield all respond differently)
-   - impossible to check right now if type if correct for a given calc function
 
 
  - field types:
