@@ -93,7 +93,24 @@ class Update(object):
         return altered_ids
 
     def _update_resource_dependents(self, resource):
-        pass
+        altered_ids = set()
+        found = self.old_updater.find_affected_calcs_for_resource(
+            resource)
+
+        # find resource ids for each resource type
+        altered = self.old_updater.find_altered_resource_ids(
+            found, resource)
+        for spec_name, field_name, ids in altered:
+
+            # mark resources as updated
+            resource_name = 'resource_%s' % spec_name
+            self.schema.db[resource_name].update_many(
+                {'_id': {'$in': ids}},
+                {'$set': {'_updated': True},
+                '$addToSet': {'_updated_fields': field_name}}
+                )
+            altered_ids = altered_ids.union(ids)
+        return altered_ids
 
     def _finalize_update(self, resource):
         resource_name = 'resource_%s' % resource.spec.name
