@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime
 from mock import patch
 
+from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 from metaphor.update import Update
@@ -14,6 +15,12 @@ from metaphor.schema import Schema
 from metaphor.api import MongoApi
 
 
+class MockUpdatePool(object):
+    def __init__(self):
+        self.calls = []
+
+    def spawn_update(self, spec_name, resource_id, fields):
+        self.calls.append((spec_name, resource_id, fields))
 
 
 class UpdateTest(unittest.TestCase):
@@ -33,6 +40,8 @@ class UpdateTest(unittest.TestCase):
         self.schema.add_resource_spec(self.department_spec)
         self.schema.add_root('employees', CollectionSpec('employee'))
 
+        self.employee_spec.add_field("seniority", CalcSpec('self.age / 10', "int"))
+
         self.department_spec.add_field("employees",
                                        LinkCollectionSpec("employee"))
         self.department_spec.add_field(
@@ -40,7 +49,8 @@ class UpdateTest(unittest.TestCase):
 
         self.api = MongoApi('http://server', self.schema, self.db)
 
-        self.update = Update(self.schema)
+        self.mock_pool = MockUpdatePool()
+        self.update = Update(self.schema, self.mock_pool)
 
     @patch('metaphor.update.datetime')
     def test_update(self, dt):
@@ -224,7 +234,6 @@ class UpdateTest(unittest.TestCase):
             'name': 'Marketting',
             }, department_data_2)
 
-
     def test_update_on_create(self):
         department_id_1 = self.db['resource_department'].insert(
             {'name': 'Engineering',
@@ -250,3 +259,140 @@ class UpdateTest(unittest.TestCase):
             'name': 'Engineering',
             '_updated': True,
             '_updated_fields': ['averageAge']}, department_data_1)
+
+    def test_perform_dependency_updates(self):
+        department_id_1 = self.db['resource_department'].insert(
+            {'name': 'Engineering',
+            '_updated': True,
+            '_updated_fields': ['averageAge']
+            })
+
+        employee_id = self.db['resource_employee'].insert(
+            {'name': 'Bob',
+             'age': 40,
+             '_owners': [
+                {'owner_spec': 'department',
+                 'owner_field': 'employees',
+                 'owner_id': department_id_1}
+             ],
+            })
+
+        self.update._perform_dependency_update('department', department_id_1)
+
+        department_data_1 = self.db['resource_department'].find_one(
+            {'_id': department_id_1}, {'_id': 0})
+        self.assertEquals({
+            'name': 'Engineering',
+            'averageAge': 40,
+            '_updated': None,
+            '_updated_fields': None}, department_data_1)
+
+    def test_zip_altered_dependents(self):
+        dept_id_1 = ObjectId()
+        dept_id_2 = ObjectId()
+        empl_id_1 = ObjectId()
+        empl_id_2 = ObjectId()
+
+        altered = set([
+            ('department', 'averageAge', (dept_id_1, dept_id_2)),
+            ('department', 'anotherCalc', (dept_id_1,)),
+            ('employee', 'seniority', (empl_id_1,)),
+            ('employee', 'emplCalc', (empl_id_1, empl_id_2)),
+        ])
+
+        dependents = self.update._zip_altered(altered)
+
+        self.assertEquals([
+            ('department', dept_id_1, ['averageAge', 'anotherCalc']),
+            ('department', dept_id_2, ['averageAge']),
+            ('employee', empl_id_1, ['seniority', 'emplCalc']),
+            ('employee', empl_id_2, ['emplCalc']),
+        ], sorted(dependents))
+
+    @patch('metaphor.update.datetime')
+    def test_update_object(self, dt):
+        dt.now.return_value = datetime(2018, 1, 1, 1)
+
+        # setup
+        department_id_1 = self.db['resource_department'].insert(
+            {'name': 'Engineering',
+            })
+        department_id_2 = self.db['resource_department'].insert(
+            {'name': 'Marketting',
+            })
+
+        employee_id = self.db['resource_employee'].insert(
+            {'name': 'Bob',
+             'age': 40,
+             '_owners': [
+                {'owner_spec': 'department',
+                 'owner_field': 'employees',
+                 'owner_id': department_id_1},
+                {'owner_spec': 'department',
+                 'owner_field': 'employees',
+                 'owner_id': department_id_2},
+             ],
+            })
+
+        self.update.init()
+
+        # must have own id
+        update_obj = self.db['metaphor_update'].find_one({'_id': self.update.update_id})
+        self.assertEquals({'_id': self.update.update_id}, update_obj)
+
+        # on init update - must have spec_name + resource_id
+        # must have altered fields
+        # will have list of dependent's resource_ids
+        # resource fields have changed
+        self.update.init_update_resource('employee', employee_id, {'age': 30})
+
+        update_obj = self.db['metaphor_update'].find_one(
+            {'_id': self.update.update_id})
+        employee_obj = self.db['resource_employee'].find_one(
+            {'_id': employee_id})
+
+        self.assertEquals({
+            '_id': self.update.update_id,
+            'spec_name': 'employee',
+            'resource_id': employee_id,
+            'fields': ['age'],
+            'dependents': [],
+            'processing': datetime(2018, 1, 1, 1)}, update_obj)
+
+        self.assertEquals(30, employee_obj['age'])
+        self.assertEquals(3, employee_obj['seniority'])
+
+        # on dependencies update
+        self.update.init_dependency_update()
+
+        update_obj = self.db['metaphor_update'].find_one(self.update.update_id)
+        # update obj contains dependency ids
+        self.assertEquals({
+            '_id': self.update.update_id,
+            'spec_name': 'employee',
+            'resource_id': employee_id,
+            'fields': ['age'],
+            'dependents': [
+                ['department', department_id_1, ['averageAge']],
+                ['department', department_id_2, ['averageAge']],
+            ],
+            'processing': datetime(2018, 1, 1, 1)}, update_obj)
+
+        # spawn updates for each dependent resource
+        self.update.spawn_dependent_updates()
+        self.assertEquals([], self.update.gthreads)
+
+        # log mock
+        self.update.wait_for_dependent_updates()
+
+        # remove db entries
+        self.update.finalize_update()
+
+        update_obj = self.db['metaphor_update'].find_one(self.update.update_id)
+        self.assertEquals({
+            '_id': self.update.update_id,
+            'spec_name': None,
+            'resource_id': None,
+            'fields': [],
+            'dependents': [],
+            'processing': None}, update_obj)
