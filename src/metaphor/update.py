@@ -2,6 +2,8 @@
 from collections import defaultdict
 from pymongo import ReturnDocument
 
+import gevent
+
 from datetime import datetime
 
 from metaphor.updater import Updater
@@ -34,10 +36,9 @@ class Update(object):
     kickoff updater for each dependent resource
     '''
 
-    def __init__(self, schema, update_pool):
+    def __init__(self, schema):
         self.schema = schema
         self.old_updater = Updater(schema)
-        self.update_pool = update_pool
         self.resource = None
         self.updated_field_names = []
         self.dependents = []
@@ -161,13 +162,22 @@ class Update(object):
         self.update_id = self.schema.db['metaphor_update'].insert({})
 
 
-    def fields_updated(self, resource, fields):
+    def fields_updated(self, spec_name, resource_id, fields):
         self.init()
-        self.init_update_resource(resource, fields)
+        self.init_update_resource(spec_name, resource_id, fields)
         self.init_dependency_update()
         self.spawn_dependent_updates()
         self.wait_for_dependent_updates()
         self.finalize_update()
+
+    def fields_updated_inner(self, spec_name, resource_id, field_names):
+        self.init()
+        self.init_update_resource_inner(spec_name, resource_id, field_names)
+        self.init_dependency_update()
+        self.spawn_dependent_updates()
+        self.wait_for_dependent_updates()
+        self.finalize_update()
+
 
 
     def _update_local_dependencies(self, resource, field_names, data):
@@ -203,14 +213,50 @@ class Update(object):
         updated_calc_fields = self._update_local_dependencies(self.resource, fields.keys(), fields)
         updated_data = dict((name, self.resource.data[name]) for name in updated_calc_fields)
 
-        resource_data = self.schema.db['resource_%s' % (spec_name,)].update(
-            {'_id': resource_id},
-            {
-                '$set': updated_data,
-            })
+        if updated_data:
+            resource_data = self.schema.db['resource_%s' % (spec_name,)].update(
+                {'_id': resource_id},
+                {
+                    '$set': updated_data,
+                })
 
         # update local calcs
         self.updated_field_names = set(fields.keys() + updated_data.keys())
+
+    def init_update_resource_inner(self, spec_name, resource_id, field_names):
+        # write update state to mongo - spawn 'processing' writer
+        self.schema.db['metaphor_update'].find_one_and_update({'_id': self.update_id}, {
+            '$set': {
+                'spec_name': spec_name,
+                'resource_id': resource_id,
+                'fields': field_names,
+                'dependents': [],
+                'processing': datetime.now(),
+            }
+        }, return_document=ReturnDocument.AFTER)
+
+        # update fields in resource
+        resource_data = self.schema.db['resource_%s' % (spec_name,)].find_one(
+            {'_id': resource_id})
+
+        self.resource = Resource(None, "self", self.schema.specs[spec_name], resource_data)
+
+        # recalc altered calc fields
+        altered_data = self.resource._recalc_fields(field_names)
+
+        updated_calc_fields = self._update_local_dependencies(self.resource, field_names, altered_data)
+        updated_data = dict((name, self.resource.data[name]) for name in updated_calc_fields)
+        updated_data.update(altered_data)
+
+        if updated_data:
+            resource_data = self.schema.db['resource_%s' % (spec_name,)].update(
+                {'_id': resource_id},
+                {
+                    '$set': updated_data,
+                })
+
+        # update local calcs
+        self.updated_field_names = set(field_names + updated_data.keys())
 
     def _zip_altered(self, altered):
         dependents_dict = defaultdict(lambda: set())
@@ -241,7 +287,8 @@ class Update(object):
         # call pool
         self.gthreads = []
         for spec_name, resource_id, fields in self.dependents:
-            self.gthreads.append(gevent.spawn(self.update_fields, spec_name, resource_id, fields))
+            new_update = Update(self.schema)
+            self.gthreads.append(gevent.spawn(new_update.fields_updated_inner, spec_name, resource_id, fields))
 
     def wait_for_dependent_updates(self):
         # wait for updates to finish
@@ -249,6 +296,7 @@ class Update(object):
 
     def finalize_update(self):
         # wipe data
+        self.schema.db['metaphor_update'].remove({'_id': self.update_id})
 
         # kill 'processing' writer
         pass

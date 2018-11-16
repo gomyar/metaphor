@@ -5,6 +5,7 @@ from mock import patch
 
 from bson.objectid import ObjectId
 from pymongo import MongoClient
+from gevent import Greenlet
 
 from metaphor.update import Update
 from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
@@ -13,14 +14,6 @@ from metaphor.resource import LinkCollectionSpec
 from metaphor.resource import AggregateField, CalcSpec
 from metaphor.schema import Schema
 from metaphor.api import MongoApi
-
-
-class MockUpdatePool(object):
-    def __init__(self):
-        self.calls = []
-
-    def spawn_update(self, spec_name, resource_id, fields):
-        self.calls.append((spec_name, resource_id, fields))
 
 
 class UpdateTest(unittest.TestCase):
@@ -49,8 +42,7 @@ class UpdateTest(unittest.TestCase):
 
         self.api = MongoApi('http://server', self.schema, self.db)
 
-        self.mock_pool = MockUpdatePool()
-        self.update = Update(self.schema, self.mock_pool)
+        self.update = Update(self.schema)
 
     @patch('metaphor.update.datetime')
     def test_update(self, dt):
@@ -367,32 +359,27 @@ class UpdateTest(unittest.TestCase):
 
         update_obj = self.db['metaphor_update'].find_one(self.update.update_id)
         # update obj contains dependency ids
-        self.assertEquals({
-            '_id': self.update.update_id,
-            'spec_name': 'employee',
-            'resource_id': employee_id,
-            'fields': ['age'],
-            'dependents': [
-                ['department', department_id_1, ['averageAge']],
-                ['department', department_id_2, ['averageAge']],
-            ],
-            'processing': datetime(2018, 1, 1, 1)}, update_obj)
+
+        self.assertEquals('employee', update_obj['spec_name'])
+        self.assertEquals(employee_id, update_obj['resource_id'])
+        self.assertEquals(['age'], update_obj['fields'])
+        self.assertEquals(datetime(2018, 1, 1, 1), update_obj['processing'])
+        self.assertTrue(['department', department_id_1, ['averageAge']] in update_obj['dependents'])
+        self.assertTrue(['department', department_id_2, ['averageAge']] in update_obj['dependents'])
 
         # spawn updates for each dependent resource
         self.update.spawn_dependent_updates()
-        self.assertEquals([], self.update.gthreads)
+        expected = sorted([
+            ('department', department_id_1, ['averageAge']),
+            ('department', department_id_2, ['averageAge']),
+        ])
+        actual = sorted([g.args for g in self.update.gthreads])
+        self.assertEquals(expected, actual)
 
-        # log mock
+        # wait for all gthread to finish
         self.update.wait_for_dependent_updates()
 
         # remove db entries
         self.update.finalize_update()
 
-        update_obj = self.db['metaphor_update'].find_one(self.update.update_id)
-        self.assertEquals({
-            '_id': self.update.update_id,
-            'spec_name': None,
-            'resource_id': None,
-            'fields': [],
-            'dependents': [],
-            'processing': None}, update_obj)
+        self.assertIsNone(self.db['metaphor_update'].find_one(self.update.update_id))
