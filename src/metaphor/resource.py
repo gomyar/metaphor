@@ -553,6 +553,8 @@ class Resource(object):
         resource = spec.build_resource(self, parent_field_name, data)
         resource._validate_fields(data)
 
+        new_data = data.copy()
+
         # this is differnt for collections
         if self._parent:
             data['_owners'] = [self._create_owner_link()]
@@ -560,12 +562,12 @@ class Resource(object):
         if owner:
             data['_owners'] = [owner]
 
-#        data['_updated'] = self._update_dict(data.keys())
-
         new_id = spec._collection().insert(data)
         resource.data['_id'] = new_id
 
-        self.spec.schema.kickoff_create_update(resource)
+        from metaphor.update import Update
+        update = Update(self.spec.schema)
+        update.resource_created(spec.name, new_id, new_data)
 
         return new_id
 

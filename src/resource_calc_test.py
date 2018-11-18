@@ -33,6 +33,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.company_spec.add_field("name", FieldSpec("str"))
         self.company_spec.add_field("periods", CollectionSpec('period'))
         self.company_spec.add_field("latestPeriod", CalcSpec('latest_period(self.periods.period_index)', 'period'))
+        # this would have to be "sort(filter(self.periods, period=4), 'year')"
         self.company_spec.add_field("yearPeriods", CalcSpec('year_periods(self.periods.period_index)', 'period', is_collection=True))
         self.company_spec.add_field("latestPeriod_year", CalcSpec('self.latestPeriod.year', 'int'))
 
@@ -42,7 +43,9 @@ class ResourceCalcTest(unittest.TestCase):
 
         self.period_spec.add_field("score", FieldSpec("int"))
 
+        # TODO: this would have to be "filter_one(self.parent.periods, year=self.year-1, period=self.period-1.0)"
         self.period_spec.add_field("previousYear", CalcSpec('previous_year_period(self)', 'period'))
+        # TODO: this would have to be "filter_one(self.parent.periods, year=self.year-1, period=self.period-0.25)"
         self.period_spec.add_field("previousQuarter", CalcSpec('previous_quarter_period(self)', 'period'))
 
         self.period_spec.add_field("yearlyDelta_score", CalcSpec('self.score - self.previousYear.score', 'int'))
@@ -163,6 +166,7 @@ class ResourceCalcTest(unittest.TestCase):
         period_6 = self.api.get('companies/%s/periods/%s' % (company_id, period_6_id))
 
         self.assertEquals('http://server/api/companies/%s/periods/%s/previousQuarter' % (company_id, period_1_id), period_1['previousQuarter'])
+        # this is not found because there is no way currently to aggregate 'self' in the calc
         self.assertEquals('http://server/api/companies/%s/periods/%s/previousYear' % (company_id, period_1_id), period_1['previousYear'])
         self.assertEquals(10, period_1['yearlyDelta_score'])
         self.assertEquals(5, period_1['quarterlyDelta_score'])
