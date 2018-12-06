@@ -1,4 +1,7 @@
 
+load schema on per request (not singleton anymore)
+
+
 fix multiple updates
  - topsort
 
