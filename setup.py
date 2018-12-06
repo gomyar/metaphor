@@ -10,6 +10,7 @@ setup(
     description='API Layer for MongoDB.',
     packages=find_packages("src"),
     include_package_data=True,
-    package_dir= { '': 'src'},
+    package_dir={ '': 'src'},
     install_requires=[req.strip() for req in requirements],
+    package_data={'static': ['*'], 'templates': ['*']},
 )
