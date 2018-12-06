@@ -1,1 +1,2 @@
-src/metaphor/templates/metaphor/*.html
+include src/metaphor/templates/metaphor/*
+include src/metaphor/static/metaphor/*
