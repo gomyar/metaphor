@@ -1,4 +1,20 @@
 
+add edit to schema admin - nope - edit is more involved that we thought (mutations)
+
+throw error if new field added with same name as exiting field
+
+add language constructs for if(), max(), min(), filter() etc
+add primitives to calcs (int, float, str)
+check calcs for typing on creation
+
+split interface into:
+ - api (pure json)
+ - html editor
+ - admin editor
+
+get updates working efficiently for large update numbers
+ - breath first update processing
+
 load schema on per request (not singleton anymore)
 
 

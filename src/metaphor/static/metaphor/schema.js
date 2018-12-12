@@ -45,11 +45,43 @@ gui.load_specs = function(onload) {
     }, gui.report_error);
 }
 
+gui.show_new_schema_popup = function() {
+    gui.popup_spec = true;
+    turtlegui.reload();
+}
+
+gui.create_field_id = function() {
+    return 'field_' + spec_name + '_' + field_name;
+}
+
+gui.not_reverse_link = function(field) {
+    return field.type != 'reverse_link';
+}
+
+gui.is_field_collection = function(field) {
+    return ['link', 'collection'].includes(field.type);
+}
+
+gui.is_field_calc = function(field) {
+    return ['calc'].includes(field.type);
+}
+
+gui.close_spec_popup = function() {
+    gui.popup_spec = false;
+    turtlegui.reload();
+}
+
+gui.close_field_popup = function() {
+    gui.popup_field = false;
+    turtlegui.reload();
+}
+
 gui.show_new_field_popup = function(spec_name) {
     gui.workingfield.spec_name = spec_name;
     gui.popup_field = true;
     turtlegui.reload()
 }
+
 
 gui.create_field = function() {
     var field_data = {};

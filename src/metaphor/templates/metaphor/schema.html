@@ -3,7 +3,7 @@
 <head>
 
 <script src="https://code.jquery.com/jquery-1.12.4.js" integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU=" crossorigin="anonymous"></script>
-<script src="https://rawgit.com/gomyar/turtlegui/v0.1.8/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v3.0.1/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/static/metaphor/netutils.js"></script>
 <script src="/static/metaphor/schema.js"></script>
 <link rel="stylesheet" type="text/css" href="/static/metaphor/schema.css"/>
@@ -16,7 +16,7 @@
 Schema version: <span data-gui-text="schema.version"></span>
 </div>
 
-<div class="button" data-gui-click="gui.popup_spec = true; turtlegui.reload();">New Spec</div>
+<div class="button" data-gui-click="gui.show_new_schema_popup()">New Spec</div>
 
 <div class="schema_list" data-gui-list="schema.specs"  data-gui-item="spec" data-gui-key="spec_name">
 
@@ -28,16 +28,16 @@ Schema version: <span data-gui-text="schema.version"></span>
             <span>type:</span>
         </div>
         <div class="fields" data-gui-list="spec.fields" data-gui-item="field" data-gui-key="field_name">
-            <div class="field" data-gui-id="'field_' + spec_name + '_' + field_name">
+            <div class="field" data-gui-id="gui.create_field_id()">
                 <div>
                     <span>
-                        <span data-gui-show="field.type != 'reverse_link'"><div class="button" data-gui-click="gui.delete_field(spec_name, field_name)">Delete</div></span>
+                        <span data-gui-show="gui.not_reverse_link(field)"><div class="button" data-gui-click="gui.delete_field(spec_name, field_name)">Delete</div></span>
                     </span>
                     <span data-gui-text="field_name"></span>
                     <span data-gui-text="field.type"></span>
-                    <span data-gui-text="field.target_spec.name" data-gui-show="['link', 'collection'].includes(field.type)"></span>
-                    <span data-gui-text="field.calc_type" data-gui-show="['calc'].includes(field.type)"></span>
-                    <span class="calcstr" data-gui-text="field.calc" data-gui-show="['calc'].includes(field.type)"></span>
+                    <span data-gui-text="field.target_spec.name" data-gui-show="gui.is_field_collection(field)"></span>
+                    <span data-gui-text="field.calc_type" data-gui-show="gui.is_field_calc(field)"></span>
+                    <span class="calcstr" data-gui-text="field.calc" data-gui-show="gui.is_field_calc(field)"></span>
                 </div>
             </div>
         </div>
@@ -63,7 +63,7 @@ Schema version: <span data-gui-text="schema.version"></span>
 
         <div class="popupbuttons">
             <div class="button" data-gui-click='gui.create_spec();'>Create</div>
-            <div class="button" data-gui-click='gui.popup_spec = false; turtlegui.reload();'>Close</div>
+            <div class="button" data-gui-click='gui.close_spec_popup()'>Close</div>
         </div>
     </div>
 </div>
@@ -89,7 +89,7 @@ Schema version: <span data-gui-text="schema.version"></span>
             </span>
         </div>
 
-        <div  class="fields_headers" data-gui-show="['link', 'collection'].includes(gui.workingfield.type)">
+        <div  class="fields_headers" data-gui-show="gui.is_field_collection(gui.workingfield)">
             <span>Target: </span>
             <span>
                 <select data-gui-list="schema.specs" data-gui-item="type_spec" data-gui-val="gui.workingfield.target">
@@ -98,14 +98,14 @@ Schema version: <span data-gui-text="schema.version"></span>
             </span>
         </div>
 
-        <div class="fields_headers" data-gui-show="gui.workingfield.type == 'calc'">
+        <div class="fields_headers" data-gui-show="gui.is_field_calc(gui.workingfield)">
             <span>Calc: </span>
             <span>
                 <input type="text" data-gui-val="gui.workingfield.calc"></input>
             </span>
         </div>
  
-        <div  class="fields_headers" data-gui-show="gui.workingfield.type == 'calc'">
+        <div  class="fields_headers" data-gui-show="gui.is_field_calc(gui.workingfield)">
             <span>Calc Type: </span>
             <span>
                 <select data-gui-list="gui.calc_types" data-gui-item="type_spec" data-gui-val="gui.workingfield.calc_type">
@@ -117,7 +117,7 @@ Schema version: <span data-gui-text="schema.version"></span>
 
         <div class="popupbuttons">
             <div class="button" data-gui-click='gui.create_field();'>Create</div>
-            <div class="button" data-gui-click='gui.popup_field = false; turtlegui.reload();'>Close</div>
+            <div class="button" data-gui-click='gui.close_field_popup()'>Close</div>
         </div>
     </div>
 </div>
