@@ -773,6 +773,22 @@ class AggregateResource(Aggregable, Resource):
             'next': next_link,
         }
 
+    def create_aggregate_cursor(self, query=None):
+        query = query or {}
+        aggregate_chain = self.build_aggregate_chain()
+
+        if query.get('page'):
+            page_offset = int(query.get('page')) - 1
+            aggregate_chain.append({'$skip': page_offset * 100})
+
+        return self.spec._collection().aggregate(aggregate_chain)
+
+    def iterate_aggregate_cursor(self, query=None):
+        cursor = self.create_aggregate_cursor(query)
+
+        for data in cursor:
+            yield self.spec.target_spec.build_resource(self, self.field_name, data)
+
     def build_child(self, child_id):
         if child_id in self.spec.target_spec.fields:
             return self.spec.target_spec.fields[child_id].build_aggregate_resource(self)
@@ -861,6 +877,13 @@ class CollectionResource(Aggregable, Resource):
             'count': resources.count(),
             'next': next_link,
         }
+
+    def iterate_aggregate_cursor(self, query=None):
+        query = query or {}
+        cursor = self.load_collection_data(query)
+
+        for data in cursor:
+            yield self.spec.target_spec.build_resource(self, self.field_name, data)
 
     def serialize_field(self, path, params=None):
         return path

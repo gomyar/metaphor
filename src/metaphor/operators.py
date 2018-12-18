@@ -1,6 +1,21 @@
 
 
 
+def _filter_one(aggregate, field_name, field_value):
+    for res in aggregate.iterate_aggregate_cursor():
+        if res.build_child(field_name).data == field_value:
+            return res
+    return None
+
+
+def _filter_max(aggregate, field_name):
+    return max(aggregate.iterate_aggregate_cursor(), key=lambda val: val.build_child(field_name).data)
+
+
+def _filter_min(aggregate, field_name):
+    return min(aggregate.iterate_aggregate_cursor(), key=lambda val: val.build_child(field_name).data)
+
+
 def _calc_average(aggregate):
     total = 0
     values = [res.get(aggregate.field_name) for res in aggregate.serialize('')]
@@ -77,6 +92,37 @@ class Func(object):
 
     def all_resource_refs(self):
         return self.resource_ref.all_resource_refs()
+
+
+class FilterOneFunc(object):
+    def __init__(self, resource_ref, field_name_ref, field_value_ref):
+        self.resource_ref = resource_ref
+        self.field_name = field_name_ref.value
+        self.field_value = field_value_ref.value
+
+    def calculate(self, resource):
+        res = self.resource_ref.create_resource(resource)
+        return _filter_one(res, self.field_name, self.field_value)
+
+
+class FilterMaxFunc(object):
+    def __init__(self, resource_ref, field_name_ref):
+        self.resource_ref = resource_ref
+        self.field_name = field_name_ref.value
+
+    def calculate(self, resource):
+        res = self.resource_ref.create_resource(resource)
+        return _filter_max(res, self.field_name)
+
+
+class FilterMinFunc(object):
+    def __init__(self, resource_ref, field_name_ref):
+        self.resource_ref = resource_ref
+        self.field_name = field_name_ref.value
+
+    def calculate(self, resource):
+        res = self.resource_ref.create_resource(resource)
+        return _filter_min(res, self.field_name)
 
 
 class ConstRef(Calc):

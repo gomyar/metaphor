@@ -62,6 +62,95 @@ class CalcLangTest(unittest.TestCase):
         exp_tree = parser.parse(self.schema, '(6 + (5 * 2) - 2) / 2')
         self.assertEquals(7, exp_tree.calculate(None))
 
+#        exp_tree = parser.parse(self.schema, '-2')
+#        self.assertEquals(-2, exp_tree.calculate(None))
+
+        exp_tree = parser.parse(self.schema, '"tree"')
+        self.assertEquals("tree", exp_tree.calculate(None))
+
+        exp_tree = parser.parse(self.schema, '"tree"+"beard"')
+        self.assertEquals("treebeard", exp_tree.calculate(None))
+
+        exp_tree = parser.parse(self.schema, "'tree'+'beard'")
+        self.assertEquals("treebeard", exp_tree.calculate(None))
+
+        exp_tree = parser.parse(self.schema, "'tree'+\"beard\"")
+        self.assertEquals("treebeard", exp_tree.calculate(None))
+
+    def test_average_func(self):
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 100})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 200})
+        self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 600})
+        resource = self.api.build_resource("sectors/%s" % (self.sector_1,))
+
+        exp_tree = parser.parse(self.schema, 'average(self.companies.totalAssets)')
+        self.assertEquals(300, exp_tree.calculate(resource))
+
+    def test_filter_func(self):
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        c1 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 100})
+        c2 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 200})
+        c3 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 600})
+        resource = self.api.build_resource("sectors/%s" % (self.sector_1,))
+        company1 = self.api.build_resource("companies/%s" % (c1,))
+        company2 = self.api.build_resource("companies/%s" % (c2,))
+        company3 = self.api.build_resource("companies/%s" % (c3,))
+
+        exp_tree = parser.parse(self.schema, 'filter_one(companies, "totalAssets", 200)')
+        self.assertEquals(company2._id, exp_tree.calculate(resource)._id)
+
+        exp_tree = parser.parse(self.schema, 'filter_one(self.companies, "totalAssets", 100)')
+        self.assertEquals(company1._id, exp_tree.calculate(resource)._id)
+
+        exp_tree = parser.parse(self.schema, 'filter_one(companies,"totalAssets",10)')
+        self.assertEquals(None, exp_tree.calculate(resource))
+
+    def test_filter_expr(self):
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        c1 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 100})
+        c2 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 200})
+        c3 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 600})
+        resource = self.api.build_resource("sectors/%s" % (self.sector_1,))
+        company1 = self.api.build_resource("companies/%s" % (c1,))
+        company2 = self.api.build_resource("companies/%s" % (c2,))
+        company3 = self.api.build_resource("companies/%s" % (c3,))
+
+        exp_tree = parser.parse(self.schema, 'companies[totalAssets=200]')
+        self.assertEquals(company2._id, exp_tree.calculate(resource)._id)
+
+        exp_tree = parser.parse(self.schema, 'self.companies[totalAssets=100]')
+        self.assertEquals(company1._id, exp_tree.calculate(resource)._id)
+
+        exp_tree = parser.parse(self.schema, 'companies[totalAssets=10]')
+        self.assertEquals(None, exp_tree.calculate(resource))
+
+    def test_average_func(self):
+        self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
+        c1 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company1', 'totalAssets': 100})
+        c2 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company2', 'totalAssets': 200})
+        c3 = self.api.post('sectors/%s/companies' % (self.sector_1,), {'name': 'Company3', 'totalAssets': 600})
+        resource = self.api.build_resource("sectors/%s" % (self.sector_1,))
+        company1 = self.api.build_resource("companies/%s" % (c1,))
+        company2 = self.api.build_resource("companies/%s" % (c2,))
+        company3 = self.api.build_resource("companies/%s" % (c3,))
+
+        exp_tree = parser.parse(self.schema, 'average(companies.totalAssets)')
+        self.assertEquals(300, exp_tree.calculate(resource))
+
+    def test_filter_max_min(self):
+        c1 = self.api.post('companies', {'name': 'Company1', 'totalAssets': 100})
+        c2 = self.api.post('companies', {'name': 'Company2', 'totalAssets': 200})
+        c3 = self.api.post('companies', {'name': 'Company3', 'totalAssets': 600})
+        company1 = self.api.build_resource("companies/%s" % (c1,))
+        company3 = self.api.build_resource("companies/%s" % (c3,))
+
+        exp_tree = parser.parse(self.schema, 'filter_max(companies,"totalAssets")')
+        self.assertEquals(company3._id, exp_tree.calculate(company1)._id)
+
+        exp_tree = parser.parse(self.schema, 'filter_min(companies,"totalAssets")')
+        self.assertEquals(company1._id, exp_tree.calculate(company1)._id)
+
     def test_parse_resource(self):
         resource = Resource(self.schema.root, 'company', self.company_spec,
                             {'name': 'Bobs Burgers'})

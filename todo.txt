@@ -4,6 +4,15 @@ add edit to schema admin - nope - edit is more involved that we thought (mutatio
 throw error if new field added with same name as exiting field
 
 add language constructs for if(), max(), min(), filter() etc
+ - filter by field(s) : self.employees[job = 'accountant', age >= 40,name ~= 'Bob*' | name ~= 'Ned*']
+    - Condition(field_name, value)
+    - OrCondition (condition or condition)
+    - AndCondition (condition and condition)
+    - brackets : a=1 or (a<4 and a > 2) 
+ - sort by field(s) : sort(self.employees, 'age', 'level')
+ - max/min : max(self.employees, 'age', 'level')
+
+
 add primitives to calcs (int, float, str)
 check calcs for typing on creation
 
