@@ -192,3 +192,15 @@ class CollectionTest(unittest.TestCase):
 
         sector = self.api.get('sectors/%s' % (sector_id,))
         self.assertEquals(25, sector['averageCapital'])
+
+    def test_filter_collection(self):
+        company_id_1 = self.api.post('companies', dict(name='Bobs Burgers', assets=50, liabilities=20))
+        company_id_2 = self.api.post('companies', dict(name='Neds Fries', assets=100, liabilities=80))
+
+        companies = self.api.build_resource("companies")
+        filtered_companies = companies.filter({'assets': 50})
+
+        serialized = filtered_companies.serialize('')
+        self.assertEquals(1, serialized['count'])
+        self.assertEquals(str(company_id_1), serialized['results'][0]['id'])
+        self.assertEquals('Bobs Burgers', serialized['results'][0]['name'])

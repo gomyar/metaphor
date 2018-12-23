@@ -6,13 +6,16 @@ from metaphor.operators import ResourceRef
 from metaphor.operators import FilterOneFunc
 from metaphor.operators import FilterMaxFunc
 from metaphor.operators import FilterMinFunc
+from metaphor.operators import ExpCondition
+from metaphor.operators import ResourceFilter
 
 tokens = (
     'NAME','NUMBER','STRING',
     'PLUS','MINUS','TIMES','DIVIDE','EQUALS',
-    'LPAREN','RPAREN','COMMA',
+    'LPAREN','RPAREN','LSQPAREN','RSQPAREN','COMMA',
     )
 
+literals = ['[', ']']
 # Tokens
 
 t_PLUS    = r'\+'
@@ -22,8 +25,8 @@ t_DIVIDE  = r'/'
 t_EQUALS  = r'='
 t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
-#t_LSQPAREN  = r'\['
-#t_RSQPAREN  = r'\]'
+t_LSQPAREN  = r'\['
+t_RSQPAREN  = r'\]'
 t_NAME    = r'[a-zA-Z_][a-zA-Z0-9_\.]*'
 t_COMMA   = r','
 
@@ -75,8 +78,21 @@ names = {
 #    names[t[1]] = t[3]
 
 def p_statement_expr(t):
-    'statement : expression'
-    t[0] = Calc(t[1])
+    '''statement : expression
+                 | expression LSQPAREN expression RSQPAREN'''
+    if len(t) == 2:
+        t[0] = Calc(t[1])
+    elif len(t) == 5 and type(t[1]) == ResourceRef:
+        t[0] = ResourceFilter(t[1], t[3])
+    elif len(t) == 5:
+        raise Exception("Cannot filter %s" % (t[1],))
+    else:
+        raise Exception("Invalid expression %s" % (str(tt) for tt in t))
+
+def p_expression_condition(t):
+    '''expression : NAME EQUALS expression
+    '''
+    t[0] = ExpCondition(t[1], t[2], t[3])
 
 def p_expression_function(t):
     '''expression : NAME LPAREN expression RPAREN
@@ -103,10 +119,6 @@ def p_expression_binop(t):
 def p_expression_uminus(t):
     'expression : MINUS expression %prec UMINUS'
     t[0] = ConstRef(-t[2].value)
-
-#def p_expression_list(t):
-#    'expression : expression COMMA expression'
-#    t[0] = t[1], t[2]
 
 def p_expression_group(t):
     'expression : LPAREN expression RPAREN'

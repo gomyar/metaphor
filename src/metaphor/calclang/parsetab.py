@@ -5,9 +5,9 @@ _tabversion = '3.10'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'leftPLUSMINUSleftTIMESDIVIDErightUMINUSNAME NUMBER STRING PLUS MINUS TIMES DIVIDE EQUALS LPAREN RPAREN COMMAstatement : expressionexpression : NAME LPAREN expression RPAREN\n                  | NAME LPAREN expression COMMA expression RPAREN\n                  | NAME LPAREN expression COMMA expression COMMA expression RPAREN\n    expression : expression PLUS expression\n                  | expression MINUS expression\n                  | expression TIMES expression\n                  | expression DIVIDE expressionexpression : MINUS expression %prec UMINUSexpression : LPAREN expression RPARENexpression : NUMBERexpression : STRINGexpression : NAME'
+_lr_signature = 'leftPLUSMINUSleftTIMESDIVIDErightUMINUSNAME NUMBER STRING PLUS MINUS TIMES DIVIDE EQUALS LPAREN RPAREN LSQPAREN RSQPAREN COMMAstatement : expression\n                 | expression LSQPAREN expression RSQPARENexpression : NAME EQUALS expression\n    expression : NAME LPAREN expression RPAREN\n                  | NAME LPAREN expression COMMA expression RPAREN\n                  | NAME LPAREN expression COMMA expression COMMA expression RPAREN\n    expression : expression PLUS expression\n                  | expression MINUS expression\n                  | expression TIMES expression\n                  | expression DIVIDE expressionexpression : MINUS expression %prec UMINUSexpression : LPAREN expression RPARENexpression : NUMBERexpression : STRINGexpression : NAME'
     
-_lr_action_items = {'DIVIDE':([1,2,5,6,9,14,15,16,17,18,19,20,21,23,24,26,27,],[-13,-11,-12,11,11,-9,11,-10,11,-8,11,-7,-2,11,-3,11,-4,]),'RPAREN':([1,2,5,9,14,15,16,17,18,19,20,21,23,24,26,27,],[-13,-11,-12,16,-9,21,-10,-5,-8,-6,-7,-2,24,-3,27,-4,]),'NAME':([0,4,7,8,10,11,12,13,22,25,],[1,1,1,1,1,1,1,1,1,1,]),'NUMBER':([0,4,7,8,10,11,12,13,22,25,],[2,2,2,2,2,2,2,2,2,2,]),'TIMES':([1,2,5,6,9,14,15,16,17,18,19,20,21,23,24,26,27,],[-13,-11,-12,13,13,-9,13,-10,13,-8,13,-7,-2,13,-3,13,-4,]),'PLUS':([1,2,5,6,9,14,15,16,17,18,19,20,21,23,24,26,27,],[-13,-11,-12,10,10,-9,10,-10,-5,-8,-6,-7,-2,10,-3,10,-4,]),'LPAREN':([0,1,4,7,8,10,11,12,13,22,25,],[4,8,4,4,4,4,4,4,4,4,4,]),'COMMA':([1,2,5,14,15,16,17,18,19,20,21,23,24,27,],[-13,-11,-12,-9,22,-10,-5,-8,-6,-7,-2,25,-3,-4,]),'$end':([1,2,3,5,6,14,16,17,18,19,20,21,24,27,],[-13,-11,0,-12,-1,-9,-10,-5,-8,-6,-7,-2,-3,-4,]),'MINUS':([0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,],[7,-13,-11,7,-12,12,7,7,12,7,7,7,7,-9,12,-10,-5,-8,-6,-7,-2,7,12,-3,7,12,-4,]),'STRING':([0,4,7,8,10,11,12,13,22,25,],[5,5,5,5,5,5,5,5,5,5,]),}
+_lr_action_items = {'$end':([1,2,3,5,6,16,17,19,20,21,23,24,25,27,29,32,],[-15,-13,0,-14,-1,-11,-3,-12,-10,-9,-7,-8,-4,-2,-5,-6,]),'DIVIDE':([1,2,5,6,10,16,17,18,19,20,21,22,23,24,25,28,29,31,32,],[-15,-13,-14,11,11,-11,11,11,-12,-10,-9,11,11,11,-4,11,-5,11,-6,]),'RPAREN':([1,2,5,10,16,17,18,19,20,21,23,24,25,28,29,31,32,],[-15,-13,-14,19,-11,-3,25,-12,-10,-9,-7,-8,-4,29,-5,32,-6,]),'NAME':([0,4,7,8,9,11,12,13,14,15,26,30,],[1,1,1,1,1,1,1,1,1,1,1,1,]),'NUMBER':([0,4,7,8,9,11,12,13,14,15,26,30,],[2,2,2,2,2,2,2,2,2,2,2,2,]),'EQUALS':([1,],[8,]),'LSQPAREN':([1,2,5,6,16,17,19,20,21,23,24,25,29,32,],[-15,-13,-14,13,-11,-3,-12,-10,-9,-7,-8,-4,-5,-6,]),'PLUS':([1,2,5,6,10,16,17,18,19,20,21,22,23,24,25,28,29,31,32,],[-15,-13,-14,14,14,-11,14,14,-12,-10,-9,14,-7,-8,-4,14,-5,14,-6,]),'LPAREN':([0,1,4,7,8,9,11,12,13,14,15,26,30,],[4,9,4,4,4,4,4,4,4,4,4,4,4,]),'COMMA':([1,2,5,16,17,18,19,20,21,23,24,25,28,29,32,],[-15,-13,-14,-11,-3,26,-12,-10,-9,-7,-8,-4,30,-5,-6,]),'TIMES':([1,2,5,6,10,16,17,18,19,20,21,22,23,24,25,28,29,31,32,],[-15,-13,-14,12,12,-11,12,12,-12,-10,-9,12,12,12,-4,12,-5,12,-6,]),'MINUS':([0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,31,32,],[7,-15,-13,7,-14,15,7,7,7,15,7,7,7,7,7,-11,15,15,-12,-10,-9,15,-7,-8,-4,7,15,-5,7,15,-6,]),'RSQPAREN':([1,2,5,16,17,19,20,21,22,23,24,25,29,32,],[-15,-13,-14,-11,-3,-12,-10,-9,27,-7,-8,-4,-5,-6,]),'STRING':([0,4,7,8,9,11,12,13,14,15,26,30,],[5,5,5,5,5,5,5,5,5,5,5,5,]),}
 
 _lr_action = {}
 for _k, _v in _lr_action_items.items():
@@ -16,7 +16,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'expression':([0,4,7,8,10,11,12,13,22,25,],[6,9,14,15,17,18,19,20,23,26,]),'statement':([0,],[3,]),}
+_lr_goto_items = {'expression':([0,4,7,8,9,11,12,13,14,15,26,30,],[6,10,16,17,18,20,21,22,23,24,28,31,]),'statement':([0,],[3,]),}
 
 _lr_goto = {}
 for _k, _v in _lr_goto_items.items():
@@ -26,17 +26,19 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> statement","S'",1,None,None,None),
-  ('statement -> expression','statement',1,'p_statement_expr','lang.py',74),
-  ('expression -> NAME LPAREN expression RPAREN','expression',4,'p_expression_function','lang.py',78),
-  ('expression -> NAME LPAREN expression COMMA expression RPAREN','expression',6,'p_expression_function','lang.py',79),
-  ('expression -> NAME LPAREN expression COMMA expression COMMA expression RPAREN','expression',8,'p_expression_function','lang.py',80),
-  ('expression -> expression PLUS expression','expression',3,'p_expression_binop','lang.py',93),
-  ('expression -> expression MINUS expression','expression',3,'p_expression_binop','lang.py',94),
-  ('expression -> expression TIMES expression','expression',3,'p_expression_binop','lang.py',95),
-  ('expression -> expression DIVIDE expression','expression',3,'p_expression_binop','lang.py',96),
-  ('expression -> MINUS expression','expression',2,'p_expression_uminus','lang.py',103),
-  ('expression -> LPAREN expression RPAREN','expression',3,'p_expression_group','lang.py',111),
-  ('expression -> NUMBER','expression',1,'p_expression_number','lang.py',115),
-  ('expression -> STRING','expression',1,'p_expression_string','lang.py',119),
-  ('expression -> NAME','expression',1,'p_expression_name','lang.py',123),
+  ('statement -> expression','statement',1,'p_statement_expr','lang.py',81),
+  ('statement -> expression LSQPAREN expression RSQPAREN','statement',4,'p_statement_expr','lang.py',82),
+  ('expression -> NAME EQUALS expression','expression',3,'p_expression_condition','lang.py',93),
+  ('expression -> NAME LPAREN expression RPAREN','expression',4,'p_expression_function','lang.py',98),
+  ('expression -> NAME LPAREN expression COMMA expression RPAREN','expression',6,'p_expression_function','lang.py',99),
+  ('expression -> NAME LPAREN expression COMMA expression COMMA expression RPAREN','expression',8,'p_expression_function','lang.py',100),
+  ('expression -> expression PLUS expression','expression',3,'p_expression_binop','lang.py',110),
+  ('expression -> expression MINUS expression','expression',3,'p_expression_binop','lang.py',111),
+  ('expression -> expression TIMES expression','expression',3,'p_expression_binop','lang.py',112),
+  ('expression -> expression DIVIDE expression','expression',3,'p_expression_binop','lang.py',113),
+  ('expression -> MINUS expression','expression',2,'p_expression_uminus','lang.py',120),
+  ('expression -> LPAREN expression RPAREN','expression',3,'p_expression_group','lang.py',124),
+  ('expression -> NUMBER','expression',1,'p_expression_number','lang.py',128),
+  ('expression -> STRING','expression',1,'p_expression_string','lang.py',132),
+  ('expression -> NAME','expression',1,'p_expression_name','lang.py',136),
 ]

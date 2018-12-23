@@ -816,8 +816,21 @@ class AggregateField(AggregateResource):
 
 
 class CollectionResource(Aggregable, Resource):
+    def __init__(self, *args, **kwargs):
+        super(CollectionResource, self).__init__(*args, **kwargs)
+        self.query = None
+
     def __repr__(self):
         return "<CollectionResource %s: %s>" % (self.data, self.spec)
+
+    def filter(self, condition):
+        filtered = CollectionResource(
+            field_name = self.field_name,
+            spec = self.spec,
+            data = self.data,
+            parent = self._parent)
+        filtered.query = condition
+        return filtered
 
     def compile_filter_query(self, filter_str):
         query = dict()
@@ -840,7 +853,8 @@ class CollectionResource(Aggregable, Resource):
 
     def load_collection_data(self, params=None):
         params = params or {}
-        query = self.compile_filter_query(params.get('filter', ''))
+        query = self.query.copy() if self.query else {}
+        query.update(self.compile_filter_query(params.get('filter', '')))
         if self._parent:
             query.update({
                 '_owners': {
@@ -1039,3 +1053,17 @@ class RootResource(Resource):
 
     def build_aggregate_chain(self, chain_path=None):
         return []
+
+
+class Condition(object):
+    EQ = '='
+    GT = '>'
+    LT = '<'
+    GTE = '>='
+    LTE = '<='
+    LIKE = '~='
+
+    def __init__(self, name, conditional, value):
+        self.name = name
+        self.conditional = conditional
+        self.value = value

@@ -1,6 +1,5 @@
 
 
-
 def _filter_one(aggregate, field_name, field_value):
     for res in aggregate.iterate_aggregate_cursor():
         if res.build_child(field_name).data == field_value:
@@ -123,6 +122,27 @@ class FilterMinFunc(object):
     def calculate(self, resource):
         res = self.resource_ref.create_resource(resource)
         return _filter_min(res, self.field_name)
+
+
+class ExpCondition(object):
+    def __init__(self, name, conditional, value):
+        self.name = name
+        self.conditional = conditional
+        self.value = value
+
+    def create_condition_tree(self, resource):
+        return {self.name: self.value.calculate(resource)}
+#        return Condition(self.name, self.conditional, self.value)
+
+
+class ResourceFilter(object):
+    def __init__(self, resource_ref, condition):
+        self.resource_ref = resource_ref
+        self.condition = condition
+
+    def calculate(self, resource):
+        target_collection = self.resource_ref.create_resource(resource)
+        return target_collection.filter(self.condition.create_condition_tree(resource))
 
 
 class ConstRef(Calc):

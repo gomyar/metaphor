@@ -116,14 +116,27 @@ class CalcLangTest(unittest.TestCase):
         company2 = self.api.build_resource("companies/%s" % (c2,))
         company3 = self.api.build_resource("companies/%s" % (c3,))
 
-        exp_tree = parser.parse(self.schema, 'companies[totalAssets=200]')
-        self.assertEquals(company2._id, exp_tree.calculate(resource)._id)
+        exp_tree = parser.parse(self.schema, 'self.totalAssets+1')
+        self.assertEquals(101, exp_tree.calculate(company1))
 
-        exp_tree = parser.parse(self.schema, 'self.companies[totalAssets=100]')
-        self.assertEquals(company1._id, exp_tree.calculate(resource)._id)
+        exp_tree = parser.parse(self.schema, 'self.name+"bob"')
+        self.assertEquals("Company1bob", exp_tree.calculate(company1))
+
+        exp_tree = parser.parse(self.schema, 'companies[totalAssets=200]')
+        filtered_companies = exp_tree.calculate(resource).serialize('')
+        self.assertEquals(1, filtered_companies['count'])
+        self.assertEquals(str(company2._id), filtered_companies['results'][0]['id'])
+        self.assertEquals('Company2', filtered_companies['results'][0]['name'])
+
+        exp_tree = parser.parse(self.schema, 'companies[totalAssets=100]')
+        filtered_companies = exp_tree.calculate(resource).serialize('')
+        self.assertEquals(1, filtered_companies['count'])
+        self.assertEquals(str(company1._id), filtered_companies['results'][0]['id'])
+        self.assertEquals('Company1', filtered_companies['results'][0]['name'])
 
         exp_tree = parser.parse(self.schema, 'companies[totalAssets=10]')
-        self.assertEquals(None, exp_tree.calculate(resource))
+        filtered_companies = exp_tree.calculate(resource).serialize('')
+        self.assertEquals(0, filtered_companies['count'])
 
     def test_average_func(self):
         self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
