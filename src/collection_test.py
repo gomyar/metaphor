@@ -200,6 +200,12 @@ class CollectionTest(unittest.TestCase):
         companies = self.api.build_resource("companies")
         filtered_companies = companies.filter({'assets': 50})
 
+        self.assertEquals(companies.field_name, filtered_companies.field_name)
+        self.assertEquals(companies.spec, filtered_companies.spec)
+        self.assertEquals(companies.data, filtered_companies.data)
+        self.assertEquals(companies._parent, filtered_companies._parent)
+        self.assertEquals({'assets': 50}, filtered_companies.query)
+
         serialized = filtered_companies.serialize('')
         self.assertEquals(1, serialized['count'])
         self.assertEquals(str(company_id_1), serialized['results'][0]['id'])

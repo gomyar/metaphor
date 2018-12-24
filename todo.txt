@@ -3,6 +3,8 @@ add edit to schema admin - nope - edit is more involved that we thought (mutatio
 
 throw error if new field added with same name as exiting field
 
+add resource type and collection resource type to calc return value
+
 add language constructs for if(), max(), min(), filter() etc
  - filter by field(s) : self.employees[job = 'accountant', age >= 40,name ~= 'Bob*' | name ~= 'Ned*']
     - Condition(field_name, value)

@@ -1,4 +1,6 @@
 
+import re
+
 
 def _filter_one(aggregate, field_name, field_value):
     for res in aggregate.iterate_aggregate_cursor():
@@ -130,9 +132,28 @@ class ExpCondition(object):
         self.conditional = conditional
         self.value = value
 
-    def create_condition_tree(self, resource):
-        return {self.name: self.value.calculate(resource)}
-#        return Condition(self.name, self.conditional, self.value)
+    def calculate(self, resource):
+        if self.conditional == '=':
+            return {self.name: self.value.calculate(resource)}
+        elif self.conditional == '>':
+            return {self.name: {'$gt': self.value.calculate(resource)}}
+        elif self.conditional == '<':
+            return {self.name: {'$lt': self.value.calculate(resource)}}
+        elif self.conditional == '>=':
+            return {self.name: {'$gte': self.value.calculate(resource)}}
+        elif self.conditional == '<=':
+            return {self.name: {'$lte': self.value.calculate(resource)}}
+        elif self.conditional == '&':
+            return {'$and': [self.name.calculate(resource),
+                             self.value.calculate(resource)]}
+        elif self.conditional == '|':
+            return {'$or': [self.name.calculate(resource),
+                            self.value.calculate(resource)]}
+        elif self.conditional == '~=':
+            c1=re.compile(self.value.calculate(resource), re.IGNORECASE)
+            return {self.name : {'$regex': c1}}
+        else:
+            raise Exception("uynexpected")
 
 
 class ResourceFilter(object):
@@ -142,7 +163,7 @@ class ResourceFilter(object):
 
     def calculate(self, resource):
         target_collection = self.resource_ref.create_resource(resource)
-        return target_collection.filter(self.condition.create_condition_tree(resource))
+        return target_collection.filter(self.condition.calculate(resource))
 
 
 class ConstRef(Calc):

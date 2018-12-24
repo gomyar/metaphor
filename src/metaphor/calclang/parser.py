@@ -10,4 +10,4 @@ _parser = yacc.yacc(module=lang)
 
 
 def parse(schema, expr):
-    return _parser.parse(expr)
+    return _parser.parse(expr) # , debug=True)

@@ -11,7 +11,8 @@ from metaphor.operators import ResourceFilter
 
 tokens = (
     'NAME','NUMBER','STRING',
-    'PLUS','MINUS','TIMES','DIVIDE','EQUALS',
+    'PLUS','MINUS','TIMES','DIVIDE',
+    'EQUALS','GT','LT','GTE','LTE','LIKE','AND','OR',
     'LPAREN','RPAREN','LSQPAREN','RSQPAREN','COMMA',
     )
 
@@ -23,6 +24,13 @@ t_MINUS   = r'-'
 t_TIMES   = r'\*'
 t_DIVIDE  = r'/'
 t_EQUALS  = r'='
+t_GT      = r'\>'
+t_LT      = r'\<'
+t_GTE     = r'\>='
+t_LTE     = r'\<='
+t_LIKE    = r'\~='
+t_AND     = r'&'
+t_OR      = r'\|'
 t_LPAREN  = r'\('
 t_RPAREN  = r'\)'
 t_LSQPAREN  = r'\['
@@ -89,10 +97,36 @@ def p_statement_expr(t):
     else:
         raise Exception("Invalid expression %s" % (str(tt) for tt in t))
 
-def p_expression_condition(t):
-    '''expression : NAME EQUALS expression
+# Funny idiosyncrasy of ply - it doesn't seem to do two reduces in a row,
+# so if we just use 'expression' here it will skip over NUMBERs and STRINGs
+# because they have to reduce to 'expression' first (I think)
+def p_expression_condition_equals(t):
+    '''expression : NAME EQUALS NUMBER
+                  | NAME EQUALS STRING
+                  | NAME EQUALS expression
+                  | NAME GT NUMBER
+                  | NAME GT STRING
+                  | NAME GT expression
+                  | NAME LT NUMBER
+                  | NAME LT STRING
+                  | NAME LT expression
+                  | NAME GTE NUMBER
+                  | NAME GTE STRING
+                  | NAME GTE expression
+                  | NAME LTE NUMBER
+                  | NAME LTE STRING
+                  | NAME LTE expression
+                  | NAME LIKE STRING
+                  | NAME LIKE expression
+                  | expression AND expression
+                  | expression OR expression
     '''
-    t[0] = ExpCondition(t[1], t[2], t[3])
+    value = t[3]
+    if isinstance(value, basestring) or type(value) in [float, int]:
+        t[0] = ExpCondition(t[1], t[2], ConstRef(t[3]))
+    else:
+        t[0] = ExpCondition(t[1], t[2], t[3])
+
 
 def p_expression_function(t):
     '''expression : NAME LPAREN expression RPAREN
@@ -142,5 +176,4 @@ def p_expression_name(t):
         t[0] = 0
 
 def p_error(t):
-    print("Syntax error at '%s'" % t.value)
-
+    raise Exception("Syntax Error at line %s col %s '%s'" % (t.lineno, t.lexpos, t.value))

@@ -122,6 +122,10 @@ class CalcLangTest(unittest.TestCase):
         exp_tree = parser.parse(self.schema, 'self.name+"bob"')
         self.assertEquals("Company1bob", exp_tree.calculate(company1))
 
+        exp_tree = parser.parse(self.schema, "self.name+'bob'")
+        self.assertEquals("Company1bob", exp_tree.calculate(company1))
+
+
         exp_tree = parser.parse(self.schema, 'companies[totalAssets=200]')
         filtered_companies = exp_tree.calculate(resource).serialize('')
         self.assertEquals(1, filtered_companies['count'])
@@ -137,6 +141,53 @@ class CalcLangTest(unittest.TestCase):
         exp_tree = parser.parse(self.schema, 'companies[totalAssets=10]')
         filtered_companies = exp_tree.calculate(resource).serialize('')
         self.assertEquals(0, filtered_companies['count'])
+
+    def test_filter_expr_and(self):
+
+        client = MongoClient()
+        client.drop_database('metaphor_test_db')
+        self.db = client.metaphor_test_db
+        self.schema = Schema(self.db, '0.1')
+
+        self.company_spec = ResourceSpec('company')
+
+        self.schema.add_resource_spec(self.company_spec)
+
+        self.company_spec.add_field("name", FieldSpec("str"))
+        self.company_spec.add_field("totalAssets", FieldSpec('int'))
+        self.company_spec.add_field("totalLiabilities", FieldSpec('int'))
+
+        self.schema.add_root('companies', CollectionSpec('company'))
+
+        self.api = MongoApi('http://server', self.schema, self.db)
+
+        c1 = self.api.post('companies', {'name': 'Company1', 'totalLiabilities': 40, 'totalAssets': 100})
+        c2 = self.api.post('companies', {'name': 'Company2', 'totalLiabilities': 60, 'totalAssets': 200})
+        c3 = self.api.post('companies', {'name': 'Company3', 'totalLiabilities': 80, 'totalAssets': 600})
+        company1 = self.api.build_resource("companies/%s" % (c1,))
+        company2 = self.api.build_resource("companies/%s" % (c2,))
+        company3 = self.api.build_resource("companies/%s" % (c3,))
+
+        exp_tree = parser.parse(self.schema, 'companies[totalAssets > 150 & totalLiabilities < 70]')
+        filtered_companies = exp_tree.calculate(company1).serialize('')
+        self.assertEquals(1, filtered_companies['count'])
+        self.assertEquals('Company2', filtered_companies['results'][0]['name'])
+        self.assertEquals(str(company2._id), filtered_companies['results'][0]['id'])
+
+        exp_tree = parser.parse(self.schema, 'companies[name~="Company"&totalLiabilities>50]')
+        filtered_companies = exp_tree.calculate(company1).serialize('')
+        self.assertEquals(2, filtered_companies['count'])
+        self.assertEquals('Company2', filtered_companies['results'][0]['name'])
+        self.assertEquals(str(company2._id), filtered_companies['results'][0]['id'])
+        self.assertEquals('Company3', filtered_companies['results'][1]['name'])
+        self.assertEquals(str(company3._id), filtered_companies['results'][1]['id'])
+
+    def test_filter_expr_error(self):
+        try:
+            parser.parse(self.schema, 'companies[totalAssets>150&<70]')
+            self.fail("Should have thrown")
+        except Exception as e:
+            self.assertEquals("Syntax Error at line 1 col 26 '<'", str(e))
 
     def test_average_func(self):
         self.sector_1 = self.api.post('sectors', {'name': 'Marketting'})
