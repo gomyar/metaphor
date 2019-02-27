@@ -182,6 +182,14 @@ class CalcLangTest(unittest.TestCase):
         self.assertEquals('Company3', filtered_companies['results'][1]['name'])
         self.assertEquals(str(company3._id), filtered_companies['results'][1]['id'])
 
+
+    def test_aggregate_filter(self):
+        # aggregate
+        exp_tree = parser.parse(self.schema, 'average(companies[name~="Company"&totalLiabilities>50].totalAsetts)')
+        import ipdb; ipdb.set_trace()
+        self.assertEquals(70, exp_tree.calculate(company1).serialize(''))
+
+
     def test_filter_expr_error(self):
         try:
             parser.parse(self.schema, 'companies[totalAssets>150&<70]')

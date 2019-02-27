@@ -207,6 +207,20 @@ class ResourceRef(Calc):
         return set([self.exp])
 
 
+class ResourceDot(object):
+    ''' Used for resolving child resources
+        of the form expression.name
+    '''
+
+    def __init__(self, expression, field_name):
+        self.expression = expression
+        self.field_name = field_name
+
+    def calculate(self, parent):
+        resource = self.expression.calculate(parent)
+        return resource.build_child(self.field_name)
+
+
 class AddOp(Calc):
     ''' Addition operator, field + field
     '''
@@ -285,3 +299,8 @@ class DividebyOp(Calc):
 
     def all_resource_refs(self):
         return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
+
+
+class FilterExpression(object):
+    def __init__(self, filter_exp):
+        self.filter_exp = filter_exp
