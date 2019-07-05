@@ -303,6 +303,12 @@ class FieldSpec(Spec):
             'float': [float, int],
             'bool': [bool],
         }
+        self._comparable_types= {
+            'str': [str, unicode],
+            'int': [float, int],
+            'float': [float, int],
+            'bool': [bool, float, int, str],
+        }
         self._parse_string = {
             'str': lambda s: s,
             'int': lambda s: int(s),
@@ -334,6 +340,10 @@ class FieldSpec(Spec):
 
     def check_type(self, value):
         return self.nullable and value is None or type(value) in self._allowed_types.get(self.field_type, [])
+
+    def check_comparable_type(self, value):
+        return type(value) in self._comparable_types.get(self.field_type, [])
+
 
     def from_string(self, str_val):
         return self._parse_string[self.field_type](str_val)
@@ -494,6 +504,8 @@ class Resource(object):
         return root
 
     def build_child(self, field_name):
+        if field_name not in self.spec.fields:
+            raise Exception("Resource %s has no field %s" % (self.spec.name, field_name))
         field_spec = self.spec.fields[field_name]
         field_data = self.data.get(field_name)
         return field_spec.build_resource(self, field_name, field_data)

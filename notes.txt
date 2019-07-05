@@ -1,3 +1,42 @@
+
+average(companies.employees[age>40].division[type='sales'].yearly_sales)
+
+aggregate:
+
+    companies
+db.resource_companies.aggregate([
+
+    employees
+{$lookup: {
+        from: "resource_employees"
+        localField: "_id"
+        foreignField: "_owners.owner_id"
+        as: "_field_employees"
+}}
+{$unwind: "$_field_employees"},
+
+    filter age > 40
+{$filter: 
+}
+
+    divisions
+{$lookup: {
+        from: "resource_divisions"
+        localField: "_id"
+        foreignField: "_owners.owner_id"
+        as: "_field_divisions"
+}}
+{$unwind: "$_field_divisions"},
+
+
+    filter type='sales'
+{$filter: 
+}
+
+    yearly_sales
+{$avg ???
+
+
 db.resource_period.aggregate([
     {$lookup: {
         from: "resource_company",
