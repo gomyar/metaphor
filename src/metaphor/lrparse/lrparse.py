@@ -16,6 +16,9 @@ class Calc(object):
     def __repr__(self):
         return "C[%s]" % (self.tokens,)
 
+    def calculate(self, resource):
+        raise NotImplemented()
+
 
 class ResourceRef(Calc):
     def __init__(self, tokens):
@@ -29,10 +32,34 @@ class ResourceRef(Calc):
     def root_collection(self, resource):
         return self.resource_ref.root_collection(resource)
 
+    def root_spec(self, resource):
+        return self.resource_ref.root_spec(resource)
+
+    def result_type(self, starting_spec):
+        child_resource = self.resource_ref.result_type(starting_spec)
+        return child_resource.create_child_spec(self.field_name)
+
     def calculate(self, resource):
-        child = self.tokens[0].calculate(resource)
-        # descend child tree
-        return child[self.tokens[2]]
+        # resolve resource
+        # dont do this
+        child = self.resource_ref.calculate(resource)
+
+        # do this
+        # aggregate subresource
+        aggregate_query, spec = self.aggregation(resource)
+        # run mongo query from from root_resource collection
+        cursor = self.root_collection(resource).aggregate(aggregate_query)
+        # build child resource from data result with result_type() spec
+        if type(spec) == FieldSpec:
+            value = cursor.next()[self.field_name]
+            child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
+            return child_resource
+        else:
+            if type(spec) == ResourceLinkSpec:
+                data = cursor.next()
+                return spec.target_spec.build_resource(None, self.field_name, data)
+            else:
+                raise Exception("Cannot calculate spec %s" % (spec,))
 
     def aggregation(self, resource):
         aggregations = []
@@ -51,6 +78,9 @@ class ResourceRef(Calc):
             aggregation.append(
                 {"$unwind": "$_field_%s" % (self.field_name,)}
             )
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_field_%s" % (self.field_name,)}}
+            )
         elif isinstance(child_spec, CollectionSpec):
             # if linkcollection / collection
             aggregation.append(
@@ -62,6 +92,9 @@ class ResourceRef(Calc):
                 }})
             aggregation.append(
                 {"$unwind": "$_field_%s" % (self.field_name,)}
+            )
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_field_%s" % (self.field_name,)}}
             )
         elif isinstance(child_spec, FieldSpec):
             aggregation.append(
@@ -75,31 +108,59 @@ class ResourceRef(Calc):
     def __repr__(self):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
 
+    def all_resource_refs(self):
+        return [self.resource_ref_snippet()]
+
+    def resource_ref_snippet(self):
+        return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
+
 
 class RootResourceRef(ResourceRef):
     def __init__(self, tokens):
         ''' takes single name for root resource'''
         self.resource_name = tokens
 
+    def calculate(self, resource):
+        # resolve resource
+        if self.resource_name == 'self':
+            return resource
+        else:
+            return resource.spec.schema.root.build_child(self.resource_name)
+
+    def result_type(self, starting_spec):
+        if self.resource_name == 'self':
+            return starting_spec
+        else:
+            return starting_spec.schema.root.build_child(self.resource_name).spec
+
     def root_collection(self, resource):
         if self.resource_name == 'self':
-            return resource._collection()
+            return resource.spec._collection()
         else:
-            return resource.spec.schema.root.build_child(self.resource_name).spec._collection()
+            return self.root_spec(resource)._collection()
+
+    def root_spec(self, resource):
+        return resource.spec.schema.root.build_child(self.resource_name).spec
 
     def aggregation(self, resource):
         if self.resource_name == 'self':
             aggregation = [
-                {"$id": resource._id}
+                {"$match": {"_id": resource._id}}
             ]
             spec = resource.spec
         else:
             aggregation = []
-            spec = resource.spec.schema.root.build_child(self.resource_name).spec
+            spec = self.root_spec(resource)
         return aggregation, spec
 
     def __repr__(self):
         return "T[%s]" % (self.resource_name,)
+
+    def all_resource_refs(self):
+        return []
+
+    def resource_ref_snippet(self):
+        return self.resource_name
 
 
 class FilteredResourceRef(ResourceRef):
@@ -110,6 +171,9 @@ class FilteredResourceRef(ResourceRef):
             self.resource_ref = tokens[0]
         self.filter_ref = tokens[1]
 
+    def result_type(self, starting_spec):
+        return self.resource_ref.result_type(starting_spec)
+
     def aggregation(self, resource):
         aggregation, spec = self.resource_ref.aggregation(resource)
         filter_agg = self.filter_ref.filter_aggregation(spec)
@@ -117,11 +181,11 @@ class FilteredResourceRef(ResourceRef):
         return aggregation, spec
 
     def calculate(self, resource):
-        if self.resource_ref.tokens[0].tokens[0] == 'self':
-            res = self._resolve(resource, self.resource_ref.tokens)
-            return [r for r in res if self.filter_ref._filterme(r)]
-        else:
-            raise Exception("globals not supported yet")
+        # will need aggregate?
+        return self.resource_ref.calculate(resource)
+
+    def resource_ref_snippet(self):
+        return self.resource_ref.resource_ref_snippet()
 
     def __repr__(self):
         return "F[%s %s]" % (self.resource_ref, self.filter_ref)
@@ -253,6 +317,7 @@ class Parser(object):
             [(NAME, '=', ConstRef) , Condition],
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
+            [(Calc, '+', Calc) , Operator],
             [(Condition, '&', Condition) , Condition],
             [('[', Condition, ']'), Filter],
             [(STRING,), ConstRef],
@@ -271,11 +336,11 @@ class Parser(object):
     def match_and_reduce(self):
         for pattern, reduced_class in self.patterns:
             last_shifted = self.shifted[-len(pattern):]
-            #print "Checking %s against %s" % (pattern,last_shifted)
+#            print "Checking %s against %s" % (pattern,last_shifted)
             if self.match_pattern(pattern, last_shifted):
-                print "** Reducing %s(%s)" % (reduced_class, last_shifted)
+#                print "** Reducing %s(%s)" % (reduced_class, last_shifted)
                 self._reduce(reduced_class, last_shifted)
-                print "** shifted: %s" % (self.shifted,)
+#                print "** shifted: %s" % (self.shifted,)
                 return True
 
         return False
@@ -283,7 +348,7 @@ class Parser(object):
     def parse(self):
         while self.tokens:
             self.shifted.append(self.tokens.pop(0))
-            print "Shifted: %s" % (self.shifted,)
+#            print "Shifted: %s" % (self.shifted,)
             while self.match_and_reduce():
                 pass
 

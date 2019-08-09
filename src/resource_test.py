@@ -479,3 +479,23 @@ class SpikeTest(unittest.TestCase):
     def test_aggregates_of_aggregates(self):
         # company.periods.financial.totalAssets was broken
         pass
+
+
+    def testResourceRefs(self):
+        company_id = self.api.post('companies', dict(name='Bobs Burgers'))
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+                                  dict(year=2017, period='YE'))
+        company_resource = self.api.build_resource('companies/%s' % company_id)
+        period_resource = self.api.build_resource('companies/%s/periods/%s' % (company_id, period_id))
+        calc_field = company_resource.build_child('totalTotalAssets')
+        self.assertEquals(set(['companies.periods.financial.totalAssets']),
+            calc_field.spec.all_resource_refs())
+        calc2_field = company_resource.build_child('totalFinancialsAssets')
+        self.assertEquals(set(['financials.totalAssets']),
+            calc2_field.spec.all_resource_refs())
+
+        calc3_field = period_resource.build_child('companyName')
+        self.assertEquals(set(['self.link_company_periods.name']), calc3_field.spec.all_resource_refs())
+
+        #self.company_spec.add_field("totalTotalAssets", CalcSpec("sum(companies.periods.financial.totalAssets)", 'int'))
+        #self.company_spec.add_field("totalFinancialsAssets", CalcSpec('sum(financials.totalAssets)', 'int'))
