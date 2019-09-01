@@ -5,6 +5,7 @@ from StringIO import StringIO
 from metaphor.resource import Field
 from metaphor.resource import LinkResource
 from metaphor.resource import ResourceLinkSpec
+from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CollectionSpec
 from metaphor.resource import FieldSpec
 
@@ -40,33 +41,60 @@ class ResourceRef(Calc):
         return child_resource.create_child_spec(self.field_name)
 
     def calculate(self, resource):
-        # resolve resource
-        # dont do this
-        child = self.resource_ref.calculate(resource)
-
         # do this
         # aggregate subresource
-        aggregate_query, spec = self.aggregation(resource)
+        aggregate_query, spec, is_aggregate = self.aggregation(resource)
         # run mongo query from from root_resource collection
         cursor = self.root_collection(resource).aggregate(aggregate_query)
         # build child resource from data result with result_type() spec
         if type(spec) == FieldSpec:
-            value = cursor.next()[self.field_name]
-            child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
-            return child_resource
-        else:
-            if type(spec) == ResourceLinkSpec:
+            if is_aggregate:
+                child_resources = []
+                for data in cursor:
+                    value = data.get(self.field_name)
+                    child_resources.append(self.result_type(resource.spec).build_resource(None, self.field_name, value))
+                return child_resources
+            else:
+                value = cursor.next()[self.field_name]
+                child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
+                return child_resource
+        elif type(spec) in (ResourceLinkSpec, ReverseLinkSpec):
+            if is_aggregate:
+                child_resources = []
+                for data in cursor:
+                    child_resources.append(spec.target_spec.build_resource(None, self.field_name, data))
+                return child_resources
+            else:
                 data = cursor.next()
                 return spec.target_spec.build_resource(None, self.field_name, data)
-            else:
-                raise Exception("Cannot calculate spec %s" % (spec,))
+        else:
+            raise Exception("Cannot calculate spec %s" % (spec,))
 
     def aggregation(self, resource):
         aggregations = []
-        aggregation, spec = self.resource_ref.aggregation(resource)
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(resource)
         aggregations.extend(aggregation)
         child_spec = spec.create_child_spec(self.field_name)
-        if isinstance(child_spec, ResourceLinkSpec):
+        if isinstance(child_spec, ReverseLinkSpec):
+            # if link
+            aggregation.append(
+                {"$lookup": {
+                        "from": "resource_%s" % (child_spec.name,),
+                        "localField": "_id",
+                        "foreignField": spec.field_name,
+                        "as": "_field_%s" % (self.field_name,),
+                }})
+            aggregation.append(
+                {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+            )
+            aggregation.append(
+                {"$unwind": "$_id"}
+            )
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_id"}}
+            )
+            is_aggregate = True
+        elif isinstance(child_spec, ResourceLinkSpec):
             # if link
             aggregation.append(
                 {"$lookup": {
@@ -76,10 +104,13 @@ class ResourceRef(Calc):
                         "as": "_field_%s" % (self.field_name,),
                 }})
             aggregation.append(
-                {"$unwind": "$_field_%s" % (self.field_name,)}
+                {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
             )
             aggregation.append(
-                {"$replaceRoot": {"newRoot": "$_field_%s" % (self.field_name,)}}
+                {"$unwind": "$_id"}
+            )
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_id"}}
             )
         elif isinstance(child_spec, CollectionSpec):
             # if linkcollection / collection
@@ -91,11 +122,15 @@ class ResourceRef(Calc):
                         "as": "_field_%s" % (self.field_name,),
                 }})
             aggregation.append(
-                {"$unwind": "$_field_%s" % (self.field_name,)}
+                {'$group': {'_uniq': '$_field_%s' % (self.field_name,)}}
             )
             aggregation.append(
-                {"$replaceRoot": {"newRoot": "$_field_%s" % (self.field_name,)}}
+                {"$unwind": "$_id"}
             )
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_id"}}
+            )
+            is_aggregate = True
         elif isinstance(child_spec, FieldSpec):
             aggregation.append(
                 {"$project": {
@@ -103,7 +138,7 @@ class ResourceRef(Calc):
                 }})
         else:
             raise Exception("Unrecognised spec %s" % (child_spec,))
-        return aggregation, child_spec
+        return aggregation, child_spec, is_aggregate
 
     def __repr__(self):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
@@ -148,10 +183,11 @@ class RootResourceRef(ResourceRef):
                 {"$match": {"_id": resource._id}}
             ]
             spec = resource.spec
+            return aggregation, spec, False
         else:
             aggregation = []
             spec = self.root_spec(resource)
-        return aggregation, spec
+            return aggregation, spec, True
 
     def __repr__(self):
         return "T[%s]" % (self.resource_name,)
@@ -175,10 +211,10 @@ class FilteredResourceRef(ResourceRef):
         return self.resource_ref.result_type(starting_spec)
 
     def aggregation(self, resource):
-        aggregation, spec = self.resource_ref.aggregation(resource)
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(resource)
         filter_agg = self.filter_ref.filter_aggregation(spec)
         aggregation.append(filter_agg)
-        return aggregation, spec
+        return aggregation, spec, True
 
     def calculate(self, resource):
         # will need aggregate?
