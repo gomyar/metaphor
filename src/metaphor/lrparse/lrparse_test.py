@@ -249,3 +249,33 @@ class LRParseTest(unittest.TestCase):
         # entities[name=self.other[resolve='me',first=True]]
         # parents[name='ned'].entities[averagePay>average(self.children[self.type='boss'].pay)]
         pass
+
+    def test_calc_plus(self):
+        self.employee_spec.add_field("salary", FieldSpec("int"))
+        self.employee_spec.add_field("tax", FieldSpec("int"))
+
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10, 'tax': 2})
+        resource = self.api.build_resource('employees/%s' % employee_id_1)
+
+        tree = parse("self.salary + self.tax")
+        self.assertEquals(12, tree.calculate(resource).data)
+
+        tree = parse("self.salary - self.tax")
+        self.assertEquals(8, tree.calculate(resource).data)
+
+        tree = parse("self.salary * self.tax")
+        self.assertEquals(20, tree.calculate(resource).data)
+
+        tree = parse("self.salary / self.tax")
+        self.assertEquals(5, tree.calculate(resource).data)
+
+    def test_function_call_param_list(self):
+        self.employee_spec.add_field("salary", FieldSpec("float"))
+        self.employee_spec.add_field("tax", FieldSpec("float"))
+
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
+        resource = self.api.build_resource('employees/%s' % employee_id_1)
+
+        tree = parse("round(self.salary + self.tax, 2)")
+        import ipdb; ipdb.set_trace()
+        self.assertEquals(11, tree.calculate(resource).data)

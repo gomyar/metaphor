@@ -247,6 +247,11 @@ class ConstRef(Calc):
         return "C[%s]" % (self.value,)
 
 
+class OperatorResult(object):
+    def __init__(self, value):
+        self.data = value
+
+
 class Operator(Calc):
     def __init__(self, tokens):
         self.tokens = tokens
@@ -256,26 +261,16 @@ class Operator(Calc):
         rhs = self.tokens[2].calculate(resource)
         op = self.tokens[1]
         if op == '+':
-            return lhs + rhs
+            return OperatorResult(lhs.data + rhs.data)
         elif op == '-':
-            return lhs - rhs
+            return OperatorResult(lhs.data - rhs.data)
         elif op == '*':
-            return lhs * rhs
+            return OperatorResult(lhs.data * rhs.data)
         elif op == '/':
-            return lhs / rhs
+            return OperatorResult(lhs.data / rhs.data)
 
     def __repr__(self):
         return "O[%s]" % (self.tokens,)
-
-class Bracket(Calc):
-    def __init__(self, tokens):
-        self.tokens = tokens
-
-    def calculate(self, resource):
-        return self.tokens[1].calculate(resource)
-
-    def __repr__(self):
-        return "B[%s]" % (self.tokens,)
 
 
 class Condition(object):
@@ -311,8 +306,33 @@ class Filter(object):
         aggregation = {"$match": agg}
         return aggregation
 
+class ParameterList(object):
+    def __init__(self, tokens):
+        if type(tokens[0]) is ParameterList:
+            self.params = tokens[0].params
+            self.params.append(tokens[2])
+        else:
+            self.params = [tokens[0], tokens[2]]
+
     def __repr__(self):
-        return "F[%s]" % (self.condition,)
+        return "f(%s)" % (self.params,)
+
+
+class FunctionCall(Calc):
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.functions = {
+            'round': self._round,
+        }
+
+    def calculate(self, resource):
+        return self.functions[self.tokens[0]](resource, *self.tokens[1:])
+
+    def _round(self, resource, value, digits=None):
+        return round(value.calculate(resource), digits)
+
+    def __repr__(self):
+        return "f(%s)" % (self.tokens,)
 
 
 NAME = 'NAME'
@@ -354,8 +374,15 @@ class Parser(object):
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
             [(Calc, '+', Calc) , Operator],
+            [(Calc, '-', Calc) , Operator],
+            [(Calc, '*', Calc) , Operator],
+            [(Calc, '/', Calc) , Operator],
             [(Condition, '&', Condition) , Condition],
             [('[', Condition, ']'), Filter],
+            [(Calc, ',', Calc), ParameterList],
+            [(ParameterList, ',', Calc), ParameterList],
+            [(NAME, '(', Calc, ')'), FunctionCall],
+            [(NAME, '(', ParameterList, ')'), FunctionCall],
             [(STRING,), ConstRef],
             [(NUMBER,), ConstRef],
             [(ResourceRef, Filter), FilteredResourceRef],
@@ -389,7 +416,7 @@ class Parser(object):
                 pass
 
         if len(self.shifted) > 1:
-            print "Errors left: Shifted: %s" % (self.shifted,)
+#            print "Errors left: Shifted: %s" % (self.shifted,)
             raise Exception("Unexpected '%s'" % (self.shifted[1],))
         return self.shifted[0][1]
 
