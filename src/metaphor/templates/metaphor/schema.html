@@ -2,8 +2,7 @@
 
 <head>
 
-<script src="https://code.jquery.com/jquery-1.12.4.js" integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU=" crossorigin="anonymous"></script>
-<script src="https://rawgit.com/gomyar/turtlegui/v3.0.1/turtlegui.js" crossorigin="anonymous"></script>
+<script src="/static/metaphor/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/static/metaphor/netutils.js"></script>
 <script src="/static/metaphor/schema.js"></script>
 <link rel="stylesheet" type="text/css" href="/static/metaphor/schema.css"/>
@@ -13,42 +12,42 @@
 <body>
 
 <div class="title">
-Schema version: <span data-gui-text="schema.version"></span>
+Schema version: <span gui-text="schema.version"></span>
 </div>
 
-<div class="button" data-gui-click="gui.show_new_schema_popup()">New Spec</div>
+<div class="button" gui-click="gui.show_new_schema_popup()">New Spec</div>
 
-<div class="schema_list" data-gui-list="schema.specs"  data-gui-item="spec" data-gui-key="spec_name">
+<div class="schema_list" gui-list="schema.specs"  gui-item="spec" gui-key="spec_name">
 
     <div class="spec">
-        <div class="schema_name" data-gui-text="spec_name"></div>
+        <div class="schema_name" gui-text="spec_name"></div>
         <div class="fields_headers">
             <span></span>
             <span>field:</span>
             <span>type:</span>
         </div>
-        <div class="fields" data-gui-list="spec.fields" data-gui-item="field" data-gui-key="field_name">
-            <div class="field" data-gui-id="gui.create_field_id()">
+        <div class="fields" gui-list="spec.fields" gui-item="field" gui-key="field_name">
+            <div class="field" gui-id="gui.create_field_id()">
                 <div>
                     <span>
-                        <span data-gui-show="gui.not_reverse_link(field)"><div class="button" data-gui-click="gui.delete_field(spec_name, field_name)">Delete</div></span>
+                        <span gui-show="gui.not_reverse_link(field)"><div class="button" gui-click="gui.delete_field(spec_name, field_name)">Delete</div></span>
                     </span>
-                    <span data-gui-text="field_name"></span>
-                    <span data-gui-text="field.type"></span>
-                    <span data-gui-text="field.target_spec.name" data-gui-show="gui.is_field_collection(field)"></span>
-                    <span data-gui-text="field.calc_type" data-gui-show="gui.is_field_calc(field)"></span>
-                    <span class="calcstr" data-gui-text="field.calc" data-gui-show="gui.is_field_calc(field)"></span>
+                    <span gui-text="field_name"></span>
+                    <span gui-text="field.type"></span>
+                    <span gui-text="field.target_spec.name" gui-show="gui.is_field_collection(field)"></span>
+                    <span gui-text="field.calc_type" gui-show="gui.is_field_calc(field)"></span>
+                    <span class="calcstr" gui-text="field.calc" gui-show="gui.is_field_calc(field)"></span>
                 </div>
             </div>
         </div>
         <div class="field_ops">
-            <div class="button" data-gui-click="gui.show_new_field_popup(spec_name)">New Field</div>
+            <div class="button" gui-click="gui.show_new_field_popup(spec_name)">New Field</div>
         </div>
     </div>
 
 </div>
 
-<div id="popup_spec" class="popupwrapper" data-gui-show="gui.popup_spec">
+<div id="popup_spec" class="popupwrapper" gui-show="gui.popup_spec">
     <div class="popup">
         <div class="fields_headers">
             <span>Create spec: </span>
@@ -57,72 +56,72 @@ Schema version: <span data-gui-text="schema.version"></span>
         <div class="fields_headers">
             <span>Spec name: </span>
             <span>
-                <input type="text" data-gui-val="gui.working_spec.name"></input>
+                <input type="text" gui-val="gui.working_spec.name"></input>
             </span>
         </div>
 
         <div class="popupbuttons">
-            <div class="button" data-gui-click='gui.create_spec();'>Create</div>
-            <div class="button" data-gui-click='gui.close_spec_popup()'>Close</div>
+            <div class="button" gui-click='gui.create_spec()'>Create</div>
+            <div class="button" gui-click='gui.close_spec_popup()'>Close</div>
         </div>
     </div>
 </div>
 
-<div id="popup_field" class="popupwrapper" data-gui-show="gui.popup_field">
+<div id="popup_field" class="popupwrapper" gui-show="gui.popup_field">
     <div class="popup">
         <div class="fields_headers">
-            <span>Add field(s) to: </span><span data-gui-text="gui.workingfield.spec_name"></span>
+            <span>Add field(s) to: </span><span gui-text="gui.workingfield.spec_name"></span>
         </div>
         <hr></hr>
         <div class="fields_headers">
             <span>Field name: </span>
             <span>
-                <input type="text" data-gui-val="gui.workingfield.name"></input>
+                <input type="text" gui-val="gui.workingfield.name"></input>
             </span>
         </div>
         <div class="fields_headers">
             <span>Field type: </span>
             <span>
-                <select data-gui-list="gui.field_types" data-gui-item="field_type" data-gui-val="gui.workingfield.type" data-gui-change="turtlegui.reload()">
-                    <option data-gui-val="field_type" data-gui-text="field_type"></option>
+                <select gui-list="gui.field_types" gui-item="field_type" gui-val="gui.workingfield.type" gui-change="turtlegui.reload()">
+                    <option gui-val="field_type" gui-text="field_type"></option>
                 </select>
             </span>
         </div>
 
-        <div  class="fields_headers" data-gui-show="gui.is_field_collection(gui.workingfield)">
+        <div  class="fields_headers" gui-show="gui.is_field_collection(gui.workingfield)">
             <span>Target: </span>
             <span>
-                <select data-gui-list="schema.specs" data-gui-item="type_spec" data-gui-val="gui.workingfield.target">
-                    <option data-gui-val="type_spec.name" data-gui-text="type_spec.name"></input>
+                <select gui-list="schema.specs" gui-item="type_spec" gui-val="gui.workingfield.target">
+                    <option gui-val="type_spec.name" gui-text="type_spec.name"></input>
                 </select>
             </span>
         </div>
 
-        <div class="fields_headers" data-gui-show="gui.is_field_calc(gui.workingfield)">
+        <div class="fields_headers" gui-show="gui.is_field_calc(gui.workingfield)">
             <span>Calc: </span>
             <span>
-                <input type="text" data-gui-val="gui.workingfield.calc"></input>
+                <input type="text" gui-val="gui.workingfield.calc"></input>
             </span>
         </div>
  
-        <div  class="fields_headers" data-gui-show="gui.is_field_calc(gui.workingfield)">
+        <div  class="fields_headers" gui-show="gui.is_field_calc(gui.workingfield)">
             <span>Calc Type: </span>
             <span>
-                <select data-gui-list="gui.calc_types" data-gui-item="type_spec" data-gui-val="gui.workingfield.calc_type">
-                    <option data-gui-val="type_spec" data-gui-text="type_spec"></input>
+                <select gui-list="gui.calc_types" gui-item="type_spec" gui-val="gui.workingfield.calc_type">
+                    <option gui-val="type_spec" gui-text="type_spec"></input>
                 </select>
             </span>
         </div>
 
 
         <div class="popupbuttons">
-            <div class="button" data-gui-click='gui.create_field();'>Create</div>
-            <div class="button" data-gui-click='gui.close_field_popup()'>Close</div>
+            <div class="button" gui-click='gui.create_field()'>Create</div>
+            <div class="button" gui-click='gui.close_field_popup()'>Close</div>
         </div>
     </div>
 </div>
 
-<div id="loading" data-gui-show="net.loading">Loading...</div>
+<div id="loading" gui-show="net.loading">Loading...</div>
 
 </body>
 

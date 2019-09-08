@@ -89,7 +89,7 @@ gui.create_field = function() {
     net.perform_patch("/schema/specs/" + gui.workingfield.spec_name,
         field_data, function(e) {
             gui.load_specs(function (e) {
-                var field_div = $('#field_' + gui.workingfield.spec_name + '_' + gui.workingfield.name)
+                var field_div = document.getElementById('#field_' + gui.workingfield.spec_name + '_' + gui.workingfield.name)
                 field_div.hide();
                 field_div.fadeIn();
             });
@@ -105,9 +105,10 @@ gui.create_spec = function() {
 }
 
 
-
-$(document).ready(function() {
-    console.log("initing");
+document.addEventListener("DOMContentLoaded", function(){
+    // call turtlegui.reload() when the page loads
     gui.load_specs();
 });
+
+
 
