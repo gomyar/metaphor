@@ -2,8 +2,6 @@
 
 <head>
 
-<script src="https://code.jquery.com/jquery-1.12.4.js" integrity="sha256-Qw82+bXyGq6MydymqBxNPYTaUXXq7c8v3CwiYwLLNXU=" crossorigin="anonymous"></script>
-<!--<script src="https://rawgit.com/gomyar/turtlegui/v0.1.8/turtlegui.js" crossorigin="anonymous"></script>-->
 <script src="/static/metaphor/turtlegui.js"></script>
 <script src="/static/metaphor/netutils.js"></script>
 <script src="/static/metaphor/api.js"></script>
@@ -11,8 +9,7 @@
 
 <script>
 
-api.resource = {{ resource|tojson|safe }};
-api.spec = {{ spec|tojson|safe }};
+api.resource_path = "{{ resource_path }}";
 
 </script>
 
@@ -21,89 +18,89 @@ api.spec = {{ spec|tojson|safe }};
 <body>
 
 <div class="title">
-    <span data-gui-text="api.resource.name"></span>
+    <span gui-text="api.resource.name"></span>
 </div>
 
-<div class="resource" data-gui-show="api.spec.spec == 'resource'">
-    <div class="fields" data-gui-list="api.spec.fields" data-gui-item="field" data-gui-key="field_name">
+<div class="resource" gui-show="api.spec.spec == 'resource'">
+    <div class="fields" gui-list="api.spec.fields" gui-item="field" gui-key="field_name">
         <div class="field">
-            <span data-gui-text="field_name"></span>
-            <span data-gui-text="api.resource[field_name]" data-gui-show="['str', 'int', 'float'].includes(field.type)"></span>
-            <span data-gui-text="api.resource[field_name]" data-gui-show="['calc'].includes(field.type)"></span>
-            <span data-gui-show="['link', 'collection'].includes(field.type)"><a class="button" data-gui-attr='"href"' data-gui-attrval="api.resource[field_name]" data-gui-text="field_name"></a></span>
+            <span gui-text="field_name"></span>
+            <span gui-text="api.resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
+            <span gui-text="api.resource[field_name]" gui-show="gui.is_field_calc(field)"></span>
+            <span gui-show="gui.is_field_collection(field)"><a class="button" gui-attr='"href"' gui-attrval="api.resource[field_name]" gui-text="field_name"></a></span>
         </div>
     </div>
 </div>
 
-<div class="collection" data-gui-show="api.spec.spec == 'collection'">
-    <div class="resource_name" data-gui-text="api.spec.target_spec.name"></div>
+<div class="collection" gui-show="api.spec.spec == 'collection'">
+    <div class="resource_name" gui-text="api.spec.target_spec.name"></div>
 
-    <div class="button" data-gui-click="api.show_postform=true; turtlegui.reload()">POST</div>
+    <div class="button" gui-click="api.show_postform(true)">POST</div>
 
-    <div data-gui-list="api.resource.results" data-gui-item="resource">
+    <div gui-list="api.resource.results" gui-item="resource">
         <div class="resource">
             <hr></hr>
-            <div class="button" data-gui-click="api.delete_resource(resource)">DELETE</div>
-            <div class="fields" data-gui-list="api.spec.target_spec.fields" data-gui-item="field" data-gui-key="field_name">
+            <div class="button" gui-click="api.delete_resource(resource)">DELETE</div>
+            <div class="fields" gui-list="api.spec.target_spec.fields" gui-item="field" gui-key="field_name">
                 <div class="field">
-                    <span data-gui-text="field_name"></span>
-                    <span data-gui-text="resource[field_name]" data-gui-show="['str', 'int', 'float'].includes(field.type)"></span>
-                    <span data-gui-text="resource[field_name]" data-gui-show="['calc'].includes(field.type)"></span>
-                    <span data-gui-show="['link', 'collection'].includes(field.type)"><a class="button" data-gui-attr='"href"' data-gui-attrval="resource[field_name]" data-gui-text="field_name"></a></span>
+                    <span gui-text="field_name"></span>
+                    <span gui-text="resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
+                    <span gui-text="resource[field_name]" gui-show="gui.is_field_calc(field)"></span>
+                    <span gui-show="gui.is_field_collection(field)"><a class="button" gui-attr='"href"' gui-attrval="resource[field_name]" gui-text="field_name"></a></span>
                 </div>
             </div>
             <div class="fields">
                 <div class="field">
-                    <span ><a class="button" data-gui-attr='"href"' data-gui-attrval="resource['self']">self</a></span>
+                    <span ><a class="button" gui-attr='"href"' gui-attrval="resource['self']">self</a></span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<div id="postform" data-gui-show="api.show_postform">
+<div id="postform" gui-show="api.postform_shown">
     
 </div>
-<div id="postform" class="popupwrapper" data-gui-show="api.show_postform">
+<div id="postform" class="popupwrapper" gui-show="api.postform_shown">
     <div class="popup">
         <div class="fields_headers">
-            <span>Create</span><span data-gui-text="api.spec.target_spec.name"></span>:
+            <span>Create</span><span gui-text="api.spec.target_spec.name"></span>:
         </div>
         <hr></hr>
 
         <div class="resource">
-            <div class="fields" data-gui-list="api.spec.target_spec.fields" data-gui-item="field" data-gui-key="field_name">
+            <div class="fields" gui-list="api.spec.target_spec.fields" gui-item="field" gui-key="field_name">
                 <div>
-                <div class="field" data-gui-show="field.type=='str'">
-                    <span data-gui-text="field_name"></span>
-                    <span><input type="text" data-gui-val="api.current_resource[field_name]"></input></span>
+                <div class="field" gui-show="field.type=='str'">
+                    <span gui-text="field_name"></span>
+                    <span><input type="text" gui-val="api.current_resource[field_name]"></input></span>
                 </div>
-                <div class="field" data-gui-show="field.type=='int'">
-                    <span data-gui-text="field_name"></span>
-                    <span><input type="text" data-gui-val="api.current_resource[field_name]" data-gui-parse-func="parseInt"></input></span>
+                <div class="field" gui-show="field.type=='int'">
+                    <span gui-text="field_name"></span>
+                    <span><input type="text" gui-val="api.current_resource[field_name]" gui-parse-func="parseInt"></input></span>
                 </div>
-                <div class="field" data-gui-show="field.type=='float'">
-                    <span data-gui-text="field_name"></span>
-                    <span><input type="text" data-gui-val="api.current_resource[field_name]" data-gui-parse-func="parseFloat"></input></span>
+                <div class="field" gui-show="field.type=='float'">
+                    <span gui-text="field_name"></span>
+                    <span><input type="text" gui-val="api.current_resource[field_name]" gui-parse-func="parseFloat"></input></span>
                 </div>
-                <div class="field" data-gui-show="field.type=='link'">
-                    <span data-gui-text="field_name"></span>
-                    <span><input type="text" data-gui-val="api.current_resource[field_name]"></input></span>
+                <div class="field" gui-show="field.type=='link'">
+                    <span gui-text="field_name"></span>
+                    <span><input type="text" gui-val="api.current_resource[field_name]"></input></span>
                 </div>
                 </div>
             </div>
         </div>
 
         <div class="popupbuttons">
-            <div class="button" data-gui-click='api.post_resource();'>Create</div>
-            <div class="button" data-gui-click='api.show_postform = false; turtlegui.reload();'>Close</div>
+            <div class="button" gui-click='api.post_resource()'>Create</div>
+            <div class="button" gui-click='api.show_postform(false)'>Close</div>
         </div>
     </div>
 </div>
 
 
 
-<div id="loading" data-gui-show="net.loading">Loading...</div>
+<div id="loading" gui-show="net.loading">Loading...</div>
 
 </body>
 

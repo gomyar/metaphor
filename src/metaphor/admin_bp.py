@@ -23,17 +23,19 @@ admin_bp = Blueprint(
 
 @admin_bp.route("/schema", methods=['GET'])
 def admin_schema():
-    schema = current_app.config['schema']
     return render_template('metaphor/schema.html')
 
 
+@admin_bp.route("/api/<path:path>", methods=['GET'])
+def admin_api(path):
+    return render_template('metaphor/api.html', resource_path=path)
+
+
 @admin_bp.route("/api", methods=['GET'])
-def admin_api():
-    schema = current_app.config['schema']
-    return render_template('metaphor/api.html')
+def admin_api_root():
+    return render_template('metaphor/api.html', resource_path='')
 
 
 @admin_bp.route("/", methods=['GET'])
 def admin_root():
-    schema = current_app.config['schema']
     return render_template('metaphor/admin.html')
