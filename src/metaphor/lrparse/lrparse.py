@@ -228,6 +228,8 @@ class FilteredResourceRef(ResourceRef):
 
 
 class ConstRef(Calc):
+    ALLOWED_TYPES = (int, float, str)
+
     def __init__(self, tokens):
         const = tokens[0]
         if const[0] == '"' and const[-1] == '"':
@@ -241,15 +243,10 @@ class ConstRef(Calc):
                 self.value = float(const)
 
     def calculate(self, resource):
-        return float(self.value)
+        return self.value
 
     def __repr__(self):
         return "C[%s]" % (self.value,)
-
-
-class OperatorResult(object):
-    def __init__(self, value):
-        self.data = value
 
 
 class Operator(Calc):
@@ -259,15 +256,19 @@ class Operator(Calc):
     def calculate(self, resource):
         lhs = self.tokens[0].calculate(resource)
         rhs = self.tokens[2].calculate(resource)
+        if type(lhs) not in ConstRef.ALLOWED_TYPES:
+            lhs = lhs.data
+        if type(rhs) not in ConstRef.ALLOWED_TYPES:
+            rhs = rhs.data
         op = self.tokens[1]
         if op == '+':
-            return OperatorResult(lhs.data + rhs.data)
+            return lhs + rhs
         elif op == '-':
-            return OperatorResult(lhs.data - rhs.data)
+            return lhs - rhs
         elif op == '*':
-            return OperatorResult(lhs.data * rhs.data)
+            return lhs * rhs
         elif op == '/':
-            return OperatorResult(lhs.data / rhs.data)
+            return lhs / rhs
 
     def __repr__(self):
         return "O[%s]" % (self.tokens,)
@@ -315,7 +316,7 @@ class ParameterList(object):
             self.params = [tokens[0], tokens[2]]
 
     def __repr__(self):
-        return "f(%s)" % (self.params,)
+        return "  %s  " % (self.params,)
 
 
 class FunctionCall(Calc):
@@ -326,10 +327,13 @@ class FunctionCall(Calc):
         }
 
     def calculate(self, resource):
-        return self.functions[self.tokens[0]](resource, *self.tokens[1:])
+        if isinstance(self.tokens[2], Calc):
+            return self.functions[self.tokens[0]](resource, self.tokens[2].calculate(resource))
+        else:
+            return self.functions[self.tokens[0]](resource, *self.tokens[2].params)  # .calculate(resource) ?
 
-    def _round(self, resource, value, digits=None):
-        return round(value.calculate(resource), digits)
+    def _round(self, resource, parameter_list, digits=None):
+        return round(parameter_list.calculate(resource), digits.calculate(resource))
 
     def __repr__(self):
         return "f(%s)" % (self.tokens,)
@@ -358,8 +362,10 @@ def lex(raw_tokens):
             pass
         elif token_type == tokenize.ENDMARKER:
             pass
+        elif token_type == tokenize.NEWLINE:
+            pass
         else:
-            raise Exception("Unexpected token %s at line %s col %s" % (
+            raise Exception("Unexpected token [%s] at line %s col %s" % (
                             value, line, col))
     return tokens
 
@@ -426,5 +432,5 @@ class Parser(object):
 
 
 def parse(line):
-    tokens = tokenize.generate_tokens(StringIO(line).readline)
+    tokens = tokenize.generate_tokens(StringIO(line).next)
     return  Parser(lex(tokens)).parse()
