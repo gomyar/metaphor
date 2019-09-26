@@ -324,16 +324,59 @@ class FunctionCall(Calc):
         self.tokens = tokens
         self.functions = {
             'round': self._round,
+            'max': self._max,
+            'min': self._min,
+            'average': self._average,
+            'sum': self._sum,
         }
 
     def calculate(self, resource):
         if isinstance(self.tokens[2], Calc):
-            return self.functions[self.tokens[0]](resource, self.tokens[2].calculate(resource))
+            return self.functions[self.tokens[0]](resource, self.tokens[2])
         else:
-            return self.functions[self.tokens[0]](resource, *self.tokens[2].params)  # .calculate(resource) ?
+            return self.functions[self.tokens[0]](resource, *[param for param in self.tokens[2].params])  # .calculate(resource) ?
 
-    def _round(self, resource, parameter_list, digits=None):
-        return round(parameter_list.calculate(resource), digits.calculate(resource))
+    def _round(self, resource, value, digits=None):
+        value = value.calculate(resource)
+
+        if isinstance(value, Field):
+            value = value.data
+        elif isinstance(value, ConstRef):
+            value = value.value
+
+        if digits:
+            return round(value, digits.calculate(resource))
+        else:
+            return round(value)
+
+    def _max(self, resource, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
+        aggregate_query.append({'$group': {'_id': None, '_max': {'$max': '$' + spec.field_name}}})
+        # run mongo query from from root_resource collection
+        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+        return cursor.next()['_max']
+
+    def _min(self, resource, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
+        aggregate_query.append({'$group': {'_id': None, '_min': {'$min': '$' + spec.field_name}}})
+        # run mongo query from from root_resource collection
+        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+        return cursor.next()['_min']
+
+    def _average(self, resource, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
+        aggregate_query.append({'$group': {'_id': None, '_average': {'$avg': '$' + spec.field_name}}})
+        # run mongo query from from root_resource collection
+        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+        return cursor.next()['_average']
+
+    def _sum(self, resource, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
+        aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + spec.field_name}}})
+        # run mongo query from from root_resource collection
+        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+        return cursor.next()['_sum']
+
 
     def __repr__(self):
         return "f(%s)" % (self.tokens,)

@@ -295,3 +295,63 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("round(self.salary) + round(self.tax)")
         self.assertEquals(13, tree.calculate(resource))
+
+    def test_function_within_a_function(self):
+        self.employee_spec.add_field("salary", FieldSpec("float"))
+        self.employee_spec.add_field("tax", FieldSpec("float"))
+
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.12345})
+        resource = self.api.build_resource('employees/%s' % employee_id_1)
+
+        tree = parse("round(round(self.salary, 4), 3)")
+        self.assertEquals(10.123, tree.calculate(resource))
+
+    def test_math_functions(self):
+        self.employee_spec.add_field("salary", FieldSpec("float"))
+
+        self.api.post('employees', {'name': 'ned', 'salary': 20})
+        self.api.post('employees', {'name': 'bob', 'salary': 10})
+        self.api.post('employees', {'name': 'bil', 'salary': 30})
+
+        employees = self.api.build_resource('employees')
+
+        # max
+        tree = parse("max(employees.salary)")
+        self.assertEquals(30, tree.calculate(employees))
+
+        # min
+        tree = parse("min(employees.salary)")
+        self.assertEquals(10, tree.calculate(employees))
+
+        # avg
+        tree = parse("average(employees.salary)")
+        self.assertEquals(20, tree.calculate(employees))
+
+        # sum
+        tree = parse("sum(employees.salary)")
+        self.assertEquals(60, tree.calculate(employees))
+
+    def test_extra_math(self):
+        self.employee_spec.add_field("salary", FieldSpec("float"))
+
+        self.api.post('employees', {'name': 'ned', 'salary': 20.1234})
+        self.api.post('employees', {'name': 'ned', 'salary': 10.5678})
+        self.api.post('employees', {'name': 'bil', 'salary': 30.7777})
+
+        employees = self.api.build_resource('employees')
+
+        tree = parse("round(sum(employees.salary), 2) + round(max(employees.salary))")
+        self.assertEquals(92.47, tree.calculate(employees))
+
+
+        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees.salary))")
+        self.assertEquals(61.69, tree.calculate(employees))
+
+        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees[name='ned'].salary))")
+        self.assertEquals(50.69, tree.calculate(employees))
+
+        # filter nones
+        # filter generic aggregates (filter(aggregate, name='paul', age>20))
+        # space out range
+        # cap (ceil, floor) aggregates
+        # min max range
