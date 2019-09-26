@@ -202,7 +202,9 @@ class CalcSpec(Spec):
         return CalcField(parent, field_name, self, data)
 
     def parse_calc(self):
-        return parser.parse(self.schema, self.calc_str)
+        from metaphor.lrparse.lrparse import parse
+        return parse(self.calc_str)
+#        return parser.parse(self.schema, self.calc_str)
 
     def all_resource_refs(self):
         return self.parse_calc().all_resource_refs()

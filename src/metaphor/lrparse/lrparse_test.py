@@ -218,7 +218,7 @@ class LRParseTest(unittest.TestCase):
             {'$project': {'yearly_sales': True}}], aggregation)
         self.assertEquals(self.api.schema.specs['division'].fields['yearly_sales'],
                           spec)
-        self.assertEquals(['employees.division.yearly_sales'], tree.all_resource_refs())
+        self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
 
     def test_aggregation_self(self):
         tree = parse("self.division[type='sales'].yearly_sales")
@@ -242,7 +242,7 @@ class LRParseTest(unittest.TestCase):
             {'$project': {'yearly_sales': True}}], aggregation)
         self.assertEquals(self.api.schema.specs['division'].fields['yearly_sales'],
                           spec)
-        self.assertEquals(['self.division.yearly_sales'], tree.all_resource_refs())
+        self.assertEquals(set(['self.division.yearly_sales']), tree.all_resource_refs())
 
 
     def test_aggregates(self):
@@ -349,6 +349,8 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees[name='ned'].salary))")
         self.assertEquals(50.69, tree.calculate(employees))
+
+        self.assertEquals(set(['employees.salary']), tree.all_resource_refs())
 
         # filter nones
         # filter generic aggregates (filter(aggregate, name='paul', age>20))

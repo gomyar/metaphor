@@ -300,3 +300,11 @@ class SchemaUpdateTest(unittest.TestCase):
             },
             'type': 'collection'},
             employer_spec)
+
+    def test_interdependent_fields_added_together_specific(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {
+                'assets': {'type': 'int'},
+                'assets_plus_one': {'type': 'calc', 'calc': 'self.assets + 1', 'calc_type': 'int'},
+            }}), content_type='application/json')
+        self.assertEquals(200, resp.status_code)

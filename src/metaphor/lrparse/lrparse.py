@@ -8,6 +8,7 @@ from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CollectionSpec
 from metaphor.resource import FieldSpec
+from metaphor.resource import CalcSpec
 
 
 class Calc(object):
@@ -24,7 +25,7 @@ class Calc(object):
 class ResourceRef(Calc):
     def __init__(self, tokens):
         ''' takes resource_ref.name '''
-        if type(tokens[0]) is str:
+        if isinstance(tokens[0], basestring):
             self.resource_ref = RootResourceRef(tokens[0])
         else:
             self.resource_ref = tokens[0]
@@ -58,6 +59,8 @@ class ResourceRef(Calc):
                 value = cursor.next()[self.field_name]
                 child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
                 return child_resource
+        elif type(spec) == CalcSpec:
+            pass
         elif type(spec) in (ResourceLinkSpec, ReverseLinkSpec):
             if is_aggregate:
                 child_resources = []
@@ -131,7 +134,7 @@ class ResourceRef(Calc):
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
             is_aggregate = True
-        elif isinstance(child_spec, FieldSpec):
+        elif isinstance(child_spec, FieldSpec) or isinstance(child_spec, CalcSpec):
             aggregation.append(
                 {"$project": {
                     child_spec.field_name: True,
@@ -144,7 +147,7 @@ class ResourceRef(Calc):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
 
     def all_resource_refs(self):
-        return [self.resource_ref_snippet()]
+        return set([self.resource_ref_snippet()])
 
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
@@ -248,19 +251,24 @@ class ConstRef(Calc):
     def __repr__(self):
         return "C[%s]" % (self.value,)
 
+    def all_resource_refs(self):
+        return []
+
 
 class Operator(Calc):
     def __init__(self, tokens):
-        self.tokens = tokens
+        self.lhs = tokens[0]
+        self.op = tokens[1]
+        self.rhs = tokens[2]
 
     def calculate(self, resource):
-        lhs = self.tokens[0].calculate(resource)
-        rhs = self.tokens[2].calculate(resource)
+        lhs = self.lhs.calculate(resource)
+        rhs = self.rhs.calculate(resource)
         if type(lhs) not in ConstRef.ALLOWED_TYPES:
             lhs = lhs.data
         if type(rhs) not in ConstRef.ALLOWED_TYPES:
             rhs = rhs.data
-        op = self.tokens[1]
+        op = self.op
         if op == '+':
             return lhs + rhs
         elif op == '-':
@@ -271,7 +279,10 @@ class Operator(Calc):
             return lhs / rhs
 
     def __repr__(self):
-        return "O[%s]" % (self.tokens,)
+        return "O[%s%s%s]" % (self.lhs, self.op, self.rhs)
+
+    def all_resource_refs(self):
+        return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
 
 
 class Condition(object):
@@ -318,6 +329,12 @@ class ParameterList(object):
     def __repr__(self):
         return "  %s  " % (self.params,)
 
+    def all_resource_refs(self):
+        refs = set()
+        for param in self.params:
+            refs.union(param.all_resource_refs())
+        return refs
+
 
 class FunctionCall(Calc):
     def __init__(self, tokens):
@@ -335,6 +352,15 @@ class FunctionCall(Calc):
             return self.functions[self.tokens[0]](resource, self.tokens[2])
         else:
             return self.functions[self.tokens[0]](resource, *[param for param in self.tokens[2].params])  # .calculate(resource) ?
+
+    def all_resource_refs(self):
+        if isinstance(self.tokens[2], Calc):
+            return self.tokens[2].all_resource_refs()
+        else:
+            refs = set()
+            for param in self.tokens[2].params:
+                refs.union(param.all_resource_refs())
+            return refs
 
     def _round(self, resource, value, digits=None):
         value = value.calculate(resource)
@@ -376,7 +402,6 @@ class FunctionCall(Calc):
         # run mongo query from from root_resource collection
         cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
         return cursor.next()['_sum']
-
 
     def __repr__(self):
         return "f(%s)" % (self.tokens,)
@@ -442,7 +467,7 @@ class Parser(object):
 
     def match_pattern(self, pattern, last_tokens):
         def m(pat, tok):
-            return pat == tok[0] or (type(tok[0]) != str and type(pat) != str and issubclass(tok[0], pat))
+            return pat == tok[0] or (not isinstance(tok[0], basestring) and not isinstance(pat, basestring) and issubclass(tok[0], pat))
         return len(pattern) == len(last_tokens) and all(m(pat, tok) for pat, tok in zip(pattern, last_tokens))
 
     def match_and_reduce(self):
