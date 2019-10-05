@@ -172,7 +172,7 @@ class CollectionTest(unittest.TestCase):
         # test aggregation works
         company = self.api.get('companies/%s' % (company_id_1,))
 
-        self.assertEquals(26, company['averageScore'])
+        self.assertEquals(27, round(company['averageScore']))
 
     def test_aggregate_calc(self):
         # cannot aggregate periods.averageAssets

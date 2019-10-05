@@ -60,7 +60,7 @@ class ResourceRef(Calc):
                 child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
                 return child_resource
         elif type(spec) == CalcSpec:
-            pass
+            return resource.data[spec.field_name]  # unsure what's going on here, bad separation probably
         elif type(spec) in (ResourceLinkSpec, ReverseLinkSpec):
             if is_aggregate:
                 child_resources = []
@@ -84,7 +84,7 @@ class ResourceRef(Calc):
                 {"$lookup": {
                         "from": "resource_%s" % (child_spec.name,),
                         "localField": "_id",
-                        "foreignField": spec.field_name,
+                        "foreignField": child_spec.target_field_name,
                         "as": "_field_%s" % (self.field_name,),
                 }})
             aggregation.append(
@@ -125,7 +125,7 @@ class ResourceRef(Calc):
                         "as": "_field_%s" % (self.field_name,),
                 }})
             aggregation.append(
-                {'$group': {'_uniq': '$_field_%s' % (self.field_name,)}}
+                {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
             )
             aggregation.append(
                 {"$unwind": "$_id"}
@@ -134,11 +134,13 @@ class ResourceRef(Calc):
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
             is_aggregate = True
-        elif isinstance(child_spec, FieldSpec) or isinstance(child_spec, CalcSpec):
+        elif isinstance(child_spec, FieldSpec):
             aggregation.append(
                 {"$project": {
                     child_spec.field_name: True,
                 }})
+        elif isinstance(child_spec, CalcSpec):
+            pass
         else:
             raise Exception("Unrecognised spec %s" % (child_spec,))
         return aggregation, child_spec, is_aggregate
@@ -196,7 +198,7 @@ class RootResourceRef(ResourceRef):
         return "T[%s]" % (self.resource_name,)
 
     def all_resource_refs(self):
-        return []
+        return set()
 
     def resource_ref_snippet(self):
         return self.resource_name
@@ -252,7 +254,7 @@ class ConstRef(Calc):
         return "C[%s]" % (self.value,)
 
     def all_resource_refs(self):
-        return []
+        return set()
 
 
 class Operator(Calc):
@@ -264,19 +266,24 @@ class Operator(Calc):
     def calculate(self, resource):
         lhs = self.lhs.calculate(resource)
         rhs = self.rhs.calculate(resource)
-        if type(lhs) not in ConstRef.ALLOWED_TYPES:
-            lhs = lhs.data
-        if type(rhs) not in ConstRef.ALLOWED_TYPES:
-            rhs = rhs.data
-        op = self.op
-        if op == '+':
-            return lhs + rhs
-        elif op == '-':
-            return lhs - rhs
-        elif op == '*':
-            return lhs * rhs
-        elif op == '/':
-            return lhs / rhs
+        try:
+            if type(lhs) not in ConstRef.ALLOWED_TYPES:
+                lhs = lhs.data
+            if type(rhs) not in ConstRef.ALLOWED_TYPES:
+                rhs = rhs.data
+            op = self.op
+            if op == '+':
+                return lhs + rhs
+            elif op == '-':
+                return lhs - rhs
+            elif op == '*':
+                return lhs * rhs
+            elif op == '/':
+                return lhs / rhs
+        except TypeError as te:
+            return None
+        except AttributeError as te:
+            return None
 
     def __repr__(self):
         return "O[%s%s%s]" % (self.lhs, self.op, self.rhs)
@@ -332,13 +339,33 @@ class ParameterList(object):
     def all_resource_refs(self):
         refs = set()
         for param in self.params:
-            refs.union(param.all_resource_refs())
+            refs = refs.union(param.all_resource_refs())
         return refs
+
+
+class Brackets(Calc):
+    def __init__(self, tokens):
+        self.calc = tokens[1]
+
+    def calculate(self, resource):
+        return self.calc.calculate(resource)
+
+    def all_resource_refs(self):
+        return self.calc.all_resource_refs()
+
+    def __repr__(self):
+        return "(" + str(self.calc) + ")"
 
 
 class FunctionCall(Calc):
     def __init__(self, tokens):
-        self.tokens = tokens
+        self.func_name = tokens[0]
+
+        if isinstance(tokens[1], Brackets):
+            self.params = [tokens[1].calc]
+        else:
+            self.params = [p for p in tokens[2].params]
+
         self.functions = {
             'round': self._round,
             'max': self._max,
@@ -348,19 +375,13 @@ class FunctionCall(Calc):
         }
 
     def calculate(self, resource):
-        if isinstance(self.tokens[2], Calc):
-            return self.functions[self.tokens[0]](resource, self.tokens[2])
-        else:
-            return self.functions[self.tokens[0]](resource, *[param for param in self.tokens[2].params])  # .calculate(resource) ?
+        return self.functions[self.func_name](resource, *self.params)
 
     def all_resource_refs(self):
-        if isinstance(self.tokens[2], Calc):
-            return self.tokens[2].all_resource_refs()
-        else:
-            refs = set()
-            for param in self.tokens[2].params:
-                refs.union(param.all_resource_refs())
-            return refs
+        refs = set()
+        for param in self.params:
+            refs = refs.union(param.all_resource_refs())
+        return refs
 
     def _round(self, resource, value, digits=None):
         value = value.calculate(resource)
@@ -379,32 +400,44 @@ class FunctionCall(Calc):
         aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
         aggregate_query.append({'$group': {'_id': None, '_max': {'$max': '$' + spec.field_name}}})
         # run mongo query from from root_resource collection
-        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
-        return cursor.next()['_max']
+        try:
+            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            return cursor.next()['_max']
+        except StopIteration:
+            return None
 
     def _min(self, resource, aggregate_field):
         aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
         aggregate_query.append({'$group': {'_id': None, '_min': {'$min': '$' + spec.field_name}}})
         # run mongo query from from root_resource collection
-        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
-        return cursor.next()['_min']
+        try:
+            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            return cursor.next()['_min']
+        except StopIteration:
+            return None
 
     def _average(self, resource, aggregate_field):
         aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
         aggregate_query.append({'$group': {'_id': None, '_average': {'$avg': '$' + spec.field_name}}})
         # run mongo query from from root_resource collection
-        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
-        return cursor.next()['_average']
+        try:
+            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            return cursor.next()['_average']
+        except StopIteration:
+            return None
 
     def _sum(self, resource, aggregate_field):
         aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
         aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + spec.field_name}}})
         # run mongo query from from root_resource collection
-        cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
-        return cursor.next()['_sum']
+        try:
+            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            return cursor.next()['_sum']
+        except StopIteration:
+            return None
 
     def __repr__(self):
-        return "f(%s)" % (self.tokens,)
+        return "%s(%s)" % (self.func_name, [str(s) for s in self.params])
 
 
 NAME = 'NAME'
@@ -455,7 +488,8 @@ class Parser(object):
             [('[', Condition, ']'), Filter],
             [(Calc, ',', Calc), ParameterList],
             [(ParameterList, ',', Calc), ParameterList],
-            [(NAME, '(', Calc, ')'), FunctionCall],
+            [('(', Calc, ')'), Brackets],
+            [(NAME, Brackets), FunctionCall],
             [(NAME, '(', ParameterList, ')'), FunctionCall],
             [(STRING,), ConstRef],
             [(NUMBER,), ConstRef],

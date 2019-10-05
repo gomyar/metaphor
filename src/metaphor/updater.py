@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 
 from metaphor.resource import Resource
+from metaphor.resource import Field
 from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CollectionSpec
@@ -145,11 +146,18 @@ class Updater(object):
         resource_data = self.schema.db['resource_%s' % (update['spec'],)].find_one({'_id': resource_id})
         resource = Resource(None, "self", self.schema.specs[update['spec']], resource_data)
         calc_field = resource.build_child(update['field_name'])
-        resource.data[update['field_name']] = calc_field.calculate()
+        calc_result = calc_field.calculate()
+        if isinstance(calc_result, Resource):
+            result = calc_result._id
+        elif isinstance(calc_result, Field):
+            result = calc_result.data
+        else:
+            result = calc_result
+        resource.data[update['field_name']] = result
         resource.spec._collection().update(
             {'_id': resource._id},
             {'$set': {
-                update['field_name']: calc_field.calculate(),
+                update['field_name']: result,
 #                '_updated': resource._update_dict([update['field_name']]),
             }})
 

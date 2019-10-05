@@ -269,6 +269,26 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.salary / self.tax")
         self.assertEquals(5, tree.calculate(resource))
 
+    def test_calc_nones(self):
+        self.employee_spec.add_field("salary", FieldSpec("int"))
+        self.employee_spec.add_field("tax", FieldSpec("int"))
+
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10, 'tax': None})
+        resource = self.api.build_resource('employees/%s' % employee_id_1)
+
+        tree = parse("self.salary + self.tax")
+        self.assertEquals(None, tree.calculate(resource))
+
+        tree = parse("self.salary - self.tax")
+        self.assertEquals(None, tree.calculate(resource))
+
+        tree = parse("self.salary * self.tax")
+        self.assertEquals(None, tree.calculate(resource))
+
+        # Going with None instead of NaN for now
+        tree = parse("self.salary / self.tax")
+        self.assertEquals(None, tree.calculate(resource))
+
     def test_function_call_param_list(self):
         self.employee_spec.add_field("salary", FieldSpec("float"))
         self.employee_spec.add_field("tax", FieldSpec("float"))
