@@ -68,6 +68,35 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals('BobMac', employee['address_name'])
         self.assertEquals('BobMacNew York', employee['address_full'])
 
+    def test_local_field_dependencies(self):
+        resp = self.client.post('/schema/specs', data=json.dumps({
+            'name': 'employee', 'fields': {
+            "first_name": {'type': "str"},
+            "last_name": {'type': "str"},
+            "full_name": {'type': 'calc', 'calc': "self.first_name + self.last_name", 'calc_type': "str"},
+            "position": {'type': "str"},
+            "address_name": {'type': 'calc', 'calc': "self.full_name", "calc_type": "str"},
+            "address_city": {'type': "str"},
+            "address_full": {'type': 'calc', 'calc': "self.address_name + self.address_city", "calc_type": "str"},
+        }}), content_type='application/json')
+
+        first_name = self.schema.specs['employee'].fields['first_name']
+        full_name = self.schema.specs['employee'].fields['full_name']
+        address_name = self.schema.specs['employee'].fields['address_name']
+        address_full = self.schema.specs['employee'].fields['address_full']
+
+        dependents = self.schema.updater.find_affected_calcs_for_field(first_name)
+        self.assertEquals(set([(full_name, 'self.first_name', 'self')]), dependents)
+
+        dependents = self.schema.updater.find_affected_calcs_for_field(full_name)
+        self.assertEquals(set([(address_name, 'self.full_name', 'self')]), dependents)
+
+        dependents = self.schema.updater.find_affected_calcs_for_field(address_name)
+        self.assertEquals(set([(address_full, 'self.address_name', 'self')]), dependents)
+
+        dependents = self.schema.updater.find_affected_calcs_for_field(address_full)
+        self.assertEquals(set(), dependents)
+
     def test_dependent_calcs_on_delete(self):
         self.client.post('/schema/specs', data=json.dumps({
             'name': 'employee', 'fields': {

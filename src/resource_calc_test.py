@@ -13,6 +13,7 @@ from metaphor.resource import Resource
 
 
 class ResourceCalcTest(unittest.TestCase):
+    ''' de-scoping this for now - to add custom functions, we'll need calcs which are recognised as returning resources, as well as simple ints/floats/strings in the parse language '''
     def setUp(self):
         client = MongoClient()
         client.drop_database('metaphor_test_db')
@@ -98,7 +99,7 @@ class ResourceCalcTest(unittest.TestCase):
         sorted_periods = sorted(yearly_periods, key=lambda p: p['year'])
         return [p['_id'] for p in sorted_periods]
 
-    def test_function_returns_resource(self):
+    def _test_function_returns_resource(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
 
         company = self.api.get('companies/%s' % (company_id,))
@@ -120,7 +121,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(str(period_2016_id), latest['id'])
         self.assertEquals(2016, latest['year'])
 
-    def test_function_works_with_delete(self):
+    def _test_function_works_with_delete(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         period_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2015})
 
@@ -129,7 +130,7 @@ class ResourceCalcTest(unittest.TestCase):
         company = self.api.get('companies/%s' % (company_id,))
         self.assertEquals(None, company['latestPeriod'])
 
-    def test_link_collection_calc(self):
+    def _test_link_collection_calc(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 1})
         self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
@@ -149,7 +150,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(4, year_periods[1]['period'])
         self.assertEquals(2016, year_periods[1]['year'])
 
-    def test_multiple_calcs(self):
+    def _test_multiple_calcs(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         period_1_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2018, 'period': 1, 'score': 50})
         period_2_id = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4, 'score': 45})
@@ -205,7 +206,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(4, previousQuarter['period'])
         self.assertEquals('http://server/api/companies/%s/periods/%s/previousQuarter/previousQuarter' % (company_id, period_1_id), previousQuarter['previousQuarter'])
 
-    def test_aggregate_link_collection_calc_field(self):
+    def _test_aggregate_link_collection_calc_field(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
         self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
@@ -221,7 +222,7 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(2015, agg['results'][2]['year'])
         self.assertEquals(4, agg['results'][2]['period'])
 
-    def test_link_change_new_link(self):
+    def _test_link_change_new_link(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
         period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})
@@ -232,7 +233,7 @@ class ResourceCalcTest(unittest.TestCase):
 
         self.assertEquals(2018, self.api.get('companies/%s' % (company_id,))['latestPeriod_year'])
 
-    def test_link_target_change(self):
+    def _test_link_target_change(self):
         company_id = self.api.post('companies', {'name': 'Bob'})
         period_1 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2017, 'period': 4})
         period_2 = self.api.post('companies/%s/periods' % (company_id,), {'year': 2016, 'period': 4})

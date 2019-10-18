@@ -175,7 +175,7 @@ class Update(object):
         })
 
     def init_dependency_create(self):
-        found = self.old_updater.find_affected_calcs_for_resource(self.resource)
+        found = self.old_updater.find_affected_calcs_for_resource(self.resource.spec)
         altered = self.old_updater.find_altered_resource_ids(found, self.resource)
 
         self.dependents = self._zip_altered(altered)

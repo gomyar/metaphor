@@ -203,7 +203,7 @@ class CalcSpec(Spec):
 
     def parse_calc(self):
         from metaphor.lrparse.lrparse import parse
-        return parse(self.calc_str)
+        return parse(self.calc_str, self)
 #        return parser.parse(self.schema, self.calc_str)
 
     def all_resource_refs(self):
@@ -635,7 +635,7 @@ class Resource(object):
         found_deps = set()
         for field_name in fields:
             field = self.build_child(field_name)
-            found = self.spec.schema.updater.find_affected_calcs_for_field(field)
+            found = self.spec.schema.updater.find_affected_calcs_for_field(field.spec)
             found_deps = found_deps.union(found)
         return found_deps
 

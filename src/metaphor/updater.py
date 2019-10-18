@@ -11,7 +11,7 @@ from metaphor.resource import CollectionSpec
 from metaphor.resource import CollectionResource
 from metaphor.resource import LinkCollectionSpec
 from metaphor.resource import CalcSpec
-from metaphor.resource import LinkResource
+from metaphor.resource import ResourceLinkSpec
 
 
 class Updater(object):
@@ -48,7 +48,7 @@ class Updater(object):
         gevent.sleep(0.1)
 
     def create_updaters(self, resource):
-        found = self.find_affected_calcs_for_resource(resource)
+        found = self.find_affected_calcs_for_resource(resource.spec)
         altered = self.find_altered_resource_ids(found, resource)
         updater_ids = []
         for spec, field_name, ids in altered:
@@ -61,18 +61,18 @@ class Updater(object):
             update['parent_id'] = parent_id
         return self.schema.db['metaphor_updates'].insert(update)
 
-    def find_affected_calcs_for_field(self, field):
+    def find_affected_calcs_for_field(self, field_spec):
         found = set()
         for calc_spec in self.schema._all_calcs:
             for resource_ref in calc_spec.all_resource_refs():
                 resolved_field_spec = calc_spec.resolve_spec(resource_ref)
-                if field.spec == resolved_field_spec: # or field.spec == resolved_field_spec.parent:
+                if field_spec == resolved_field_spec: # or field.spec == resolved_field_spec.parent:
                     found.add((calc_spec, resource_ref, resource_ref.rsplit('.', 1)[0]))
-        if type(field) == LinkResource:
-            found = found.union(self.find_affected_calcs_for_resource(field))
+        if type(field_spec) == ResourceLinkSpec:
+            found = found.union(self.find_affected_calcs_for_resource(field_spec))
         return found
 
-    def find_affected_calcs_for_resource(self, resource):
+    def find_affected_calcs_for_resource(self, resource_spec):
         found = set()
         for calc_spec in self.schema._all_calcs:
             for resource_ref in calc_spec.all_resource_refs():
@@ -83,7 +83,7 @@ class Updater(object):
                         spec = spec_hier[-1].target_spec
                     else:
                         spec = spec_hier[-1]
-                    if resource.spec == spec:
+                    if resource_spec == spec:
                         found.add((calc_spec, resource_ref, ".".join(relative_ref)))
                     spec_hier.pop()
                     # may be root
@@ -161,7 +161,7 @@ class Updater(object):
 #                '_updated': resource._update_dict([update['field_name']]),
             }})
 
-        found = self.find_affected_calcs_for_field(calc_field)
+        found = self.find_affected_calcs_for_field(calc_field.spec)
         altered = self.find_altered_resource_ids(found, resource)
         for spec, field_name, ids in altered:
             inner_update_id = self._save_updates(spec, field_name, ids, update_id)

@@ -22,7 +22,7 @@ class Calc(object):
         raise NotImplemented()
 
 
-class ResourceRef(Calc):
+class ResourceRef(object):
     def __init__(self, tokens):
         ''' takes resource_ref.name '''
         if isinstance(tokens[0], basestring):
@@ -153,6 +153,10 @@ class ResourceRef(Calc):
 
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
+
+
+class FieldRef(ResourceRef, Calc):
+    pass
 
 
 class RootResourceRef(ResourceRef):
@@ -363,6 +367,12 @@ class FunctionCall(Calc):
 
         if isinstance(tokens[1], Brackets):
             self.params = [tokens[1].calc]
+        elif len(tokens) == 1 and isinstance(tokens[0], basestring):
+            # case when simple NAME
+            self.params = [RootResourceRef(tokens[0])]
+        elif len(tokens) == 4 and isinstance(tokens[2], basestring):
+            # case when simple NAME
+            self.params = [RootResourceRef(tokens[2])]
         else:
             self.params = [p for p in tokens[2].params]
 
@@ -473,8 +483,9 @@ def lex(raw_tokens):
 
 class Parser(object):
 
-    def __init__(self, tokens):
+    def __init__(self, tokens, spec):
         self.tokens = tokens
+        self.spec = spec
         self.shifted = []
         self.patterns = [
             [(NAME, '=', ConstRef) , Condition],
@@ -491,13 +502,21 @@ class Parser(object):
             [('(', Calc, ')'), Brackets],
             [(NAME, Brackets), FunctionCall],
             [(NAME, '(', ParameterList, ')'), FunctionCall],
+            [(NAME, '(', NAME, ')'), FunctionCall],
             [(STRING,), ConstRef],
             [(NUMBER,), ConstRef],
             [(ResourceRef, Filter), FilteredResourceRef],
             [(NAME, Filter), FilteredResourceRef],
-            [(ResourceRef, '.', NAME) , ResourceRef],
-            [(NAME, '.', NAME) , ResourceRef],
+            [(ResourceRef, '.', NAME) , self._create_resource_ref],
+            [(NAME, '.', NAME) , self._create_resource_ref],
         ]
+
+    def _create_resource_ref(self, tokens):
+        resource_ref = ResourceRef(tokens)
+        if type(resource_ref.result_type(self.spec)) in (FieldSpec, CalcSpec):
+            return FieldRef(tokens)
+        else:
+            return resource_ref
 
     def match_pattern(self, pattern, last_tokens):
         def m(pat, tok):
@@ -530,9 +549,10 @@ class Parser(object):
 
     def _reduce(self, reduced_class, tokens):
         self.shifted = self.shifted[:-len(tokens)]
-        self.shifted.append((reduced_class, reduced_class([a[1] for a in tokens])))
+        reduction = reduced_class([a[1] for a in tokens])
+        self.shifted.append((type(reduction), reduction))
 
 
-def parse(line):
+def parse(line, spec=None):
     tokens = tokenize.generate_tokens(StringIO(line).next)
-    return  Parser(lex(tokens)).parse()
+    return  Parser(lex(tokens), spec).parse()

@@ -13,6 +13,8 @@ from metaphor.schema import Schema
 from metaphor.api import MongoApi
 from metaphor.schema_factory import SchemaFactory
 
+from .lrparse import FieldRef, ResourceRef
+
 
 class LRParseTest(unittest.TestCase):
     def setUp(self):
@@ -40,22 +42,24 @@ class LRParseTest(unittest.TestCase):
         self.api = MongoApi('http://server', self.schema, self.db)
 
     def test_basic(self):
-        tree = parse("self.division.yearly_sales")
-
         employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
         division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
         self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
         resource = self.api.build_resource('employees/%s' % employee_id)
+
+        tree = parse("self.division.yearly_sales", resource.spec)
+        self.assertEquals(FieldRef, type(tree))
 
         self.assertEquals(self.division_spec.fields['yearly_sales'],
                           tree.result_type(resource.spec))
         self.assertEquals(10, tree.calculate(resource).data)
 
     def test_even_basicer(self):
-        tree = parse("self.age")
-
         employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
         resource = self.api.build_resource('employees/%s' % employee_id)
+
+        tree = parse("self.age", resource.spec)
+        self.assertEquals(FieldRef, type(tree))
 
         self.assertEquals(self.employee_spec.fields['age'],
                           tree.result_type(resource.spec))
@@ -63,12 +67,13 @@ class LRParseTest(unittest.TestCase):
                           tree.calculate(resource).data)
 
     def test_basic_link_follow(self):
-        tree = parse("self.division")
-
         employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
         division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
         self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
         resource = self.api.build_resource('employees/%s' % employee_id)
+
+        tree = parse("self.division", resource.spec)
+        self.assertEquals(ResourceRef, type(tree))
 
         result_type = tree.result_type(resource.spec)
 
@@ -81,7 +86,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals('division', calculated.spec.name)
 
     def test_aggregate_filtered(self):
-        tree = parse("employees.division[type='sales'].yearly_sales")
+        tree = parse("employees.division[type='sales'].yearly_sales", self.employee_spec)
 
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
         employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
@@ -102,8 +107,6 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(100, results[0].data)
 
     def test_list(self):
-        tree = parse("employees.division")
-
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
         employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
         employee_id_3 = self.api.post('employees', {'name': 'fred', 'age': 21})
@@ -116,6 +119,9 @@ class LRParseTest(unittest.TestCase):
         self.api.post('employees/%s/division' % (employee_id_3,), {'id': division_id_2})
 
         resource = self.api.build_resource('employees/%s' % employee_id_1)
+
+        tree = parse("employees.division", resource.spec)
+
         result = tree.calculate(resource)
 
         self.assertEquals(2, len(result))
@@ -127,7 +133,6 @@ class LRParseTest(unittest.TestCase):
 
     def test_reverse_list(self):
         pass  # division.employee_employees
-        tree = parse("self.division.link_employee_division")
 
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
         employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
@@ -141,6 +146,7 @@ class LRParseTest(unittest.TestCase):
         self.api.post('employees/%s/division' % (employee_id_3,), {'id': division_id_2})
 
         resource = self.api.build_resource('employees/%s' % employee_id_1)
+        tree = parse("self.division.link_employee_division", resource.spec)
         result = tree.calculate(resource)
 
         self.assertEquals(2, len(result))
@@ -172,11 +178,12 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals([{}], filtered._filter)
 
     def test_spec_hier_error(self):
-        tree = parse("self.name")
         employee_id = self.api.post('employees', {'name': 'sailor'})
         division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
         self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
         resource = self.api.build_resource('employees/%s' % employee_id)
+
+        tree = parse("self.name", resource.spec)
         aggregation, spec, is_aggregate = tree.aggregation(resource)
         # unsure how this guy fits in exactly
 
@@ -197,11 +204,11 @@ class LRParseTest(unittest.TestCase):
             self.assertEquals("", str(e))
 
     def test_aggregation(self):
-        tree = parse("employees[age>40].division[type='sales'].yearly_sales")
         employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
         division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
         self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
         resource = self.api.build_resource('employees/%s' % employee_id)
+        tree = parse("employees[age>40].division[type='sales'].yearly_sales", resource.spec)
         agg_collection = tree.root_collection(resource)
         self.assertEquals(self.db.resource_employee.name, agg_collection.name)
         aggregation, spec, is_aggregate = tree.aggregation(resource)
@@ -221,11 +228,11 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
 
     def test_aggregation_self(self):
-        tree = parse("self.division[type='sales'].yearly_sales")
         employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
         division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
         self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
         resource = self.api.build_resource('employees/%s' % employee_id)
+        tree = parse("self.division[type='sales'].yearly_sales", resource.spec)
         agg_collection = tree.root_collection(resource)
         self.assertEquals(self.db.resource_employee.name, agg_collection.name)
         aggregation, spec, is_aggregate = tree.aggregation(resource)
@@ -257,16 +264,16 @@ class LRParseTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10, 'tax': 2})
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
-        tree = parse("self.salary + self.tax")
+        tree = parse("self.salary + self.tax", resource.spec)
         self.assertEquals(12, tree.calculate(resource))
 
-        tree = parse("self.salary - self.tax")
+        tree = parse("self.salary - self.tax", resource.spec)
         self.assertEquals(8, tree.calculate(resource))
 
-        tree = parse("self.salary * self.tax")
+        tree = parse("self.salary * self.tax", resource.spec)
         self.assertEquals(20, tree.calculate(resource))
 
-        tree = parse("self.salary / self.tax")
+        tree = parse("self.salary / self.tax", resource.spec)
         self.assertEquals(5, tree.calculate(resource))
 
     def test_calc_nones(self):
@@ -276,17 +283,17 @@ class LRParseTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10, 'tax': None})
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
-        tree = parse("self.salary + self.tax")
+        tree = parse("self.salary + self.tax", resource.spec)
         self.assertEquals(None, tree.calculate(resource))
 
-        tree = parse("self.salary - self.tax")
+        tree = parse("self.salary - self.tax", resource.spec)
         self.assertEquals(None, tree.calculate(resource))
 
-        tree = parse("self.salary * self.tax")
+        tree = parse("self.salary * self.tax", resource.spec)
         self.assertEquals(None, tree.calculate(resource))
 
         # Going with None instead of NaN for now
-        tree = parse("self.salary / self.tax")
+        tree = parse("self.salary / self.tax", resource.spec)
         self.assertEquals(None, tree.calculate(resource))
 
     def test_function_call_param_list(self):
@@ -296,7 +303,7 @@ class LRParseTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
-        tree = parse("round(self.salary + self.tax, 2)")
+        tree = parse("round(self.salary + self.tax, 2)", resource.spec)
         self.assertEquals(13, tree.calculate(resource))
 
     def test_function_basic(self):
@@ -313,7 +320,7 @@ class LRParseTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
-        tree = parse("round(self.salary) + round(self.tax)")
+        tree = parse("round(self.salary) + round(self.tax)", resource.spec)
         self.assertEquals(13, tree.calculate(resource))
 
     def test_function_within_a_function(self):
@@ -323,7 +330,7 @@ class LRParseTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.12345})
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
-        tree = parse("round(round(self.salary, 4), 3)")
+        tree = parse("round(round(self.salary, 4), 3)", resource.spec)
         self.assertEquals(10.123, tree.calculate(resource))
 
     def test_math_functions(self):
@@ -336,19 +343,19 @@ class LRParseTest(unittest.TestCase):
         employees = self.api.build_resource('employees')
 
         # max
-        tree = parse("max(employees.salary)")
+        tree = parse("max(employees.salary)", employees.spec)
         self.assertEquals(30, tree.calculate(employees))
 
         # min
-        tree = parse("min(employees.salary)")
+        tree = parse("min(employees.salary)", employees.spec)
         self.assertEquals(10, tree.calculate(employees))
 
         # avg
-        tree = parse("average(employees.salary)")
+        tree = parse("average(employees.salary)", employees.spec)
         self.assertEquals(20, tree.calculate(employees))
 
         # sum
-        tree = parse("sum(employees.salary)")
+        tree = parse("sum(employees.salary)", employees.spec)
         self.assertEquals(60, tree.calculate(employees))
 
     def test_extra_math(self):
@@ -360,14 +367,14 @@ class LRParseTest(unittest.TestCase):
 
         employees = self.api.build_resource('employees')
 
-        tree = parse("round(sum(employees.salary), 2) + round(max(employees.salary))")
+        tree = parse("round(sum(employees.salary), 2) + round(max(employees.salary))", employees.spec)
         self.assertEquals(92.47, tree.calculate(employees))
 
 
-        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees.salary))")
+        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees.salary))", employees.spec)
         self.assertEquals(61.69, tree.calculate(employees))
 
-        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees[name='ned'].salary))")
+        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees[name='ned'].salary))", employees.spec)
         self.assertEquals(50.69, tree.calculate(employees))
 
         self.assertEquals(set(['employees.salary']), tree.all_resource_refs())
