@@ -51,7 +51,7 @@ class UpdaterTest(unittest.TestCase):
         self.api.post('sectors/%s/companies' % (self.sector_1,), {'id': self.company_1})
 
         company = self.api.build_resource('companies/%s' % (self.company_1,))
-        found = self.schema.updater.find_affected_calcs_for_resource(company)
+        found = self.schema.updater.find_affected_calcs_for_resource(self.company_spec)
 
         self.assertEquals(set([
             (self.average_assets_calc, 'self.companies.assets', 'self.companies')

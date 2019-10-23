@@ -108,3 +108,10 @@ class SpikeTest(unittest.TestCase):
 
         # assert updater(s) refers to dependencies only
         pass
+
+    def _test_disallow_self_as_calc(self):
+        resp = self.client.patch('/schema/specs/employee', data=json.dumps({
+            "myself": {'type': 'calc', 'calc': 'self', 'calc_type': 'employee'},
+        }), content_type='application/json')
+        self.assertEquals(500, resp.status_code)
+        self.assertEquals({"error": "Calc cannot be 'self' only."}, json.loads(resp.data))

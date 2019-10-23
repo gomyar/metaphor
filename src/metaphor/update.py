@@ -6,6 +6,8 @@ import gevent
 
 from datetime import datetime
 
+import toposort
+
 from metaphor.updater import Updater
 from metaphor.resource import Resource
 
@@ -71,15 +73,32 @@ class Update(object):
         self.wait_for_dependent_updates()
         self.finalize_update()
 
-    def _update_local_dependencies(self, resource, field_names, data):
+    def _recurse_local_deps(self, resource, field_names):
+        deps = []
         local_deps = resource.local_field_dependencies(field_names)
         local_fields = [dep[0].field_name for dep in local_deps]
         if local_fields:
-            recalced_fields = resource._recalc_fields(local_fields)
-            data.update(recalced_fields)
-            resource.data.update(recalced_fields)
-            local_fields += self._update_local_dependencies(resource, local_fields, data)
-        return local_fields
+            deps.extend((dep[0].field_name, dep[1][5:]) for dep in local_deps)
+            deps.extend(self._recurse_local_deps(resource, local_fields))
+        return deps
+
+    def _update_local_dependencies(self, resource, field_names):
+        # topsort this guy
+        all_deps = self._recurse_local_deps(resource, field_names)
+        dep_tree = defaultdict(lambda: set())
+        for field_name, dep_name in all_deps:
+            dep_tree[field_name].add(dep_name)
+
+        layers = list(toposort.toposort(dep_tree))
+        # we can safely remove the first layer
+        layers = layers[1:]
+
+        updated_fields = {}
+        for field_names in layers:
+            data = resource._recalc_fields(field_names)
+            resource.data.update(data)
+            updated_fields.update(data)
+        return updated_fields
 
     def init_update_resource(self, spec_name, resource_id, fields):
         # write update state to mongo - spawn 'processing' writer
@@ -101,7 +120,7 @@ class Update(object):
             }, return_document=ReturnDocument.AFTER)
 
         self.resource = Resource(None, "self", self.schema.specs[spec_name], resource_data)
-        updated_calc_fields = self._update_local_dependencies(self.resource, fields.keys(), fields)
+        updated_calc_fields = self._update_local_dependencies(self.resource, fields.keys())
         updated_data = dict((name, self.resource.data[name]) for name in updated_calc_fields)
 
         if updated_data:
@@ -135,7 +154,8 @@ class Update(object):
         # recalc altered calc fields
         altered_data = self.resource._recalc_fields(field_names)
 
-        updated_calc_fields = self._update_local_dependencies(self.resource, field_names, altered_data)
+        updated_calc_fields = self._update_local_dependencies(self.resource, field_names)
+        # TODO: add update foreign here
         updated_data = dict((name, self.resource.data[name]) for name in updated_calc_fields)
         updated_data.update(altered_data)
 
@@ -179,6 +199,8 @@ class Update(object):
         altered = self.old_updater.find_altered_resource_ids(found, self.resource)
 
         self.dependents = self._zip_altered(altered)
+        # filtering out own resource as local fields have already been accounted for
+        self.dependents = [dep for dep in self.dependents if dep[1] != self.resource._id]
 
         self.schema.db['metaphor_update'].update_one({'_id': self.update_id}, {
             '$set': {

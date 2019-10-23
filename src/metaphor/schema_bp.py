@@ -39,7 +39,6 @@ def schema_update(spec_name):
         return jsonify(schema.specs[spec_name].serialize())
     elif request.method == 'PATCH':
         data = request.json
-
         try:
             spec = schema.specs[spec_name]
             for field_name, field_data in data.items():

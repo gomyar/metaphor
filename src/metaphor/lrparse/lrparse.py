@@ -68,8 +68,11 @@ class ResourceRef(object):
                     child_resources.append(spec.target_spec.build_resource(None, self.field_name, data))
                 return child_resources
             else:
-                data = cursor.next()
-                return spec.target_spec.build_resource(None, self.field_name, data)
+                try:
+                    data = cursor.next()
+                    return spec.target_spec.build_resource(None, self.field_name, data)
+                except StopIteration:
+                    return None
         else:
             raise Exception("Cannot calculate spec %s" % (spec,))
 
@@ -237,7 +240,7 @@ class FilteredResourceRef(ResourceRef):
 
 
 class ConstRef(Calc):
-    ALLOWED_TYPES = (int, float, str)
+    ALLOWED_TYPES = (int, float, str, unicode)
 
     def __init__(self, tokens):
         const = tokens[0]
@@ -277,9 +280,9 @@ class Operator(Calc):
                 rhs = rhs.data
             op = self.op
             if op == '+':
-                return lhs + rhs
+                return (lhs or 0) + (rhs or 0)
             elif op == '-':
-                return lhs - rhs
+                return (lhs or 0) - (rhs or 0)
             elif op == '*':
                 return lhs * rhs
             elif op == '/':
@@ -545,6 +548,9 @@ class Parser(object):
         if len(self.shifted) > 1:
 #            print "Errors left: Shifted: %s" % (self.shifted,)
             raise Exception("Unexpected '%s'" % (self.shifted[1],))
+
+        if self.shifted[0][1] == 'self':
+            raise Exception("Calc cannot be 'self' only.")
         return self.shifted[0][1]
 
     def _reduce(self, reduced_class, tokens):
@@ -555,4 +561,4 @@ class Parser(object):
 
 def parse(line, spec=None):
     tokens = tokenize.generate_tokens(StringIO(line).next)
-    return  Parser(lex(tokens), spec).parse()
+    return Parser(lex(tokens), spec).parse()

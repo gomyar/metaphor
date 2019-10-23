@@ -63,7 +63,7 @@ class SpikeTest(unittest.TestCase):
     def test_affected_resources(self):
         job = self.api.build_resource('employees/%s/jobs/%s' % (self.employee_id, self.job_id))
 
-        found = self.schema.updater.find_affected_calcs_for_field(job.build_child('tonnes'))
+        found = self.schema.updater.find_affected_calcs_for_field(self.job_spec.fields['tonnes'])
 
         self.assertEquals(set([
             (self.job_spec.fields['kg'], 'self.tonnes', 'self'),

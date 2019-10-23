@@ -284,10 +284,10 @@ class LRParseTest(unittest.TestCase):
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
         tree = parse("self.salary + self.tax", resource.spec)
-        self.assertEquals(None, tree.calculate(resource))
+        self.assertEquals(10, tree.calculate(resource))
 
         tree = parse("self.salary - self.tax", resource.spec)
-        self.assertEquals(None, tree.calculate(resource))
+        self.assertEquals(10, tree.calculate(resource))
 
         tree = parse("self.salary * self.tax", resource.spec)
         self.assertEquals(None, tree.calculate(resource))

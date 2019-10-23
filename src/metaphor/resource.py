@@ -634,8 +634,8 @@ class Resource(object):
     def field_dependencies(self, fields):
         found_deps = set()
         for field_name in fields:
-            field = self.build_child(field_name)
-            found = self.spec.schema.updater.find_affected_calcs_for_field(field.spec)
+            field_spec = self.spec.create_child_spec(field_name)
+            found = self.spec.schema.updater.find_affected_calcs_for_field(field_spec)
             found_deps = found_deps.union(found)
         return found_deps
 
@@ -959,7 +959,11 @@ class CalcField(Field):
 
     def calculate(self):
         calc = self.spec.parse_calc()
-        return calc.calculate(self._parent)
+        value = calc.calculate(self._parent)
+        # todo: remove this oddness
+        if type(value) is Field:
+            value = value.data
+        return value
 
     def serialize_field(self, path, query=None):
         if self.spec.is_primitive():

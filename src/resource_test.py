@@ -169,7 +169,7 @@ class SpikeTest(unittest.TestCase):
             {'_id': company_id,
              'name': u'Norman',
              'public': None,
-             'totalTotalAssets': None,
+#             'totalTotalAssets': None,
 #             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
@@ -184,7 +184,7 @@ class SpikeTest(unittest.TestCase):
             {'_id': company_id,
              'name': u'Fred',
              'public': False,
-             'totalTotalAssets': None,
+#             'totalTotalAssets': None,
 #             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name', 'public']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 

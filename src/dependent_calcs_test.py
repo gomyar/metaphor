@@ -47,13 +47,10 @@ class ResourceCalcTest(unittest.TestCase):
             "address_full": {'type': 'calc', 'calc': "self.address_name + self.address_city", "calc_type": "str"},
         }}), content_type='application/json')
 
-        resp = self.client.patch('/schema/specs/employee', data=json.dumps({
-            "myself": {'type': 'calc', 'calc': 'self', 'calc_type': 'employee'},
-        }), content_type='application/json')
-
         resp = self.client.post('/schema/root', data=json.dumps({
             'name': 'employees', 'target': 'employee'
         }), content_type='application/json')
+        self.assertEquals(200, resp.status_code)
 
         response = self.client.post('/api/employees', data=json.dumps({
             'first_name': 'Bob',
@@ -61,6 +58,8 @@ class ResourceCalcTest(unittest.TestCase):
             'position': 'Boss',
             'address_city': 'New York',
         }), content_type='application/json')
+        self.assertEquals(200, response.status_code)
+
         employee_id = json.loads(response.data)['id']
 
         response = self.client.get('api/employees/%s' % (employee_id,))
@@ -68,7 +67,8 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals('BobMac', employee['address_name'])
         self.assertEquals('BobMacNew York', employee['address_full'])
 
-    def test_local_field_dependencies(self):
+    def _test_local_field_dependencies(self):
+        ''' dont think this is necessary after all'''
         resp = self.client.post('/schema/specs', data=json.dumps({
             'name': 'employee', 'fields': {
             "first_name": {'type': "str"},
@@ -96,6 +96,12 @@ class ResourceCalcTest(unittest.TestCase):
 
         dependents = self.schema.updater.find_affected_calcs_for_field(address_full)
         self.assertEquals(set(), dependents)
+
+        dependents = self.schema.updater.ordered_local_dependencies(first_name)
+        self.assertEquals([
+            (full_name, 'self.first_name', 'self'),
+            (address_full, 'self.full_name', 'self'),
+        ], dependents)
 
     def test_dependent_calcs_on_delete(self):
         self.client.post('/schema/specs', data=json.dumps({
