@@ -1,4 +1,6 @@
 
+import json
+
 from flask import Blueprint
 from flask import current_app
 from flask import request
@@ -40,6 +42,6 @@ def api_call(path):
         resource = api.build_resource(path)
         resource_data = api.get(path, dict(request.args.items()))
         if request_wants_html():
-            return render_template('metaphor/api.html', resource=resource_data, spec=resource.spec.serialize())
+            return render_template('metaphor/api.html', resource=resource_data, resource_path=path, spec=json.dumps(resource.spec.serialize()))
         else:
             return jsonify(resource_data)

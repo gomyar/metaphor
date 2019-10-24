@@ -8,6 +8,7 @@ api.current_resource = {};
 api.resource = null;
 api.spec = null;
 api.resource_path = null;  // set in template
+var net = {loading: false};
 
 api.show_postform = function(shown) {
     api.postform_shown = shown;
@@ -23,21 +24,21 @@ api.report_error = function(errorText, jqXHR) {
 }
 
 api.reload_resource = function() {
-    net.perform_get('/api/' + api.resource_path, function(data) {
-        api.resource = data;
+    turtlegui.ajax.get('/api/' + api.resource_path, function(content) {
+        api.resource = JSON.parse(content);
         turtlegui.reload();
     }, api.report_error);
 }
 
 api.post_resource = function() {
-    net.perform_post('/api/' + api.resource_path, api.current_resource, function(e) {
+    turtlegui.ajax.post('/api/' + api.resource_path, api.current_resource, function(e) {
         api.reload_resource();
     }, api.report_error);
 }
 
 api.delete_resource = function(resource) {
     if (confirm("Are you sure you wish to delete this resource?")) {
-        net.perform_delete(resource.self, api.reload_resource, api.report_error);
+        turtlegui.ajax.delete(resource.self, api.reload_resource, api.report_error);
     }
 }
 

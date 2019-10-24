@@ -3,13 +3,13 @@
 <head>
 
 <script src="/static/metaphor/turtlegui.js"></script>
-<script src="/static/metaphor/netutils.js"></script>
 <script src="/static/metaphor/api.js"></script>
 <link rel="stylesheet" type="text/css" href="/static/metaphor/schema.css"/>
 
 <script>
 
 api.resource_path = "{{ resource_path }}";
+api.spec = {{ spec|safe }};
 
 </script>
 
@@ -27,7 +27,7 @@ api.resource_path = "{{ resource_path }}";
             <span gui-text="field_name"></span>
             <span gui-text="api.resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
             <span gui-text="api.resource[field_name]" gui-show="gui.is_field_calc(field)"></span>
-            <span gui-show="gui.is_field_collection(field)"><a class="button" gui-attr='"href"' gui-attrval="api.resource[field_name]" gui-text="field_name"></a></span>
+            <span gui-show="gui.is_field_collection(field)"><a class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a></span>
         </div>
     </div>
 </div>
@@ -46,12 +46,12 @@ api.resource_path = "{{ resource_path }}";
                     <span gui-text="field_name"></span>
                     <span gui-text="resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
                     <span gui-text="resource[field_name]" gui-show="gui.is_field_calc(field)"></span>
-                    <span gui-show="gui.is_field_collection(field)"><a class="button" gui-attr='"href"' gui-attrval="resource[field_name]" gui-text="field_name"></a></span>
+                    <span gui-show="gui.is_field_collection(field)"><a class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a></span>
                 </div>
             </div>
             <div class="fields">
                 <div class="field">
-                    <span ><a class="button" gui-attr='"href"' gui-attrval="resource['self']">self</a></span>
+                    <span ><a class="button" gui-attrs="href=resource['self']">self</a></span>
                 </div>
             </div>
         </div>
@@ -70,23 +70,23 @@ api.resource_path = "{{ resource_path }}";
 
         <div class="resource">
             <div class="fields" gui-list="api.spec.target_spec.fields" gui-item="field" gui-key="field_name">
-                <div>
-                <div class="field" gui-show="field.type=='str'">
-                    <span gui-text="field_name"></span>
-                    <span><input type="text" gui-val="api.current_resource[field_name]"></input></span>
-                </div>
-                <div class="field" gui-show="field.type=='int'">
-                    <span gui-text="field_name"></span>
-                    <span><input type="text" gui-val="api.current_resource[field_name]" gui-parse-func="parseInt"></input></span>
-                </div>
-                <div class="field" gui-show="field.type=='float'">
-                    <span gui-text="field_name"></span>
-                    <span><input type="text" gui-val="api.current_resource[field_name]" gui-parse-func="parseFloat"></input></span>
-                </div>
-                <div class="field" gui-show="field.type=='link'">
-                    <span gui-text="field_name"></span>
-                    <span><input type="text" gui-val="api.current_resource[field_name]"></input></span>
-                </div>
+                <div gui-switch="field.type">
+                    <div class="field" gui-case="str">
+                        <span gui-text="field_name"></span>
+                        <span><input type="text" gui-val="api.current_resource[field_name]"></input></span>
+                    </div>
+                    <div class="field" gui-case="int">
+                        <span gui-text="field_name"></span>
+                        <span><input type="text" gui-val="api.current_resource[field_name]" gui-parse-func="parseInt"></input></span>
+                    </div>
+                    <div class="field" gui-case="float">
+                        <span gui-text="field_name"></span>
+                        <span><input type="text" gui-val="api.current_resource[field_name]" gui-parse-func="parseFloat"></input></span>
+                    </div>
+                    <div class="field" gui-case="link">
+                        <span gui-text="field_name"></span>
+                        <span><input type="text" gui-val="api.current_resource[field_name]"></input></span>
+                    </div>
                 </div>
             </div>
         </div>
