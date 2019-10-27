@@ -200,7 +200,7 @@ class Update(object):
 
         self.dependents = self._zip_altered(altered)
         # filtering out own resource as local fields have already been accounted for
-        self.dependents = [dep for dep in self.dependents if dep[1] != self.resource._id]
+        #self.dependents = [dep for dep in self.dependents if dep[1] != self.resource._id]
 
         self.schema.db['metaphor_update'].update_one({'_id': self.update_id}, {
             '$set': {
@@ -213,6 +213,7 @@ class Update(object):
         self.gthreads = []
         for spec_name, resource_id, fields in self.dependents:
             new_update = Update(self.schema)
+#            new_update.fields_updated_inner(spec_name, resource_id, fields)
             self.gthreads.append(gevent.spawn(new_update.fields_updated_inner, spec_name, resource_id, fields))
 
     def wait_for_dependent_updates(self):

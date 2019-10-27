@@ -169,7 +169,7 @@ class SpikeTest(unittest.TestCase):
             {'_id': company_id,
              'name': u'Norman',
              'public': None,
-#             'totalTotalAssets': None,
+             'totalTotalAssets': None,
 #             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
@@ -184,7 +184,7 @@ class SpikeTest(unittest.TestCase):
             {'_id': company_id,
              'name': u'Fred',
              'public': False,
-#             'totalTotalAssets': None,
+             'totalTotalAssets': None,
 #             '_updated': {'at': datetime(2018, 1, 2, 3, 4, 5), 'fields': ['name', 'public']}
             }, self.db['resource_company'].find_one({'_id': company_id}))
 
@@ -422,6 +422,7 @@ class SpikeTest(unittest.TestCase):
 
         self.api.post('portfolios/%s/companies' % (portfolio_id,), {'id': company_id})
 
+        # this need canonical urls
         #        self.assertEquals("http://server/api/portfolios/%s" % portfolio_id,
         #                          self.api.get('companies/%s' % (company_id))['link_portfolio_companies'])
         self.assertEquals('http://server/api/companies/%s/link_portfolio_companies' % (company_id),
@@ -431,8 +432,24 @@ class SpikeTest(unittest.TestCase):
         # This reverse link is None because it is owned by root, and only linked to by 'period.financial' fields
         self.assertEquals(None,
                           self.api.get('companies/%s/periods/%s/financial' % (company_id, period_id))['link_period_financial'])
+        self.assertEquals(100, self.api.get('companies/%s' % (company_id,))['totalTotalAssets'])
+
+    def test_reverse_links_name(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+                                  dict(year=2017, period='YE'))
 
         self.assertEquals('Neds Fries', self.api.get('companies/%s/periods/%s' % (company_id, period_id))['companyName'])
+
+    def test_reverse_links_updated(self):
+        company_id = self.api.post('companies', {'name': 'Neds Fries'})
+        period_id = self.api.post('companies/%s/periods' % (company_id,),
+                                  dict(year=2017, period='YE'))
+
+        self.api.patch('companies/%s' % (company_id,), {'name': 'Bobs Burgers'})
+
+        self.assertEquals('Bobs Burgers', self.api.get('companies/%s/periods/%s' % (company_id, period_id))['companyName'])
+
 
     def test_resolve_spec(self):
         pass

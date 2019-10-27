@@ -83,13 +83,26 @@ class ResourceRef(object):
         child_spec = spec.create_child_spec(self.field_name)
         if isinstance(child_spec, ReverseLinkSpec):
             # if link
-            aggregation.append(
-                {"$lookup": {
-                        "from": "resource_%s" % (child_spec.name,),
-                        "localField": "_id",
-                        "foreignField": child_spec.target_field_name,
-                        "as": "_field_%s" % (self.field_name,),
-                }})
+            if type(spec) == ResourceLinkSpec:
+                # reverse link to single link
+                aggregation.append(
+                    {"$lookup": {
+                            "from": "resource_%s" % (child_spec.name,),
+                            "localField": "_id",
+                            "foreignField": spec.name,
+                            "as": "_field_%s" % (self.field_name,),
+                    }})
+                is_aggregate = True
+            else:
+                # reverse link to collection (through _owners)
+                aggregation.append(
+                    {"$lookup": {
+                            "from": "resource_%s" % (child_spec.name,),
+                            "localField": "_owners.owner_id",
+                            "foreignField": "_id",
+                            "as": "_field_%s" % (self.field_name,),
+                    }})
+                is_aggregate = False
             aggregation.append(
                 {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
             )
@@ -99,7 +112,6 @@ class ResourceRef(object):
             aggregation.append(
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
-            is_aggregate = True
         elif isinstance(child_spec, ResourceLinkSpec):
             # if link
             aggregation.append(
