@@ -450,7 +450,6 @@ class SpikeTest(unittest.TestCase):
 
         self.assertEquals('Bobs Burgers', self.api.get('companies/%s/periods/%s' % (company_id, period_id))['companyName'])
 
-
     def test_resolve_spec(self):
         pass
 

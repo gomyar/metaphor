@@ -233,6 +233,9 @@ class ReverseLinkSpec(ResourceLinkSpec):
     def __repr__(self):
         return "<ReverseLinkSpec %s.%s>" % (self.name, self.target_field_name)
 
+    def is_link(self):
+        return False
+
     def serialize(self):
         return {
             'spec': 'reverse_link',
@@ -734,16 +737,19 @@ class Aggregable(object):
                         'foreignField': self.field_name,
                         'from': self._parent.collection,
                         'localField': '_id'}})
+            elif type(self.spec) == ReverseLinkSpec:
+                aggregate_chain.extend([
+                    {'$lookup': {
+                        'as': new_owner_prefix,
+                        'foreignField': '_owners.owner_id',
+                        'from': self._parent.collection,
+                        'localField': '_id'}}
+                ])
             else:
                 aggregate_chain.append({"$unwind": "$%s_owners" % (owner_prefix,)})
-                if type(self.spec) == ReverseLinkSpec:
-                    aggregate_chain.append(
-                        {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
-                                    "%s_owners.owner_field" % (owner_prefix,): self.spec.target_field_name}})
-                else:
-                    aggregate_chain.append(
-                        {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
-                                    "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
+                aggregate_chain.append(
+                    {"$match": {"%s_owners.owner_spec" % (owner_prefix,): self._parent.spec.name,
+                                "%s_owners.owner_field" % (owner_prefix,): self.field_name}})
                 aggregate_chain.append(
                     {"$lookup": {
                         "from": self._parent.collection,

@@ -85,6 +85,9 @@ class Updater(object):
                         spec = spec_hier[-1]
                     if resource_spec == spec:
                         found.add((calc_spec, resource_ref, ".".join(relative_ref)))
+                    elif type(resource_spec) == ResourceLinkSpec and resource_spec.target_spec == spec:
+                        # lousy hack
+                        found.add((calc_spec, resource_ref, ".".join(relative_ref)))
                     spec_hier.pop()
                     # may be root
                     if relative_ref:
