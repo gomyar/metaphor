@@ -7,6 +7,7 @@ from metaphor.resource import LinkResource
 from metaphor.resource import ResourceLinkSpec
 from metaphor.resource import ReverseLinkSpec
 from metaphor.resource import CollectionSpec
+from metaphor.resource import LinkCollectionSpec
 from metaphor.resource import FieldSpec
 from metaphor.resource import CalcSpec
 
@@ -79,7 +80,7 @@ class ResourceRef(object):
                     return spec.target_spec.build_resource(None, self.field_name, data)
                 except StopIteration:
                     return None
-        elif type(spec) == CollectionSpec:
+        elif type(spec) in (CollectionSpec, LinkCollectionSpec):
             list_resources = []
             for data in cursor:
                 # eshewing resource in favour of dictionaries because calculate is a top level method

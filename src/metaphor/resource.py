@@ -417,6 +417,9 @@ class LinkCollectionSpec(CollectionSpec):
     def build_field(self, parent, field_name, data):
         return self.build_resource(parent, field_name, data)
 
+    def __repr__(self):
+        return "<LinkCollectionSpec %s>" % (self.target_spec_name)
+
 
 # resources
 
