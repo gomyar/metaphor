@@ -106,6 +106,9 @@ class LRParseTest(unittest.TestCase):
         self.assertTrue(type(results[0]) is Field)
         self.assertEquals(100, results[0].data)
 
+        self.assertEquals(self.division_spec.fields['yearly_sales'],
+                          tree.result_type(resource.spec))
+
     def test_list(self):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
         employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})

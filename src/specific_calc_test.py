@@ -47,3 +47,16 @@ class ResourceCalcTest(unittest.TestCase):
         company = self.api.get('companies/%s' % (company_id,))
 
         self.assertEquals(2018, company['latestPeriod_year'])
+
+    def test_child_specs(self):
+        latestPeriod = self.company_spec.fields['latestPeriod']
+        year = self.period_spec.fields['year']
+        self.assertEquals(year, latestPeriod.create_child_spec('year'))
+
+    def test_calc_result_specs(self):
+        latestPeriod = self.company_spec.fields['latestPeriod']
+        latestPeriod_year = self.company_spec.fields['latestPeriod_year']
+
+        self.assertEquals(self.period_spec, latestPeriod.parse_calc().result_type(latestPeriod))
+#        self.assertEquals(self.period_spec.fields['year'], latestPeriod_year.parse_calc().result_type(latestPeriod_year))
+        self.assertEquals(FieldSpec('int'), latestPeriod_year.parse_calc().result_type(latestPeriod_year))

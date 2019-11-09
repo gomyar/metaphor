@@ -151,7 +151,6 @@ class Update(object):
 
         self.resource = Resource(None, "self", self.schema.specs[spec_name], resource_data)
 
-        # recalc altered calc fields
         altered_data = self.resource._recalc_fields(field_names)
 
         updated_calc_fields = self._update_local_dependencies(self.resource, field_names)

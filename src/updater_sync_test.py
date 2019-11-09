@@ -48,12 +48,6 @@ class SpikeTest(unittest.TestCase):
         self.employee_id = self.api.post('employees', {'name': 'Bob'})
         self.job_id = self.api.post('employees/%s/jobs' % (self.employee_id,), {'name': 'move_coal', 'tonnes': 16})
 
-    def test_all_local_deps(self):
-        job = self.api.build_resource('employees/%s/jobs/%s' % (self.employee_id, self.job_id))
-        data = {}
-        job._follow_local_dependencies(['tonnes'], data)
-        self.assertEquals({'kg': 16000.0, 'grams': 16000000.0}, data)
-
     def test_assert_defaults(self):
         employee = self.api.get('employees/%s' % (self.employee_id,))
         self.assertEquals(16, employee['total_tonnes'])

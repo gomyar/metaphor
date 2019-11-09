@@ -204,7 +204,6 @@ class CalcSpec(Spec):
     def parse_calc(self):
         from metaphor.lrparse.lrparse import parse
         return parse(self.calc_str, self)
-#        return parser.parse(self.schema, self.calc_str)
 
     def all_resource_refs(self):
         return self.parse_calc().all_resource_refs()
@@ -217,12 +216,17 @@ class CalcSpec(Spec):
         return False
 
     def create_child_spec(self, child_id):
-        return self
+        if not self.is_primitive():
+            return self.schema.specs[self.calc_type].create_child_spec(child_id)
+        else:
+            raise Exception("No child spec [%s] for primitive type calc [%s]" % (child_id, self))
 
     @property
     def target_spec(self):
         if not self.is_primitive():
             return self.schema.specs[self.calc_type]
+        else:
+            return FieldSpec(self.calc_type)
 
 
 class ReverseLinkSpec(ResourceLinkSpec):
@@ -241,6 +245,7 @@ class ReverseLinkSpec(ResourceLinkSpec):
             'spec': 'reverse_link',
             'name': '%s.%s' % (self.name, self.target_field_name),
             'type': 'reverse_link',
+            'target_spec': self.name,
         }
 
     @property
@@ -523,15 +528,6 @@ class Resource(object):
                 raise TypeError('field type %s cannot be set on %s' % (type(value), self.spec.fields[name]))
             if data.get(name) and type(self.spec.fields[name]) == ResourceLinkSpec:
                 data[name] = ObjectId(data[name])
-
-    def _follow_local_dependencies(self, fields, data):
-        local_deps = self.local_field_dependencies(fields)
-        local_fields = [dep[0].field_name for dep in local_deps]
-        if local_fields:
-            recalced_fields = self._recalc_fields(local_fields)
-            data.update(recalced_fields)
-            self.data.update(recalced_fields)
-            self._follow_local_dependencies(local_fields, data)
 
     def update(self, data):
         from metaphor.update import Update

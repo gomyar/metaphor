@@ -68,7 +68,8 @@ class Updater(object):
                 resolved_field_spec = calc_spec.resolve_spec(resource_ref)
                 if field_spec == resolved_field_spec: # or field.spec == resolved_field_spec.parent:
                     found.add((calc_spec, resource_ref, resource_ref.rsplit('.', 1)[0]))
-        if type(field_spec) == ResourceLinkSpec:
+        # a CalcSpec which returns a resource link is really a ResourceLinkSpec of a sort
+        if type(field_spec) == ResourceLinkSpec or (type(field_spec) == CalcSpec and not field_spec.is_primitive()):
             found = found.union(self.find_affected_calcs_for_resource(field_spec))
         return found
 

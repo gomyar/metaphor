@@ -38,8 +38,11 @@ class ResourceRef(object):
         return self.resource_ref.root_spec(resource)
 
     def result_type(self, starting_spec):
-        child_resource = self.resource_ref.result_type(starting_spec)
-        return child_resource.create_child_spec(self.field_name)
+        result_spec = self.resource_ref.result_type(starting_spec)
+        if type(starting_spec) == CalcSpec:
+            return starting_spec.target_spec
+        else:
+            return result_spec.create_child_spec(self.field_name)
 
     def calculate(self, resource):
         # do this
@@ -56,9 +59,12 @@ class ResourceRef(object):
                     child_resources.append(self.result_type(resource.spec).build_resource(None, self.field_name, value))
                 return child_resources
             else:
-                value = cursor.next()[self.field_name]
-                child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
-                return child_resource
+                try:
+                    value = cursor.next()[self.field_name]
+                    child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
+                    return child_resource
+                except StopIteration:
+                    return None
         elif type(spec) == CalcSpec:
             return resource.data[spec.field_name]  # unsure what's going on here, bad separation probably
         elif type(spec) in (ResourceLinkSpec, ReverseLinkSpec):
@@ -155,7 +161,34 @@ class ResourceRef(object):
                     child_spec.field_name: True,
                 }})
         elif isinstance(child_spec, CalcSpec):
-            pass
+            # check type:
+            if child_spec.calc_type in ['int', 'float', 'str']:
+                # int float str
+                pass
+            else:
+                if child_spec.is_collection:
+                    # collection
+                    # lookup / match list of ids
+                    pass
+                else:
+                    # resource
+                    # lookup
+                    aggregation.append(
+                        {"$lookup": {
+                                "from": "resource_%s" % (child_spec.calc_type,),
+                                "localField": child_spec.field_name,
+                                "foreignField": "_id",
+                                "as": "_field_%s" % (child_spec.field_name,),
+                        }})
+                    aggregation.append(
+                        {'$group': {'_id': '$_field_%s' % (child_spec.field_name,)}}
+                    )
+                    aggregation.append(
+                        {"$unwind": "$_id"}
+                    )
+                    aggregation.append(
+                        {"$replaceRoot": {"newRoot": "$_id"}}
+                    )
         else:
             raise Exception("Unrecognised spec %s" % (child_spec,))
         return aggregation, child_spec, is_aggregate

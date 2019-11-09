@@ -292,6 +292,7 @@ class SchemaUpdateTest(unittest.TestCase):
                         'name': 'root.employers',
                         'spec': 'reverse_link',
                         'type': 'reverse_link',
+                        'target_spec': 'root',
                     },
                     'name': {
                         'spec': 'field', 'type': 'str',

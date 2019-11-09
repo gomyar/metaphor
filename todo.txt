@@ -1,5 +1,13 @@
 
+
+cache resources as results from calcs
+same for collections / aggregates
+
+
 add edit to schema admin - nope - edit is more involved that we thought (mutations)
+     - no it isn't it's just applying a new schema to an old one and letting the updates run
+     - versions might be dropped in favour of a hash maybe?
+
 
 throw error if new field added with same name as exiting field
 

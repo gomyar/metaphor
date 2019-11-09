@@ -48,6 +48,14 @@ api.delete_resource = function(resource) {
 
 var gui = {};
 
+gui.is_null = function(value) {
+    return value == null;
+}
+
+gui.is_empty = function(value) {
+    return value.length == 0;
+}
+
 gui.is_field_basic = function(field) {
     return ['str', 'int', 'float'].includes(field.type);
 }
@@ -57,7 +65,19 @@ gui.is_field_calc = function(field) {
 }
 
 gui.is_field_collection = function(field) {
-    return ['link', 'collection'].includes(field.type);
+    return ['collection'].includes(field.type);
+}
+
+gui.is_field_link = function(field) {
+    return ['link'].includes(field.type);
+}
+
+gui.create_collection_child = function(parent_resource, collection_field) {
+    console.log("Create child resource and add to collection");
+}
+
+gui.show_search_popup = function(field) {
+    console.log("Show search popup for ", field);
 }
 
 document.addEventListener("DOMContentLoaded", function(){
