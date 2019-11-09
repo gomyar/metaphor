@@ -79,6 +79,12 @@ class ResourceRef(object):
                     return spec.target_spec.build_resource(None, self.field_name, data)
                 except StopIteration:
                     return None
+        elif type(spec) == CollectionSpec:
+            list_resources = []
+            for data in cursor:
+                # eshewing resource in favour of dictionaries because calculate is a top level method
+                list_resources.append(data['_id'])
+            return list_resources
         else:
             raise Exception("Cannot calculate spec %s" % (spec,))
 
@@ -273,9 +279,9 @@ class FilteredResourceRef(ResourceRef):
         aggregation.append(filter_agg)
         return aggregation, spec, True
 
-    def calculate(self, resource):
-        # will need aggregate?
-        return self.resource_ref.calculate(resource)
+#    def calculate(self, resource):
+#        # will need aggregate?
+#        return self.resource_ref.calculate(resource)
 
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet()
@@ -371,6 +377,9 @@ class Condition(object):
 class Filter(object):
     def __init__(self, tokens):
         self.condition = tokens[1]
+
+    def __repr__(self):
+        return "[%s]" % (self.condition,)
 
     def filter_aggregation(self, spec):
         agg = self.condition.condition_aggregation(spec)

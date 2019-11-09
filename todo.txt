@@ -1,6 +1,6 @@
 
 
-cache resources as results from calcs
+cache resources as results from calcs - done
 same for collections / aggregates
 
 
