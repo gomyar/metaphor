@@ -135,7 +135,7 @@ class SchemaFactory(object):
         return FieldSpec(data.get('type'))
 
     def _build_calc(self, type_name, data=None):
-        return CalcSpec(data['calc'], data['calc_type'])
+        return CalcSpec(data['calc'], data['calc_type'], data.get('is_collection'))
 
     def _build_collection_field(self, type_name, data=None):
         return CollectionSpec(data['target'])

@@ -27,7 +27,7 @@ Schema version: <span gui-text="schema.version"></span>
             <span>type:</span>
         </div>
         <div class="fields" gui-list="spec.fields" gui-item="field" gui-key="field_name">
-            <div class="field" gui-id="gui.create_field_id()">
+            <div class="field" gui-id="gui.create_field_id(field)">
                 <div>
                     <span>
                         <span gui-show="gui.not_reverse_link(field)"><div class="button" gui-click="gui.delete_field(spec_name, field_name)">Delete</div></span>
@@ -107,9 +107,10 @@ Schema version: <span gui-text="schema.version"></span>
         <div  class="fields_headers" gui-show="gui.is_field_calc(gui.workingfield)">
             <span>Calc Type: </span>
             <span>
-                <select gui-list="gui.calc_types" gui-item="type_spec" gui-val="gui.workingfield.calc_type">
+                <select gui-list="gui.calc_types()" gui-item="type_spec" gui-val="gui.workingfield.calc_type" gui-change="turtlegui.reload()">
                     <option gui-val="type_spec" gui-text="type_spec"></input>
                 </select>
+                <span gui-show="gui.is_field_calc_primitive(gui.workingfield)">Collection: <input type=checkbox gui-val="gui.workingfield.is_collection" gui-change="turtlegui.reload()"></input></span>
             </span>
         </div>
 

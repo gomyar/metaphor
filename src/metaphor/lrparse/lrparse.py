@@ -173,29 +173,24 @@ class ResourceRef(object):
                 # int float str
                 pass
             else:
-                if child_spec.is_collection:
-                    # collection
-                    # lookup / match list of ids
-                    pass
-                else:
-                    # resource
-                    # lookup
-                    aggregation.append(
-                        {"$lookup": {
-                                "from": "resource_%s" % (child_spec.calc_type,),
-                                "localField": child_spec.field_name,
-                                "foreignField": "_id",
-                                "as": "_field_%s" % (child_spec.field_name,),
-                        }})
-                    aggregation.append(
-                        {'$group': {'_id': '$_field_%s' % (child_spec.field_name,)}}
-                    )
-                    aggregation.append(
-                        {"$unwind": "$_id"}
-                    )
-                    aggregation.append(
-                        {"$replaceRoot": {"newRoot": "$_id"}}
-                    )
+                # resource
+                # lookup
+                aggregation.append(
+                    {"$lookup": {
+                            "from": "resource_%s" % (child_spec.calc_type,),
+                            "localField": child_spec.field_name,
+                            "foreignField": "_id",
+                            "as": "_field_%s" % (child_spec.field_name,),
+                    }})
+                aggregation.append(
+                    {'$group': {'_id': '$_field_%s' % (child_spec.field_name,)}}
+                )
+                aggregation.append(
+                    {"$unwind": "$_id"}
+                )
+                aggregation.append(
+                    {"$replaceRoot": {"newRoot": "$_id"}}
+                )
         else:
             raise Exception("Unrecognised spec %s" % (child_spec,))
         return aggregation, child_spec, is_aggregate

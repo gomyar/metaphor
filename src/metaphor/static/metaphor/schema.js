@@ -18,6 +18,16 @@ gui.working_spec = {
 gui.field_types = ['str', 'int', 'float', 'collection', 'link', 'calc'];
 gui.calc_types = ['str', 'int', 'float'];
 
+gui.calc_types = function() {
+    var calc_types = ['str', 'int', 'float'];
+    for (var spec_type in schema.specs) {
+        if (spec_type != 'root') {
+            calc_types[calc_types.length] = spec_type;
+        }
+    }
+    return calc_types;
+}
+
 
 gui.report_error = function(errorText, jqXHR) {
     try {
@@ -50,8 +60,8 @@ gui.show_new_schema_popup = function() {
     turtlegui.reload();
 }
 
-gui.create_field_id = function() {
-    return 'field_' + spec_name + '_' + field_name;
+gui.create_field_id = function(field) {
+    return 'field_' + gui.workingfield.spec_name + '_' + field.name;
 }
 
 gui.not_reverse_link = function(field) {
@@ -64,6 +74,10 @@ gui.is_field_collection = function(field) {
 
 gui.is_field_calc = function(field) {
     return ['calc'].includes(field.type);
+}
+
+gui.is_field_calc_primitive = function(field) {
+    return ['calc'].includes(field.type) && ![null, 'int', 'str', 'float'].includes(field.calc_type);
 }
 
 gui.close_spec_popup = function() {
