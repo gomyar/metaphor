@@ -52,5 +52,11 @@ class ResourceCalcTest(unittest.TestCase):
         self.api.post("outlets/%s/employees" % outlet_id, {"id": employee_id_4})
 
         outlet = self.api.get('outlets/%s' % (outlet_id,))
-
         self.assertEquals(19.5, outlet['average_manager_years'])
+
+        # check update
+        employee_id_5 = self.api.post('employees', {'name': 'Nobby', 'title': 'manager', 'years': 18})
+        self.api.post("outlets/%s/employees" % outlet_id, {"id": employee_id_5})
+
+        outlet = self.api.get('outlets/%s' % (outlet_id,))
+        self.assertEquals(19, outlet['average_manager_years'])

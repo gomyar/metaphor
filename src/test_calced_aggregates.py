@@ -28,9 +28,11 @@ class ResourceCalcTest(unittest.TestCase):
         self.outlet_spec.add_field("name", FieldSpec("str"))
         self.outlet_spec.add_field("employees", CollectionSpec('employee'))
         self.outlet_spec.add_field("managers", CalcSpec('self.employees[title="manager"]', 'employee', True))
+        self.outlet_spec.add_field("average_years", CalcSpec('average(self.managers.years)', 'int'))
 
         self.employee_spec.add_field("name", FieldSpec("str"))
         self.employee_spec.add_field("title", FieldSpec("str"))
+        self.employee_spec.add_field("years", FieldSpec("int"))
 
         self.schema.add_root('outlets', CollectionSpec('outlet'))
 
@@ -46,3 +48,13 @@ class ResourceCalcTest(unittest.TestCase):
         self.assertEquals(1, len(managers))
         self.assertEquals("Ned", managers[0]['name'])
         self.assertEquals("manager", managers[0]['title'])
+
+    def test_indirect_calc_calc(self):
+        outlet_id = self.api.post('outlets', {'name': 'Tiffanys'})
+        employee_id_1 = self.api.post('outlets/%s/employees' % outlet_id, {'name': 'Bob', 'title': 'receptionist', 'years': 10})
+        employee_id_2 = self.api.post('outlets/%s/employees' % outlet_id, {'name': 'Ned', 'title': 'manager', 'years': 20})
+        employee_id_3 = self.api.post('outlets/%s/employees' % outlet_id, {'name': 'Fred', 'title': 'manager', 'years': 18})
+
+        outlet = self.api.get('outlets/%s' % (outlet_id,))
+
+        self.assertEquals(19, outlet['average_years'])
