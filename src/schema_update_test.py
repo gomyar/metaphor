@@ -242,6 +242,43 @@ class SchemaUpdateTest(unittest.TestCase):
         self.assertEquals(400, resp.status_code)
         self.assertEquals({"error": "Calc cannot depend on itself: company.assets_plus_four"}, json.loads(resp.data))
 
+    def test_circular_dependency_through_links_are_fine(self):
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'company', 'fields': {
+                'name': {'type': 'str'},
+                'assets': {'type': 'int'},
+            }}), content_type='application/json')
+        resp = self.client.post('/schema/specs', data=json.dumps(
+            {'name': 'other_company', 'fields': {
+                'name': {'type': 'str'},
+                'company': {'type': 'link', 'target': 'company'},
+            }}), content_type='application/json')
+        resp = self.client.post('/schema/root',
+                                data=json.dumps({'name': 'companies', 'target': 'company'}),
+                                content_type='application/json')
+
+        resp = self.client.patch('/schema/specs/company', data=json.dumps(
+                {'first_company': {'type': 'link', 'target': 'company'}}),
+            content_type='application/json')
+
+        self.assertEquals(200, resp.status_code)
+
+        resp = self.client.post('/api/companies', data=json.dumps({'name': 'Bob'}),
+                                content_type='application/json')
+        company_id = json.loads(resp.data)['id']
+        serialized = self.client.get('/api/companies/%s' % (company_id,))
+
+        self.assertEquals({
+            u'assets': None,
+            u'first_company': None,
+            u'id': company_id,
+            u'link_company_first_company': None,
+            u'link_other_company_company': None,
+            u'link_root_companies': None,
+            u'name': u'Bob',
+            u'self': u'http://http://server/api/companies/%s' % (company_id,)},
+            json.loads(serialized.data))
+
     def test_interdependent_fields_added_together(self):
         resp = self.client.post('/schema/specs', data=json.dumps(
             {'name': 'company', 'fields': {
@@ -284,22 +321,8 @@ class SchemaUpdateTest(unittest.TestCase):
         employer_spec = json.loads(resp.data)
         self.assertEquals(
             {'spec': 'collection',
-             'target_spec': {
-                'name': 'employer',
-                'spec': 'resource',
-                'fields': {
-                    'link_root_employers': {
-                        'name': 'root.employers',
-                        'spec': 'reverse_link',
-                        'type': 'reverse_link',
-                        'target_spec': 'root',
-                    },
-                    'name': {
-                        'spec': 'field', 'type': 'str',
-                    },
-                },
-            },
-            'type': 'collection'},
+             'target_spec': 'employer',
+             'type': 'collection'},
             employer_spec)
 
     def test_interdependent_fields_added_together_specific(self):

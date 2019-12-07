@@ -108,6 +108,8 @@ class ResourceLinkSpec(Spec):
     def __repr__(self):
         return "<ResourceLinkSpec %s>" % (self.name,)
 
+    def all_resource_refs(self):
+        return set(['%s.%s' % (self.parent.name, self.name)])
 
     def create_child_spec(self, child_id):
         return self.schema.specs[self.name].fields[child_id]
@@ -117,7 +119,7 @@ class ResourceLinkSpec(Spec):
             'spec': 'resource_link',
             'type': 'link',
             'name': self.name,
-            'target_spec': self.target_spec.serialize(),
+            'target_spec': self.target_spec_name,
         }
 
     def _collection(self):
@@ -166,7 +168,6 @@ class CalcSpec(Spec):
         self.calc_str = calc_str
         self.field_type = 'calc'
         self.calc_type = calc_type
-        self.is_collection = is_collection
 
     def __repr__(self):
         return "<CalcSpec %s.%s = '%s' [%s]>" % (self.parent.name, self.field_name, self.calc_str, self.calc_type)
@@ -177,10 +178,14 @@ class CalcSpec(Spec):
     def is_link(self):
         return not self.is_primitive()
 
+    def is_collection(self):
+        parsed = self.parse_calc()
+        return parsed.return_type(self)[1]
+
     def build_resource(self, parent, field_name, data):
         if self.is_primitive():
             return CalcField(parent, field_name, self, data)
-        if self.is_collection:
+        if self.is_collection():
             return CalcLinkCollectionResource(parent, field_name, self, self.calc_type, data)
         elif data:
             spec = self.schema.specs[self.calc_type]
@@ -209,7 +214,7 @@ class CalcSpec(Spec):
         return self.parse_calc().all_resource_refs()
 
     def serialize(self):
-        return {'spec': 'calc', 'calc': self.calc_str, 'type': 'calc', 'calc_type': self.calc_type}
+        return {'spec': 'calc', 'calc': self.calc_str, 'type': 'calc', 'calc_type': self.calc_type, 'is_collection': self.is_collection()}
 
     def check_type(self, value):
         # return type(value) in self._allowed_types.get(self.calc_type, [])
@@ -367,7 +372,7 @@ class CollectionSpec(Spec):
         return self.target_spec.fields[child_id]
 
     def serialize(self):
-        return {'spec': 'collection', 'target_spec': self.target_spec.serialize(), 'type': 'collection'}
+        return {'spec': 'collection', 'target_spec': self.target_spec_name, 'type': 'collection'}
 
     @property
     def field_type(self):
@@ -410,6 +415,9 @@ class LinkCollectionSpec(CollectionSpec):
     @property
     def field_type(self):
         return 'linkcollection'
+
+    def serialize(self):
+        return {'spec': 'linkcollection', 'target_spec': self.target_spec_name, 'type': 'linkcollection'}
 
     def build_resource(self, parent, field_name, name):
         return LinkCollectionResource(parent, field_name, self, name)
@@ -912,11 +920,14 @@ class LinkCollectionResource(CollectionResource):
     def create(self, new_data):
         return self._create_link(new_data['id'])
 
+    def __repr__(self):
+        return "<LinkCollectionResource %s: %s>" % (self.data, self.spec)
+
     def _create_link(self, resource_id):
         self.spec._collection().update({
             "_id": ObjectId(resource_id)
         },
-        {"$push":
+        {"$addToSet":
             {"_owners":
                 {
                     'owner_spec': self._parent.spec.name,

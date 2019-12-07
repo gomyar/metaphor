@@ -387,3 +387,17 @@ class LRParseTest(unittest.TestCase):
         # space out range
         # cap (ceil, floor) aggregates
         # min max range
+
+    def test_return_type(self):
+        tree = parse("employees[age>40].division[type='sales'].yearly_sales", self.employee_spec)
+        self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
+        self.assertEquals((self.division_spec.fields['yearly_sales'], True), tree.return_type(self.employee_spec))
+
+        tree = parse("employees[age>40].division[type='sales']", self.employee_spec)
+        self.assertEquals(set(['employees.division']), tree.all_resource_refs())
+        # it's a link spec
+        self.assertEquals((self.employee_spec.fields['division'], True), tree.return_type(self.employee_spec))
+
+        tree = parse("self.division", self.employee_spec)
+        self.assertEquals(set(['self.division']), tree.all_resource_refs())
+        self.assertEquals((self.employee_spec.fields['division'], False), tree.return_type(self.employee_spec))

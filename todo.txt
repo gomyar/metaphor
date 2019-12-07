@@ -1,4 +1,6 @@
 
+check for circular deps between resourcelinks
+add linkcollection to schema admin
 
 cache resources as results from calcs - done
 same for collections / aggregates

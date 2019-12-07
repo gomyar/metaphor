@@ -15,7 +15,7 @@ gui.workingfield = {
 gui.working_spec = {
     'name': null
 };
-gui.field_types = ['str', 'int', 'float', 'collection', 'link', 'calc'];
+gui.field_types = ['str', 'int', 'float', 'collection', 'link', 'calc', 'linkcollection'];
 gui.calc_types = ['str', 'int', 'float'];
 
 gui.calc_types = function() {
@@ -69,7 +69,7 @@ gui.not_reverse_link = function(field) {
 }
 
 gui.is_field_collection = function(field) {
-    return ['link', 'collection'].includes(field.type);
+    return ['link', 'collection', 'linkcollection'].includes(field.type);
 }
 
 gui.is_field_calc = function(field) {

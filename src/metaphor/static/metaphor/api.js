@@ -7,6 +7,7 @@ api.postform_shown = false;
 api.current_resource = {};
 api.resource = null;
 api.spec = null;
+api.specs = null;
 api.resource_path = null;  // set in template
 var net = {loading: false};
 
@@ -24,10 +25,13 @@ api.report_error = function(errorText, jqXHR) {
 }
 
 api.reload_resource = function() {
-    turtlegui.ajax.get('/api/' + api.resource_path, function(content) {
-        api.resource = JSON.parse(content);
-        turtlegui.reload();
-    }, api.report_error);
+    turtlegui.ajax.get('/schema/specs', function(content) {
+        api.specs = JSON.parse(content).specs;
+        turtlegui.ajax.get('/api/' + api.resource_path, function(content) {
+            api.resource = JSON.parse(content);
+            turtlegui.reload();
+        }, api.report_error);
+    }, api.report_error)
 }
 
 api.post_resource = function() {
@@ -60,12 +64,24 @@ gui.is_field_basic = function(field) {
     return ['str', 'int', 'float'].includes(field.type);
 }
 
-gui.is_field_calc = function(field) {
-    return ['calc'].includes(field.type);
+gui.is_field_basic_calc = function(field) {
+    return ['calc'].includes(field.type) && ['str', 'int', 'float'].includes(field.calc_type);
+}
+
+gui.is_field_resource_calc = function(field) {
+    return ['calc'].includes(field.type) && !['str', 'int', 'float'].includes(field.calc_type);
 }
 
 gui.is_field_collection = function(field) {
     return ['collection'].includes(field.type);
+}
+
+gui.is_calc_collection = function(calc_spec) {
+    return calc_spec.is_collection;
+}
+
+gui.is_calc_resource = function(calc_spec) {
+    return !calc_spec.is_collection;
 }
 
 gui.is_field_link = function(field) {

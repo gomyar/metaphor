@@ -12,6 +12,22 @@ from metaphor.resource import FieldSpec
 from metaphor.resource import CalcSpec
 
 
+
+def resolve(spec_hier):
+    path = resource_ref.split('.')
+    if path[0] == 'self':
+        path.pop(0)
+        spec = self.parent
+    else:
+        spec = self.schema.root_spec
+    found = [spec]
+    while path:
+        spec = spec.create_child_spec(path.pop(0))
+        found.append(spec)
+    return found
+
+
+
 class Calc(object):
     def __init__(self, tokens):
         self.tokens = tokens
@@ -201,6 +217,11 @@ class ResourceRef(object):
     def all_resource_refs(self):
         return set([self.resource_ref_snippet()])
 
+    def return_type(self, spec):
+        return_spec, is_aggregate = self.resource_ref.return_type(spec)
+        field_type = return_spec.create_child_spec(self.field_name)
+        return field_type, is_aggregate or type(field_type) in [CollectionSpec, LinkCollectionSpec]
+
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
 
@@ -226,6 +247,15 @@ class RootResourceRef(ResourceRef):
             return starting_spec
         else:
             return starting_spec.schema.root.build_child(self.resource_name).spec
+
+    def return_type(self, spec):
+        if self.resource_name == 'self':
+            if not spec.parent:
+                return spec, False
+            else:
+                return spec.parent, type(spec.parent) in [CollectionSpec, LinkCollectionSpec]
+        else:
+            return spec.schema.root.build_child(self.resource_name).spec, True
 
     def root_collection(self, resource):
         if self.resource_name == 'self':
@@ -268,6 +298,9 @@ class FilteredResourceRef(ResourceRef):
 
     def result_type(self, starting_spec):
         return self.resource_ref.result_type(starting_spec)
+
+    def return_type(self, spec):
+        return self.resource_ref.return_type(spec)
 
     def aggregation(self, resource):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(resource)
@@ -316,6 +349,28 @@ class Operator(Calc):
         self.lhs = tokens[0]
         self.op = tokens[1]
         self.rhs = tokens[2]
+
+    def basic_return_type(self, spec, target):
+        return_type, _ = target.return_type(spec)
+        if return_type.field_type == 'calc':
+            return return_type.calc_type
+        else:
+            return return_type.field_type
+
+    def return_type(self, spec):
+        lhs_return_type = self.basic_return_type(spec, self.lhs)
+        rhs_return_type = self.basic_return_type(spec, self.rhs)
+        if (lhs_return_type, rhs_return_type) == ('int', 'int'):
+            return FieldSpec('int'), False
+        elif sorted((lhs_return_type, rhs_return_type)) == ('float', 'int'):
+            return FieldSpec('float'), False
+        elif (lhs_return_type, rhs_return_type) == ('str', 'str'):
+            return FieldSpec('str'), False
+        elif sorted((lhs_return_type, rhs_return_type)) == ('str', 'unicode'):
+            return FieldSpec('str'), False
+        else:
+            raise Exception("Cannot determine return type for %s %s %s" % (
+                lhs_return_type, self.op, rhs_return_type))
 
     def calculate(self, resource):
         lhs = self.lhs.calculate(resource)
@@ -436,6 +491,12 @@ class FunctionCall(Calc):
             'average': self._average,
             'sum': self._sum,
         }
+
+    def return_type(self, spec):
+        if self.func_name == 'round':
+            return FieldSpec('int'), False
+        else:
+            return FieldSpec('float'), False
 
     def calculate(self, resource):
         return self.functions[self.func_name](resource, *self.params)

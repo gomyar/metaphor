@@ -28,21 +28,23 @@ api.spec = {{ spec|safe }};
             <div class="field">
                 <span gui-text="field_name"></span>
                 <span gui-text="api.resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
-                <span gui-text="api.resource[field_name]" gui-show="gui.is_field_calc(field)"></span>
+                <span gui-text="api.resource[field_name]" gui-show="gui.is_field_basic_calc(field)"></span>
+                        <span gui-show="gui.is_field_resource_calc(field)">
+                            <a gui-show="api.resource[field_name]" class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a>
+                        </span>
                 <span gui-show="gui.is_field_collection(field)">
                     <a gui-show="api.resource[field_name]" class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a>
                     <div class="button" gui-show="gui.is_empty(api.resource[field_name])" gui-click="gui.create_collection_child(api.resource, field)">Link</div>
                 </span>
                 <span gui-show="gui.is_field_link(field)">
                     <a gui-show="api.resource[field_name]" class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a>
-                    <div class="button" gui-show="gui.is_null(api.resource[field_name])" gui-click="gui.show_search_popup(field)">Link</div>
                 </span>
             </div>
         </div>
     </div>
 
     <div class="collection" gui-case="collection">
-        <div class="resource_name" gui-text="api.spec.target_spec.name"></div>
+        <div class="resource_name" gui-text="api.spec.target_spec"></div>
 
         <div class="button" gui-click="api.show_postform(true)">POST</div>
 
@@ -50,14 +52,16 @@ api.spec = {{ spec|safe }};
             <div class="resource">
                 <hr></hr>
                 <div class="button" gui-click="api.delete_resource(resource)">DELETE</div>
-                <div class="fields" gui-list="api.spec.target_spec.fields" gui-item="field" gui-key="field_name">
+                <div class="fields" gui-list="api.specs[api.spec.target_spec].fields" gui-item="field" gui-key="field_name">
                     <div class="field">
                         <span gui-text="field_name"></span>
                         <span gui-text="resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
-                        <span gui-text="resource[field_name]" gui-show="gui.is_field_calc(field)"></span>
+                        <span gui-text="resource[field_name]" gui-show="gui.is_field_basic_calc(field)"></span>
+                        <span gui-show="gui.is_field_resource_calc(field)">
+                            <a gui-show="resource[field_name]" class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a>
+                        </span>
                         <span gui-show="gui.is_field_collection(field)">
                             <a gui-show="resource[field_name]" class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a>
-                            <div class="button" gui-show="gui.is_null(resource[field_name])" >Link</div>
                         </span>
                     </div>
                 </div>
@@ -69,6 +73,90 @@ api.spec = {{ spec|safe }};
             </div>
         </div>
     </div>
+
+    <div class="collection" gui-case="linkcollection">
+        <div class="resource_name" gui-text="api.spec.target_spec"></div>
+
+        <div class="button" gui-click="api.show_postform(true)">POST</div>
+
+        <div gui-list="api.resource.results" gui-item="resource">
+            <div class="resource">
+                <hr></hr>
+                <div class="button" gui-click="api.delete_resource(resource)">DELETE</div>
+                <div class="fields" gui-list="api.specs[api.spec.target_spec].fields" gui-item="field" gui-key="field_name">
+                    <div class="field">
+                        <span gui-text="field_name"></span>
+                        <span gui-text="resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
+                        <span gui-text="resource[field_name]" gui-show="gui.is_field_basic_calc(field)"></span>
+                        <span gui-show="gui.is_field_resource_calc(field)">
+                            <a gui-show="resource[field_name]" class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a>
+                        </span>
+                        <span gui-show="gui.is_field_collection(field)">
+                            <a gui-show="resource[field_name]" class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a>
+                        </span>
+                    </div>
+                </div>
+                <div class="fields">
+                    <div class="field">
+                        <span ><a class="button" gui-attrs="href=resource['self']">self</a></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div gui-case="calc">
+        <div class="collection" gui-show="gui.is_calc_collection(api.spec)">
+            <div class="resource_name" gui-text="api.spec.target_spec"></div>
+
+            <div gui-list="api.resource.results" gui-item="resource">
+                <div class="resource">
+                    <hr></hr>
+                    <div class="button" gui-click="api.delete_resource(resource)">DELETE</div>
+                    <div class="fields" gui-list="api.specs[api.spec.target_spec].fields" gui-item="field" gui-key="field_name">
+                        <div class="field">
+                            <span gui-text="field_name"></span>
+                            <span gui-text="resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
+                            <span gui-text="resource[field_name]" gui-show="gui.is_field_basic_calc(field)"></span>
+                            <span gui-show="gui.is_field_resource_calc(field)">
+                                <a gui-show="resource[field_name]" class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a>
+                            </span>
+                            <span gui-show="gui.is_field_collection(field)">
+                                <a gui-show="resource[field_name]" class="button" gui-attrs="href=resource[field_name]" gui-text="field_name"></a>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="fields">
+                        <div class="field">
+                            <span ><a class="button" gui-attrs="href=resource['self']">self</a></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="resource" gui-show="gui.is_calc_resource(api.spec)">
+            <div class="fields" gui-list="api.spec.fields" gui-item="field" gui-key="field_name">
+                <div class="field">
+                    <span gui-text="field_name"></span>
+                    <span gui-text="api.resource[field_name]" gui-show="gui.is_field_basic(field)"></span>
+                    <span gui-text="api.resource[field_name]" gui-show="gui.is_field_basic_calc(field)"></span>
+                            <span gui-show="gui.is_field_resource_calc(field)">
+                                <a gui-show="api.resource[field_name]" class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a>
+                            </span>
+                    <span gui-show="gui.is_field_collection(field)">
+                        <a gui-show="api.resource[field_name]" class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a>
+                        <div class="button" gui-show="gui.is_empty(api.resource[field_name])" gui-click="gui.create_collection_child(api.resource, field)">Link</div>
+                    </span>
+                    <span gui-show="gui.is_field_link(field)">
+                        <a gui-show="api.resource[field_name]" class="button" gui-attrs="href=api.resource[field_name]" gui-text="field_name"></a>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
 </div>
 
 <div id="postform" gui-show="api.postform_shown">
@@ -77,12 +165,12 @@ api.spec = {{ spec|safe }};
 <div id="postform" class="popupwrapper" gui-show="api.postform_shown">
     <div class="popup">
         <div class="fields_headers">
-            <span>Create</span><span gui-text="api.spec.target_spec.name"></span>:
+            <span>Create</span><span gui-text="api.spec.target_spec"></span>:
         </div>
         <hr></hr>
 
         <div class="resource">
-            <div class="fields" gui-list="api.spec.target_spec.fields" gui-item="field" gui-key="field_name">
+            <div class="fields" gui-list="api.specs[api.spec.target_spec].fields" gui-item="field" gui-key="field_name">
                 <div gui-switch="field.type">
                     <div class="field" gui-case="str">
                         <span gui-text="field_name"></span>
