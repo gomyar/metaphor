@@ -313,7 +313,7 @@ class LRParseTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned'})
         resource = self.api.build_resource('employees/%s' % employee_id_1)
 
-        tree = parse("round(14.14)")
+        tree = parse("round(14.14)", self.employee_spec)
         self.assertEquals(14, tree.calculate(resource))
 
     def test_function_call_param_list_multiple_calcs(self):
@@ -401,3 +401,12 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.division", self.employee_spec)
         self.assertEquals(set(['self.division']), tree.all_resource_refs())
         self.assertEquals((self.employee_spec.fields['division'], False), tree.return_type(self.employee_spec))
+
+    def test_document_ref(self):
+        employee_id = self.api.post('employees', {'name': 'ned'})
+        tree = parse("employees.ID%s" % (employee_id,), self.employee_spec)
+
+        employees = self.api.build_resource('employees')
+
+        tree = parse("max(employees.salary)", employees.spec)
+        self.assertEquals({'id': employee_id}, tree.calculate(employees))

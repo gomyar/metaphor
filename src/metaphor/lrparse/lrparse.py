@@ -123,6 +123,7 @@ class ResourceRef(object):
                     }})
                 is_aggregate = True
             else:
+                # when a reverse aggregate is followed by another reverse aggregate
                 # reverse link to collection (through _owners)
                 aggregation.append(
                     {"$lookup": {
@@ -131,7 +132,7 @@ class ResourceRef(object):
                             "foreignField": "_id",
                             "as": "_field_%s" % (self.field_name,),
                     }})
-                is_aggregate = False
+                is_aggregate = True
             aggregation.append(
                 {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
             )
@@ -220,7 +221,7 @@ class ResourceRef(object):
     def return_type(self, spec):
         return_spec, is_aggregate = self.resource_ref.return_type(spec)
         field_type = return_spec.create_child_spec(self.field_name)
-        return field_type, is_aggregate or type(field_type) in [CollectionSpec, LinkCollectionSpec]
+        return field_type, is_aggregate or type(field_type) in [CollectionSpec, LinkCollectionSpec, ReverseLinkSpec]
 
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
@@ -670,6 +671,6 @@ class Parser(object):
         self.shifted.append((type(reduction), reduction))
 
 
-def parse(line, spec=None):
+def parse(line, spec):
     tokens = tokenize.generate_tokens(StringIO(line).next)
     return Parser(lex(tokens), spec).parse()

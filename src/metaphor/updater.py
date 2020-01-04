@@ -151,7 +151,14 @@ class Updater(object):
         resource = Resource(None, "self", self.schema.specs[update['spec']], resource_data)
         calc_field = resource.build_child(update['field_name'])
         calc_result = calc_field.calculate()
-        if isinstance(calc_result, Resource):
+        if calc_field.spec.is_collection():
+            if calc_field.spec.calc_return_type() in ['str', 'float', 'int', 'bool']:
+                result = [r.data for r in calc_result]
+            elif calc_field.spec.calc_return_type() == 'linkcollection':
+                result = calc_result
+            else:
+                result = [r._id for r in calc_result]
+        elif isinstance(calc_result, Resource):
             result = calc_result._id
         elif isinstance(calc_result, Field):
             result = calc_result.data
@@ -162,7 +169,6 @@ class Updater(object):
             {'_id': resource._id},
             {'$set': {
                 update['field_name']: result,
-#                '_updated': resource._update_dict([update['field_name']]),
             }})
 
         found = self.find_affected_calcs_for_field(calc_field.spec)

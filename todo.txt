@@ -1,4 +1,11 @@
 
+
+shortlist:
+ - include single document lookup in lrparse (not in calcs)
+ - use lrparse for all requests
+ - delete resource create_child and aggregation code
+
+
 check for circular deps between resourcelinks
 add linkcollection to schema admin
 

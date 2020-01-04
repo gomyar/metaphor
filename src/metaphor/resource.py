@@ -179,15 +179,25 @@ class CalcSpec(Spec):
         return not self.is_primitive()
 
     def is_collection(self):
+        return self.return_type()[1]
+
+    def return_type(self):
         parsed = self.parse_calc()
-        return parsed.return_type(self)[1]
+        return parsed.return_type(self)
+
+    def calc_return_type(self):
+        calc_type, _ = self.return_type()
+        if calc_type.field_type == 'link':
+            return calc_type.target_spec_name
+        else:
+            return calc_type.field_type
 
     def build_resource(self, parent, field_name, data):
         if self.is_primitive():
             return CalcField(parent, field_name, self, data)
         if self.is_collection():
             return CalcLinkCollectionResource(parent, field_name, self, self.calc_type, data)
-        elif data:
+        elif data and self.is_primitive():
             spec = self.schema.specs[self.calc_type]
             resource_data = spec.load_data(data)
             return CalcField(parent, field_name, self, resource_data)
@@ -287,6 +297,7 @@ class ReverseLinkSpec(ResourceLinkSpec):
         link_data = self._get_link_data(parent)
         if link_data:
             resource_data = target_resource_spec.load_data(link_data['owner_id'])
+            # always gonna be a collection resource
             return target_resource_spec.build_resource(parent, field_name, resource_data)
         else:
             return NullLinkResource(parent, field_name, target_resource_spec, {})
@@ -294,6 +305,7 @@ class ReverseLinkSpec(ResourceLinkSpec):
     def build_aggregate_resource(self, parent):
         return AggregateResource(parent, self.name, self)
 
+    # why does this exist again?
     def build_field(self, parent, field_name, data):
         link_data = self._get_link_data(parent)
         owner_id = link_data['owner_id'] if link_data else None
