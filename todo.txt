@@ -1,158 +1,64 @@
 
 
-shortlist:
- - include single document lookup in lrparse (not in calcs)
- - use lrparse for all requests
- - delete resource create_child and aggregation code
+basic REST:
+ - GET by url:
+   - nested resource (collection/id/resource.field)
+   - aggregated resources (collection/resources   &&   collection/resources/fields) - use calc parser
+   - canonical url "self: http://collection/ID"
+   - expansion of resources "expand=employee.section.category"
+   - field filters
+   - ordering
+   - pagination
+ - POST / PUT
+   - create resource (collection/   {'name': 'etc'}
+   - dependent updates scheduled (for calcs)
+ - PATCH / DELETE
+   - update resource (collection/ID
+   - dependent updates scheduled (for calcs)
 
 
-check for circular deps between resourcelinks
-add linkcollection to schema admin
-
-cache resources as results from calcs - done
-same for collections / aggregates
-
-
-add edit to schema admin - nope - edit is more involved that we thought (mutations)
-     - no it isn't it's just applying a new schema to an old one and letting the updates run
-     - versions might be dropped in favour of a hash maybe?
-
-
-throw error if new field added with same name as exiting field
-
-add language constructs for if(), max(), min(), filter() etc
-add primitives to calcs (int, float, str)
-check calcs for typing on creation
-
-split interface into:
- - api (pure json)
- - html editor
- - admin editor
-
-get updates working efficiently for large update numbers
- - breath first update processing
-
-load schema on per request (not singleton anymore)
+schema:
+ - resource specs creation / edit
+ - resource:
+   - basic fields: str int float bool
+   - calc fields:
+     - basic calc types: str int float bool
+     - collections of resources (cached by id)
+   - link fields:
+     - link to other resource (many to one)
+   - collection fields:
+     - parent relationship with target resource (one to one)
+     - reverse linked through "parent_resource_field" field name (will return single parent resource)
+   - linkcollection fields:
+     - link relationship with target resource (many to one)
+     - reverse linked through "link_resource_field" field name (will return list of linked resources)
 
 
-fix multiple updates
- - topsort
-
-fix 3 second re-updater (constantly running updates)
-
-updaters:
- - {
- ... resource ...
- _updated: true,
- _updated_at: 2017-01-01T00:00:00
- _updated_fields: {'name', 'desc', etc...}
- }
-
-add gui
- - required / default for schema + api
- - add all field types:
-  - calc
-  - link
- - need to be able to tell if an aggregate (disable post/delete - links dont work /collection/collection/individual)
-
-add required field
-
-check for dependencies when deleting a field / spec - done
-
-doesn't remove calc from schema calc list in memory when calc field deleted
-
-delete entire spec
-
-need to tie up checking of different calls (post patch etc)
- - i.e. shouldn't be able to patch a collection
-
-order calc updates by dependency topsort
-allow updates and validation of multiple resources in schema
-
-add verify to calc re: dependencies, do not allow update if calc cannot run - done
-
-add cached link collection for calcs
- - accessible through url: /root/employees/1234/sorted_scores
- - might need to specify the fields for every get call
-
-add calc strict typing - done
-add parent relationship for collections
- - test aggregation for "_parent_owner"
-move linked collections to LinkCollection resource specifically
-
-we might? need:
- - add embedded resource
- - add separate, nullable, "embedded" resource which uses parent
-but LinkCollection might do it
-
-something for app specific functionality across many resources:
- - report for -> resource where resource count > 10000 without creating report as an embedded resource across all
- - iterative collection of reports? (for resource in collection create corresponding resource in this collection)
-
-need support for:
- - calc which returns reference to resource
- - calc which returns collection
+calc fields:
+ - parsed from "self" or "root" - aggregates 
 
 
- - field types:
-   - enumeration
-   - iso date
-   - string / int / float / currency?
-
- - enter calculated fields
-   - string / int
-   - lookup (if > 20 : 'A' if < 20 : 'B' etc..)
-   - collection (collection filters / functions that return a collection)
-   - resource link (min max median - functions that take a collection and return 1 result)
-   - pluggable function call
-
-add recalc worker
- - field dependencies
- - queue updates, no recalc clashes
-  - global topsorted recalc queue?
-  - idempotency may make this unnecessary
+updates
+ - on POST / PATCH / DELETE / PUT
+   - single / distributed update
+ - atomic-ish recoverable idempotent updates
+ - update request may wait on result of update, or leave running in background
+ - some calc types may specific to be run in background
+ - ability to attach to ongoing updates, get notifications of running updates
 
 
-add basic schema
- - view schema
- - create schema through api
- - save schema in mongo
-
-collect dependencies for schema / live
-
-differentiate between embedded resources and linked resources on create
- - make atomic by forcing a second post call for linked resources or
- - embed the document in mongo document
-
-validate input (correct / default fields)
-alter resource atomically, then perform update, currently altering one field, updating, then another
-
-updating too much for a single change
-
-other stuff:
- - enum type (raises error if incorrect values used in calc or filter)
-   - ie type=['dog','cat'] /animals?type='goose' raises exception
-
-on doing two things:
- where we do two things, ie: post to a link with the new document to link to as a subdocument
-   - store the linked doc as a subdocument and run an updater to 1) create the new link and 2) change the link
-
-possibly have a rule which removes resources with no owners or links
- - root level resources should have the root resource as their parent (from the appropriate collection)
- - can send delete(resource, cascase=True) to remove the resource from all linked / owner resources
- - in the event that a root resource is deleted but with cascade=False, it is deleted from mongo whenever its remaining owner links have been removed
-
-edge case:
- - check: 
-   1. update begins
-   2. new resource created (which should have been included in previous update)
-   3. new resource is updated
-   possible fix: the creation of updaters should happen after post / patch (but still before delete)
-     (maybe add a double-check to delete case where updaters add missing ids when kicked off)
-   NOTE: This may be a non-issue: subsequent creates will be based on the initially updated data
+permissions:
+ - root driven permissions
+ - a user has access through a group - groups are assigned permissions to resources and all children
+   - linked resources are not included - the canonical parent for a linked resource will need to be permissioned independently
+ - permissions do not apply to or affect calcs
 
 
-architecture
- - schema written to DB and propagted from another DB (greater version only applies if it passes checks)
- - separate DBs for different customers (linked using DB references)
- - security enforced through keys for each individual DB
+mutating the schema:
+ - schemas are versions by uuid - major.minor.micro
+   - breaking changes alter the major+minor+micro uuid
+   - additive changes alter the minor+micro uuid
+   - calc changes alter the micro uuid
+ - should be possible to apply any change to a schema, and to alert for data deletion on a major change
+
+

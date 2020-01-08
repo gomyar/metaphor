@@ -1,97 +1,152 @@
 
-from metaphor.resource import ResourceSpec
-from metaphor.resource import RootResource
-from metaphor.resource import CalcSpec
-from metaphor.updater import Updater
+
+from bson.objectid import ObjectId
+
+
+class Field(object):
+    PRIMITIVES = ['int', 'str', 'float', 'bool']
+
+    def __init__(self, name, field_type, target_spec_name=None):
+        self.name = name
+        self.field_type = field_type
+        self.target_spec_name = target_spec_name
+        self._comparable_types= {
+            'str': [str],
+            'int': [float, int],
+            'float': [float, int],
+            'bool': [bool, float, int, str],
+        }
+
+    def is_primitive(self):
+        return self.field_type in Field.PRIMITIVES
+
+    def is_collection(self):
+        return self.field_type in ['collection', 'linkcollection', 'reverse_link', 'reverse_link_collection']
+
+    def is_field(self):
+        return True
+
+    def check_comparable_type(self, value):
+        return type(value) in self._comparable_types.get(self.field_type, [])
+
+    def __repr__(self):
+        return "<Field %s %s %s>" % (self.name, self.field_type, self.target_spec_name or '')
+
+
+class CalcField(Field):
+    def __init__(self, field_name, calc_str):
+        self.field_name = field_name
+        self.calc_str = calc_str
+
+    def __repr__(self):
+        return "<Calc %s = %s>" % (self.field_name, self.calc_str)
+
+
+# field types:
+# int str float bool
+# link -> + target_spec_name
+# reverse_link -> implied by link / linkcollection
+# parent -> implied by collection
+# collection -> + target_spec_name
+# linkcollection -> + target_spec_name
+# calc -> + calculated_spec_name + calculated_spec_type (int str float bool link linkcollection)
+
+
+class Spec(object):
+    def __init__(self, name, schema):
+        self.name = name
+        self.schema = schema
+        self.fields = {}
+
+    def __repr__(self):
+        return "<Spec %s>" % (self.name,)
+
+    def build_child_spec(self, name):
+        if self.fields[name].is_primitive():
+            return self.fields[name]
+        elif self.fields[name].field_type in ('link', 'reverse_link'):
+            return self.schema.specs[self.fields[name].target_spec_name]
+        else:
+            return self.schema.specs[name]
+
+    def is_collection(self):
+        # specs map to resources and are not collections
+        return False
+
+    def is_field(self):
+        return False
 
 
 class Schema(object):
-    def __init__(self, db, version):
+    def __init__(self, db):
         self.db = db
-        self.version = version
-        self.specs = None
-        self.root_spec = None
-        self._all_calcs = []
-        self.root = None
-        self.updater = None
-        self._functions = dict()
-
-        self.reset()
-
-    def reset(self):
-        if self.updater:
-            self.updater.wait_for_updates()
         self.specs = {}
-        self.root_spec = ResourceSpec('root')
-        self.add_resource_spec(self.root_spec)
-        self._all_calcs = []
-        self.root = RootResource(self)
-        self.updater = Updater(self)
 
-    def dependency_tree(self):
-        deps = {}
-        for spec_name, spec in self.specs.items():
-            for field_name, spec in spec.fields.items():
-                if type(spec) == CalcSpec:
-                    spec_deps = set()
-                    for resource_ref in spec.all_resource_refs():
-                        ref_spec = spec.resolve_spec(resource_ref)
-                        if ref_spec.parent:
-                            spec_deps.add("%s.%s" % (ref_spec.parent.name, ref_spec.field_name))
-                        else:
-                            spec_deps.add(ref_spec.name)
-                    deps["%s.%s" % (spec_name, field_name)] = spec_deps
-        return deps
+    def load_schema(self):
+        schema_data = self.db.metaphor_schema.find_one()
+        for spec_name, spec_data in schema_data['specs'].items():
+            spec = Spec(spec_name, self)
+            for field_name, field_data in spec_data['fields'].items():
+                spec.fields[field_name] = self._create_field(field_name, field_data)
+            self.specs[spec_name] = spec
+        self._add_reverse_links()
 
-    def __repr__(self):
-        return "<Schema %s>" % (self.version)
+    def _create_field(self, field_name, field_data):
+        if field_data['type'] == 'calc':
+            return CalcField(field_name, calc_str=field_data['calc_str'])
+        else:
+            return Field(field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
 
-    def add_calc(self, calc_spec):
-        self._all_calcs.append(calc_spec)
+    def _add_reverse_links(self):
+        for spec in self.specs.values():
+            for field in spec.fields.values():
+                if field.field_type == 'link':
+                    reverse_field_name = "link_%s_%s" % (spec.name, field.name)
+                    self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name)
+                if field.field_type == 'collection':
+                    parent_field_name = "parent_%s_%s" % (spec.name, field.name)
+                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name)
+                if field.field_type == 'linkcollection':
+                    parent_field_name = "link_%s_%s" % (spec.name, field.name)
+                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "reverse_link_collection", spec.name)
 
-    def serialize(self):
-        return dict(
-            (name, spec.serialize()) for (name, spec) in self.specs.items())
+    def encodeid(self, mongo_id):
+        return "ID" + str(mongo_id)
 
-    def add_resource_spec(self, resource_spec):
-        self.specs[resource_spec.name] = resource_spec
-        resource_spec.schema = self
+    def decodeid(self, str_id):
+        return ObjectId(str_id[2:])
 
-    def add_root(self, name, spec):
-        self.specs['root'].add_field(name, spec)
+    def encode_resource(self, spec, resource_data):
+        encoded = {
+            'id': self.encodeid(resource_data['_id'])
+        }
+        for field_name, field in spec.fields.items():
+            field_value = resource_data.get(field_name)
+            if field_value:
+                if field.field_type == 'link':
+                    encoded[field_name] = self.encodeid(field_value)
+                else:
+                    encoded[field_name] = field_value
+        return encoded
 
-    def all_types(self):
-        return sorted(self.specs.keys())
+    def insert_resource(self, spec_name, data):
+        new_resource_id = self.db['resource_%s' % spec_name].insert(data)
+        return self.encodeid(new_resource_id)
 
-    def create_updaters(self, resource):
-        return self.updater.create_updaters(resource)
+    def update_resource_fields(self, spec_name, resource_id, field_data):
+        spec = self.specs[spec_name]
+        for field_name, field_value in field_data.items():
+            if spec.fields[field_name].field_type == 'link':
+                field_data[field_name] = self.decodeid(field_value)
+        self.db['resource_%s' % spec_name].update({"_id": self.decodeid(resource_id)}, {"$set": field_data})
 
-    def run_updaters(self, updater_ids):
-        self.updater.run_updaters(updater_ids)
-
-    def kickoff_create_update(self, new_resource):
-        updater_ids = self.create_updaters(new_resource)
-        self.run_updaters(updater_ids)
-
-    def kickoff_update(self, resource, found):
-        altered = self.updater.find_altered_resource_ids(found, resource)
-        updater_ids = []
-        for spec, field_name, ids in altered:
-            updater_ids.append(self.updater._save_updates(spec, field_name, ids))
-
-        self.run_updaters(updater_ids)
-
-    def kickoff_update_for_spec(self, spec, field_name):
-        resources = spec._collection().find({}, {'_id': 1})
-        resource_ids = [res['_id'] for res in resources]
-        updater_id = self.updater._save_updates(spec.name, field_name, resource_ids)
-        self.run_updaters([updater_id])
-
-    def save(self):
-        self.db['metaphor_schema'].insert(schema_data)
-
-    def register_function(self, func_name, func):
-        self._functions[func_name] = func
-
-    def execute_function(self, func_name, resource):
-        return self._functions[func_name](resource)
+    def validate_spec(self, spec_name, data):
+        spec = self.specs[spec_name]
+        errors = []
+        for field_name, field_data in data.items():
+            field = spec.fields[field_name]
+            field_type = type(field_data).__name__
+            if field_type in Field.PRIMITIVES:
+                if field.field_type != field_type:
+                    errors.append({'error': "Invalid type: %s for field '%s' of '%s'" % (field_type, field_name, spec_name)})
+        return errors

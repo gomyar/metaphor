@@ -1,138 +1,69 @@
 
 import tokenize
-from StringIO import StringIO
-
-from metaphor.resource import Field
-from metaphor.resource import LinkResource
-from metaphor.resource import ResourceLinkSpec
-from metaphor.resource import ReverseLinkSpec
-from metaphor.resource import CollectionSpec
-from metaphor.resource import LinkCollectionSpec
-from metaphor.resource import FieldSpec
-from metaphor.resource import CalcSpec
-
-
-
-def resolve(spec_hier):
-    path = resource_ref.split('.')
-    if path[0] == 'self':
-        path.pop(0)
-        spec = self.parent
-    else:
-        spec = self.schema.root_spec
-    found = [spec]
-    while path:
-        spec = spec.create_child_spec(path.pop(0))
-        found.append(spec)
-    return found
-
+from io import StringIO
 
 
 class Calc(object):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         self.tokens = tokens
+        self._parser = parser
 
     def __repr__(self):
         return "C[%s]" % (self.tokens,)
 
-    def calculate(self, resource):
+    def calculate(self, self_id):
         raise NotImplemented()
 
 
 class ResourceRef(object):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
+        self._parser = parser
         ''' takes resource_ref.name '''
-        if isinstance(tokens[0], basestring):
-            self.resource_ref = RootResourceRef(tokens[0])
+        if isinstance(tokens[0], str):
+            self.resource_ref = RootResourceRef(tokens[0], self._parser)
         else:
             self.resource_ref = tokens[0]
         self.field_name = tokens[2]
 
-    def root_collection(self, resource):
-        return self.resource_ref.root_collection(resource)
+    def root_collection(self):
+        return self._parser.spec.schema.db['resource_%s' % self._parser.spec.name]
 
-    def root_spec(self, resource):
-        return self.resource_ref.root_spec(resource)
+    def infer_type(self):
+        return self.resource_ref.infer_type().build_child_spec(self.field_name)
 
-    def result_type(self, starting_spec):
-        result_spec = self.resource_ref.result_type(starting_spec)
-        if type(starting_spec) == CalcSpec:
-            return starting_spec.target_spec
-        else:
-            return result_spec.create_child_spec(self.field_name)
+    def is_collection(self):
+        return self.aggregation('ID000000000000000000000000')[2]
 
-    def calculate(self, resource):
+    def calculate(self, self_id):
         # do this
         # aggregate subresource
-        aggregate_query, spec, is_aggregate = self.aggregation(resource)
+        aggregate_query, spec, is_aggregate = self.aggregation(self_id)
         # run mongo query from from root_resource collection
-        cursor = self.root_collection(resource).aggregate(aggregate_query)
-        # build child resource from data result with result_type() spec
-        if type(spec) == FieldSpec:
-            if is_aggregate:
-                child_resources = []
-                for data in cursor:
-                    value = data.get(self.field_name)
-                    child_resources.append(self.result_type(resource.spec).build_resource(None, self.field_name, value))
-                return child_resources
-            else:
-                try:
-                    value = cursor.next()[self.field_name]
-                    child_resource = self.result_type(resource.spec).build_resource(None, self.field_name, value)
-                    return child_resource
-                except StopIteration:
-                    return None
-        elif type(spec) == CalcSpec:
-            return resource.data[spec.field_name]  # unsure what's going on here, bad separation probably
-        elif type(spec) in (ResourceLinkSpec, ReverseLinkSpec):
-            if is_aggregate:
-                child_resources = []
-                for data in cursor:
-                    child_resources.append(spec.target_spec.build_resource(None, self.field_name, data))
-                return child_resources
-            else:
-                try:
-                    data = cursor.next()
-                    return spec.target_spec.build_resource(None, self.field_name, data)
-                except StopIteration:
-                    return None
-        elif type(spec) in (CollectionSpec, LinkCollectionSpec):
-            list_resources = []
-            for data in cursor:
-                # eshewing resource in favour of dictionaries because calculate is a top level method
-                list_resources.append(data['_id'])
-            return list_resources
-        else:
-            raise Exception("Cannot calculate spec %s" % (spec,))
+        cursor = self.root_collection().aggregate(aggregate_query)
 
-    def aggregation(self, resource):
+        results = [row for row in cursor]
+        if is_aggregate:
+            return [self._parser.spec.schema.encode_resource(spec, row) for row in results]
+        elif spec.is_field():
+            return results[0][self.field_name] if results else None
+        else:
+            return self._parser.spec.schema.encode_resource(results[0]) if results else None
+
+    def aggregation(self, self_id):
         aggregations = []
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(resource)
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)
         aggregations.extend(aggregation)
-        child_spec = spec.create_child_spec(self.field_name)
-        if isinstance(child_spec, ReverseLinkSpec):
-            # if link
-            if type(spec) == ResourceLinkSpec:
-                # reverse link to single link
-                aggregation.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % (child_spec.name,),
-                            "localField": "_id",
-                            "foreignField": spec.name,
-                            "as": "_field_%s" % (self.field_name,),
-                    }})
-                is_aggregate = True
-            else:
-                # when a reverse aggregate is followed by another reverse aggregate
-                # reverse link to collection (through _owners)
-                aggregation.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % (child_spec.name,),
-                            "localField": "_owners.owner_id",
-                            "foreignField": "_id",
-                            "as": "_field_%s" % (self.field_name,),
-                    }})
-                is_aggregate = True
+        child_spec = spec.build_child_spec(self.field_name)
+        child_type = spec.fields[self.field_name].field_type
+        if child_type == 'reverse_link':
+            aggregation.append(
+                {"$lookup": {
+                        "from": "resource_%s" % (child_spec.name,),
+                        "localField": "_id",
+                        "foreignField": spec.name,
+                        "as": "_field_%s" % (self.field_name,),
+                }})
+            is_aggregate = True
             aggregation.append(
                 {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
             )
@@ -142,7 +73,28 @@ class ResourceRef(object):
             aggregation.append(
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
-        elif isinstance(child_spec, ResourceLinkSpec):
+
+        elif child_type == 'reverse_link_collection':
+            # when a reverse aggregate is followed by another reverse aggregate
+            # reverse link to collection (through _owners)
+            aggregation.append(
+                {"$lookup": {
+                        "from": "resource_%s" % (child_spec.name,),
+                        "localField": "_owners.owner_id",
+                        "foreignField": "_id",
+                        "as": "_field_%s" % (self.field_name,),
+                }})
+            is_aggregate = True
+            aggregation.append(
+                {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+            )
+            aggregation.append(
+                {"$unwind": "$_id"}
+            )
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_id"}}
+            )
+        elif child_type == 'link':
             # if link
             aggregation.append(
                 {"$lookup": {
@@ -160,7 +112,7 @@ class ResourceRef(object):
             aggregation.append(
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
-        elif isinstance(child_spec, CollectionSpec):
+        elif child_type == 'collection':
             # if linkcollection / collection
             aggregation.append(
                 {"$lookup": {
@@ -179,14 +131,14 @@ class ResourceRef(object):
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
             is_aggregate = True
-        elif isinstance(child_spec, FieldSpec):
+        elif spec.fields[self.field_name].is_primitive():
             aggregation.append(
                 {"$project": {
-                    child_spec.field_name: True,
+                    self.field_name: True,
                 }})
-        elif isinstance(child_spec, CalcSpec):
+        elif child_type == 'calc':
             # check type:
-            if child_spec.calc_type in ['int', 'float', 'str']:
+            if spec.fields[self.field_name].is_primitive():
                 # int float str
                 pass
             else:
@@ -195,12 +147,12 @@ class ResourceRef(object):
                 aggregation.append(
                     {"$lookup": {
                             "from": "resource_%s" % (child_spec.calc_type,),
-                            "localField": child_spec.field_name,
+                            "localField": child_spec.name,
                             "foreignField": "_id",
-                            "as": "_field_%s" % (child_spec.field_name,),
+                            "as": "_field_%s" % (child_spec.name,),
                     }})
                 aggregation.append(
-                    {'$group': {'_id': '$_field_%s' % (child_spec.field_name,)}}
+                    {'$group': {'_id': '$_field_%s' % (child_spec.name,)}}
                 )
                 aggregation.append(
                     {"$unwind": "$_id"}
@@ -218,11 +170,6 @@ class ResourceRef(object):
     def all_resource_refs(self):
         return set([self.resource_ref_snippet()])
 
-    def return_type(self, spec):
-        return_spec, is_aggregate = self.resource_ref.return_type(spec)
-        field_type = return_spec.create_child_spec(self.field_name)
-        return field_type, is_aggregate or type(field_type) in [CollectionSpec, LinkCollectionSpec, ReverseLinkSpec]
-
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
 
@@ -232,52 +179,25 @@ class FieldRef(ResourceRef, Calc):
 
 
 class RootResourceRef(ResourceRef):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         ''' takes single name for root resource'''
         self.resource_name = tokens
+        self._parser = parser
 
-    def calculate(self, resource):
-        # resolve resource
-        if self.resource_name == 'self':
-            return resource
-        else:
-            return resource.spec.schema.root.build_child(self.resource_name)
+    def calculate(self, self_id):
+        raise NotImplemented("calculate not implements for RootResourceRef")
 
-    def result_type(self, starting_spec):
-        if self.resource_name == 'self':
-            return starting_spec
-        else:
-            return starting_spec.schema.root.build_child(self.resource_name).spec
+    def infer_type(self):
+        return self._parser.spec
 
-    def return_type(self, spec):
-        if self.resource_name == 'self':
-            if not spec.parent:
-                return spec, False
-            else:
-                return spec.parent, type(spec.parent) in [CollectionSpec, LinkCollectionSpec]
-        else:
-            return spec.schema.root.build_child(self.resource_name).spec, True
-
-    def root_collection(self, resource):
-        if self.resource_name == 'self':
-            return resource.spec._collection()
-        else:
-            return self.root_spec(resource)._collection()
-
-    def root_spec(self, resource):
-        return resource.spec.schema.root.build_child(self.resource_name).spec
-
-    def aggregation(self, resource):
+    def aggregation(self, self_id):
         if self.resource_name == 'self':
             aggregation = [
-                {"$match": {"_id": resource._id}}
+                {"$match": {"_id": self._parser.spec.schema.decodeid(self_id)}}
             ]
-            spec = resource.spec
-            return aggregation, spec, False
+            return aggregation, self._parser.spec, False
         else:
-            aggregation = []
-            spec = self.root_spec(resource)
-            return aggregation, spec, True
+            return [], self._parser.spec, True
 
     def __repr__(self):
         return "T[%s]" % (self.resource_name,)
@@ -290,21 +210,19 @@ class RootResourceRef(ResourceRef):
 
 
 class FilteredResourceRef(ResourceRef):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
+        self._parser = parser
         if type(tokens[0]) is str:
-            self.resource_ref = RootResourceRef(tokens[0])
+            self.resource_ref = RootResourceRef(tokens[0], self._parser)
         else:
             self.resource_ref = tokens[0]
         self.filter_ref = tokens[1]
 
-    def result_type(self, starting_spec):
-        return self.resource_ref.result_type(starting_spec)
+    def infer_type(self):
+        return self.resource_ref.infer_type()
 
-    def return_type(self, spec):
-        return self.resource_ref.return_type(spec)
-
-    def aggregation(self, resource):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(resource)
+    def aggregation(self, self_id):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)
         filter_agg = self.filter_ref.filter_aggregation(spec)
         aggregation.append(filter_agg)
         return aggregation, spec, True
@@ -321,9 +239,10 @@ class FilteredResourceRef(ResourceRef):
 
 
 class ConstRef(Calc):
-    ALLOWED_TYPES = (int, float, str, unicode)
+    ALLOWED_TYPES = (int, float, str)
 
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
+        self._parser = parser
         const = tokens[0]
         if const[0] == '"' and const[-1] == '"':
             self.value = const.strip('"')
@@ -335,7 +254,7 @@ class ConstRef(Calc):
             except ValueError as v:
                 self.value = float(const)
 
-    def calculate(self, resource):
+    def calculate(self, self_id):
         return self.value
 
     def __repr__(self):
@@ -346,41 +265,20 @@ class ConstRef(Calc):
 
 
 class Operator(Calc):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         self.lhs = tokens[0]
         self.op = tokens[1]
         self.rhs = tokens[2]
+        self._parser = parser
 
-    def basic_return_type(self, spec, target):
-        return_type, _ = target.return_type(spec)
-        if return_type.field_type == 'calc':
-            return return_type.calc_type
-        else:
-            return return_type.field_type
-
-    def return_type(self, spec):
-        lhs_return_type = self.basic_return_type(spec, self.lhs)
-        rhs_return_type = self.basic_return_type(spec, self.rhs)
-        if (lhs_return_type, rhs_return_type) == ('int', 'int'):
-            return FieldSpec('int'), False
-        elif sorted((lhs_return_type, rhs_return_type)) == ('float', 'int'):
-            return FieldSpec('float'), False
-        elif (lhs_return_type, rhs_return_type) == ('str', 'str'):
-            return FieldSpec('str'), False
-        elif sorted((lhs_return_type, rhs_return_type)) == ('str', 'unicode'):
-            return FieldSpec('str'), False
-        else:
-            raise Exception("Cannot determine return type for %s %s %s" % (
-                lhs_return_type, self.op, rhs_return_type))
-
-    def calculate(self, resource):
-        lhs = self.lhs.calculate(resource)
-        rhs = self.rhs.calculate(resource)
+    def calculate(self, self_id):
+        lhs = self.lhs.calculate(self_id)
+        rhs = self.rhs.calculate(self_id)
         try:
-            if type(lhs) not in ConstRef.ALLOWED_TYPES:
-                lhs = lhs.data
-            if type(rhs) not in ConstRef.ALLOWED_TYPES:
-                rhs = rhs.data
+#            if type(lhs) not in ConstRef.ALLOWED_TYPES:
+#                lhs = lhs.data
+#            if type(rhs) not in ConstRef.ALLOWED_TYPES:
+#                rhs = rhs.data
             op = self.op
             if op == '+':
                 return (lhs or 0) + (rhs or 0)
@@ -409,11 +307,12 @@ class Condition(object):
         '<': '$lt',
     }
 
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         self.field_name, self.operator, self.const = tokens
+        self._parser = parser
 
     def condition_aggregation(self, spec):
-        field_spec = spec.create_child_spec(self.field_name)
+        field_spec = spec.build_child_spec(self.field_name)
         if not field_spec.check_comparable_type(self.const.value):
             raise Exception("Incorrect type for condition: %s %s %s" %(
                 self.field_name, self.operator, self.const.value))
@@ -427,8 +326,9 @@ class Condition(object):
 
 
 class Filter(object):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         self.condition = tokens[1]
+        self._parser = parser
 
     def __repr__(self):
         return "[%s]" % (self.condition,)
@@ -439,7 +339,8 @@ class Filter(object):
         return aggregation
 
 class ParameterList(object):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
+        self._parser = parser
         if type(tokens[0]) is ParameterList:
             self.params = tokens[0].params
             self.params.append(tokens[2])
@@ -457,11 +358,12 @@ class ParameterList(object):
 
 
 class Brackets(Calc):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         self.calc = tokens[1]
+        self._parser = parser
 
-    def calculate(self, resource):
-        return self.calc.calculate(resource)
+    def calculate(self, self_id):
+        return self.calc.calculate(self_id)
 
     def all_resource_refs(self):
         return self.calc.all_resource_refs()
@@ -471,17 +373,18 @@ class Brackets(Calc):
 
 
 class FunctionCall(Calc):
-    def __init__(self, tokens):
+    def __init__(self, tokens, parser):
         self.func_name = tokens[0]
+        self._parser = parser
 
         if isinstance(tokens[1], Brackets):
             self.params = [tokens[1].calc]
-        elif len(tokens) == 1 and isinstance(tokens[0], basestring):
+        elif len(tokens) == 1 and isinstance(tokens[0], str):
             # case when simple NAME
-            self.params = [RootResourceRef(tokens[0])]
-        elif len(tokens) == 4 and isinstance(tokens[2], basestring):
+            self.params = [RootResourceRef(tokens[0], self._parser)]
+        elif len(tokens) == 4 and isinstance(tokens[2], str):
             # case when simple NAME
-            self.params = [RootResourceRef(tokens[2])]
+            self.params = [RootResourceRef(tokens[2], self._parser)]
         else:
             self.params = [p for p in tokens[2].params]
 
@@ -493,14 +396,8 @@ class FunctionCall(Calc):
             'sum': self._sum,
         }
 
-    def return_type(self, spec):
-        if self.func_name == 'round':
-            return FieldSpec('int'), False
-        else:
-            return FieldSpec('float'), False
-
-    def calculate(self, resource):
-        return self.functions[self.func_name](resource, *self.params)
+    def calculate(self, self_id):
+        return self.functions[self.func_name](self_id, *self.params)
 
     def all_resource_refs(self):
         refs = set()
@@ -508,55 +405,59 @@ class FunctionCall(Calc):
             refs = refs.union(param.all_resource_refs())
         return refs
 
-    def _round(self, resource, value, digits=None):
-        value = value.calculate(resource)
+    def _round(self, self_id, aggregate_field, digits=None):
+        value = aggregate_field.calculate(self_id)
 
-        if isinstance(value, Field):
-            value = value.data
-        elif isinstance(value, ConstRef):
-            value = value.value
+#        if isinstance(value, Field):
+#            value = value.data
+#        elif isinstance(value, ConstRef):
+#            value = value.value
 
         if digits:
-            return round(value, digits.calculate(resource))
+            return round(value, digits.calculate(self_id))
         else:
             return round(value)
 
-    def _max(self, resource, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
-        aggregate_query.append({'$group': {'_id': None, '_max': {'$max': '$' + spec.field_name}}})
+    def _max(self, self_id, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
+        aggregate_query.append({'$group': {'_id': None, '_max': {'$max': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            spec = self._parser.spec
+            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
             return cursor.next()['_max']
         except StopIteration:
             return None
 
-    def _min(self, resource, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
-        aggregate_query.append({'$group': {'_id': None, '_min': {'$min': '$' + spec.field_name}}})
+    def _min(self, self_id, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
+        aggregate_query.append({'$group': {'_id': None, '_min': {'$min': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            spec = self._parser.spec
+            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
             return cursor.next()['_min']
         except StopIteration:
             return None
 
-    def _average(self, resource, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
-        aggregate_query.append({'$group': {'_id': None, '_average': {'$avg': '$' + spec.field_name}}})
+    def _average(self, self_id, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
+        aggregate_query.append({'$group': {'_id': None, '_average': {'$avg': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            spec = self._parser.spec
+            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
             return cursor.next()['_average']
         except StopIteration:
             return None
 
-    def _sum(self, resource, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(resource)
-        aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + spec.field_name}}})
+    def _sum(self, self_id, aggregate_field):
+        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
+        aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            cursor = aggregate_field.root_collection(resource).aggregate(aggregate_query)
+            spec = self._parser.spec
+            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
             return cursor.next()['_sum']
         except StopIteration:
             return None
@@ -622,20 +523,20 @@ class Parser(object):
             [(NUMBER,), ConstRef],
             [(ResourceRef, Filter), FilteredResourceRef],
             [(NAME, Filter), FilteredResourceRef],
-            [(ResourceRef, '.', NAME) , self._create_resource_ref],
-            [(NAME, '.', NAME) , self._create_resource_ref],
+            [(ResourceRef, '.', NAME), self._create_resource_ref],
+            [(NAME, '.', NAME), self._create_resource_ref],
         ]
 
-    def _create_resource_ref(self, tokens):
-        resource_ref = ResourceRef(tokens)
-        if type(resource_ref.result_type(self.spec)) in (FieldSpec, CalcSpec):
-            return FieldRef(tokens)
+    def _create_resource_ref(self, tokens, parser):
+        resource_ref = ResourceRef(tokens, parser)
+        if resource_ref.infer_type().is_field():
+            return FieldRef(tokens, parser)
         else:
             return resource_ref
 
     def match_pattern(self, pattern, last_tokens):
         def m(pat, tok):
-            return pat == tok[0] or (not isinstance(tok[0], basestring) and not isinstance(pat, basestring) and issubclass(tok[0], pat))
+            return pat == tok[0] or (not isinstance(tok[0], str) and not isinstance(pat, str) and issubclass(tok[0], pat))
         return len(pattern) == len(last_tokens) and all(m(pat, tok) for pat, tok in zip(pattern, last_tokens))
 
     def match_and_reduce(self):
@@ -667,10 +568,10 @@ class Parser(object):
 
     def _reduce(self, reduced_class, tokens):
         self.shifted = self.shifted[:-len(tokens)]
-        reduction = reduced_class([a[1] for a in tokens])
+        reduction = reduced_class([a[1] for a in tokens], self)
         self.shifted.append((type(reduction), reduction))
 
 
 def parse(line, spec):
-    tokens = tokenize.generate_tokens(StringIO(line).next)
+    tokens = tokenize.generate_tokens(StringIO(line).read)
     return Parser(lex(tokens), spec).parse()

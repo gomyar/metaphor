@@ -5,13 +5,8 @@ from .lrparse import parse
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.resource import Resource, Field
-from metaphor.resource import ResourceSpec, FieldSpec, CollectionSpec
-from metaphor.resource import ResourceLinkSpec, CalcSpec
-from metaphor.resource import LinkCollectionSpec
 from metaphor.schema import Schema
-from metaphor.api import MongoApi
-from metaphor.schema_factory import SchemaFactory
+from metaphor.schema import Field
 
 from .lrparse import FieldRef, ResourceRef
 
@@ -20,177 +15,161 @@ class LRParseTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
         client = MongoClient()
-        client.drop_database('metaphor_test_db')
-        self.db = client.metaphor_test_db
-        self.schema = Schema(self.db, '0.1')
+        client.drop_database('metaphor2_test_db')
+        self.db = client.metaphor2_test_db
+        self.schema = Schema(self.db)
 
-        self.employee_spec = ResourceSpec('employee')
-        self.division_spec = ResourceSpec('division')
-
-        self.schema.add_resource_spec(self.employee_spec)
-        self.schema.add_resource_spec(self.division_spec)
-
-        self.employee_spec.add_field("name", FieldSpec("str"))
-        self.employee_spec.add_field("division", ResourceLinkSpec("division"))
-        self.employee_spec.add_field("age", FieldSpec("int"))
-        self.division_spec.add_field("type", FieldSpec("str"))
-        self.division_spec.add_field("yearly_sales", FieldSpec("int"))
-
-        self.schema.add_root('employees', CollectionSpec('employee'))
-        self.schema.add_root('divisions', CollectionSpec('division'))
-
-        self.api = MongoApi('http://server', self.schema, self.db)
+        self.db.metaphor_schema.insert_one({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "age": {
+                            "type": "int"
+                        },
+                        "division": {
+                            "type": "link",
+                            "target_spec_name": "division",
+                        },
+                    },
+                },
+                "division": {
+                    "fields": {
+                        "name": {
+                            "type": "str",
+                        },
+                        "yearly_sales": {
+                            "type": "int",
+                        },
+                    },
+                },
+            }
+        })
+        self.schema.load_schema()
 
     def test_basic(self):
-        employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
-        division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
-        self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
-        resource = self.api.build_resource('employees/%s' % employee_id)
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
 
-        tree = parse("self.division.yearly_sales", resource.spec)
-        self.assertEquals(FieldRef, type(tree))
+        self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
-        self.assertEquals(self.division_spec.fields['yearly_sales'],
-                          tree.result_type(resource.spec))
-        self.assertEquals(10, tree.calculate(resource).data)
+        tree = parse("self.division.yearly_sales", self.schema.specs['employee'])
+
+        self.assertEquals(self.schema.specs['division'].fields['yearly_sales'], tree.infer_type())
+        self.assertFalse(tree.is_collection())
+
+        self.assertEquals(10, tree.calculate(employee_id))
 
     def test_even_basicer(self):
-        employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
-        resource = self.api.build_resource('employees/%s' % employee_id)
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
 
-        tree = parse("self.age", resource.spec)
-        self.assertEquals(FieldRef, type(tree))
+        tree = parse("self.age", self.schema.specs['employee'])
+        self.assertEquals(self.schema.specs['employee'].fields['age'], tree.infer_type())
+        self.assertFalse(tree.is_collection())
 
-        self.assertEquals(self.employee_spec.fields['age'],
-                          tree.result_type(resource.spec))
-        self.assertEquals(41,
-                          tree.calculate(resource).data)
+        self.assertEquals(41, tree.calculate(employee_id))
 
     def test_basic_link_follow(self):
-        employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
-        division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
-        self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
-        resource = self.api.build_resource('employees/%s' % employee_id)
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
 
-        tree = parse("self.division", resource.spec)
-        self.assertEquals(ResourceRef, type(tree))
+        self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
-        result_type = tree.result_type(resource.spec)
+        tree = parse("self.division", self.schema.specs['employee'])
+        self.assertEquals(self.schema.specs['division'], tree.infer_type())
+        self.assertFalse(tree.is_collection())
 
-        self.assertEquals(ResourceLinkSpec,
-                          type(result_type))
-        self.assertEquals('division', result_type.name)
-
-        calculated = tree.calculate(resource)
-        self.assertEquals(Resource, type(calculated))
-        self.assertEquals('division', calculated.spec.name)
+        calculated = tree.calculate(employee_id)
+        self.assertEquals({
+            'id': division_id,
+            'name': 'sales',
+            'yearly_sales': 10,
+        }, calculated)
 
     def test_aggregate_filtered(self):
-        tree = parse("employees.division[type='sales'].yearly_sales", self.employee_spec)
+        tree = parse("sum(employees.division[name='sales'].yearly_sales)", self.schema.specs['employee'])
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.api.post('employees', {'name': 'fred', 'age': 21})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
 
-        division_id_1 = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.api.post('divisions', {'type': 'marketting', 'yearly_sales': 20})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
 
-        self.api.post('employees/%s/division' % (employee_id_1,), {'id': division_id_1})
-        self.api.post('employees/%s/division' % (employee_id_2,), {'id': division_id_1})
-        self.api.post('employees/%s/division' % (employee_id_3,), {'id': division_id_2})
+        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
 
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
-
-        results = tree.calculate(resource)
-        self.assertEquals(1, len(results))
-        self.assertTrue(type(results[0]) is Field)
-        self.assertEquals(100, results[0].data)
-
-        self.assertEquals(self.division_spec.fields['yearly_sales'],
-                          tree.result_type(resource.spec))
+        result = tree.calculate(employee_id_1)
+        self.assertEquals(100, result)
 
     def test_list(self):
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.api.post('employees', {'name': 'fred', 'age': 21})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
 
-        division_id_1 = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.api.post('divisions', {'type': 'marketting', 'yearly_sales': 20})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
 
-        self.api.post('employees/%s/division' % (employee_id_1,), {'id': division_id_1})
-        self.api.post('employees/%s/division' % (employee_id_2,), {'id': division_id_1})
-        self.api.post('employees/%s/division' % (employee_id_3,), {'id': division_id_2})
+        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
 
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        tree = parse("employees.division", self.schema.specs['employee'])
 
-        tree = parse("employees.division", resource.spec)
+        # size and offset to be added
+        result = tree.calculate(employee_id_1)
 
-        result = tree.calculate(resource)
+        # just making up for a lack of ordering
+        division_1 = next(d for d in result if d['id'] == division_id_1)
+        division_2 = next(d for d in result if d['id'] == division_id_2)
 
-        self.assertEquals(2, len(result))
-        self.assertTrue(division_id_1 in [resource._id for resource in result])
-        self.assertTrue(division_id_2 in [resource._id for resource in result])
+        self.assertEquals('sales', division_1['name'])
+        self.assertEquals('marketting', division_2['name'])
 
-    def test_link_list(self):
-        pass
+        self.assertEquals(division_id_1, division_1['id'])
+        self.assertEquals(division_id_2, division_2['id'])
 
     def test_reverse_list(self):
-        pass  # division.employee_employees
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.api.post('employees', {'name': 'fred', 'age': 21})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
 
-        division_id_1 = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.api.post('divisions', {'type': 'marketting', 'yearly_sales': 20})
+        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
 
-        self.api.post('employees/%s/division' % (employee_id_1,), {'id': division_id_1})
-        self.api.post('employees/%s/division' % (employee_id_2,), {'id': division_id_1})
-        self.api.post('employees/%s/division' % (employee_id_3,), {'id': division_id_2})
+        tree = parse("self.division.link_employee_division", self.schema.specs['employee'])
+        result = tree.calculate(employee_id_1)
 
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
-        tree = parse("self.division.link_employee_division", resource.spec)
-        result = tree.calculate(resource)
+        employee_1 = next(e for e in result if e['id'] == employee_id_1)
+        employee_2 = next(e for e in result if e['id'] == employee_id_2)
 
-        self.assertEquals(2, len(result))
-        self.assertEquals('ned', result[0].data['name'])
-        self.assertEquals('bob', result[1].data['name'])
+        self.assertEquals("ned", employee_1['name'])
+        self.assertEquals("bob", employee_2['name'])
 
-    def _test_calced_resource_ref(self):
-        tree = parse("self.sailors")
-        resource = {'sailors': {"pay": 13.0}}
-        self.assertEquals({'pay': 13.0}, tree.calculate(resource))
-
-    def _test_calculation(self):
-        tree = parse("self.sailors.pay + (10.0 * (6 / 3) - 7)")
-        resource = {'sailors': {"pay": 13.0}}
-        self.assertEquals(26, tree.calculate(resource))
-
-    def _test_filter(self):
-        tree = parse("self.sailors[pay=13]")
-        resource = {'sailors': [{"pay": 13.0}]}
-        filtered = tree.calculate(resource)
-        self.assertEquals([{"pay": 13.0}], filtered)
-        self.assertEquals([{}], filtered._filter)
-
-    def _test_filter_multi(self):
-        tree = parse("self.sailors[pay=13&age=40]")
-        resource = {'sailors': [{"pay": 13.0, "age": 40}]}
-        filtered = tree.calculate(resource)
-        self.assertEquals([{"pay": 13.0, "age": 40}], filtered)
-        self.assertEquals([{}], filtered._filter)
+        self.assertEquals(employee_id_1, employee_1['id'])
+        self.assertEquals(employee_id_2, employee_2['id'])
 
     def test_spec_hier_error(self):
-        employee_id = self.api.post('employees', {'name': 'sailor'})
-        division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
-        self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
-        resource = self.api.build_resource('employees/%s' % employee_id)
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor'})
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
 
-        tree = parse("self.name", resource.spec)
-        aggregation, spec, is_aggregate = tree.aggregation(resource)
+        self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
+
+        tree = parse("self.name", self.schema.specs['employee'])
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
         # unsure how this guy fits in exactly
 
-        self.assertEquals([{'$match': {'_id': employee_id}}, {'$project': {'name': True}}], aggregation)
+        self.assertEquals([
+            {'$match': {'_id': self.schema.decodeid(employee_id)}},
+            {'$project': {'name': True}}
+        ], aggregation)
 
     def _test_condition_nofield(self):
         try:
@@ -207,14 +186,12 @@ class LRParseTest(unittest.TestCase):
             self.assertEquals("", str(e))
 
     def test_aggregation(self):
-        employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
-        division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
-        self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
-        resource = self.api.build_resource('employees/%s' % employee_id)
-        tree = parse("employees[age>40].division[type='sales'].yearly_sales", resource.spec)
-        agg_collection = tree.root_collection(resource)
-        self.assertEquals(self.db.resource_employee.name, agg_collection.name)
-        aggregation, spec, is_aggregate = tree.aggregation(resource)
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+        self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
+        tree = parse("employees[age>40].division[name='sales'].yearly_sales", self.schema.specs['employee'])
+
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
         self.assertEquals([
             {'$match': {'age': {'$gt': 40}}},
             {'$lookup': {'as': '_field_division',
@@ -224,23 +201,23 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_field_division'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
-            {'$match': {'type': {'$eq': 'sales'}}},
+            {'$match': {'name': {'$eq': 'sales'}}},
             {'$project': {'yearly_sales': True}}], aggregation)
-        self.assertEquals(self.api.schema.specs['division'].fields['yearly_sales'],
+        self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
                           spec)
         self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
 
     def test_aggregation_self(self):
-        employee_id = self.api.post('employees', {'name': 'sailor', 'age': 41})
-        division_id = self.api.post('divisions', {'type': 'sales', 'yearly_sales': 10})
-        self.api.post('employees/%s/division' % (employee_id,), {'id': division_id})
-        resource = self.api.build_resource('employees/%s' % employee_id)
-        tree = parse("self.division[type='sales'].yearly_sales", resource.spec)
-        agg_collection = tree.root_collection(resource)
-        self.assertEquals(self.db.resource_employee.name, agg_collection.name)
-        aggregation, spec, is_aggregate = tree.aggregation(resource)
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+
+        self.schema.insert_resource('employees/%s/division' % (employee_id,), {'id': division_id})
+
+        tree = parse("self.division[name='sales'].yearly_sales", self.schema.specs['employee'])
+
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
         self.assertEquals([
-            {'$match': {'_id': employee_id}},
+            {'$match': {'_id': self.schema.decodeid(employee_id)}},
             {'$lookup': {'as': '_field_division',
                         'foreignField': '_id',
                         'from': 'resource_division',
@@ -248,9 +225,9 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_field_division'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
-            {'$match': {'type': {'$eq': 'sales'}}},
+            {'$match': {'name': {'$eq': 'sales'}}},
             {'$project': {'yearly_sales': True}}], aggregation)
-        self.assertEquals(self.api.schema.specs['division'].fields['yearly_sales'],
+        self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
                           spec)
         self.assertEquals(set(['self.division.yearly_sales']), tree.all_resource_refs())
 
@@ -261,124 +238,122 @@ class LRParseTest(unittest.TestCase):
         pass
 
     def test_calc_plus(self):
-        self.employee_spec.add_field("salary", FieldSpec("int"))
-        self.employee_spec.add_field("tax", FieldSpec("int"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "int")
+        employee_spec.fields["tax"] = Field("tax", "int")
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10, 'tax': 2})
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10, 'tax': 2})
 
-        tree = parse("self.salary + self.tax", resource.spec)
-        self.assertEquals(12, tree.calculate(resource))
+        tree = parse("self.salary + self.tax", employee_spec)
+        self.assertEquals(12, tree.calculate(employee_id_1))
 
-        tree = parse("self.salary - self.tax", resource.spec)
-        self.assertEquals(8, tree.calculate(resource))
+        tree = parse("self.salary - self.tax", employee_spec)
+        self.assertEquals(8, tree.calculate(employee_id_1))
 
-        tree = parse("self.salary * self.tax", resource.spec)
-        self.assertEquals(20, tree.calculate(resource))
+        tree = parse("self.salary * self.tax", employee_spec)
+        self.assertEquals(20, tree.calculate(employee_id_1))
 
-        tree = parse("self.salary / self.tax", resource.spec)
-        self.assertEquals(5, tree.calculate(resource))
+        tree = parse("self.salary / self.tax", employee_spec)
+        self.assertEquals(5, tree.calculate(employee_id_1))
 
     def test_calc_nones(self):
-        self.employee_spec.add_field("salary", FieldSpec("int"))
-        self.employee_spec.add_field("tax", FieldSpec("int"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "int")
+        employee_spec.fields["tax"] = Field("tax", "int")
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10, 'tax': None})
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10, 'tax': None})
 
-        tree = parse("self.salary + self.tax", resource.spec)
-        self.assertEquals(10, tree.calculate(resource))
+        tree = parse("self.salary + self.tax", employee_spec)
+        self.assertEquals(10, tree.calculate(employee_id_1))
 
-        tree = parse("self.salary - self.tax", resource.spec)
-        self.assertEquals(10, tree.calculate(resource))
+        tree = parse("self.salary - self.tax", employee_spec)
+        self.assertEquals(10, tree.calculate(employee_id_1))
 
-        tree = parse("self.salary * self.tax", resource.spec)
-        self.assertEquals(None, tree.calculate(resource))
+        tree = parse("self.salary * self.tax", employee_spec)
+        self.assertEquals(None, tree.calculate(employee_id_1))
 
         # Going with None instead of NaN for now
-        tree = parse("self.salary / self.tax", resource.spec)
-        self.assertEquals(None, tree.calculate(resource))
+        tree = parse("self.salary / self.tax", employee_spec)
+        self.assertEquals(None, tree.calculate(employee_id_1))
 
     def test_function_call_param_list(self):
-        self.employee_spec.add_field("salary", FieldSpec("float"))
-        self.employee_spec.add_field("tax", FieldSpec("float"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
 
-        tree = parse("round(self.salary + self.tax, 2)", resource.spec)
-        self.assertEquals(13, tree.calculate(resource))
+        tree = parse("round(self.salary + self.tax, 2)", employee_spec)
+        self.assertEquals(13, tree.calculate(employee_id_1))
 
     def test_function_basic(self):
-        employee_id_1 = self.api.post('employees', {'name': 'ned'})
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned'})
 
-        tree = parse("round(14.14)", self.employee_spec)
-        self.assertEquals(14, tree.calculate(resource))
+        employee_spec = self.schema.specs['employee']
+        tree = parse("round(14.14)", employee_spec)
+        self.assertEquals(14, tree.calculate(employee_id_1))
 
     def test_function_call_param_list_multiple_calcs(self):
-        self.employee_spec.add_field("salary", FieldSpec("float"))
-        self.employee_spec.add_field("tax", FieldSpec("float"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
 
-        tree = parse("round(self.salary) + round(self.tax)", resource.spec)
-        self.assertEquals(13, tree.calculate(resource))
+        tree = parse("round(self.salary) + round(self.tax)", employee_spec)
+        self.assertEquals(13, tree.calculate(employee_id_1))
 
     def test_function_within_a_function(self):
-        self.employee_spec.add_field("salary", FieldSpec("float"))
-        self.employee_spec.add_field("tax", FieldSpec("float"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
 
-        employee_id_1 = self.api.post('employees', {'name': 'ned', 'salary': 10.12345})
-        resource = self.api.build_resource('employees/%s' % employee_id_1)
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.12345})
 
-        tree = parse("round(round(self.salary, 4), 3)", resource.spec)
-        self.assertEquals(10.123, tree.calculate(resource))
+        tree = parse("round(round(self.salary, 4), 3)", employee_spec)
+        self.assertEquals(10.123, tree.calculate(employee_id_1))
 
     def test_math_functions(self):
-        self.employee_spec.add_field("salary", FieldSpec("float"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
 
-        self.api.post('employees', {'name': 'ned', 'salary': 20})
-        self.api.post('employees', {'name': 'bob', 'salary': 10})
-        self.api.post('employees', {'name': 'bil', 'salary': 30})
-
-        employees = self.api.build_resource('employees')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 20})
+        self.schema.insert_resource('employee', {'name': 'bob', 'salary': 10})
+        self.schema.insert_resource('employee', {'name': 'bil', 'salary': 30})
 
         # max
-        tree = parse("max(employees.salary)", employees.spec)
-        self.assertEquals(30, tree.calculate(employees))
+        tree = parse("max(employees.salary)", employee_spec)
+        self.assertEquals(30, tree.calculate(employee_id_1))
 
         # min
-        tree = parse("min(employees.salary)", employees.spec)
-        self.assertEquals(10, tree.calculate(employees))
+        tree = parse("min(employees.salary)", employee_spec)
+        self.assertEquals(10, tree.calculate(employee_id_1))
 
         # avg
-        tree = parse("average(employees.salary)", employees.spec)
-        self.assertEquals(20, tree.calculate(employees))
+        tree = parse("average(employees.salary)", employee_spec)
+        self.assertEquals(20, tree.calculate(employee_id_1))
 
         # sum
-        tree = parse("sum(employees.salary)", employees.spec)
-        self.assertEquals(60, tree.calculate(employees))
+        tree = parse("sum(employees.salary)", employee_spec)
+        self.assertEquals(60, tree.calculate(employee_id_1))
 
     def test_extra_math(self):
-        self.employee_spec.add_field("salary", FieldSpec("float"))
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
 
-        self.api.post('employees', {'name': 'ned', 'salary': 20.1234})
-        self.api.post('employees', {'name': 'ned', 'salary': 10.5678})
-        self.api.post('employees', {'name': 'bil', 'salary': 30.7777})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 20.1234})
+        self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.5678})
+        self.schema.insert_resource('employee', {'name': 'bil', 'salary': 30.7777})
 
-        employees = self.api.build_resource('employees')
-
-        tree = parse("round(sum(employees.salary), 2) + round(max(employees.salary))", employees.spec)
-        self.assertEquals(92.47, tree.calculate(employees))
+        tree = parse("round(sum(employees.salary), 2) + round(max(employees.salary))", employee_spec)
+        self.assertEquals(92.47, tree.calculate(employee_id_1))
 
 
-        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees.salary))", employees.spec)
-        self.assertEquals(61.69, tree.calculate(employees))
+        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees.salary))", employee_spec)
+        self.assertEquals(61.69, tree.calculate(employee_id_1))
 
-        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees[name='ned'].salary))", employees.spec)
-        self.assertEquals(50.69, tree.calculate(employees))
+        tree = parse("round(sum(employees[name='ned'].salary), 2) + round(max(employees[name='ned'].salary))", employee_spec)
+        self.assertEquals(50.69, tree.calculate(employee_id_1))
 
         self.assertEquals(set(['employees.salary']), tree.all_resource_refs())
 
@@ -389,24 +364,46 @@ class LRParseTest(unittest.TestCase):
         # min max range
 
     def test_return_type(self):
-        tree = parse("employees[age>40].division[type='sales'].yearly_sales", self.employee_spec)
-        self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
-        self.assertEquals((self.division_spec.fields['yearly_sales'], True), tree.return_type(self.employee_spec))
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
 
-        tree = parse("employees[age>40].division[type='sales']", self.employee_spec)
+        tree = parse("employees[age>40].division[name='sales'].yearly_sales", employee_spec)
+        self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
+        self.assertEquals(division_spec.fields['yearly_sales'], tree.infer_type())
+        self.assertTrue(tree.is_collection())
+
+        tree = parse("employees[age>40].division[name='sales']", employee_spec)
         self.assertEquals(set(['employees.division']), tree.all_resource_refs())
         # it's a link spec
-        self.assertEquals((self.employee_spec.fields['division'], True), tree.return_type(self.employee_spec))
+        self.assertEquals(division_spec, tree.infer_type())
+        self.assertTrue(tree.is_collection())
 
-        tree = parse("self.division", self.employee_spec)
+        tree = parse("self.division", employee_spec)
         self.assertEquals(set(['self.division']), tree.all_resource_refs())
-        self.assertEquals((self.employee_spec.fields['division'], False), tree.return_type(self.employee_spec))
+        self.assertEquals(division_spec, tree.infer_type())
+        self.assertFalse(tree.is_collection())
+
+    def test_root_collection_aggregates(self):
+        tree = parse("employees.division", self.schema.specs['division'])
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
+
+        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
+
+        result = tree.calculate(division_id_1)
+        self.assertEquals(3, len(result))
 
     def test_document_ref(self):
-        employee_id = self.api.post('employees', {'name': 'ned'})
-        tree = parse("employees.ID%s" % (employee_id,), self.employee_spec)
+        employee_spec = self.schema.specs['employee']
+        employee_id = self.schema.insert_resource('employee', {'name': 'ned'})
+        tree = parse("employees.%s" % (employee_id,), employee_spec)
 
-        employees = self.api.build_resource('employees')
-
-        tree = parse("max(employees.salary)", employees.spec)
+        tree = parse("max(employees.salary)", employee_id)
         self.assertEquals({'id': employee_id}, tree.calculate(employees))
