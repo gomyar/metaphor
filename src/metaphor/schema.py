@@ -64,7 +64,7 @@ class Spec(object):
     def build_child_spec(self, name):
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link'):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection'):
             return self.schema.specs[self.fields[name].target_spec_name]
         else:
             return self.schema.specs[name]
@@ -81,6 +81,7 @@ class Schema(object):
     def __init__(self, db):
         self.db = db
         self.specs = {}
+        self.root = Spec('root', self)
 
     def load_schema(self):
         schema_data = self.db.metaphor_schema.find_one()
@@ -90,6 +91,8 @@ class Schema(object):
                 spec.fields[field_name] = self._create_field(field_name, field_data)
             self.specs[spec_name] = spec
         self._add_reverse_links()
+        for root_name, root_data in schema_data.get('root', {}).items():
+            self.root.fields[root_name] = self._create_field(root_name, root_data)
 
     def _create_field(self, field_name, field_data):
         if field_data['type'] == 'calc':
@@ -117,19 +120,41 @@ class Schema(object):
         return ObjectId(str_id[2:])
 
     def encode_resource(self, spec, resource_data):
+        self_url = "%s/%s" % (resource_data['_parent_canonical_url'], self.encodeid(resource_data['_id']))
         encoded = {
-            'id': self.encodeid(resource_data['_id'])
+            'id': self.encodeid(resource_data['_id']),
+            'self': self_url,
         }
         for field_name, field in spec.fields.items():
             field_value = resource_data.get(field_name)
-            if field_value:
-                if field.field_type == 'link':
-                    encoded[field_name] = self.encodeid(field_value)
+            if field.field_type == 'link':
+                if field_value:
+                    encoded[field_name] = self.load_canonical_url_for(field.target_spec_name, field_name, self.encodeid(field_value))
                 else:
-                    encoded[field_name] = field_value
+                    encoded[field_name] = None
+            elif field.field_type == 'parent_collection':
+                if field_value:
+                    encoded[field_name] = self.load_canonical_url_for(field.target_spec_name, field_name, self.encodeid(field_value))
+                else:
+                    encoded[field_name] = None
+            elif field.field_type == 'reverse_link':
+                encoded[field_name] = "%s/%s" % (self_url, field_name)
+            else:
+                encoded[field_name] = field_value
         return encoded
 
-    def insert_resource(self, spec_name, data):
+    def load_canonical_url_for(self, parent_type, parent_field_name, parent_id):
+        if parent_id:
+            parent_data = self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
+            return "%s/%s" % (parent_data['_parent_canonical_url'], parent_id)
+        else:
+            return "/%s" % parent_field_name
+
+    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None):
+        data['_parent_type'] = parent_type or 'root'
+        data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
+        data['_parent_field_name'] = parent_field_name
+        data['_parent_canonical_url'] = self.load_canonical_url_for(parent_type, parent_field_name, parent_id)
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 

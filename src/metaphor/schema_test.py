@@ -52,7 +52,6 @@ class SchemaTest(unittest.TestCase):
                         },
                     },
                 },
-
             }
         })
         self.schema.load_schema()
@@ -83,7 +82,7 @@ class SchemaTest(unittest.TestCase):
                     },
                 },
 
-            }
+            },
         })
         self.schema.load_schema()
         self.assertEquals(2, len(self.schema.specs))
@@ -139,12 +138,16 @@ class SchemaTest(unittest.TestCase):
         self.schema.load_schema()
         employee_id = self.schema.insert_resource('employee', {
             'name': 'Bob'
-        })
+        }, 'employees')
         new_resource = self.db.resource_employee.find_one()
         self.assertEquals(ObjectId(employee_id[2:]), self.schema.decodeid(employee_id))
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id),
             'name': 'Bob',
+            '_parent_canonical_url': '/employees',
+            '_parent_field_name': 'employees',
+            '_parent_id': None,
+            '_parent_type': 'root',
         }, new_resource)
         self.assertEquals('ID%s' % (new_resource['_id'],), employee_id)
 
@@ -163,7 +166,7 @@ class SchemaTest(unittest.TestCase):
         self.schema.load_schema()
         employee_id = self.schema.insert_resource('employee', {
             'name': 'Bob'
-        })
+        }, 'employees')
         self.schema.update_resource_fields('employee', employee_id, {'name': 'Ned'})
         reload_employee = self.db.resource_employee.find_one({'_id': self.schema.decodeid(employee_id)})
         self.assertEquals('Ned', reload_employee['name'])
@@ -194,3 +197,116 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals([], self.schema.validate_spec('employee', {'name': 'Bob'}))
         self.assertEquals([{'error': "Invalid type: int for field 'name' of 'employee'"}],
                           self.schema.validate_spec('employee', {'name': 12}))
+
+    def test_roots(self):
+        self.db.metaphor_schema.insert_one({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                    },
+                },
+                "department" : {
+                    "fields" : {
+                        "manager" : {
+                            "type" : "link",
+                            "target_spec_name": "employee",
+                        },
+                    },
+                },
+            },
+            "root": {
+                "employees": {
+                    "type": "collection",
+                    "target_spec_name": "employee",
+                },
+                "departments": {
+                    "type": "collection",
+                    "target_spec_name": "department",
+                }
+            },
+        })
+        self.schema.load_schema()
+        self.assertEquals(2, len(self.schema.specs))
+        self.assertEquals(2, len(self.schema.root.fields))
+        self.assertEquals('collection', self.schema.root.fields['employees'].field_type)
+        self.assertEquals('employee', self.schema.root.fields['employees'].target_spec_name)
+        self.assertEquals('collection', self.schema.root.fields['departments'].field_type)
+        self.assertEquals('department', self.schema.root.fields['departments'].target_spec_name)
+
+    def test_canonical_url(self):
+        self.db.metaphor_schema.insert_one({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "age": {
+                            "type": "int"
+                        },
+                        "division": {
+                            "type": "link",
+                            "target_spec_name": "division",
+                        },
+                    },
+                },
+                "division": {
+                    "fields": {
+                        "name": {
+                            "type": "str",
+                        },
+                        "yearly_sales": {
+                            "type": "int",
+                        },
+                        "sections": {
+                            "type": "collection",
+                            "target_spec_name": "section",
+                        }
+                    },
+                },
+                "section": {
+                    "fields": {
+                        "name": {
+                            "type": "str",
+                        },
+                    },
+                },
+            },
+            "root": {
+                "employees": {
+                    "type": "collection",
+                    "target_spec_name": "employee",
+                },
+                "divisions": {
+                    "type": "collection",
+                    "target_spec_name": "division",
+                }
+            },
+        })
+        self.schema.load_schema()
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.assertEquals({
+            '_id': self.schema.decodeid(division_id_1),
+            '_parent_id': None,
+            '_parent_type': 'root',
+            '_parent_field_name': 'divisions',
+            '_parent_canonical_url': '/divisions',
+            'name': 'sales',
+            'yearly_sales': 100,
+        }, self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id_1)}))
+
+        section_id_1 = self.schema.insert_resource('section', {'name': 'appropriation'}, parent_type='division', parent_id=division_id_1, parent_field_name='sections')
+
+        self.assertEquals({
+            '_id': self.schema.decodeid(section_id_1),
+            '_parent_id': self.schema.decodeid(division_id_1),
+            '_parent_type': 'division',
+            '_parent_field_name': 'sections',
+            '_parent_canonical_url': '/divisions/%s/sections' % division_id_1,
+            'name': 'appropriation',
+        }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))

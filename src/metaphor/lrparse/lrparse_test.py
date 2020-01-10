@@ -43,15 +43,36 @@ class LRParseTest(unittest.TestCase):
                         "yearly_sales": {
                             "type": "int",
                         },
+                        "sections": {
+                            "type": "collection",
+                            "target_spec_name": "section",
+                        }
                     },
                 },
-            }
+                "section": {
+                    "fields": {
+                        "name": {
+                            "type": "str",
+                        },
+                    },
+                },
+            },
+            "root": {
+                "employees": {
+                    "type": "collection",
+                    "target_spec_name": "employee",
+                },
+                "divisions": {
+                    "type": "collection",
+                    "target_spec_name": "division",
+                }
+            },
         })
         self.schema.load_schema()
 
     def test_basic(self):
-        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
-        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
@@ -63,7 +84,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(10, tree.calculate(employee_id))
 
     def test_even_basicer(self):
-        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
 
         tree = parse("self.age", self.schema.specs['employee'])
         self.assertEquals(self.schema.specs['employee'].fields['age'], tree.infer_type())
@@ -72,8 +93,8 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(41, tree.calculate(employee_id))
 
     def test_basic_link_follow(self):
-        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
-        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
@@ -91,12 +112,12 @@ class LRParseTest(unittest.TestCase):
     def test_aggregate_filtered(self):
         tree = parse("sum(employees.division[name='sales'].yearly_sales)", self.schema.specs['employee'])
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
 
-        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
@@ -106,12 +127,12 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(100, result)
 
     def test_list(self):
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
 
-        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
@@ -133,12 +154,12 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(division_id_2, division_2['id'])
 
     def test_reverse_list(self):
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
 
-        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
@@ -157,8 +178,8 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(employee_id_2, employee_2['id'])
 
     def test_spec_hier_error(self):
-        employee_id = self.schema.insert_resource('employee', {'name': 'sailor'})
-        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor'}, 'employees')
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
@@ -186,8 +207,8 @@ class LRParseTest(unittest.TestCase):
             self.assertEquals("", str(e))
 
     def test_aggregation(self):
-        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
-        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
         tree = parse("employees[age>40].division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
@@ -208,10 +229,10 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
 
     def test_aggregation_self(self):
-        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41})
-        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10})
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
 
-        self.schema.insert_resource('employees/%s/division' % (employee_id,), {'id': division_id})
+        self.schema.insert_resource('employee', {'id': division_id}, 'employees')
 
         tree = parse("self.division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
@@ -242,7 +263,7 @@ class LRParseTest(unittest.TestCase):
         employee_spec.fields["salary"] = Field("salary", "int")
         employee_spec.fields["tax"] = Field("tax", "int")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10, 'tax': 2})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10, 'tax': 2}, 'employees')
 
         tree = parse("self.salary + self.tax", employee_spec)
         self.assertEquals(12, tree.calculate(employee_id_1))
@@ -261,7 +282,7 @@ class LRParseTest(unittest.TestCase):
         employee_spec.fields["salary"] = Field("salary", "int")
         employee_spec.fields["tax"] = Field("tax", "int")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10, 'tax': None})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10, 'tax': None}, 'employees')
 
         tree = parse("self.salary + self.tax", employee_spec)
         self.assertEquals(10, tree.calculate(employee_id_1))
@@ -281,13 +302,13 @@ class LRParseTest(unittest.TestCase):
         employee_spec.fields["salary"] = Field("salary", "float")
         employee_spec.fields["tax"] = Field("tax", "float")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4}, 'employees')
 
         tree = parse("round(self.salary + self.tax, 2)", employee_spec)
         self.assertEquals(13, tree.calculate(employee_id_1))
 
     def test_function_basic(self):
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned'})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned'}, 'employees')
 
         employee_spec = self.schema.specs['employee']
         tree = parse("round(14.14)", employee_spec)
@@ -298,7 +319,7 @@ class LRParseTest(unittest.TestCase):
         employee_spec.fields["salary"] = Field("salary", "float")
         employee_spec.fields["tax"] = Field("tax", "float")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4}, 'employees')
 
         tree = parse("round(self.salary) + round(self.tax)", employee_spec)
         self.assertEquals(13, tree.calculate(employee_id_1))
@@ -308,7 +329,7 @@ class LRParseTest(unittest.TestCase):
         employee_spec.fields["salary"] = Field("salary", "float")
         employee_spec.fields["tax"] = Field("tax", "float")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.12345})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.12345}, 'employees')
 
         tree = parse("round(round(self.salary, 4), 3)", employee_spec)
         self.assertEquals(10.123, tree.calculate(employee_id_1))
@@ -317,9 +338,9 @@ class LRParseTest(unittest.TestCase):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "float")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 20})
-        self.schema.insert_resource('employee', {'name': 'bob', 'salary': 10})
-        self.schema.insert_resource('employee', {'name': 'bil', 'salary': 30})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 20}, 'employees')
+        self.schema.insert_resource('employee', {'name': 'bob', 'salary': 10}, 'employees')
+        self.schema.insert_resource('employee', {'name': 'bil', 'salary': 30}, 'employees')
 
         # max
         tree = parse("max(employees.salary)", employee_spec)
@@ -341,9 +362,9 @@ class LRParseTest(unittest.TestCase):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "float")
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 20.1234})
-        self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.5678})
-        self.schema.insert_resource('employee', {'name': 'bil', 'salary': 30.7777})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 20.1234}, 'employees')
+        self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.5678}, 'employees')
+        self.schema.insert_resource('employee', {'name': 'bil', 'salary': 30.7777}, 'employees')
 
         tree = parse("round(sum(employees.salary), 2) + round(max(employees.salary))", employee_spec)
         self.assertEquals(92.47, tree.calculate(employee_id_1))
@@ -386,24 +407,51 @@ class LRParseTest(unittest.TestCase):
     def test_root_collection_aggregates(self):
         tree = parse("employees.division", self.schema.specs['division'])
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41})
-        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31})
-        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21})
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
 
-        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100})
-        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20})
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
         self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
 
         result = tree.calculate(division_id_1)
-        self.assertEquals(3, len(result))
+        self.assertEquals(2, len(result))
 
-    def test_document_ref(self):
-        employee_spec = self.schema.specs['employee']
-        employee_id = self.schema.insert_resource('employee', {'name': 'ned'})
-        tree = parse("employees.%s" % (employee_id,), employee_spec)
+    def test_calculate_toplevel_rootresourceref(self):
+        tree = parse("employees[name='bob']", self.schema.specs['division'])
 
-        tree = parse("max(employees.salary)", employee_id)
-        self.assertEquals({'id': employee_id}, tree.calculate(employees))
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        result = tree.calculate(division_id_1)
+        self.assertEquals(1, len(result))
+        self.assertEquals('bob', result[0]['name'])
+
+        # work with either resource type as starting point
+        result = tree.calculate(employee_id_1)
+        self.assertEquals(1, len(result))
+        self.assertEquals('bob', result[0]['name'])
+
+    def test_parent_link(self):
+        tree = parse("self.parent_division_sections", self.schema.specs['section'])
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
+
+        section_id_1 = self.schema.insert_resource('section', {'name': 'appropriation'}, parent_type='division', parent_id=division_id_1, parent_field_name='sections')
+
+        result = tree.calculate(section_id_1)
+        self.assertEquals('sales', result['name'])
+
+    def test_parent_collection(self):
+        pass
+
+    def test_linked_collection(self):
+        pass
