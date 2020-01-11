@@ -144,7 +144,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id),
             'name': 'Bob',
-            '_parent_canonical_url': '/employees',
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -295,7 +295,7 @@ class SchemaTest(unittest.TestCase):
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
-            '_parent_canonical_url': '/divisions',
+            '_parent_canonical_url': '/',
             'name': 'sales',
             'yearly_sales': 100,
         }, self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id_1)}))
@@ -307,6 +307,6 @@ class SchemaTest(unittest.TestCase):
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
             '_parent_field_name': 'sections',
-            '_parent_canonical_url': '/divisions/%s/sections' % division_id_1,
+            '_parent_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'appropriation',
         }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))

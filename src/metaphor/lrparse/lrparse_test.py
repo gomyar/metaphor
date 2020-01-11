@@ -104,9 +104,13 @@ class LRParseTest(unittest.TestCase):
 
         calculated = tree.calculate(employee_id)
         self.assertEquals({
-            'id': division_id,
+            '_id': self.schema.decodeid(division_id),
             'name': 'sales',
             'yearly_sales': 10,
+            '_parent_canonical_url': '/',
+            '_parent_field_name': 'divisions',
+            '_parent_id': None,
+            '_parent_type': 'root',
         }, calculated)
 
     def test_aggregate_filtered(self):
@@ -144,14 +148,14 @@ class LRParseTest(unittest.TestCase):
         result = tree.calculate(employee_id_1)
 
         # just making up for a lack of ordering
-        division_1 = next(d for d in result if d['id'] == division_id_1)
-        division_2 = next(d for d in result if d['id'] == division_id_2)
+        division_1 = result[1]
+        division_2 = result[0]
 
         self.assertEquals('sales', division_1['name'])
         self.assertEquals('marketting', division_2['name'])
 
-        self.assertEquals(division_id_1, division_1['id'])
-        self.assertEquals(division_id_2, division_2['id'])
+        self.assertEquals(division_id_1, self.schema.encodeid(division_1['_id']))
+        self.assertEquals(division_id_2, self.schema.encodeid(division_2['_id']))
 
     def test_reverse_list(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
@@ -168,14 +172,11 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.division.link_employee_division", self.schema.specs['employee'])
         result = tree.calculate(employee_id_1)
 
-        employee_1 = next(e for e in result if e['id'] == employee_id_1)
-        employee_2 = next(e for e in result if e['id'] == employee_id_2)
+        self.assertEquals("ned", result[0]['name'])
+        self.assertEquals("bob", result[1]['name'])
 
-        self.assertEquals("ned", employee_1['name'])
-        self.assertEquals("bob", employee_2['name'])
-
-        self.assertEquals(employee_id_1, employee_1['id'])
-        self.assertEquals(employee_id_2, employee_2['id'])
+        self.assertEquals(self.schema.decodeid(employee_id_1), result[0]['_id'])
+        self.assertEquals(self.schema.decodeid(employee_id_2), result[1]['_id'])
 
     def test_spec_hier_error(self):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor'}, 'employees')

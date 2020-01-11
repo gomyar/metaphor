@@ -38,11 +38,11 @@ class ResourceRef(object):
 
         results = [row for row in cursor]
         if is_aggregate:
-            return [self.spec.schema.encode_resource(spec, row) for row in results]
+            return results
         elif spec.is_field():
             return results[0][self.field_name] if results else None
         else:
-            return self.spec.schema.encode_resource(spec, results[0]) if results else None
+            return results[0]
 
     def aggregation(self, self_id):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)

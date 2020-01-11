@@ -1,5 +1,5 @@
 
-
+import os
 from bson.objectid import ObjectId
 
 
@@ -119,42 +119,18 @@ class Schema(object):
     def decodeid(self, str_id):
         return ObjectId(str_id[2:])
 
-    def encode_resource(self, spec, resource_data):
-        self_url = "%s/%s" % (resource_data['_parent_canonical_url'], self.encodeid(resource_data['_id']))
-        encoded = {
-            'id': self.encodeid(resource_data['_id']),
-            'self': self_url,
-        }
-        for field_name, field in spec.fields.items():
-            field_value = resource_data.get(field_name)
-            if field.field_type == 'link':
-                if field_value:
-                    encoded[field_name] = self.load_canonical_url_for(field.target_spec_name, field_name, self.encodeid(field_value))
-                else:
-                    encoded[field_name] = None
-            elif field.field_type == 'parent_collection':
-                if field_value:
-                    encoded[field_name] = self.load_canonical_url_for(field.target_spec_name, field_name, self.encodeid(field_value))
-                else:
-                    encoded[field_name] = None
-            elif field.field_type == 'reverse_link':
-                encoded[field_name] = "%s/%s" % (self_url, field_name)
-            else:
-                encoded[field_name] = field_value
-        return encoded
-
-    def load_canonical_url_for(self, parent_type, parent_field_name, parent_id):
+    def load_canonical_parent_url(self, parent_type, parent_field_name, parent_id):
         if parent_id:
             parent_data = self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
-            return "%s/%s" % (parent_data['_parent_canonical_url'], parent_id)
+            return os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
         else:
-            return "/%s" % parent_field_name
+            return "/"
 
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None):
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
-        data['_parent_canonical_url'] = self.load_canonical_url_for(parent_type, parent_field_name, parent_id)
+        data['_parent_canonical_url'] = self.load_canonical_parent_url(parent_type, parent_field_name, parent_id)
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 

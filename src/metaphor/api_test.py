@@ -187,6 +187,74 @@ class ApiTest(unittest.TestCase):
             'division': None,
         }], employees)
 
+    def test_canonical_url(self):
+        self.db.metaphor_schema.drop()
+        self.db.metaphor_schema.insert_one({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "section": {
+                            "type": "link",
+                            "target_spec_name": "section",
+                        },
+                    },
+                },
+                "division": {
+                    "fields": {
+                        "name": {
+                            "type": "str",
+                        },
+                        "sections": {
+                            "type": "collection",
+                            "target_spec_name": "section",
+                        }
+                    },
+                },
+                "section": {
+                    "fields": {
+                        "name": {
+                            "type": "str",
+                        },
+                    },
+                },
+            },
+            "root": {
+                "employees": {
+                    "type": "collection",
+                    "target_spec_name": "employee",
+                },
+                "divisions": {
+                    "type": "collection",
+                    "target_spec_name": "division",
+                }
+            },
+        })
+        self.schema.load_schema()
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned'}, 'employees')
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales'}, 'divisions')
+        section_id_1 = self.schema.insert_resource('section', {'name': 'appropriation'}, parent_type='division', parent_id=division_id_1, parent_field_name='sections')
+
+        employee = self.api.get('/employees/%s' % employee_id_1)
+        self.assertEquals(None, employee['section'])
+
+        self.schema.update_resource_fields('employee', employee_id_1, {'section': section_id_1})
+
+        employee = self.api.get('/employees/%s' % employee_id_1)
+        self.assertEquals('/divisions/%s/sections/%s' % (division_id_1, section_id_1), employee['section'])
+
+        self.assertEquals({
+            '_id': self.schema.decodeid(section_id_1),
+            '_parent_id': self.schema.decodeid(division_id_1),
+            '_parent_type': 'division',
+            '_parent_field_name': 'sections',
+            '_parent_canonical_url': '/divisions/%s' % division_id_1,
+            'name': 'appropriation',
+        }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
+
     def test_reserved_words(self):
         # link_*
         # parent_*
