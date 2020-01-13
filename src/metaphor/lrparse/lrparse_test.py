@@ -456,3 +456,20 @@ class LRParseTest(unittest.TestCase):
 
     def test_linked_collection(self):
         pass
+
+    def test_parse_url(self):
+        tree = parse("employees", self.schema.root)
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
+
+        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
+        self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
+
+        result = tree.calculate(employee_id_1)
+        self.assertEquals(3, len(result))

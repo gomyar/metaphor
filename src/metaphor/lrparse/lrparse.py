@@ -79,9 +79,6 @@ class RootResourceRef(ResourceRef):
         else:
             self.spec = self.root_spec(spec.schema)
 
-    def calculate(self, self_id):
-        raise NotImplemented("calculate not implemented for RootResourceRef")
-
     def root_spec(self, schema):
         return schema.specs[
             schema.root.fields[self.resource_name].target_spec_name]
@@ -149,7 +146,7 @@ class CollectionResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (child_spec.name,),
                     "localField": "_id",
-                    "foreignField": "_owners.owner_id",
+                    "foreignField": "_parent_id",
                     "as": "_field_%s" % (self.field_name,),
             }})
         aggregation.append(
@@ -637,6 +634,15 @@ class Parser(object):
         filter_ref = tokens[1]
         return FilteredResourceRef(root_resource_ref, filter_ref, parser, root_resource_ref.spec)
 
+    def _create_id_resource_ref(self, tokens, parser):
+        if isinstance(tokens[0], str):
+            root_resource_ref = RootResourceRef(tokens[0], parser, self.spec)
+        else:
+            root_resource_ref = tokens[0]
+
+        resource_id = tokens[2]
+        return IDResourceRef(root_resource_ref, resource_id, parser, root_resource_ref.spec)
+
     def match_pattern(self, pattern, last_tokens):
         def m(pat, tok):
             return pat == tok[0] or (not isinstance(tok[0], str) and not isinstance(pat, str) and issubclass(tok[0], pat))
@@ -664,6 +670,9 @@ class Parser(object):
         if len(self.shifted) > 1:
 #            print "Errors left: Shifted: %s" % (self.shifted,)
             raise Exception("Unexpected '%s'" % (self.shifted[1],))
+
+        if self.shifted[0][0] == 'NAME' and self.shifted[0][1] in self.spec.schema.root.fields:
+            return RootResourceRef(self.shifted[0][1], self, self.spec)
 
         if self.shifted[0][1] == 'self':
             raise Exception("Calc cannot be 'self' only.")
@@ -697,14 +706,20 @@ class UrlParser(Parser):
             [(NAME, '/', ID), self._create_id_resource_ref],
         ]
 
-    def _create_id_resource_ref(self, tokens, parser):
-        if isinstance(tokens[0], str):
-            root_resource_ref = RootResourceRef(tokens[0], parser, self.spec)
-        else:
-            root_resource_ref = tokens[0]
 
-        resource_id = tokens[2]
-        return IDResourceRef(root_resource_ref, resource_id, parser, root_resource_ref.spec)
+class CanonicalUrlParser(Parser):
+    def __init__(self, tokens, spec):
+        self.tokens = tokens
+        self.spec = spec
+        self.shifted = []
+        self.patterns = [
+            [(ResourceRef, Filter), self._create_filtered_resource_ref],
+            [(NAME, Filter), self._create_filtered_resource_ref],
+            [(ResourceRef, '/', NAME), self._create_resource_ref],
+            [(NAME, '/', NAME), self._create_resource_ref],
+            [(ResourceRef, '/', ID), self._create_id_resource_ref],
+            [(NAME, '/', ID), self._create_id_resource_ref],
+        ]
 
 
 def parse(line, spec):
@@ -715,3 +730,8 @@ def parse(line, spec):
 def parse_url(line, spec):
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return UrlParser(lex(tokens), spec).parse()
+
+
+def parse_canonical_url(line, spec):
+    tokens = tokenize.generate_tokens(StringIO(line).read)
+    return CanonicalUrlParser(lex(tokens), spec).parse()

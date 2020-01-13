@@ -6,10 +6,11 @@ from bson.objectid import ObjectId
 class Field(object):
     PRIMITIVES = ['int', 'str', 'float', 'bool']
 
-    def __init__(self, name, field_type, target_spec_name=None):
+    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None):
         self.name = name
         self.field_type = field_type
         self.target_spec_name = target_spec_name
+        self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
             'str': [str],
             'int': [float, int],
@@ -64,10 +65,10 @@ class Spec(object):
     def build_child_spec(self, name):
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection'):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection'):
             return self.schema.specs[self.fields[name].target_spec_name]
         else:
-            return self.schema.specs[name]
+            raise Exception('Unrecognised field type')
 
     def is_collection(self):
         # specs map to resources and are not collections
@@ -105,13 +106,13 @@ class Schema(object):
             for field in spec.fields.values():
                 if field.field_type == 'link':
                     reverse_field_name = "link_%s_%s" % (spec.name, field.name)
-                    self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name)
+                    self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
                 if field.field_type == 'collection':
                     parent_field_name = "parent_%s_%s" % (spec.name, field.name)
-                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name)
+                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name, field.name)
                 if field.field_type == 'linkcollection':
                     parent_field_name = "link_%s_%s" % (spec.name, field.name)
-                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "reverse_link_collection", spec.name)
+                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "reverse_link_collection", spec.name, field.name)
 
     def encodeid(self, mongo_id):
         return "ID" + str(mongo_id)

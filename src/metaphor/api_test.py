@@ -103,8 +103,8 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s' % division_id_1,
             'name': 'sales',
             'yearly_sales': 100,
-            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
-            'sections': None,
+            'link_employee_division': '/employees/%s' % employee_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
         }, division_1)
 
         linked_division_1 = self.api.get('employees/%s/division' % employee_id_1)
@@ -113,9 +113,19 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s' % division_id_1,
             'name': 'sales',
             'yearly_sales': 100,
-            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
-            'sections': None,
+            'link_employee_division': '/employees/%s' % employee_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
         }, linked_division_1)
+
+        division_2 = self.api.get('divisions/%s' % division_id_2)
+        self.assertEquals({
+            'id': division_id_2,
+            'self': '/divisions/%s' % division_id_2,
+            'name': 'marketting',
+            'yearly_sales': 20,
+            'link_employee_division': '/employees/%s' % employee_id_3,
+            'sections': '/divisions/%s/sections' % division_id_2,
+        }, division_2)
 
     def test_get_reverse_link(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
@@ -254,6 +264,69 @@ class ApiTest(unittest.TestCase):
             '_parent_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'appropriation',
         }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
+
+        self.assertEquals({
+            'id': division_id_1,
+            'name': 'sales',
+            'self': '/divisions/%s' % division_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
+        }, self.api.get('/divisions/%s' % division_id_1))
+
+        self.assertEquals([{
+            'id': section_id_1,
+            'link_employee_section': '/employees/%s' % employee_id_1,
+            'name': 'appropriation',
+            'parent_division_sections': '/divisions/%s' % division_id_1,
+            'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+        }], self.api.get('/divisions/%s/sections' % (division_id_1,)))
+
+    def test_post(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
+
+        employee_id_2 = self.api.post('/employees', {'name': 'bob', 'age': 31})
+
+        self.assertEquals(2, len(self.api.get('/employees')))
+        new_employees = list(self.db['resource_employee'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 41,
+             'division': self.schema.decodeid(division_id_1),
+             'name': 'ned'},
+            {'_id': self.schema.decodeid(employee_id_2),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 31,
+             'name': 'bob'}], new_employees)
+
+    def test_post_lower(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        section_id_1 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'appropriation'})
+
+        self.assertEquals([{
+            'name': 'appropriation',
+            'id': section_id_1,
+            'parent_division_sections': '/divisions/%s' % division_id_1,
+            'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+        }], self.api.get('/divisions/%s/sections' % division_id_1))
+        new_sections = list(self.db['resource_section'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(section_id_1),
+             '_parent_canonical_url': '/divisions/%s' % division_id_1,
+             '_parent_field_name': 'sections',
+             '_parent_id': self.schema.decodeid(division_id_1),
+             '_parent_type': 'division',
+             'name': 'appropriation'}], new_sections)
 
     def test_reserved_words(self):
         # link_*
