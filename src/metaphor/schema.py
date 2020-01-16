@@ -35,9 +35,11 @@ class Field(object):
 
 
 class CalcField(Field):
-    def __init__(self, field_name, calc_str):
+    def __init__(self, field_name, calc_str, spec):
         self.field_name = field_name
         self.calc_str = calc_str
+        self.spec = spec
+        self.field_type = 'calc'
 
     def __repr__(self):
         return "<Calc %s = %s>" % (self.field_name, self.calc_str)
@@ -74,6 +76,9 @@ class Spec(object):
         # specs map to resources and are not collections
         return False
 
+    def is_primitive(self):
+        return False
+
     def is_field(self):
         return False
 
@@ -89,15 +94,15 @@ class Schema(object):
         for spec_name, spec_data in schema_data['specs'].items():
             spec = Spec(spec_name, self)
             for field_name, field_data in spec_data['fields'].items():
-                spec.fields[field_name] = self._create_field(field_name, field_data)
+                spec.fields[field_name] = self._create_field(field_name, field_data, spec)
             self.specs[spec_name] = spec
         self._add_reverse_links()
         for root_name, root_data in schema_data.get('root', {}).items():
-            self.root.fields[root_name] = self._create_field(root_name, root_data)
+            self.root.fields[root_name] = self._create_field(root_name, root_data, self.root)
 
-    def _create_field(self, field_name, field_data):
+    def _create_field(self, field_name, field_data, spec):
         if field_data['type'] == 'calc':
-            return CalcField(field_name, calc_str=field_data['calc_str'])
+            return CalcField(field_name, calc_str=field_data['calc_str'], spec=spec)
         else:
             return Field(field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
 

@@ -125,16 +125,17 @@ class IDResourceRef(ResourceRef):
         return self.spec
 
     def aggregation(self, self_id):
-        aggregation = [
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)
+        aggregation.append(
             {"$match": {"_id": self.spec.schema.decodeid(self.resource_id)}}
-        ]
-        return aggregation, self.spec, False
+        )
+        return aggregation, spec, False
 
     def is_collection(self):
         return False
 
     def __repr__(self):
-        return "I[%s]" % (self.resource_id,)
+        return "I[%s]" % (self.resource_ref, self.resource_id,)
 
 
 class CollectionResourceRef(ResourceRef):

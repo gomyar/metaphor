@@ -41,7 +41,7 @@ class ApiTest(unittest.TestCase):
                         "sections": {
                             "type": "collection",
                             "target_spec_name": "section",
-                        }
+                        },
                     },
                 },
                 "section": {

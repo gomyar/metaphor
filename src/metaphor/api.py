@@ -1,7 +1,9 @@
 
 import os
+from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
 from metaphor.lrparse.lrparse import parse_canonical_url
+from metaphor.schema import CalcField
 
 class Api(object):
     def __init__(self, schema):
@@ -92,35 +94,36 @@ class Api(object):
         return aggregate_query
 
     def encode_resource(self, spec, resource_data):
-        self_url = os.path.join(resource_data['_parent_canonical_url'], resource_data['_parent_field_name'], self.schema.encodeid(resource_data['_id']))
+        self_url = os.path.join(
+            resource_data['_parent_canonical_url'],
+            resource_data['_parent_field_name'],
+            self.schema.encodeid(resource_data['_id']))
         encoded = {
             'id': self.schema.encodeid(resource_data['_id']),
             'self': self_url,
         }
         for field_name, field in spec.fields.items():
             field_value = resource_data.get(field_name)
-            if field.field_type == 'link':
-                if resource_data['_expanded_%s' % field_name]:
+            if field.field_type in ('link', 'reverse_link', 'parent_collection'):
+                if resource_data.get('_expanded_%s' % field_name):  # we are gonna have to cache all expanded fields in a transaction on add/update
                     expanded_field = resource_data['_expanded_%s' % field_name][0]
-                    encoded[field_name] = os.path.join(expanded_field['_parent_canonical_url'], expanded_field['_parent_field_name'], self.schema.encodeid(expanded_field['_id']))
+                    encoded[field_name] = os.path.join(
+                        expanded_field['_parent_canonical_url'],
+                        expanded_field['_parent_field_name'],
+                        self.schema.encodeid(expanded_field['_id']))
                 else:
                     encoded[field_name] = None
             elif field.field_type == 'collection':
                 encoded[field_name] = os.path.join(self_url, field_name)
-            elif field.field_type == 'reverse_link':
-                if resource_data['_expanded_%s' % field_name]:
-                    expanded_field = resource_data['_expanded_%s' % field_name][0]
-                    encoded[field_name] = os.path.join(expanded_field['_parent_canonical_url'], expanded_field['_parent_field_name'], self.schema.encodeid(expanded_field['_id']))
+            elif field.field_type == 'calc':
+                tree = parse(field.calc_str, spec)
+                calc_result = tree.calculate(self.schema.encodeid(resource_data['_id']))
+                if tree.infer_type().is_primitive():
+                    encoded[field_name] = calc_result
+                elif tree.is_collection():
+                    encoded[field_name] = [self.encode_resource(tree.infer_type(), d) for d in calc_result]
                 else:
-                    encoded[field_name] = None
-            elif field.field_type == 'parent_collection':
-                if resource_data['_expanded_%s' % field_name]:
-                    expanded_field = resource_data['_expanded_%s' % field_name][0]
-                    encoded[field_name] = os.path.join(expanded_field['_parent_canonical_url'], expanded_field['_parent_field_name'], self.schema.encodeid(expanded_field['_id']))
-                else:
-                    encoded[field_name] = None
+                    encoded[field_name] = self.encode_resource(tree.infer_type(), calc_result)
             else:
                 encoded[field_name] = field_value
         return encoded
-
-
