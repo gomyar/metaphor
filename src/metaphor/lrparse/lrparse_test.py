@@ -46,7 +46,11 @@ class LRParseTest(unittest.TestCase):
                         "sections": {
                             "type": "collection",
                             "target_spec_name": "section",
-                        }
+                        },
+                        "parttimers": {
+                            "type": "linkcollection",
+                            "target_spec_name": "employee",
+                        },
                     },
                 },
                 "section": {
@@ -473,3 +477,25 @@ class LRParseTest(unittest.TestCase):
 
         result = tree.calculate(employee_id_1)
         self.assertEquals(3, len(result))
+
+    def test_linkcollection(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
+
+        tree = parse('self.parttimers', self.schema.specs['division'])
+        self.assertEquals([], tree.calculate(division_id_1))
+
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_1)
+
+        self.assertEquals([{
+            '_id': self.schema.decodeid(employee_id_1),
+            '_parent_canonical_url': '/',
+            '_parent_field_name': 'employees',
+            '_parent_id': None,
+            '_parent_type': 'root',
+            'age': 41,
+            'name': 'ned'}], tree.calculate(division_id_1))

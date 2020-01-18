@@ -1,6 +1,7 @@
 
 import os
 from bson.objectid import ObjectId
+from pymongo import ReturnDocument
 
 
 class Field(object):
@@ -67,7 +68,7 @@ class Spec(object):
     def build_child_spec(self, name):
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection'):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection'):
             return self.schema.specs[self.fields[name].target_spec_name]
         else:
             raise Exception('Unrecognised field type')
@@ -125,7 +126,7 @@ class Schema(object):
     def decodeid(self, str_id):
         return ObjectId(str_id[2:])
 
-    def load_canonical_parent_url(self, parent_type, parent_field_name, parent_id):
+    def load_canonical_parent_url(self, parent_type, parent_id):
         if parent_id:
             parent_data = self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
             return os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
@@ -136,16 +137,28 @@ class Schema(object):
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
-        data['_parent_canonical_url'] = self.load_canonical_parent_url(parent_type, parent_field_name, parent_id)
+        data['_parent_canonical_url'] = self.load_canonical_parent_url(parent_type, parent_id)
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         spec = self.specs[spec_name]
+        save_data = {}
         for field_name, field_value in field_data.items():
-            if spec.fields[field_name].field_type == 'link':
-                field_data[field_name] = self.decodeid(field_value)
-        self.db['resource_%s' % spec_name].update({"_id": self.decodeid(resource_id)}, {"$set": field_data})
+            field = spec.fields[field_name]
+            if field.field_type == 'link':
+                save_data[field_name] = self.decodeid(field_value)
+                save_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
+            else:
+                save_data[field_name] = field_value
+        new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
+            {"_id": self.decodeid(resource_id)},
+            {"$set": save_data},
+            return_document=ReturnDocument.AFTER)
+
+    def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
+        self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$push': {parent_field: {'_id': self.decodeid(link_id)}}})
+        return link_id
 
     def validate_spec(self, spec_name, data):
         spec = self.specs[spec_name]

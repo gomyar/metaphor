@@ -9,8 +9,21 @@ class Api(object):
     def __init__(self, schema):
         self.schema = schema
 
-    def post(self, path, data):
+    def patch(self, path, data):
+        path = path.strip().strip('/')
+        tree = parse_canonical_url(path, self.schema.root)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
+        cursor = tree.root_collection().aggregate(aggregate_query)
+
+        resource = next(cursor)
+
+        return self.schema.update_resource_fields(
+            spec.name,
+            self.schema.encodeid(resource['_id']),
+            data)
+
+    def post(self, path, data):
         path = path.strip().strip('/')
 
         if '/' in path:
@@ -18,12 +31,22 @@ class Api(object):
             tree = parse_canonical_url(parent_path, self.schema.root)
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
-            cursor = tree.root_collection().aggregate(aggregate_query)
-
-            parent_resource = next(cursor)
-
             field_spec = spec.fields[field_name]
-            return self.schema.insert_resource(field_spec.target_spec_name, data, parent_type=spec.name, parent_id=self.schema.encodeid(parent_resource['_id']), parent_field_name=field_name)
+
+            # if we're using a simplified parser we can probably just pull the id off the path
+            cursor = tree.root_collection().aggregate(aggregate_query)
+            parent_resource = next(cursor)
+            parent_id = self.schema.encodeid(parent_resource['_id'])
+
+            if field_spec.field_type == 'linkcollection':
+                return self.schema.create_linkcollection_entry(spec.name, parent_id, field_name, data['id'])
+            else:
+                return self.schema.insert_resource(
+                    field_spec.target_spec_name,
+                    data,
+                    parent_type=spec.name,
+                    parent_id=parent_id,
+                    parent_field_name=field_name)
         else:
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
@@ -75,22 +98,6 @@ class Api(object):
                             "foreignField": field.reverse_link_field,
                             "as": "_expanded_%s" % field_name,
                     }})
-            if field.field_type == 'collection':
-                aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % field.target_spec_name,
-                            "localField": "_id",
-                            "foreignField": "_parent_id",
-                            "as": "_expanded_%s" % field_name,
-                    }})
-            if field.field_type == 'parent_collection':
-                aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % field.target_spec_name,
-                            "localField": "_parent_id",
-                            "foreignField": "_id",
-                            "as": "_expanded_%s" % field_name,
-                    }})
         return aggregate_query
 
     def encode_resource(self, spec, resource_data):
@@ -104,16 +111,14 @@ class Api(object):
         }
         for field_name, field in spec.fields.items():
             field_value = resource_data.get(field_name)
-            if field.field_type in ('link', 'reverse_link', 'parent_collection'):
-                if resource_data.get('_expanded_%s' % field_name):  # we are gonna have to cache all expanded fields in a transaction on add/update
-                    expanded_field = resource_data['_expanded_%s' % field_name][0]
-                    encoded[field_name] = os.path.join(
-                        expanded_field['_parent_canonical_url'],
-                        expanded_field['_parent_field_name'],
-                        self.schema.encodeid(expanded_field['_id']))
+            if field.field_type == 'link':
+                if field_value:
+                    encoded[field_name] = resource_data['_canonical_url_%s' % field_name]
                 else:
                     encoded[field_name] = None
-            elif field.field_type == 'collection':
+            elif field.field_type == 'parent_collection':
+                encoded[field_name] = resource_data['_parent_canonical_url']
+            elif field.field_type in ('linkcollection', 'collection', 'reverse_link', 'reverse_link_collection'):
                 encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)

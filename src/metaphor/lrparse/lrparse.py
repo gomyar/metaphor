@@ -135,7 +135,7 @@ class IDResourceRef(ResourceRef):
         return False
 
     def __repr__(self):
-        return "I[%s]" % (self.resource_ref, self.resource_id,)
+        return "I[%s.%s]" % (self.resource_ref, self.resource_id,)
 
 
 class CollectionResourceRef(ResourceRef):
@@ -163,6 +163,34 @@ class CollectionResourceRef(ResourceRef):
 
     def is_collection(self):
         return True
+
+
+class LinkCollectionResourceRef(ResourceRef):
+    def aggregation(self, self_id):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)
+        child_spec = spec.build_child_spec(self.field_name)
+        # if linkcollection / collection
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (child_spec.name,),
+                    "localField": "%s._id" % self.field_name,
+                    "foreignField": "_id",
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation, child_spec, True
+
+    def is_collection(self):
+        return True
+
 
 class LinkResourceRef(ResourceRef):
     def aggregation(self, self_id):
@@ -612,6 +640,8 @@ class Parser(object):
         child_spec = root_resource_ref.spec.build_child_spec(field_name)
         if root_resource_ref.spec.fields[field_name].field_type == 'collection':
             return CollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
+        if root_resource_ref.spec.fields[field_name].field_type == 'linkcollection':
+            return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'link':
             return LinkResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'calc':

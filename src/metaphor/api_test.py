@@ -9,6 +9,7 @@ from metaphor.api import Api
 
 class ApiTest(unittest.TestCase):
     def setUp(self):
+        self.maxDiff = None
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
@@ -41,6 +42,10 @@ class ApiTest(unittest.TestCase):
                         "sections": {
                             "type": "collection",
                             "target_spec_name": "section",
+                        },
+                        "parttimers": {
+                            "type": "linkcollection",
+                            "target_spec_name": "employee",
                         },
                     },
                 },
@@ -86,6 +91,7 @@ class ApiTest(unittest.TestCase):
             'name': 'ned',
             'age': 41,
             'division': '/divisions/%s' % division_id_1,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
         }, employee_1)
 
         employee_2 = self.api.get('employees/%s' % employee_id_2)
@@ -95,6 +101,7 @@ class ApiTest(unittest.TestCase):
             'name': 'bob',
             'age': 31,
             'division': '/divisions/%s' % division_id_1,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
         }, employee_2)
 
         division_1 = self.api.get('divisions/%s' % division_id_1)
@@ -103,8 +110,9 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s' % division_id_1,
             'name': 'sales',
             'yearly_sales': 100,
-            'link_employee_division': '/employees/%s' % employee_id_1,
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
             'sections': '/divisions/%s/sections' % division_id_1,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
         }, division_1)
 
         linked_division_1 = self.api.get('employees/%s/division' % employee_id_1)
@@ -113,8 +121,9 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s' % division_id_1,
             'name': 'sales',
             'yearly_sales': 100,
-            'link_employee_division': '/employees/%s' % employee_id_1,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'sections': '/divisions/%s/sections' % division_id_1,
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
         }, linked_division_1)
 
         division_2 = self.api.get('divisions/%s' % division_id_2)
@@ -123,8 +132,9 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s' % division_id_2,
             'name': 'marketting',
             'yearly_sales': 20,
-            'link_employee_division': '/employees/%s' % employee_id_3,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_2,
             'sections': '/divisions/%s/sections' % division_id_2,
+            'parttimers': '/divisions/%s/parttimers' % division_id_2,
         }, division_2)
 
     def test_get_reverse_link(self):
@@ -145,12 +155,14 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
             'age': 41,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'division': '/divisions/%s' % division_id_1,
         }, {
             'id': employee_id_2,
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
             'age': 31,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
             'division': '/divisions/%s' % division_id_1,
         }
         ], linked_employees)
@@ -161,6 +173,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_3,
             'name': 'fred',
             'age': 21,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_3,
             'division': '/divisions/%s' % division_id_2,
         }], linked_employees_2)
 
@@ -180,6 +193,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
             'age': 41,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'division': '/divisions/%s' % division_id_1,
         },
         {
@@ -187,6 +201,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
             'age': 31,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
             'division': '/divisions/%s' % division_id_1,
         },
         {
@@ -194,6 +209,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_3,
             'name': 'fred',
             'age': 21,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_3,
             'division': None,
         }], employees)
 
@@ -274,11 +290,19 @@ class ApiTest(unittest.TestCase):
 
         self.assertEquals([{
             'id': section_id_1,
-            'link_employee_section': '/employees/%s' % employee_id_1,
             'name': 'appropriation',
             'parent_division_sections': '/divisions/%s' % division_id_1,
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+            'link_employee_section': '/divisions/%s/sections/%s/link_employee_section' % (division_id_1, section_id_1),
         }], self.api.get('/divisions/%s/sections' % (division_id_1,)))
+
+        self.assertEquals([
+            {'id': employee_id_1,
+             'name': 'ned',
+             'section': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+             'self': '/employees/%s' % employee_id_1,
+            }
+        ], self.api.get('/divisions/%s/sections/%s/link_employee_section' % (division_id_1, section_id_1)))
 
     def test_post(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
@@ -299,6 +323,7 @@ class ApiTest(unittest.TestCase):
              '_parent_type': 'root',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
+             '_canonical_url_division': '/divisions/%s' % division_id_1,
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
              '_parent_canonical_url': '/',
@@ -307,6 +332,34 @@ class ApiTest(unittest.TestCase):
              '_parent_type': 'root',
              'age': 31,
              'name': 'bob'}], new_employees)
+
+    def test_patch(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.api.patch('employees/%s' % employee_id_1, {'division': division_id_1})
+
+        employees = list(self.db['resource_employee'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 41,
+             'division': self.schema.decodeid(division_id_1),
+             '_canonical_url_division': '/divisions/%s' % division_id_1,
+             'name': 'ned'}], employees)
+
+        divisions = list(self.db['resource_division'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(division_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'divisions',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'yearly_sales': 100,
+             'name': 'sales'}], divisions)
 
     def test_post_lower(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -319,6 +372,18 @@ class ApiTest(unittest.TestCase):
             'parent_division_sections': '/divisions/%s' % division_id_1,
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
         }], self.api.get('/divisions/%s/sections' % division_id_1))
+
+        new_divisions = list(self.db['resource_division'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(division_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'divisions',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'name': 'sales',
+             'yearly_sales': 100,
+             }], new_divisions)
+
         new_sections = list(self.db['resource_section'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(section_id_1),
@@ -327,6 +392,21 @@ class ApiTest(unittest.TestCase):
              '_parent_id': self.schema.decodeid(division_id_1),
              '_parent_type': 'division',
              'name': 'appropriation'}], new_sections)
+
+    def test_post_linkcollection(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
+
+        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1))
+
+        self.api.post('/divisions/%s/parttimers' % division_id_1, {'id': employee_id_1})
+
+        parttimers = self.api.get('/divisions/%s/parttimers' % division_id_1)
+        self.assertEquals(employee_id_1, parttimers[0]['id'])
 
     def test_reserved_words(self):
         # link_*

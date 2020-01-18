@@ -97,13 +97,13 @@ class ApiTest(unittest.TestCase):
         division_1 = self.api.get('/divisions/%s' % division_id_1)
         self.assertEquals({
             'id': division_id_1,
-            'link_employee_division': '/employees/%s' % employee_id_1,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'name': 'sales',
             'primary_sections': [
                 {'id': section_id_1,
                  'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
                  'division_name': 'sales',
-                 'parent_division_sections': None,  # this should have a value but calcs are not being expanded
+                 'parent_division_sections': '/divisions/%s' % division_id_1,
                  'name': 'primary'}
              ],
             'sections': '/divisions/%s/sections' % division_id_1,

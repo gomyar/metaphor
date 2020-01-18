@@ -303,6 +303,17 @@ class SchemaTest(unittest.TestCase):
         section_id_1 = self.schema.insert_resource('section', {'name': 'appropriation'}, parent_type='division', parent_id=division_id_1, parent_field_name='sections')
 
         self.assertEquals({
+            '_id': self.schema.decodeid(division_id_1),
+            '_parent_id': None,
+            '_parent_type': 'root',
+            '_parent_field_name': 'divisions',
+            '_parent_canonical_url': '/',
+            'name': 'sales',
+            'yearly_sales': 100,
+        }, self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id_1)}))
+
+
+        self.assertEquals({
             '_id': self.schema.decodeid(section_id_1),
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
