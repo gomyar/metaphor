@@ -1,0 +1,124 @@
+<html>
+<head>
+
+<script src="https://rawgit.com/gomyar/turtlegui/v4.0.4/turtlegui.js" crossorigin="anonymous"></script>
+<script src="/admin/static/metaphor/schema_editor.js"></script>
+
+<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v4.0.4/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/schema_editor.css"/>
+
+</head>
+
+<body>
+
+
+<div class="layer anchortop title_version">
+    <div class="title">Schema Editor</div><div class="version">abcdef:gghjk:aasdf</div>
+</div>
+
+
+<div class="layer anchortop specs_title">
+    <div class="title">Specs</div>
+    <div class="controls">
+        <div class="button" gui-click="create_spec.show_popup()">Create New</div> 
+    </div>
+</div>
+
+
+<div class="layer fullscreen specs">
+    <div class="spec">
+        <div class="title">root</div> 
+        <div class="fields" gui-list="schema.root" gui-item="field" gui-key="field_name">
+            <div class="field">
+                <div class="name" gui-text="field_name"></div>
+                <div class="type" gui-text="field.type"></div>
+                <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
+            </div>
+        </div>
+        <div class="button" gui-click="create_field.show_create('root')">Add Root Field</div> 
+    </div>
+
+    <div class="spec_inner" gui-list="schema.specs" gui-item="spec" gui-key="spec_name">
+        <div class="spec">
+            <div class="title" gui-text="spec_name"></div> 
+            <div class="fields" gui-list="spec.fields" gui-item="field" gui-key="field_name">
+                <div class="field">
+                    <div class="name" gui-text="field_name"></div>
+                    <div class="type" gui-text="field.type"></div>
+                    <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
+                    <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                </div>
+            </div>
+            <div class="button" gui-click="create_field.show_create(spec_name)">Add Field</div> 
+        </div>
+    </div>
+</div>
+
+<div id="popup_spec" class="popupwrapper" gui-show="create_spec.is_shown">
+    <div class="popup">
+        <div class="title">
+            Create Spec:
+        </div>
+        <div class="popupform">
+            <div class="formfield">
+                <div class="label">Name: </div><div class="spec_name"><input type="text" gui-val="create_spec.name"></input></div>
+            </div>
+        </div>
+        <div class="popupbuttons">
+            <div class="button" gui-click='create_spec.create_spec()'>Create</div>
+            <div class="button" gui-click='create_spec.hide_popup()'>Close</div>
+        </div>
+    </div>
+</div>
+
+
+<div id="popup_field" class="popupwrapper" gui-show="create_field.show_popup">
+    <div class="popup">
+        <div class="title">
+            Create Field:
+        </div>
+        <div class="popupform">
+            <div class="formfield"><div class="label">Name:</div><input type="text" gui-val="create_field.field_name"></input>
+                <div class="spec_type">
+                    <select gui-val="create_field.field_type" gui-list="create_field.all_field_types" gui-item="spec_type" gui-change="turtlegui.reload()">
+                        <option gui-text="spec_type" gui-val="spec_type"></option>
+                    </select>
+                </div>
+            </div>
+            <div gui-switch="create_field.field_type">
+                <div class="formfield" gui-case="collection">
+                    <div class="label">Target Spec:</div>
+                    <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
+                        <option gui-val="spec_name" gui-text="spec_name"></option>
+                    </select>
+                </div>
+                <div class="formfield" gui-case="link">
+                    <div class="label">Target Spec:</div>
+                    <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
+                        <option gui-val="spec_name" gui-text="spec_name"></option>
+                    </select>
+                </div>
+                <div class="formfield" gui-case="linkcollection">
+                    <div class="label">Target Spec:</div>
+                    <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
+                        <option gui-val="spec_name" gui-text="spec_name"></option>
+                    </select>
+                </div>
+                <div class="formfield" gui-case="calc">
+                    <div class="label">Calc:</div>
+                    <input type="text" gui-val="create_field.calc_str"></input>
+                </div>
+
+            </div>
+        </div>
+        <div class="popupbuttons">
+            <div class="button" gui-click='create_field.create_field()'>Create</div>
+            <div class="button" gui-click='create_field.hide_popup()'>Close</div>
+        </div>
+    </div>
+</div>
+
+
+</body>
+
+</html>

@@ -77,6 +77,13 @@ class Api(object):
         else:
             return self.encode_resource(spec, results[0]) if results else None
 
+    def get_spec_for(self, path):
+        path = path.strip().strip('/')
+        tree = parse_url(path, self.schema.root)
+
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+        return spec, is_aggregate
+
     def create_field_expansion_aggregations(self, spec):
         aggregate_query = []
         # apply expansions to fields

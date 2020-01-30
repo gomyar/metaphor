@@ -408,6 +408,9 @@ class ApiTest(unittest.TestCase):
         parttimers = self.api.get('/divisions/%s/parttimers' % division_id_1)
         self.assertEquals(employee_id_1, parttimers[0]['id'])
 
+        reverse_linked_employees = self.api.get('/employees/%s/link_division_parttimers' % employee_id_1)
+        self.assertEquals(1, len(reverse_linked_employees))
+
     def test_reserved_words(self):
         # link_*
         # parent_*

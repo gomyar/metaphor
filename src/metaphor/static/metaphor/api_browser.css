@@ -1,0 +1,120 @@
+
+body {
+    font-family : "Courier New", Courier, monospace;
+}
+
+
+div.title_version {
+    top : 2px;
+    margin : 10px;
+    height : 40px;
+    width : 280px;
+}
+div.title_version div.title {
+    font-size : 18px;
+    font-weight : bold;
+    display : inline-block;
+    width : 40px;
+}
+div.title_version div.version{
+    display : inline-block;
+    margin-left : 50px;
+}
+
+
+
+
+div.spec_name {
+    margin : 10px;
+    border-top : 2px solid black;
+    height : 40px;
+}
+div.spec_name div.title {
+    font-size : 18px;
+    font-weight : bold;
+    display : inline-block;
+    width : 40px;
+}
+div.spec_name div.name {
+    display : inline-block;
+    margin-left : 50px;
+}
+div.spec_name div.is_collection{
+    display : inline-block;
+    margin-left : 10px;
+}
+
+
+div.resources {
+    margin : 0px;
+    top : 50px;
+    background-color : white;
+    overflow-y : auto;
+    border-top : 1px solid black;
+    margin : 0px 10px 0px 10px;
+}
+
+div.resources div.resource {
+    margin : 10px 10px 20px 10px;
+    display : block;
+}
+
+div.resources div.resource div.button {
+    display : inline-block;
+    font-size : 12px;
+    height : 14px;
+    margin-left : 50px;
+}
+
+div.resources div.resource div.field:hover {
+    background-color : lightgrey;
+}
+
+div.resources div.resource div.field div.field_name{
+    font-size : 14px;
+    min-width : 250px;
+    margin-left : 20px;
+    display : inline-block;
+    vertical-align : top;
+}
+div.resources div.resource div.field div.field_name::after{
+    content: ' :';
+}
+
+div.resources div.resource div.field div.field_data {
+    font-size : 12px;
+    min-width : 50px;
+    margin-left : 20px;
+    display : inline-block;
+    width : 600px;
+    height : 14px;
+}
+
+div.resources div.resource div.field div.field_data div {
+    height : 14px;
+}
+
+div.resources div.resource div.field div.field_edit {
+    margin-top : -14px;
+}
+
+div.resources div.resource div.field div.field_data div.field_str div.field_value::before{
+    content: '"';
+}
+div.resources div.resource div.field div.field_data div.field_str div.field_value::after{
+    content: '"';
+}
+
+div.resources div.resource div.field div.target {
+    font-size : 12px;
+    min-width : 50px;
+    margin-left : 20px;
+    display : inline-block;
+}
+
+
+
+
+div.rootresource {
+    top : 50px;
+}

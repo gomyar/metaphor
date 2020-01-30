@@ -1,5 +1,6 @@
 
 import os
+from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
 
@@ -36,10 +37,9 @@ class Field(object):
 
 
 class CalcField(Field):
-    def __init__(self, field_name, calc_str, spec):
+    def __init__(self, field_name, calc_str):
         self.field_name = field_name
         self.calc_str = calc_str
-        self.spec = spec
         self.field_type = 'calc'
 
     def __repr__(self):
@@ -68,8 +68,13 @@ class Spec(object):
     def build_child_spec(self, name):
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection'):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection'):
             return self.schema.specs[self.fields[name].target_spec_name]
+        elif self.fields[name].field_type == 'calc':
+            from metaphor.lrparse.lrparse import parse
+            field = self.fields[name]
+            tree = parse(field.calc_str, self)
+            return tree.infer_type()
         else:
             raise Exception('Unrecognised field type')
 
@@ -89,23 +94,43 @@ class Schema(object):
         self.db = db
         self.specs = {}
         self.root = Spec('root', self)
+        self._id = None
 
     def load_schema(self):
-        schema_data = self.db.metaphor_schema.find_one()
+        self.specs = {}
+        self.root = Spec('root', self)
+
+        schema_data = self.db.metaphor_schema.find_one_and_update(
+            {"_id": {"$exists": True}},
+            {
+                "$set": {"loaded": datetime.now()},
+                "$setOnInsert": {"specs": {}, "root": {}, "created": datetime.now()},
+            }, upsert=True, return_document=ReturnDocument.AFTER)
+        self._id = schema_data['_id']
         for spec_name, spec_data in schema_data['specs'].items():
-            spec = Spec(spec_name, self)
+            spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
-                spec.fields[field_name] = self._create_field(field_name, field_data, spec)
-            self.specs[spec_name] = spec
+                if field_data['type'] == 'calc':
+                    self.add_calc(spec, field_name, field_data['calc_str'])
+                else:
+                    self.add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
         self._add_reverse_links()
         for root_name, root_data in schema_data.get('root', {}).items():
-            self.root.fields[root_name] = self._create_field(root_name, root_data, self.root)
+            if root_data['type'] == 'calc':
+                self.add_calc(self.root, root_name, root_data['calc_str'])
+            else:
+                self.add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
 
-    def _create_field(self, field_name, field_data, spec):
-        if field_data['type'] == 'calc':
-            return CalcField(field_name, calc_str=field_data['calc_str'], spec=spec)
-        else:
-            return Field(field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
+    def add_spec(self, spec_name):
+        spec = Spec(spec_name, self)
+        self.specs[spec_name] = spec
+        return spec
+
+    def add_field(self, spec, field_name, field_type, target_spec_name=None):
+        spec.fields[field_name] = Field(field_name, field_type, target_spec_name=target_spec_name)
+
+    def add_calc(self, spec, field_name, calc_str):
+        spec.fields[field_name] =  CalcField(field_name, calc_str=calc_str)
 
     def _add_reverse_links(self):
         for spec in self.specs.values():
@@ -139,6 +164,7 @@ class Schema(object):
         data['_parent_field_name'] = parent_field_name
         data['_parent_canonical_url'] = self.load_canonical_parent_url(parent_type, parent_id)
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
+        self._update_dependencies(spec_name, data)
         return self.encodeid(new_resource_id)
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
@@ -155,6 +181,10 @@ class Schema(object):
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},
             return_document=ReturnDocument.AFTER)
+        self._update_dependencies(spec_name, save_data)
+
+    def _update_dependencies(self, spec_name, save_data):
+        pass
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$push': {parent_field: {'_id': self.decodeid(link_id)}}})

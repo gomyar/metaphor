@@ -1,0 +1,167 @@
+
+body {
+    font-family : "Courier New", Courier, monospace;
+}
+
+div.button {
+    background-color : blue;
+    color : white;
+    font-weight : bold;
+    font-size : 11px;
+    text-align : center;
+    min-width : 80px;
+    padding : 3px 10px 3px 10px;
+    cursor : pointer;
+    display : inline-block;
+    text-transform: uppercase;
+}
+
+div.title_version {
+    margin : 10px;
+    border-top : 2px solid black;
+    height : 40px;
+}
+div.title_version div.title {
+    font-size : 18px;
+    font-weight : bold;
+    display : inline-block;
+}
+div.title_version div.version{
+    display : inline-block;
+    margin-left : 50px;
+}
+
+div.specs_title {
+    margin : 10px;
+    border-top : 2px solid black;
+    top : 60px;
+}
+
+div.specs_title div.title {
+    font-size : 16px;
+    font-weight : bold;
+    display : inline-block;
+}
+
+div.specs_title div.controls {
+    font-weight : bold;
+    display : inline-block;
+}
+
+
+div.specs {
+    margin : 0px;
+    top : 100px;
+    background-color : white;
+    overflow-y : auto;
+}
+
+div.specs div.spec {
+    margin : 10px 10px 30px 10px;
+    border-top : 1px solid black;
+}
+
+div.specs div.spec div.title {
+    font-size : 12px;
+    font-weight : bold;
+    min-width : 250px;
+    display : inline-block;
+}
+
+div.specs div.spec div.button {
+    display : inline-block;
+    font-size : 10px;
+    height : 14px;
+    margin-left : 50px;
+}
+
+div.specs div.spec div.field div.name{
+    font-size : 12px;
+    min-width : 200px;
+    margin-left : 50px;
+    display : inline-block;
+}
+
+div.specs div.spec div.field div.type{
+    font-size : 12px;
+    min-width : 100px;
+    margin-left : 20px;
+    display : inline-block;
+}
+
+div.specs div.spec div.field div.target {
+    font-size : 12px;
+    min-width : 50px;
+    margin-left : 20px;
+    display : inline-block;
+}
+
+div.specs div.spec div.field div.calc_str {
+    font-size : 12px;
+    min-width : 50px;
+    margin-left : 20px;
+    display : inline-block;
+}
+
+div.popup {
+    margin: auto;
+    width: 50%;
+    border : 1px solid black;
+    background-color : white;
+    padding : 10px;
+
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+div.popupwrapper {
+    display : none;
+
+    background-color: rgba(255, 255, 255, 0.5);
+    position : absolute;
+    top : 0px;
+    left : 0px;
+    width : 100%;
+    height : 100%;
+    overflow: hidden;
+}
+
+.popupbuttons {
+    text-align: right;
+}
+
+div#loading {
+    position: absolute;
+    top : 0px;
+    left : 0px;
+    width : 100%;
+    height : 100%;
+    background-color: rgba(255, 255, 255, 0.5);
+    overflow: hidden;
+    text-align : center;
+    font-size : 14px;
+    font-weight : bold;
+    padding : 40px;
+}
+
+div.popupwrapper div.title {
+    font-size : 12px;
+    font-weight : bold;
+}
+
+div.popupform {
+    margin : 10px;
+}
+
+div.popupform div.formfield {
+    display : block;
+}
+
+div.popupform div.formfield div {
+    display : inline-block;
+}
+
+div.popupform div.formfield div.label {
+    font-size : 12px;
+}

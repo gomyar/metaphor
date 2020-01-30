@@ -1,0 +1,46 @@
+<html>
+
+<head>
+
+<script src="https://rawgit.com/gomyar/turtlegui/v4.0.5/turtlegui.js" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v4.0.5/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/api_browser.css"/>
+
+<script>
+
+var api = {
+    path: "{{ path }}",
+    resource: {{ resource|tojson|safe }},
+    spec: {{ spec|tojson|safe }},
+    is_collection: {{ is_collection|tojson }},
+    is_resource: {{ (not is_collection)|tojson }}
+};
+
+</script>
+<script src="/admin/static/metaphor/api_browser.js"></script>
+
+</head>
+
+<body>
+
+
+<div class="layer anchorright title_version">
+    <div class="title">Schema</div><div class="version">abcdef:gghjk:aasdf</div>
+</div>
+
+<div class="layer anchortop spec_name">
+    <div class="title">Spec</div><div class="name" gui-text="api.spec.name"></div><div class="is_collection" gui-show="api.is_collection">collection</div></div>
+</div>
+
+<div class="layer fullscreen resources">
+    <div class="collection" gui-show="api.is_collection" gui-list="api.resource" gui-item="resource">
+        <div gui-include="/browser/static/metaphor/api_browser_resource.html" gui-include-params="resource=resource"></div>
+    </div>
+    <div gui-include="/browser/static/metaphor/api_browser_resource.html" gui-include-params="resource=api.resource" gui-show="api.is_resource"></div>
+    </div>
+</div>
+
+</body>
+
+</html>

@@ -1,6 +1,7 @@
 
 import tokenize
 from io import StringIO
+from metaphor.schema import Field
 
 
 class Calc(object):
@@ -307,8 +308,8 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$lookup": {
                     "from": "resource_%s" % (child_spec.name,),
-                    "localField": "_owners.owner_id",
-                    "foreignField": "_id",
+                    "localField": '_id',
+                    "foreignField": spec.fields[self.field_name].reverse_link_field + "._id",
                     "as": "_field_%s" % (self.field_name,),
             }})
         aggregation.append(
@@ -384,6 +385,9 @@ class Operator(Calc):
         self.op = tokens[1]
         self.rhs = tokens[2]
         self._parser = parser
+
+    def infer_type(self):
+        return self.lhs.infer_type()
 
     def calculate(self, self_id):
         lhs = self.lhs.calculate(self_id)
@@ -499,6 +503,9 @@ class FunctionCall(Calc):
             'average': self._average,
             'sum': self._sum,
         }
+
+    def infer_type(self):
+        return Field('function', 'float')
 
     def calculate(self, self_id):
         return self.functions[self.func_name](self_id, *self.params)

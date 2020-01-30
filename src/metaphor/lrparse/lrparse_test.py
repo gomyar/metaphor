@@ -455,12 +455,6 @@ class LRParseTest(unittest.TestCase):
         result = tree.calculate(section_id_1)
         self.assertEquals('sales', result['name'])
 
-    def test_parent_collection(self):
-        pass
-
-    def test_linked_collection(self):
-        pass
-
     def test_parse_url(self):
         tree = parse("employees", self.schema.root)
 
@@ -499,3 +493,33 @@ class LRParseTest(unittest.TestCase):
             '_parent_type': 'root',
             'age': 41,
             'name': 'ned'}], tree.calculate(division_id_1))
+
+    def test_linkcollection_filter(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_1)
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_2)
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_3)
+
+        tree = parse('self.parttimers[age>30]', self.schema.specs['division'])
+
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 41,
+             'name': 'ned'},
+            {'_id': self.schema.decodeid(employee_id_2),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 31,
+             'name': 'bob'},
+            ], tree.calculate(division_id_1))

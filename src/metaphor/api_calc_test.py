@@ -47,6 +47,18 @@ class ApiTest(unittest.TestCase):
                             "type": "calc",
                             "calc_str": "self.sections[name='primary']",
                         },
+                        "average_section_total": {
+                            "type": "calc",
+                            "calc_str": "average(self.sections.section_total)",
+                        },
+                        "average_bracket_calc": {
+                            "type": "calc",
+                            "calc_str": "average(self.sections.section_total) + ((10 + sum(self.sections.section_total)) / 5)",
+                        },
+                        "older_employees": {
+                            "type": "calc",
+                            "calc_str": "self.link_employee_division[age>40]",
+                        },
                     },
                 },
                 "section": {
@@ -54,10 +66,17 @@ class ApiTest(unittest.TestCase):
                         "name": {
                             "type": "str",
                         },
+                        "section_total": {
+                            "type": "int",
+                        },
                         "division_name": {
                             "type": "calc",
                             "calc_str": "self.parent_division_sections.name",
-                        }
+                        },
+                        "distance_from_average": {
+                            "type": "calc",
+                            "calc_str": "self.section_total - average(self.parent_division_sections.sections.section_total)",
+                        },
                     },
                 },
             },
@@ -86,8 +105,8 @@ class ApiTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
 
-        section_id_1 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'primary'})
-        section_id_2 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'secondary'})
+        section_id_1 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'primary', 'section_total': 120})
+        section_id_2 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'secondary', 'section_total': 90})
 
         # test simple type
         section_1 = self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1))
@@ -99,14 +118,27 @@ class ApiTest(unittest.TestCase):
             'id': division_id_1,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'name': 'sales',
+            'older_employees': [{
+                'age': 41,
+                'division': '/divisions/%s' % division_id_1,
+                'id': employee_id_1,
+                'name': 'ned',
+                'self': '/employees/%s' % employee_id_1}],
+            'average_section_total': 105.0,
+            'average_bracket_calc': 149.0,
             'primary_sections': [
                 {'id': section_id_1,
+                 'distance_from_average': 15.0,
                  'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
                  'division_name': 'sales',
                  'parent_division_sections': '/divisions/%s' % division_id_1,
+                 'section_total': 120,
                  'name': 'primary'}
              ],
             'sections': '/divisions/%s/sections' % division_id_1,
             'self': '/divisions/%s' % division_id_1,
-            'yearly_sales': 100}
-            , division_1)
+            'yearly_sales': 100}, division_1)
+
+        # test calculated resource collection endpoint
+        older_employees = self.api.get('/divisions/%s/older_employees' % division_id_1)
+        self.assertEquals(1, len(older_employees))
