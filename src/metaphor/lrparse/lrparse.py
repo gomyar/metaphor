@@ -50,6 +50,19 @@ class ResourceRef(object):
         child_spec = spec.build_child_spec(self.field_name)
         return aggregation, child_spec, is_aggregate
 
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        aggregations = []
+        aggregation = self.reverse_aggregation(self.spec, resource_spec, resource_id)
+        aggregations.append(aggregation)
+        return aggregations
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = [
+            {"$match": {"_id": self._parser.spec.schema.decodeid(resource_id)}}
+        ]
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
+        return aggregation
+
     def __repr__(self):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
 
@@ -98,6 +111,9 @@ class RootResourceRef(ResourceRef):
             return aggregation, self.spec, False
         else:
             return [], self.spec, True
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id, field=None):
+        return []
 
     def is_collection(self):
         if self.resource_name == 'self':
@@ -162,6 +178,26 @@ class CollectionResourceRef(ResourceRef):
         )
         return aggregation, child_spec, True
 
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "localField": "_parent_id",
+                    "foreignField": "_id",
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation
+
     def is_collection(self):
         return True
 
@@ -188,6 +224,26 @@ class LinkCollectionResourceRef(ResourceRef):
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
         return aggregation, child_spec, True
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "foreignField": "%s._id" % self.field_name,
+                    "localField": "_id",
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation
 
     def is_collection(self):
         return True
@@ -216,6 +272,26 @@ class LinkResourceRef(ResourceRef):
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
         return aggregation, child_spec, is_aggregate
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "localField": "_id",
+                    "foreignField": self.field_name,
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation
 
 
 class CalcResourceRef(ResourceRef):
@@ -349,6 +425,9 @@ class FilteredResourceRef(ResourceRef):
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet()
 
+    def all_resource_refs(self):
+        return ["%s.%s" % (self.resource_ref.resource_ref_snippet(), field) for field in self.filter_ref.resource_ref_fields()]
+
     def __repr__(self):
         return "F[%s %s]" % (self.resource_ref, self.filter_ref)
 
@@ -438,6 +517,41 @@ class Condition(object):
     def __repr__(self):
         return "O[%s %s %s]" % (self.field_name, self.operator, self.const)
 
+    def resource_ref_fields(self):
+        return {self.field_name}
+
+
+class AndCondition(Condition):
+    def __init__(self, tokens, parser):
+        self.lhs, _, self.rhs = tokens
+        self._parser = parser
+
+    def condition_aggregation(self, spec):
+        return {"$and": [self.lhs.condition_aggregation(spec),
+                         self.rhs.condition_aggregation(spec)]}
+
+    def __repr__(self):
+        return "%s & %s" % (self.lhs, self.rhs)
+
+    def resource_ref_fields(self):
+        return {self.lhs.field_name, self.rhs.field_name}
+
+
+class OrCondition(Condition):
+    def __init__(self, tokens, parser):
+        self.lhs, _, self.rhs = tokens
+        self._parser = parser
+
+    def condition_aggregation(self, spec):
+        return {"$or": [self.lhs.condition_aggregation(spec),
+                         self.rhs.condition_aggregation(spec)]}
+
+    def __repr__(self):
+        return "%s & %s" % (self.lhs, self.rhs)
+
+    def resource_ref_fields(self):
+        return {self.lhs.field_name, self.rhs.field_name}
+
 
 class Filter(object):
     def __init__(self, tokens, parser):
@@ -451,6 +565,10 @@ class Filter(object):
         agg = self.condition.condition_aggregation(spec)
         aggregation = {"$match": agg}
         return aggregation
+
+    def resource_ref_fields(self):
+        return self.condition.resource_ref_fields()
+
 
 class ParameterList(object):
     def __init__(self, tokens, parser):
@@ -568,6 +686,10 @@ class FunctionCall(Calc):
         except StopIteration:
             return None
 
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        # take into account different functions and params
+        return self.params[0].build_reverse_aggregations(resource_spec, resource_id)
+
     def __repr__(self):
         return "%s(%s)" % (self.func_name, [str(s) for s in self.params])
 
@@ -621,7 +743,8 @@ class Parser(object):
             [(Calc, '-', Calc) , Operator],
             [(Calc, '*', Calc) , Operator],
             [(Calc, '/', Calc) , Operator],
-            [(Condition, '&', Condition) , Condition],
+            [(Condition, '&', Condition) , AndCondition],
+            [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
             [(Calc, ',', Calc), ParameterList],
             [(ParameterList, ',', Calc), ParameterList],
@@ -732,7 +855,8 @@ class UrlParser(Parser):
             [(NAME, '=', ConstRef) , Condition],
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
-            [(Condition, '&', Condition) , Condition],
+            [(Condition, '&', Condition) , AndCondition],
+            [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
             [(STRING,), ConstRef],
             [(NUMBER,), ConstRef],

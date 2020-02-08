@@ -233,6 +233,34 @@ class LRParseTest(unittest.TestCase):
                           spec)
         self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
 
+    def test_conditions_multiple(self):
+        employee_spec = self.schema.specs['employee']
+        self.schema.add_field(employee_spec, 'salary', 'int')
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'salary': 100}, 'employees')
+        tree = parse("employees[age>40 & salary>99].name", self.schema.specs['employee'])
+
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
+        self.assertEquals([
+            {'$match': {'$and' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
+            {'$project': {'name': True}}], aggregation)
+        self.assertEquals(self.schema.specs['employee'].fields['name'],
+                          spec)
+        self.assertEquals(set(['employees.name', 'employees.age', 'employees.salary']), tree.all_resource_refs())
+
+    def test_conditions_multiple_or(self):
+        employee_spec = self.schema.specs['employee']
+        self.schema.add_field(employee_spec, 'salary', 'int')
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'salary': 100}, 'employees')
+        tree = parse("employees[age>40 | salary>99].name", self.schema.specs['employee'])
+
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
+        self.assertEquals([
+            {'$match': {'$or' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
+            {'$project': {'name': True}}], aggregation)
+        self.assertEquals(self.schema.specs['employee'].fields['name'],
+                          spec)
+        self.assertEquals(set(['employees.name', 'employees.age', 'employees.salary']), tree.all_resource_refs())
+
     def test_aggregation_self(self):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
         division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
@@ -394,12 +422,12 @@ class LRParseTest(unittest.TestCase):
         division_spec = self.schema.specs['division']
 
         tree = parse("employees[age>40].division[name='sales'].yearly_sales", employee_spec)
-        self.assertEquals(set(['employees.division.yearly_sales']), tree.all_resource_refs())
+        self.assertEquals(set(['employees.age', 'employees.division.yearly_sales']), tree.all_resource_refs())
         self.assertEquals(division_spec.fields['yearly_sales'], tree.infer_type())
         self.assertTrue(tree.is_collection())
 
         tree = parse("employees[age>40].division[name='sales']", employee_spec)
-        self.assertEquals(set(['employees.division']), tree.all_resource_refs())
+        self.assertEquals(set(['employees.age', 'employees.division.sales']), tree.all_resource_refs())
         # it's a link spec
         self.assertEquals(division_spec, tree.infer_type())
         self.assertTrue(tree.is_collection())

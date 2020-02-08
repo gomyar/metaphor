@@ -78,6 +78,19 @@ class Spec(object):
         else:
             raise Exception('Unrecognised field type')
 
+    def resolve_child(self, child_path):
+        ''' child_path "self.division.name" dot-separated child specs '''
+        children = child_path.split('.')
+        if 'self' == children[0]:
+            child = self
+            children.pop(0)
+        else:
+            child = self.schema.root
+
+        for field_name in children:
+            child = child.build_child_spec(field_name)
+        return child
+
     def is_collection(self):
         # specs map to resources and are not collections
         return False
@@ -95,6 +108,7 @@ class Schema(object):
         self.specs = {}
         self.root = Spec('root', self)
         self._id = None
+        self.calc_trees = {}
 
     def load_schema(self):
         self.specs = {}
@@ -130,7 +144,9 @@ class Schema(object):
         spec.fields[field_name] = Field(field_name, field_type, target_spec_name=target_spec_name)
 
     def add_calc(self, spec, field_name, calc_str):
+        from metaphor.lrparse.lrparse import parse
         spec.fields[field_name] =  CalcField(field_name, calc_str=calc_str)
+        self.calc_trees[(spec.name, field_name)] = parse(calc_str, spec)
 
     def _add_reverse_links(self):
         for spec in self.specs.values():
@@ -184,7 +200,10 @@ class Schema(object):
         self._update_dependencies(spec_name, save_data)
 
     def _update_dependencies(self, spec_name, save_data):
-        pass
+        spec = self.specs[spec_name]
+        for field_name in save_data:
+            # find dependencies and update
+            pass
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$push': {parent_field: {'_id': self.decodeid(link_id)}}})
