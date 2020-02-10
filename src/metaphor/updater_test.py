@@ -194,3 +194,160 @@ class UpdaterTest(unittest.TestCase):
 
         affected_ids = self.updater.get_affected_ids_for_resource('division', 'average_manager_age', self.employee_spec, employee_id_1)
         self.assertEquals([self.schema.decodeid(division_id_1), self.schema.decodeid(division_id_2)], affected_ids)
+
+    def test_reverse_aggregation_calc_through_calc(self):
+        self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
+        self.schema.add_calc(self.division_spec, 'older_employees_called_ned', 'self.older_employees[name="ned"]')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+        division_id_2 = self.schema.insert_resource(
+            'division', {'name': 'marketting'}, 'divisions')
+
+        employee_id_1 = self.schema.insert_resource(
+            'employee', {'name': 'bob', 'age': 21}, 'employees', 'division', division_id_1)
+        employee_id_2 = self.schema.insert_resource(
+            'employee', {'name': 'ned', 'age': 31}, 'employees', 'division', division_id_1)
+        employee_id_3 = self.schema.insert_resource(
+            'employee', {'name': 'fred', 'age': 41}, 'employees', 'division', division_id_1)
+
+        employee_id_4 = self.schema.insert_resource(
+            'employee', {'name': 'sam', 'age': 25}, 'employees', 'division', division_id_2)
+        employee_id_5 = self.schema.insert_resource(
+            'employee', {'name': 'ned', 'age': 35}, 'employees', 'division', division_id_2)
+
+        self.updater.update_calc('division', 'older_employees', division_id_1)
+        self.updater.update_calc('division', 'older_employees_called_ned', division_id_1)
+        self.updater.update_calc('division', 'older_employees', division_id_2)
+        self.updater.update_calc('division', 'older_employees_called_ned', division_id_2)
+
+        agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees_called_ned', self.employee_spec, employee_id_2)
+        self.assertEquals([[
+            {"$match": {"_id": self.schema.decodeid(employee_id_2)}},
+            {"$lookup": {
+                "from": "resource_division",
+                "foreignField": "older_employees",
+                "localField": "_id",
+                "as": "_field_older_employees",
+            }},
+            {'$group': {'_id': '$_field_older_employees'}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
+        ]], agg)
+
+        # check affected ids
+        affected_ids = self.updater.get_affected_ids_for_resource('division', 'older_employees_called_ned', self.employee_spec, employee_id_2)
+        self.assertEquals([self.schema.decodeid(division_id_1)], affected_ids)
+
+    def test_reverse_aggregation_parent_link(self):
+        self.schema.add_calc(self.employee_spec, 'division_name', 'self.parent_division_employees.name')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+        employee_id_1 = self.schema.insert_resource(
+            'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
+
+        self.updater.update_calc('employee', 'division_name', employee_id_1)
+
+        agg = self.updater.build_reverse_aggregations_to_calc('employee', 'division_name', self.division_spec, division_id_1)
+        self.assertEquals([[
+            {"$match": {"_id": self.schema.decodeid(division_id_1)}},
+            {"$lookup": {
+                "from": "resource_employee",
+                "foreignField": "_parent_id",
+                "localField": "_id",
+                "as": "_field_parent_division_employees",
+            }},
+            {'$group': {'_id': '$_field_parent_division_employees'}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
+        ]], agg)
+
+        # check affected ids
+        affected_ids = self.updater.get_affected_ids_for_resource('employee', 'division_name', self.division_spec, division_id_1)
+        self.assertEquals([self.schema.decodeid(employee_id_1)], affected_ids)
+
+    def test_reverse_aggregation_reverse_link(self):
+        self.schema.add_field(self.division_spec, 'manager', 'link', 'employee')
+        self.schema.add_calc(self.employee_spec, 'divisions_i_manage', 'self.link_division_manager')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+        division_id_2 = self.schema.insert_resource(
+            'division', {'name': 'marketting'}, 'divisions')
+
+        employee_id_1 = self.schema.insert_resource(
+            'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
+
+        self.schema.update_resource_fields('division', division_id_1, {'manager': employee_id_1})
+        self.schema.update_resource_fields('division', division_id_2, {'manager': employee_id_1})
+
+        self.updater.update_calc('employee', 'divisions_i_manage', employee_id_1)
+
+        agg = self.updater.build_reverse_aggregations_to_calc('employee', 'divisions_i_manage', self.division_spec, division_id_1)
+        self.assertEquals([[
+            {"$match": {"_id": self.schema.decodeid(division_id_1)}},
+            {"$lookup": {
+                "from": "resource_employee",
+                "foreignField": "_id",
+                "localField": "manager",
+                "as": "_field_link_division_manager",
+            }},
+            {'$group': {'_id': '$_field_link_division_manager'}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
+        ]], agg)
+
+        # check affected ids
+        affected_ids = self.updater.get_affected_ids_for_resource('employee', 'division_name', self.division_spec, division_id_1)
+        self.assertEquals([self.schema.decodeid(employee_id_1)], affected_ids)
+
+        division_id_2 = self.schema.insert_resource(
+            'division', {'name': 'marketting'}, 'divisions')
+        self.schema.create_linkcollection_entry('division', division_id_2, 'managers', employee_id_1)
+
+        affected_ids = self.updater.get_affected_ids_for_resource('division', 'average_manager_age', self.employee_spec, employee_id_1)
+        self.assertEquals([self.schema.decodeid(division_id_1), self.schema.decodeid(division_id_2)], affected_ids)
+
+    def test_reverse_aggregation_loopback(self):
+        self.schema.add_field(self.division_spec, 'managers', 'linkcollection', 'employee')
+        self.schema.add_calc(self.employee_spec, 'all_my_subordinates', 'self.link_division_managers.employees')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.schema.insert_resource(
+            'employee', {'name': 'bob', 'age': 21}, 'employees', 'division', division_id_1)
+        employee_id_2 = self.schema.insert_resource(
+            'employee', {'name': 'ned', 'age': 31}, 'employees', 'division', division_id_1)
+        employee_id_3 = self.schema.insert_resource(
+            'employee', {'name': 'fred', 'age': 41}, 'employees', 'division', division_id_1)
+        employee_id_4 = self.schema.insert_resource(
+            'employee', {'name': 'mike', 'age': 51}, 'employees', 'division', division_id_1)
+
+        # add manager
+        self.schema.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_1)
+
+        # update his subordinates
+        self.updater.update_calc('employee', 'all_my_subordinates', employee_id_1)
+
+        # a little unsure of this
+        agg = self.updater.build_reverse_aggregations_to_calc('employee', 'all_my_subordinates', self.division_spec, division_id_1)
+        self.assertEquals([[
+            {"$match": {"_id": self.schema.decodeid(division_id_1)}},
+            {"$lookup": {
+                "from": "resource_division",
+                "foreignField": "_id",
+                "localField": "_parent_id",
+                "as": "_field_employees",
+            }},
+            {'$group': {'_id': '$_field_employees'}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
+        ]], agg)
+
+        # check affected ids
+        affected_ids = self.updater.get_affected_ids_for_resource('employee', 'all_my_subordinates', self.division_spec, division_id_1)
+        self.assertEquals([
+            self.schema.decodeid(employee_id_1),
+        ], affected_ids)

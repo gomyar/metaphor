@@ -47,8 +47,24 @@ class Updater(object):
                 result = results[0]
         self.schema.db['resource_%s' % resource_name].update({'_id': self.schema.decodeid(resource_id)}, {"$set": {calc_field_name: result}})
 
-    def apply_updates(self, aggregations, resource_spec_name, resource_id):
-        for aggregation in aggregations:
-            # do aggregations for calc resources
-            # update resources
-            pass
+    def update_fields(self, spec_name, resource_id, **fields):
+        spec = self.schema.specs[spec_name]
+        self.schema.update_resource_fields(spec_name, resource_id, fields)
+        self._perform_calc_updates(spec_name, resource_id, fields)
+
+    def _perform_calc_updates(self, spec_name, resource_id, fields):
+        spec = self.schema.specs[spec_name]
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            for field_name, field_value in fields.items():
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                for affected_id in affected_ids:
+                    self.update_calc(calc_spec_name, calc_field_name, self.schema.encodeid(affected_id))
+
+    def create_resource(self, spec_name, parent_spec_name, parent_field_name,
+                        parent_id, fields):
+        spec = self.schema.specs[spec_name]
+        resource_id = self.schema.insert_resource(
+            spec_name, fields, parent_field_name, parent_spec_name,
+            parent_id)
+        self._perform_calc_updates(spec_name, resource_id, fields)
+        return resource_id

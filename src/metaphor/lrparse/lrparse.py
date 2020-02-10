@@ -57,10 +57,7 @@ class ResourceRef(object):
         return aggregations
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = [
-            {"$match": {"_id": self._parser.spec.schema.decodeid(resource_id)}}
-        ]
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
         return aggregation
 
     def __repr__(self):
@@ -113,7 +110,12 @@ class RootResourceRef(ResourceRef):
             return [], self.spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id, field=None):
-        return []
+        if self.resource_name == 'self':
+            return [
+                {"$match": {"_id": self._parser.spec.schema.decodeid(resource_id)}}
+            ]
+        else:
+            return []
 
     def is_collection(self):
         if self.resource_name == 'self':
@@ -297,7 +299,8 @@ class LinkResourceRef(ResourceRef):
 class CalcResourceRef(ResourceRef):
     def aggregation(self, self_id):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)
-        child_spec = spec.build_child_spec(self.field_name)
+        calc_tree = spec.schema.calc_trees[spec.name, self.field_name]
+        calc_spec = calc_tree.infer_type()
         if spec.fields[self.field_name].is_primitive():
             # int float str
             pass
@@ -306,13 +309,13 @@ class CalcResourceRef(ResourceRef):
             # lookup
             aggregation.append(
                 {"$lookup": {
-                        "from": "resource_%s" % (child_spec.calc_type,),
-                        "localField": child_spec.name,
+                        "from": "resource_%s" % (calc_spec.name,),
+                        "localField": self.field_name,
                         "foreignField": "_id",
-                        "as": "_field_%s" % (child_spec.name,),
+                        "as": "_field_%s" % (self.field_name,),
                 }})
             aggregation.append(
-                {'$group': {'_id': '$_field_%s' % (child_spec.name,)}}
+                {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
             )
             aggregation.append(
                 {"$unwind": "$_id"}
@@ -320,7 +323,27 @@ class CalcResourceRef(ResourceRef):
             aggregation.append(
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
-        return aggregation, child_spec, is_aggregate
+        return aggregation, calc_spec, is_aggregate
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "foreignField": self.field_name,
+                    "localField": "_id",
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation
 
 
 class ReverseLinkResourceRef(ResourceRef):
@@ -344,6 +367,26 @@ class ReverseLinkResourceRef(ResourceRef):
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
         return aggregation, child_spec, True
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "localField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
+                    "foreignField": "_id",
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation
 
     def is_collection(self):
         return True
@@ -370,6 +413,26 @@ class ParentCollectionResourceRef(ResourceRef):
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
         return aggregation, child_spec, False
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "foreignField": "_parent_id",
+                    "localField": "_id",
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        return aggregation
 
     def is_collection(self):
         return False

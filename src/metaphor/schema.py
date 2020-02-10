@@ -127,21 +127,27 @@ class Schema(object):
                 if field_data['type'] == 'calc':
                     self.add_calc(spec, field_name, field_data['calc_str'])
                 else:
-                    self.add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
+                    self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
         self._add_reverse_links()
         for root_name, root_data in schema_data.get('root', {}).items():
             if root_data['type'] == 'calc':
                 self.add_calc(self.root, root_name, root_data['calc_str'])
             else:
-                self.add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
+                self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
 
     def add_spec(self, spec_name):
         spec = Spec(spec_name, self)
         self.specs[spec_name] = spec
         return spec
 
+    def _add_field(self, spec, field_name, field_type, target_spec_name=None):
+        field = Field(field_name, field_type, target_spec_name=target_spec_name)
+        spec.fields[field_name] = field
+        return field
+
     def add_field(self, spec, field_name, field_type, target_spec_name=None):
-        spec.fields[field_name] = Field(field_name, field_type, target_spec_name=target_spec_name)
+        field = self._add_field(spec, field_name, field_type, target_spec_name)
+        self._add_reverse_link_for_field(field, spec)
 
     def add_calc(self, spec, field_name, calc_str):
         from metaphor.lrparse.lrparse import parse
@@ -151,15 +157,18 @@ class Schema(object):
     def _add_reverse_links(self):
         for spec in self.specs.values():
             for field in spec.fields.values():
-                if field.field_type == 'link':
-                    reverse_field_name = "link_%s_%s" % (spec.name, field.name)
-                    self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
-                if field.field_type == 'collection':
-                    parent_field_name = "parent_%s_%s" % (spec.name, field.name)
-                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name, field.name)
-                if field.field_type == 'linkcollection':
-                    parent_field_name = "link_%s_%s" % (spec.name, field.name)
-                    self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "reverse_link_collection", spec.name, field.name)
+                self._add_reverse_link_for_field(field, spec)
+
+    def _add_reverse_link_for_field(self, field, spec):
+        if field.field_type == 'link':
+            reverse_field_name = "link_%s_%s" % (spec.name, field.name)
+            self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
+        if field.field_type == 'collection':
+            parent_field_name = "parent_%s_%s" % (spec.name, field.name)
+            self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name, field.name)
+        if field.field_type == 'linkcollection':
+            parent_field_name = "link_%s_%s" % (spec.name, field.name)
+            self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "reverse_link_collection", spec.name, field.name)
 
     def encodeid(self, mongo_id):
         return "ID" + str(mongo_id)
