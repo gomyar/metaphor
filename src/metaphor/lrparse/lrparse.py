@@ -323,6 +323,7 @@ class CalcResourceRef(ResourceRef):
             aggregation.append(
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
+            is_aggregate = is_aggregate or calc_tree.is_collection()
         return aggregation, calc_spec, is_aggregate
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):

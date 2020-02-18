@@ -4,10 +4,13 @@ from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
 from metaphor.lrparse.lrparse import parse_canonical_url
 from metaphor.schema import CalcField
+from metaphor.updater import Updater
+
 
 class Api(object):
     def __init__(self, schema):
         self.schema = schema
+        self.updater = Updater(schema)
 
     def patch(self, path, data):
         path = path.strip().strip('/')
@@ -18,10 +21,10 @@ class Api(object):
 
         resource = next(cursor)
 
-        return self.schema.update_resource_fields(
+        return self.updater.update_fields(
             spec.name,
             self.schema.encodeid(resource['_id']),
-            data)
+            **data)
 
     def post(self, path, data):
         path = path.strip().strip('/')
@@ -41,12 +44,12 @@ class Api(object):
             if field_spec.field_type == 'linkcollection':
                 return self.schema.create_linkcollection_entry(spec.name, parent_id, field_name, data['id'])
             else:
-                return self.schema.insert_resource(
+                return self.updater.create_resource(
                     field_spec.target_spec_name,
-                    data,
-                    parent_type=spec.name,
-                    parent_id=parent_id,
-                    parent_field_name=field_name)
+                    spec.name,
+                    field_name,
+                    parent_id,
+                    data)
         else:
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]

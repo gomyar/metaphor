@@ -11,6 +11,10 @@ var loading = {
     }
 };
 
+var not = function(value) {
+    return !(value);
+}
+
 var browser = {
     editing_field_name: null,
     editing_resource_id: null,
@@ -20,6 +24,12 @@ var browser = {
     },
     create_href: function(field_value) {
         return window.location.protocol + '//' + window.location.host + "/browser" + field_value;
+    },
+    create_relative_href: function(resource_root, relative_path) {
+        return window.location.protocol + '//' + window.location.host + "/browser" + resource_root + "/" + relative_path;
+    },
+    create_relative_link: function(resource_root, relative_path) {
+        return resource_root + "/" + relative_path;
     },
 
     set_editing_field: function(resource_id, field_name) {

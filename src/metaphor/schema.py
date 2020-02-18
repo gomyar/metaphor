@@ -125,15 +125,26 @@ class Schema(object):
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
                 if field_data['type'] == 'calc':
-                    self.add_calc(spec, field_name, field_data['calc_str'])
+                    spec.fields[field_name] = CalcField(field_name, calc_str=field_data['calc_str'])
                 else:
                     self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
         self._add_reverse_links()
         for root_name, root_data in schema_data.get('root', {}).items():
             if root_data['type'] == 'calc':
-                self.add_calc(self.root, root_name, root_data['calc_str'])
+                self.root.fields[field_name] = CalcField(field_name, calc_str=root_data['calc_str'])
             else:
                 self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
+
+        # pre-parse calcs
+        from metaphor.lrparse.lrparse import parse
+        for spec_name, spec_data in schema_data['specs'].items():
+            spec = self.specs[spec_name]
+            for field_name, field_data in spec_data['fields'].items():
+                if field_data['type'] == 'calc':
+                    self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
+        for root_name, root_data in schema_data.get('root', {}).items():
+            if root_data['type'] == 'calc':
+                self.calc_trees[('root', root_name)] = parse(root_data['calc_str'], self.root)
 
     def add_spec(self, spec_name):
         spec = Spec(spec_name, self)

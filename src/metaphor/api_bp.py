@@ -39,7 +39,7 @@ def api(path):
 def browser_root():
     def serialize_field(field):
         if field.field_type == 'calc':
-            return {'type': 'calc', 'calc_str': field.calc_str}
+            return {'type': 'calc', 'calc_str': field.calc_str, 'is_primitive': field.is_primitive()}
         elif field.field_type in ('int', 'str', 'float', 'bool'):
             return {'type': field.field_type}
         else:
@@ -62,7 +62,7 @@ def browser_root():
 def browser(path):
     def serialize_field(field):
         if field.field_type == 'calc':
-            return {'type': 'calc', 'calc_str': field.calc_str}
+            return {'type': 'calc', 'calc_str': field.calc_str, 'is_primitive': field.is_primitive()}
         elif field.field_type in ('int', 'str', 'float', 'bool'):
             return {'type': field.field_type}
         else:
