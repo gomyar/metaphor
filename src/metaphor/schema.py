@@ -19,6 +19,7 @@ class Field(object):
             'float': [float, int],
             'bool': [bool, float, int, str],
         }
+        self.spec = None
 
     def is_primitive(self):
         return self.field_type in Field.PRIMITIVES
@@ -41,9 +42,21 @@ class CalcField(Field):
         self.field_name = field_name
         self.calc_str = calc_str
         self.field_type = 'calc'
+        self.spec = None
 
     def __repr__(self):
         return "<Calc %s = %s>" % (self.field_name, self.calc_str)
+
+    def infer_type(self):
+        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.field_name]
+        return calc_tree.infer_type()
+
+    def is_primitive(self):
+        return self.infer_type().is_primitive()
+
+    def is_collection(self):
+        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.field_name]
+        return calc_tree.is_collection()
 
 
 # field types:
@@ -125,13 +138,13 @@ class Schema(object):
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
                 if field_data['type'] == 'calc':
-                    spec.fields[field_name] = CalcField(field_name, calc_str=field_data['calc_str'])
+                    self._add_calc(spec, field_name, field_data['calc_str'])
                 else:
                     self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
         self._add_reverse_links()
         for root_name, root_data in schema_data.get('root', {}).items():
             if root_data['type'] == 'calc':
-                self.root.fields[field_name] = CalcField(field_name, calc_str=root_data['calc_str'])
+                self._add_calc(self.root, field_name, root_data['calc_str'])
             else:
                 self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
 
@@ -154,16 +167,25 @@ class Schema(object):
     def _add_field(self, spec, field_name, field_type, target_spec_name=None):
         field = Field(field_name, field_type, target_spec_name=target_spec_name)
         spec.fields[field_name] = field
+        field.spec = spec
         return field
 
     def add_field(self, spec, field_name, field_type, target_spec_name=None):
         field = self._add_field(spec, field_name, field_type, target_spec_name)
         self._add_reverse_link_for_field(field, spec)
+        return field
 
     def add_calc(self, spec, field_name, calc_str):
         from metaphor.lrparse.lrparse import parse
-        spec.fields[field_name] =  CalcField(field_name, calc_str=calc_str)
+        calc_field = self._add_calc(spec, field_name, calc_str)
         self.calc_trees[(spec.name, field_name)] = parse(calc_str, spec)
+        return calc_field
+
+    def _add_calc(self, spec, field_name, calc_str):
+        calc_field = CalcField(field_name, calc_str=calc_str)
+        spec.fields[field_name] = calc_field
+        spec.fields[field_name].spec = spec
+        return calc_field
 
     def _add_reverse_links(self):
         for spec in self.specs.values():

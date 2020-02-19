@@ -321,3 +321,22 @@ class SchemaTest(unittest.TestCase):
             '_parent_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'appropriation',
         }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
+
+    def test_calc_infer_type(self):
+        spec = self.schema.add_spec('employees')
+        self.schema.add_field(spec, 'name', 'str')
+        calc_field = self.schema.add_calc(spec, 'current_name', 'self.name')
+
+        self.assertEquals('str', calc_field.infer_type().field_type)
+        self.assertTrue(calc_field.is_primitive())
+        self.assertFalse(calc_field.is_collection())
+
+    def test_calc_infer_type_collection(self):
+        spec = self.schema.add_spec('employees')
+        buddy_spec = self.schema.add_spec('buddy')
+        self.schema.add_field(spec, 'buddies', 'collection', 'buddy')
+        calc_field = self.schema.add_calc(spec, 'all_buddies', 'self.buddies')
+
+        self.assertEquals(buddy_spec, calc_field.infer_type())
+        self.assertFalse(calc_field.is_primitive())
+        self.assertTrue(calc_field.is_collection())
