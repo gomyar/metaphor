@@ -108,3 +108,56 @@ class UpdaterTest(unittest.TestCase):
             '_parent_id': ObjectId(division_id_1[2:]),
             '_parent_type': 'division',
         }, employee_data)
+
+    def test_update_link_collection(self):
+        self.schema.add_field(self.division_spec, 'managers', 'linkcollection', 'employee')
+        self.schema.add_calc(self.division_spec, 'older_managers', 'self.managers[age>30]')
+        self.schema.add_calc(self.division_spec, 'older_non_retired_managers', 'self.older_managers[age<65]')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'Bob',
+            'age': 41
+        })
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'Ned',
+            'age': 70
+        })
+        employee_id_3 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'Fred',
+            'age': 25
+        })
+
+        self.updater.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_1)
+        self.updater.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_2)
+        self.updater.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_3)
+
+        division_data = self.db.resource_division.find_one()
+        self.assertEquals({
+            "_id" : self.schema.decodeid(division_id_1),
+            "_parent_field_name" : "divisions",
+            "_parent_id" : None,
+            "_parent_type" : "root",
+            "_parent_canonical_url" : "/",
+            "name" : "sales",
+            "managers" : [
+                    {
+                            "_id" : self.schema.decodeid(employee_id_1)
+                    },
+                    {
+                            "_id" : self.schema.decodeid(employee_id_2)
+                    },
+                    {
+                            "_id" : self.schema.decodeid(employee_id_3)
+                    }
+            ],
+            "older_managers" : [
+                    self.schema.decodeid(employee_id_1),
+                    self.schema.decodeid(employee_id_2),
+            ],
+            "older_non_retired_managers" : [
+                    self.schema.decodeid(employee_id_1),
+            ]
+        }, division_data)

@@ -42,7 +42,11 @@ class Api(object):
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
             if field_spec.field_type == 'linkcollection':
-                return self.schema.create_linkcollection_entry(spec.name, parent_id, field_name, data['id'])
+                return self.updater.create_linkcollection_entry(
+                    spec.name,
+                    parent_id,
+                    field_name,
+                    data['id'])
             else:
                 return self.updater.create_resource(
                     field_spec.target_spec_name,

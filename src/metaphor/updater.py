@@ -68,3 +68,9 @@ class Updater(object):
             parent_id)
         self._perform_calc_updates(spec_name, resource_id, fields)
         return resource_id
+
+    def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
+        self.schema.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, link_id)
+        parent_spec = self.schema.specs[parent_spec_name]
+        spec = parent_spec.build_child_spec(parent_field)
+        self._perform_calc_updates(spec.name, link_id, {parent_field: None})
