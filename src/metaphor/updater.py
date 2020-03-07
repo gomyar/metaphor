@@ -1,4 +1,9 @@
 
+import logging
+
+log = logging.getLogger('metaphor')
+
+
 class Updater(object):
     def __init__(self, schema):
         self.schema = schema
@@ -16,11 +21,13 @@ class Updater(object):
         return found
 
     def get_affected_ids_for_resource(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
+        log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
         affected_ids = []
         for aggregation in self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, resource_spec, resource_id):
             cursor = self.schema.db['resource_%s' % resource_spec.name].aggregate(aggregation)
             for resource in cursor:
                 affected_ids.append(resource['_id'])
+        log.debug("returns: %s", affected_ids)
         return affected_ids
 
     def build_reverse_aggregations_to_calc(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
@@ -55,8 +62,8 @@ class Updater(object):
     def _perform_calc_updates(self, spec_name, resource_id, fields):
         spec = self.schema.specs[spec_name]
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            for field_name, field_value in fields.items():
-                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+            affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+            if affected_ids:
                 for affected_id in affected_ids:
                     self.update_calc(calc_spec_name, calc_field_name, self.schema.encodeid(affected_id))
 

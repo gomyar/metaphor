@@ -51,10 +51,13 @@ class ResourceRef(object):
         return aggregation, child_spec, is_aggregate
 
     def build_reverse_aggregations(self, resource_spec, resource_id):
-        aggregations = []
-        aggregation = self.reverse_aggregation(self.spec, resource_spec, resource_id)
-        aggregations.append(aggregation)
-        return aggregations
+        aggregation = [
+            {"$match": {"_id": self._parser.spec.schema.decodeid(resource_id)}}
+        ]
+        aggregation.extend(self.reverse_aggregation(self.spec, resource_spec, resource_id))
+        return [
+            aggregation
+        ]
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
         aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
@@ -110,12 +113,7 @@ class RootResourceRef(ResourceRef):
             return [], self.spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id, field=None):
-        if self.resource_name == 'self':
-            return [
-                {"$match": {"_id": self._parser.spec.schema.decodeid(resource_id)}}
-            ]
-        else:
-            return []
+        return []
 
     def is_collection(self):
         if self.resource_name == 'self':
@@ -158,6 +156,10 @@ class IDResourceRef(ResourceRef):
 
 
 class CollectionResourceRef(ResourceRef):
+    def __init__(self, resource_ref, field_name, parser, spec, parent_spec):
+        super(CollectionResourceRef, self).__init__(resource_ref, field_name, parser, spec)
+        self.parent_spec = parent_spec
+
     def aggregation(self, self_id):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id)
         child_spec = spec.build_child_spec(self.field_name)
@@ -181,13 +183,13 @@ class CollectionResourceRef(ResourceRef):
         return aggregation, child_spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation = []
         aggregation.append(
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "localField": "_parent_id",
-                    "foreignField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
+                "from": "resource_%s" % (self.parent_spec.name,),
+                "localField": "_parent_id",
+                "foreignField": "_id",
+                "as": "_field_%s" % (self.field_name,),
             }})
         aggregation.append(
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
@@ -198,6 +200,7 @@ class CollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
 
     def is_collection(self):
@@ -228,6 +231,7 @@ class LinkCollectionResourceRef(ResourceRef):
         return aggregation, child_spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+#        import ipdb; ipdb.set_trace()
         aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
         aggregation.append(
             {"$lookup": {
@@ -276,7 +280,7 @@ class LinkResourceRef(ResourceRef):
         return aggregation, child_spec, is_aggregate
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation = []
         aggregation.append(
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -293,6 +297,7 @@ class LinkResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
 
 
@@ -327,7 +332,7 @@ class CalcResourceRef(ResourceRef):
         return aggregation, calc_spec, is_aggregate
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation = []
         aggregation.append(
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -344,6 +349,7 @@ class CalcResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
 
 
@@ -370,7 +376,7 @@ class ReverseLinkResourceRef(ResourceRef):
         return aggregation, child_spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation = []
         aggregation.append(
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -387,6 +393,7 @@ class ReverseLinkResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
 
     def is_collection(self):
@@ -416,7 +423,7 @@ class ParentCollectionResourceRef(ResourceRef):
         return aggregation, child_spec, False
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
+        aggregation = []
         aggregation.append(
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -433,6 +440,7 @@ class ParentCollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
 
     def is_collection(self):
@@ -462,6 +470,27 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
         return aggregation, child_spec, True
+
+    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
+        aggregation = []
+        aggregation.append(
+            {"$lookup": {
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "foreignField": "_id",
+                    "localField": "%s._id" % (self.resource_ref.spec.fields[self.field_name].reverse_link_field,),
+                    "as": "_field_%s" % (self.field_name,),
+            }})
+        aggregation.append(
+            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
+        )
+        aggregation.append(
+            {"$unwind": "$_id"}
+        )
+        aggregation.append(
+            {"$replaceRoot": {"newRoot": "$_id"}}
+        )
+        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
+        return aggregation
 
     def is_collection(self):
         return True
@@ -833,7 +862,7 @@ class Parser(object):
         field_name = tokens[2]
         child_spec = root_resource_ref.spec.build_child_spec(field_name)
         if root_resource_ref.spec.fields[field_name].field_type == 'collection':
-            return CollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
+            return CollectionResourceRef(root_resource_ref, field_name, parser, child_spec, root_resource_ref.spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'linkcollection':
             return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'link':
