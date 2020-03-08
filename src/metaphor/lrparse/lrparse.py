@@ -66,9 +66,6 @@ class ResourceRef(object):
     def __repr__(self):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
 
-    def all_resource_refs(self):
-        return set([self.resource_ref_snippet()])
-
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
 
@@ -123,9 +120,6 @@ class RootResourceRef(ResourceRef):
 
     def __repr__(self):
         return "T[%s]" % (self.resource_name,)
-
-    def all_resource_refs(self):
-        return set()
 
     def resource_ref_snippet(self):
         return self.resource_name
@@ -518,9 +512,6 @@ class FilteredResourceRef(ResourceRef):
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet()
 
-    def all_resource_refs(self):
-        return ["%s.%s" % (self.resource_ref.resource_ref_snippet(), field) for field in self.filter_ref.resource_ref_fields()]
-
     def __repr__(self):
         return "F[%s %s]" % (self.resource_ref, self.filter_ref)
 
@@ -544,11 +535,11 @@ class ConstRef(Calc):
     def calculate(self, self_id):
         return self.value
 
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        return []
+
     def __repr__(self):
         return "C[%s]" % (self.value,)
-
-    def all_resource_refs(self):
-        return set()
 
 
 class Operator(Calc):
@@ -579,11 +570,13 @@ class Operator(Calc):
         except AttributeError as te:
             return None
 
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        return (
+            self.lhs.build_reverse_aggregations(resource_spec, resource_id) +
+            self.rhs.build_reverse_aggregations(resource_spec, resource_id))
+
     def __repr__(self):
         return "O[%s%s%s]" % (self.lhs, self.op, self.rhs)
-
-    def all_resource_refs(self):
-        return self.lhs.all_resource_refs().union(self.rhs.all_resource_refs())
 
 
 class Condition(object):
@@ -675,12 +668,6 @@ class ParameterList(object):
     def __repr__(self):
         return "  %s  " % (self.params,)
 
-    def all_resource_refs(self):
-        refs = set()
-        for param in self.params:
-            refs = refs.union(param.all_resource_refs())
-        return refs
-
 
 class Brackets(Calc):
     def __init__(self, tokens, parser):
@@ -690,8 +677,8 @@ class Brackets(Calc):
     def calculate(self, self_id):
         return self.calc.calculate(self_id)
 
-    def all_resource_refs(self):
-        return self.calc.all_resource_refs()
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        return self.calc.build_reverse_aggregations(resource_spec, resource_id)
 
     def __repr__(self):
         return "(" + str(self.calc) + ")"
@@ -720,12 +707,6 @@ class FunctionCall(Calc):
 
     def calculate(self, self_id):
         return self.functions[self.func_name](self_id, *self.params)
-
-    def all_resource_refs(self):
-        refs = set()
-        for param in self.params:
-            refs = refs.union(param.all_resource_refs())
-        return refs
 
     def _round(self, self_id, aggregate_field, digits=None):
         value = aggregate_field.calculate(self_id)

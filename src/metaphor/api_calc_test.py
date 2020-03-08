@@ -96,14 +96,14 @@ class ApiTest(unittest.TestCase):
         self.api = Api(self.schema)
 
     def test_calc_results(self):
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
-        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
-        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
+        employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
+        employee_id_3 = self.api.post('employees', {'name': 'fred', 'age': 21})
 
-        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_1 = self.api.post('divisions', {'name': 'sales', 'yearly_sales': 100})
 
-        self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
-        self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
+        self.api.patch('employees/%s' % employee_id_1, {'division': division_id_1})
+        self.api.patch('employees/%s' % employee_id_2, {'division': division_id_1})
 
         section_id_1 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'primary', 'section_total': 120})
         section_id_2 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'secondary', 'section_total': 90})

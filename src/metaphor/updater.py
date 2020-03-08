@@ -8,18 +8,6 @@ class Updater(object):
     def __init__(self, schema):
         self.schema = schema
 
-    def get_calcs_affected_by_field(self, spec_name, field_name):
-        resource = self.schema.specs[spec_name]
-        field = resource.fields[field_name]
-        found = set()
-        for ((calc_spec_name, calc_field_name), calc_tree) in self.schema.calc_trees.items():
-            calc_spec = self.schema.specs[calc_spec_name]
-            for resource_ref in calc_tree.all_resource_refs():
-                child_spec = calc_spec.resolve_child(resource_ref)
-                if child_spec == field:
-                    found.add((calc_spec_name, calc_field_name))
-        return found
-
     def get_affected_ids_for_resource(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
         log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
         affected_ids = []

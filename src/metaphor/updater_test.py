@@ -80,9 +80,6 @@ class UpdaterTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource(
             'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_2)
 
-        affected_calcs = self.updater.get_calcs_affected_by_field('employee', 'age')
-        self.assertEquals({('division', 'older_employees'), ('division', 'average_age')}, affected_calcs)
-
         average_agg = self.updater.build_reverse_aggregations_to_calc('division', 'average_age', self.employee_spec, employee_id_1)
         self.assertEquals([[
             {"$match": {"_id": self.schema.decodeid(employee_id_1)}},
@@ -298,16 +295,9 @@ class UpdaterTest(unittest.TestCase):
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]], agg)
 
-        # check affected ids
-        affected_ids = self.updater.get_affected_ids_for_resource('employee', 'division_name', self.division_spec, division_id_1)
-        self.assertEquals([self.schema.decodeid(employee_id_1)], affected_ids)
-
         division_id_2 = self.schema.insert_resource(
             'division', {'name': 'marketting'}, 'divisions')
         self.schema.create_linkcollection_entry('division', division_id_2, 'managers', employee_id_1)
-
-        affected_ids = self.updater.get_affected_ids_for_resource('division', 'average_manager_age', self.employee_spec, employee_id_1)
-        self.assertEquals([self.schema.decodeid(division_id_1), self.schema.decodeid(division_id_2)], affected_ids)
 
     def test_reverse_aggregation_loopback(self):
         self.schema.add_field(self.division_spec, 'managers', 'linkcollection', 'employee')
