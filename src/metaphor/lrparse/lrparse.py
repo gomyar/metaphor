@@ -225,7 +225,6 @@ class LinkCollectionResourceRef(ResourceRef):
         return aggregation, child_spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-#        import ipdb; ipdb.set_trace()
         aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
         aggregation.append(
             {"$lookup": {
@@ -949,8 +948,6 @@ class CanonicalUrlParser(Parser):
         self.spec = spec
         self.shifted = []
         self.patterns = [
-            [(ResourceRef, Filter), self._create_filtered_resource_ref],
-            [(NAME, Filter), self._create_filtered_resource_ref],
             [(ResourceRef, '/', NAME), self._create_resource_ref],
             [(NAME, '/', NAME), self._create_resource_ref],
             [(ResourceRef, '/', ID), self._create_id_resource_ref],

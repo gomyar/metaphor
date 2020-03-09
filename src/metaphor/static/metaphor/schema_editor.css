@@ -3,19 +3,6 @@ body {
     font-family : "Courier New", Courier, monospace;
 }
 
-div.button {
-    background-color : blue;
-    color : white;
-    font-weight : bold;
-    font-size : 11px;
-    text-align : center;
-    min-width : 80px;
-    padding : 3px 10px 3px 10px;
-    cursor : pointer;
-    display : inline-block;
-    text-transform: uppercase;
-}
-
 div.title_version {
     margin : 10px;
     border-top : 2px solid black;
@@ -51,14 +38,19 @@ div.specs_title div.controls {
 
 div.specs {
     margin : 0px;
-    top : 100px;
+    top : 50px;
     background-color : white;
     overflow-y : auto;
 }
 
 div.specs div.spec {
-    margin : 10px 10px 30px 10px;
+    margin : 20px 10px 30px 10px;
     border-top : 1px solid black;
+}
+
+div.specs div.spec.root {
+    margin : 5px 10px 30px 10px;
+    border : none;
 }
 
 div.specs div.spec div.title {
@@ -69,9 +61,6 @@ div.specs div.spec div.title {
 }
 
 div.specs div.spec div.button {
-    display : inline-block;
-    font-size : 10px;
-    height : 14px;
     margin-left : 50px;
 }
 
@@ -103,65 +92,3 @@ div.specs div.spec div.field div.calc_str {
     display : inline-block;
 }
 
-div.popup {
-    margin: auto;
-    width: 50%;
-    border : 1px solid black;
-    background-color : white;
-    padding : 10px;
-
-    position: relative;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-div.popupwrapper {
-    display : none;
-
-    background-color: rgba(255, 255, 255, 0.5);
-    position : absolute;
-    top : 0px;
-    left : 0px;
-    width : 100%;
-    height : 100%;
-    overflow: hidden;
-}
-
-.popupbuttons {
-    text-align: right;
-}
-
-div#loading {
-    position: absolute;
-    top : 0px;
-    left : 0px;
-    width : 100%;
-    height : 100%;
-    background-color: rgba(255, 255, 255, 0.5);
-    overflow: hidden;
-    text-align : center;
-    font-size : 14px;
-    font-weight : bold;
-    padding : 40px;
-}
-
-div.popupwrapper div.title {
-    font-size : 12px;
-    font-weight : bold;
-}
-
-div.popupform {
-    margin : 10px;
-}
-
-div.popupform div.formfield {
-    display : block;
-}
-
-div.popupform div.formfield div {
-    display : inline-block;
-}
-
-div.popupform div.formfield div.label {
-    font-size : 12px;
-}

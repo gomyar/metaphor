@@ -21,13 +21,14 @@ div.title_version div.version{
     margin-left : 50px;
 }
 
-
+div.button.create_resource {
+    margin-left : 20px;
+}
 
 
 div.spec_name {
     margin : 10px;
-    border-top : 2px solid black;
-    height : 40px;
+    height : 20px;
 }
 div.spec_name div.title {
     font-size : 18px;
@@ -57,13 +58,6 @@ div.resources {
 div.resources div.resource {
     margin : 10px 10px 20px 10px;
     display : block;
-}
-
-div.resources div.resource div.button {
-    display : inline-block;
-    font-size : 12px;
-    height : 14px;
-    margin-left : 50px;
 }
 
 div.resources div.resource div.field:hover {
@@ -111,9 +105,6 @@ div.resources div.resource div.field div.target {
     margin-left : 20px;
     display : inline-block;
 }
-
-
-
 
 div.rootresource {
     top : 50px;

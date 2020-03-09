@@ -3,6 +3,9 @@ import os
 from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
 from metaphor.lrparse.lrparse import parse_canonical_url
+from metaphor.lrparse.lrparse import CollectionResourceRef
+from metaphor.lrparse.lrparse import RootResourceRef
+from metaphor.lrparse.lrparse import LinkCollectionResourceRef
 from metaphor.schema import CalcField
 from metaphor.updater import Updater
 
@@ -89,7 +92,13 @@ class Api(object):
         tree = parse_url(path, self.schema.root)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
-        return spec, is_aggregate
+        return (
+            spec,
+            is_aggregate,
+            type(tree) in (CollectionResourceRef,
+                           RootResourceRef),
+            type(tree) in (LinkCollectionResourceRef,),
+        )
 
     def create_field_expansion_aggregations(self, spec):
         aggregate_query = []

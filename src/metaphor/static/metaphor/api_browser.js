@@ -18,6 +18,8 @@ var not = function(value) {
 var browser = {
     editing_field_name: null,
     editing_resource_id: null,
+    creating_resource_spec: null,
+    creating_resource_fields: {},
 
     is_field_link: function(field) {
         return field.field_type == 'link';
@@ -92,6 +94,19 @@ var browser = {
             browser.editing_resource_id = null;
             turtlegui.reload();
         }
+    },
+    show_create_popup: function() {
+        browser.creating_resource_spec = api.spec;
+        browser.creating_resource_fields = {};
+        turtlegui.reload();
+    },
+    hide_create_popup: function() {
+        browser.creating_resource_spec = null;
+        browser.creating_resource_fields = {};
+        turtlegui.reload();
+    },
+    can_edit_field: function(field) {
+        return field.type == 'int' || field.type == 'str';
     }
 };
 

@@ -411,6 +411,33 @@ class ApiTest(unittest.TestCase):
         reverse_linked_employees = self.api.get('/employees/%s/link_division_parttimers' % employee_id_1)
         self.assertEquals(1, len(reverse_linked_employees))
 
+    def test_can_post(self):
+        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.link_employee_division')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        self.api.post('/employees', {'name': 'Bob'})
+
+        _, _, can_post, is_linkcollection = self.api.get_spec_for('/employees/%s' % employee_id_1)
+        self.assertFalse(can_post)
+        self.assertFalse(is_linkcollection)
+
+        _, _, can_post, is_linkcollection = self.api.get_spec_for('/employees')
+        self.assertTrue(can_post)
+        self.assertFalse(is_linkcollection)
+
+        _, _, can_post, is_linkcollection = self.api.get_spec_for('/divisions/%s/all_employees' % division_id_1)
+        self.assertFalse(can_post)
+        self.assertFalse(is_linkcollection)
+
+        _, _, can_post, is_linkcollection = self.api.get_spec_for('/divisions/%s/sections' % division_id_1)
+        self.assertTrue(can_post)
+        self.assertFalse(is_linkcollection)
+
+        _, _, can_post, is_linkcollection = self.api.get_spec_for('/divisions/%s/parttimers' % division_id_1)
+        self.assertFalse(can_post)
+        self.assertTrue(is_linkcollection)
+
     def test_reserved_words(self):
         # link_*
         # parent_*

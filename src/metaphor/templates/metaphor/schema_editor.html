@@ -5,6 +5,7 @@
 <script src="/admin/static/metaphor/schema_editor.js"></script>
 
 <link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v4.0.4/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/schema_editor.css"/>
 
 </head>
@@ -17,17 +18,16 @@
 </div>
 
 
-<div class="layer anchortop specs_title">
-    <div class="title">Specs</div>
-    <div class="controls">
-        <div class="button" gui-click="create_spec.show_popup()">Create New</div> 
-    </div>
-</div>
-
 
 <div class="layer fullscreen specs">
-    <div class="spec">
-        <div class="title">root</div> 
+    <div class="specs_title">
+        <div class="title">root</div>
+        <div class="controls">
+            <div class="button" gui-click="create_field.show_create('root')">Add Root</div> 
+        </div>
+    </div>
+
+    <div class="spec root">
         <div class="fields" gui-list="schema.root" gui-item="field" gui-key="field_name">
             <div class="field">
                 <div class="name" gui-text="field_name"></div>
@@ -35,8 +35,15 @@
                 <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
             </div>
         </div>
-        <div class="button" gui-click="create_field.show_create('root')">Add Root Field</div> 
     </div>
+
+    <div class="specs_title">
+        <div class="title">Specs</div>
+        <div class="controls">
+            <div class="button" gui-click="create_spec.show_popup()">Create Spec</div> 
+        </div>
+    </div>
+
 
     <div class="spec_inner" gui-list="schema.specs" gui-item="spec" gui-key="spec_name">
         <div class="spec">

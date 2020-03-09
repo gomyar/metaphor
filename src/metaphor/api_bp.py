@@ -55,7 +55,7 @@ def browser_root():
     resource = dict((key, '/' + key) for key in api.schema.root.fields.keys())
     spec = api.schema.root
     return render_template('metaphor/api_browser.html',
-        path='/', resource=resource, spec=serialize_spec(spec), is_collection=False)
+        path='/', resource=resource, spec=serialize_spec(spec), is_collection=False, can_post=False, is_linkcollection=False)
 
 
 @browser_bp.route("/<path:path>", methods=['GET'])
@@ -76,9 +76,9 @@ def browser(path):
         }
     api = current_app.config['api']
     resource = api.get(path)
-    spec, is_collection = api.get_spec_for(path)
+    spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path)
     return render_template('metaphor/api_browser.html',
-        path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection)
+        path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection)
 
 
 
