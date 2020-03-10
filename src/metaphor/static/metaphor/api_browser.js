@@ -107,6 +107,20 @@ var browser = {
     },
     can_edit_field: function(field) {
         return field.type == 'int' || field.type == 'str';
+    },
+    perform_create: function() {
+        var resource_url = window.location.protocol + '//' + window.location.host + "/api/" + api.path;
+        loading.inc_loading();
+        turtlegui.ajax.post(
+            resource_url, 
+            browser.creating_resource_fields,
+            function(data) {
+                console.log("Created");
+                browser.creating_resource_spec = null;
+                browser.creating_resource_fields = {};
+                location.reload();
+            },
+            loading.dec_loading);
     }
 };
 
