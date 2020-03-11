@@ -13,7 +13,17 @@ browser_bp = Blueprint('browser', __name__, template_folder='templates',
                        static_folder='static', url_prefix='/browser')
 
 admin_bp = Blueprint('admin', __name__, template_folder='templates',
-                   static_folder='static', url_prefix='/admin')
+                     static_folder='static', url_prefix='/admin')
+
+search_bp = Blueprint('search', __name__, template_folder='templates',
+                      static_folder='static', url_prefix='/search')
+
+
+@search_bp.route("/<spec_name>", methods=['GET'])
+def search(spec_name):
+    query = request.args.get('query')
+    api = current_app.config['api']
+    return api.search_resource(spec_name, query)
 
 
 @api_bp.route("/", methods=['GET'])

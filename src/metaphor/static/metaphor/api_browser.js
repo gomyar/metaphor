@@ -18,8 +18,9 @@ var not = function(value) {
 var browser = {
     editing_field_name: null,
     editing_resource_id: null,
-    creating_resource_spec: null,
+    creating_resource_spec: false,
     creating_resource_fields: {},
+    creating_link: false,
 
     is_field_link: function(field) {
         return field.field_type == 'link';
@@ -96,12 +97,12 @@ var browser = {
         }
     },
     show_create_popup: function() {
-        browser.creating_resource_spec = api.spec;
+        browser.creating_resource_spec = true;
         browser.creating_resource_fields = {};
         turtlegui.reload();
     },
     hide_create_popup: function() {
-        browser.creating_resource_spec = null;
+        browser.creating_resource_spec = false;
         browser.creating_resource_fields = {};
         turtlegui.reload();
     },
@@ -112,12 +113,36 @@ var browser = {
         var resource_url = window.location.protocol + '//' + window.location.host + "/api/" + api.path;
         loading.inc_loading();
         turtlegui.ajax.post(
-            resource_url, 
+            resource_url,
             browser.creating_resource_fields,
             function(data) {
                 console.log("Created");
-                browser.creating_resource_spec = null;
+                browser.creating_resource_spec = false;
                 browser.creating_resource_fields = {};
+                location.reload();
+            },
+            loading.dec_loading);
+    },
+    show_create_link_popup: function() {
+        browser.creating_link = true;
+        browser.creating_link_value = null;
+        turtlegui.reload();
+    },
+    hide_create_link_popup: function() {
+        browser.creating_link = false;
+        browser.creating_link_value = {};
+        turtlegui.reload();
+    },
+    perform_create_link: function() {
+        var resource_url = window.location.protocol + '//' + window.location.host + "/api/" + api.path;
+        loading.inc_loading();
+        turtlegui.ajax.post(
+            resource_url,
+            {'id': browser.creating_link_value},
+            function(data) {
+                console.log("Linked");
+                browser.creating_link = false;
+                browser.creating_link_value = null;
                 location.reload();
             },
             loading.dec_loading);

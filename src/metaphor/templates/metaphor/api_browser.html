@@ -36,8 +36,8 @@ var api = {
     <div class="title">Spec</div>
     <div class="name" gui-text="api.spec.name"></div>
     <div class="is_collection" gui-show="api.is_collection">collection</div>
-    <div class="button create_resource" gui-show="api.is_collection" gui-click="browser.show_create_popup()">Create</div>
-    <div class="button create_resource" gui-show="api.is_linkcollection">Add Link</div>
+    <div class="button create_resource" gui-show="api.can_post" gui-click="browser.show_create_popup()">Create</div>
+    <div class="button create_resource" gui-show="api.is_linkcollection" gui-click="browser.show_create_link_popup()">Add Link</div>
 </div>
 
 <div class="layer fullscreen resources">
@@ -51,9 +51,9 @@ var api = {
 <div id="create_resource" class="popupwrapper" gui-show="browser.creating_resource_spec">
     <div class="popup">
         <div class="title">
-            <div>Create</div>&nbsp;<div gui-text="browser.creating_resource_spec.name"></div>
+            <div>Create</div>&nbsp;<div gui-text="api.spec.name"></div>
         </div>
-        <div class="popupform" gui-list="browser.creating_resource_spec.fields" gui-item="field" gui-key="field_name">
+        <div class="popupform" gui-list="api.spec.fields" gui-item="field" gui-key="field_name">
             <div class="formfield" gui-show="browser.can_edit_field(field)">
                 <div class="label api" gui-text="field_name"></div><div class="spec_name"><input type="text" gui-val="browser.creating_resource_fields[field_name]"></input></div>
             </div>
@@ -64,6 +64,24 @@ var api = {
         </div>
     </div>
 </div>
+
+<div id="create_link" class="popupwrapper" gui-show="browser.creating_link">
+    <div class="popup">
+        <div class="title">
+            <div>Create</div>&nbsp;<div gui-text="api.spec.name"></div>
+        </div>
+        <div class="popupform" >
+            <div class="formfield">
+                <div class="label api" gui-text="api.spec.name"></div><div class="spec_name"><input type="text" gui-val="browser.creating_link_value"></input></div>
+            </div>
+        </div>
+        <div class="popupbuttons">
+            <div class="button" gui-click='browser.perform_create_link()'>Create</div>
+            <div class="button" gui-click='browser.hide_create_link_popup()'>Close</div>
+        </div>
+    </div>
+</div>
+
 
 </body>
 

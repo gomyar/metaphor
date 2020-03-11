@@ -411,6 +411,39 @@ class ApiTest(unittest.TestCase):
         reverse_linked_employees = self.api.get('/employees/%s/link_division_parttimers' % employee_id_1)
         self.assertEquals(1, len(reverse_linked_employees))
 
+    def test_search(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
+
+        self.assertEquals([{
+            'id': division_id_1,
+            'self': '/divisions/%s' % division_id_1,
+        }], self.api.search_resource('division', 'name=sales'))
+        self.assertEquals([
+        {
+            'id': employee_id_1,
+            'self': '/employees/%s' % employee_id_1,
+        },
+        {
+            'id': employee_id_2,
+            'self': '/employees/%s' % employee_id_2,
+        },
+        ], self.api.search_resource('employee', 'age>30'))
+        self.assertEquals([{
+            'id': division_id_2,
+            'self': '/divisions/%s' % division_id_2,
+        }], self.api.search_resource('division', 'yearly_sales=20'))
+
+        # search by id directly
+        self.assertEquals([{
+            'id': employee_id_2,
+            'self': '/employees/%s' % employee_id_2,
+        }], self.api.search_resource('employee', employee_id_2))
+
     def test_can_post(self):
         self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.link_employee_division')
 

@@ -8,6 +8,7 @@ from metaphor.lrparse.lrparse import RootResourceRef
 from metaphor.lrparse.lrparse import LinkCollectionResourceRef
 from metaphor.schema import CalcField
 from metaphor.updater import Updater
+from bson.errors import InvalidId
 
 
 class Api(object):
@@ -155,3 +156,36 @@ class Api(object):
             else:
                 encoded[field_name] = field_value
         return encoded
+
+    def search_resource(self, spec_name, query_str):
+        try:
+            resource_id = self.schema.decodeid(query_str)
+            query = {'_id': resource_id}
+        except InvalidId as ie:
+            query = {}
+            for q in query_str.split(','):
+                if '=' in q:
+                    key, val = q.split('=')
+                    field_type = self.schema.specs[spec_name].fields[key].field_type
+                    if field_type == 'int':
+                        val = int(val)
+                    if field_type == 'float':
+                        val = float(val)
+                    query[key] = val
+                elif '>' in q:
+                    key, val = q.split('>')
+                    val = float(val)
+                    query[key] = {'$gt': val}
+                elif '<' in q:
+                    key, val = q.split('<')
+                    val = float(val)
+                    query[key] = {'$lt': val}
+        results = self.schema.db['resource_%s' % spec_name].find(query)
+        resources = []
+        for result in results:
+            resource_id = self.schema.encodeid(result['_id'])
+            resources.append({
+                'id': resource_id,
+                'self': "%s%s/%s" % (result['_parent_canonical_url'], result['_parent_field_name'], resource_id),
+            })
+        return resources
