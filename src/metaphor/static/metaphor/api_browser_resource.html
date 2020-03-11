@@ -40,8 +40,12 @@
                     <div gui-text="resource[field_name]" gui-show="field.is_primitive"></div>
                     <a class="field_collection"  gui-show="not(field.is_primitive)" gui-attrs="href=browser.create_relative_href(resource.self, field_name)" gui-text="browser.create_relative_link(resource.self, field_name)"></a>
                 </div>
-
-                <div class="field_link" gui-case="link" gui-text="resource[field_name]"></div>
+                <div class="field_link" gui-case="link" gui-click="browser.set_editing_field(resource.id, field_name)">
+                    <div class="field_value" gui-text="resource[field_name]"></div>
+                    <div class="field_edit" gui-show="browser.is_editing_field(resource.id, field_name)">
+                        <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated()"></input>
+                    </div>
+                </div>
                 <a class="field_collection" gui-case="collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
                 <a class="field_collection" gui-case="linkcollection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
                 <a class="field_collection" gui-case="reverse_link_collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
