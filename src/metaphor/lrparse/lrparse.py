@@ -358,7 +358,7 @@ class ReverseLinkResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (child_spec.name,),
                     "localField": "_id",
-                    "foreignField": spec.fields[self.field_name].reverse_link_field,
+                    "foreignField": spec.name,
                     "as": "_field_%s" % (self.field_name,),
             }})
         aggregation.append(

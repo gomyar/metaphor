@@ -146,15 +146,15 @@ class Api(object):
                 encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
-                calc_result = tree.calculate(self.schema.encodeid(resource_data['_id']))
                 res_type = tree.infer_type()
+                calc_result = resource_data[field_name]
                 if res_type.is_primitive():
                     if tree.is_collection():
                         encoded[field_name] = [res[res_type.name] for res in calc_result]
                     else:
                         encoded[field_name] = calc_result
                 elif tree.is_collection():
-                    encoded[field_name] = os.path.join(self_url, field_name) # [self.encode_resource(tree.infer_type(), d) for d in calc_result]
+                    encoded[field_name] = os.path.join(self_url, field_name)
                 else:
                     encoded[field_name] = self.encode_resource(tree.infer_type(), calc_result)
             else:

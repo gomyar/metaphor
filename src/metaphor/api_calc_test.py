@@ -110,6 +110,7 @@ class ApiTest(unittest.TestCase):
 
         # test simple type
         section_1 = self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1))
+
         self.assertEquals('sales', section_1['division_name'])
 
         # test resource type

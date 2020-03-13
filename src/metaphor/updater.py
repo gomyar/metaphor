@@ -48,12 +48,20 @@ class Updater(object):
         self._perform_calc_updates(spec_name, resource_id, fields)
 
     def _perform_calc_updates(self, spec_name, resource_id, fields):
+        # update resources' own calcs first
         spec = self.schema.specs[spec_name]
+        for field_name, field in spec.fields.items():
+            if field.field_type == 'calc':
+                self.update_calc(spec_name, field_name, resource_id)
+
+        # update everybody else's
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
             affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+            affected_ids = set(affected_ids)
             if affected_ids:
                 for affected_id in affected_ids:
-                    self.update_calc(calc_spec_name, calc_field_name, self.schema.encodeid(affected_id))
+                    if affected_id != resource_id:
+                        self.update_calc(calc_spec_name, calc_field_name, self.schema.encodeid(affected_id))
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields):
