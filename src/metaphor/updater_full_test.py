@@ -146,6 +146,16 @@ class UpdaterTest(unittest.TestCase):
         log.debug("created entry 3")
 
         division_data = self.db.resource_division.find_one()
+        self.assertEquals("sales", division_data['name'])
+        self.assertEquals(3, len(division_data['managers']))
+        self.assertTrue({"_id" : self.schema.decodeid(employee_id_1)} in division_data['managers'])
+        self.assertTrue({"_id" : self.schema.decodeid(employee_id_2)} in division_data['managers'])
+        self.assertTrue({"_id" : self.schema.decodeid(employee_id_3)} in division_data['managers'])
+        self.assertEquals(sorted([
+            self.schema.decodeid(employee_id_1),
+            self.schema.decodeid(employee_id_2),
+        ]), sorted(division_data['older_managers']))
+        self.assertEquals([self.schema.decodeid(employee_id_1)], division_data['older_non_retired_managers'])
         self.assertEquals({
             "_id" : self.schema.decodeid(division_id_1),
             "_parent_field_name" : "divisions",

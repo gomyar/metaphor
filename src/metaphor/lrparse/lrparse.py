@@ -15,6 +15,10 @@ class Calc(object):
     def calculate(self, self_id):
         raise NotImplemented()
 
+    def is_collection(self):
+        return False
+
+
 
 class ResourceRef(object):
     def __init__(self, resource_ref, field_name, parser, spec):
@@ -354,7 +358,7 @@ class ReverseLinkResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (child_spec.name,),
                     "localField": "_id",
-                    "foreignField": spec.name,
+                    "foreignField": spec.fields[self.field_name].reverse_link_field,
                     "as": "_field_%s" % (self.field_name,),
             }})
         aggregation.append(
@@ -910,7 +914,10 @@ class Parser(object):
 
         if self.shifted[0][1] == 'self':
             raise Exception("Calc cannot be 'self' only.")
-        return self.shifted[0][1]
+
+        tree = self.shifted[0][1]
+
+        return tree
 
     def _reduce(self, reduced_class, tokens):
         self.shifted = self.shifted[:-len(tokens)]

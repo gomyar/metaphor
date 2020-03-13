@@ -147,10 +147,14 @@ class Api(object):
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 calc_result = tree.calculate(self.schema.encodeid(resource_data['_id']))
-                if tree.infer_type().is_primitive():
-                    encoded[field_name] = calc_result
+                res_type = tree.infer_type()
+                if res_type.is_primitive():
+                    if tree.is_collection():
+                        encoded[field_name] = [res[res_type.name] for res in calc_result]
+                    else:
+                        encoded[field_name] = calc_result
                 elif tree.is_collection():
-                    encoded[field_name] = [self.encode_resource(tree.infer_type(), d) for d in calc_result]
+                    encoded[field_name] = os.path.join(self_url, field_name) # [self.encode_resource(tree.infer_type(), d) for d in calc_result]
                 else:
                     encoded[field_name] = self.encode_resource(tree.infer_type(), calc_result)
             else:
@@ -158,34 +162,36 @@ class Api(object):
         return encoded
 
     def search_resource(self, spec_name, query_str):
+        spec = self.schema.specs[spec_name]
         try:
             resource_id = self.schema.decodeid(query_str)
             query = {'_id': resource_id}
         except InvalidId as ie:
-            query = {}
-            for q in query_str.split(','):
-                if '=' in q:
-                    key, val = q.split('=')
-                    field_type = self.schema.specs[spec_name].fields[key].field_type
-                    if field_type == 'int':
-                        val = int(val)
-                    if field_type == 'float':
-                        val = float(val)
-                    query[key] = val
-                elif '>' in q:
-                    key, val = q.split('>')
-                    val = float(val)
-                    query[key] = {'$gt': val}
-                elif '<' in q:
-                    key, val = q.split('<')
-                    val = float(val)
-                    query[key] = {'$lt': val}
+            query = self._decode_query(query_str, spec)
         results = self.schema.db['resource_%s' % spec_name].find(query)
         resources = []
         for result in results:
             resource_id = self.schema.encodeid(result['_id'])
-            resources.append({
-                'id': resource_id,
-                'self': "%s%s/%s" % (result['_parent_canonical_url'], result['_parent_field_name'], resource_id),
-            })
+            resources.append(self.encode_resource(spec, result))
         return resources
+
+    def _decode_query(self, query_str, spec):
+        query = {}
+        for q in query_str.split(','):
+            if '=' in q:
+                key, val = q.split('=')
+                field_type = spec.fields[key].field_type
+                if field_type == 'int':
+                    val = int(val)
+                if field_type == 'float':
+                    val = float(val)
+                query[key] = val
+            elif '>' in q:
+                key, val = q.split('>')
+                val = float(val)
+                query[key] = {'$gt': val}
+            elif '<' in q:
+                key, val = q.split('<')
+                val = float(val)
+                query[key] = {'$lt': val}
+        return query

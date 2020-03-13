@@ -421,28 +421,44 @@ class ApiTest(unittest.TestCase):
 
         self.assertEquals([{
             'id': division_id_1,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+            'name': 'sales',
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
             'self': '/divisions/%s' % division_id_1,
-        }], self.api.search_resource('division', 'name=sales'))
-        self.assertEquals([
-        {
+            'yearly_sales': 100}], self.api.search_resource('division', 'name=sales'))
+
+        self.assertEquals([{
+            'age': 41,
+            'division': None,
             'id': employee_id_1,
-            'self': '/employees/%s' % employee_id_1,
-        },
-        {
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+            'name': 'ned',
+            'self': '/employees/%s' % employee_id_1},
+            {'age': 31,
+            'division': None,
             'id': employee_id_2,
-            'self': '/employees/%s' % employee_id_2,
-        },
-        ], self.api.search_resource('employee', 'age>30'))
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
+            'name': 'bob',
+            'self': '/employees/%s' % employee_id_2}], self.api.search_resource('employee', 'age>30'))
+
         self.assertEquals([{
             'id': division_id_2,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_2,
+            'name': 'marketting',
+            'parttimers': '/divisions/%s/parttimers' % division_id_2,
+            'sections': '/divisions/%s/sections' % division_id_2,
             'self': '/divisions/%s' % division_id_2,
-        }], self.api.search_resource('division', 'yearly_sales=20'))
+            'yearly_sales': 20}], self.api.search_resource('division', 'yearly_sales=20'))
 
         # search by id directly
         self.assertEquals([{
+            'age': 31,
+            'division': None,
             'id': employee_id_2,
-            'self': '/employees/%s' % employee_id_2,
-        }], self.api.search_resource('employee', employee_id_2))
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
+            'name': 'bob',
+            'self': '/employees/%s' % employee_id_2}], self.api.search_resource('employee', employee_id_2))
 
     def test_can_post(self):
         self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.link_employee_division')

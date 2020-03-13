@@ -19,6 +19,22 @@ search_bp = Blueprint('search', __name__, template_folder='templates',
                       static_folder='static', url_prefix='/search')
 
 
+def serialize_field(field):
+    if field.field_type == 'calc':
+        return {'type': 'calc', 'calc_str': field.calc_str, 'is_primitive': field.is_primitive()}
+    elif field.field_type in ('int', 'str', 'float', 'bool'):
+        return {'type': field.field_type}
+    else:
+        return {'type': field.field_type, 'target_spec_name': field.target_spec_name}
+def serialize_spec(spec):
+    return {
+        'name': spec.name,
+        'fields': {
+            name: serialize_field(f) for name, f in spec.fields.items()
+        },
+    }
+
+
 @search_bp.route("/<spec_name>", methods=['GET'])
 def search(spec_name):
     query = request.args.get('query')
@@ -47,20 +63,6 @@ def api(path):
 
 @browser_bp.route("/", methods=['GET'])
 def browser_root():
-    def serialize_field(field):
-        if field.field_type == 'calc':
-            return {'type': 'calc', 'calc_str': field.calc_str, 'is_primitive': field.is_primitive()}
-        elif field.field_type in ('int', 'str', 'float', 'bool'):
-            return {'type': field.field_type}
-        else:
-            return {'type': field.field_type, 'target_spec_name': field.target_spec_name}
-    def serialize_spec(spec):
-        return {
-            'name': spec.name,
-            'fields': {
-                name: serialize_field(f) for name, f in spec.fields.items()
-            },
-        }
     api = current_app.config['api']
     resource = dict((key, '/' + key) for key in api.schema.root.fields.keys())
     spec = api.schema.root
@@ -70,20 +72,6 @@ def browser_root():
 
 @browser_bp.route("/<path:path>", methods=['GET'])
 def browser(path):
-    def serialize_field(field):
-        if field.field_type == 'calc':
-            return {'type': 'calc', 'calc_str': field.calc_str, 'is_primitive': field.is_primitive()}
-        elif field.field_type in ('int', 'str', 'float', 'bool'):
-            return {'type': field.field_type}
-        else:
-            return {'type': field.field_type, 'target_spec_name': field.target_spec_name}
-    def serialize_spec(spec):
-        return {
-            'name': spec.name,
-            'fields': {
-                name: serialize_field(f) for name, f in spec.fields.items()
-            },
-        }
     api = current_app.config['api']
     resource = api.get(path)
     spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path)

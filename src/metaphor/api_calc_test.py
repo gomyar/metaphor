@@ -118,23 +118,10 @@ class ApiTest(unittest.TestCase):
             'id': division_id_1,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'name': 'sales',
-            'older_employees': [{
-                'age': 41,
-                'division': '/divisions/%s' % division_id_1,
-                'id': employee_id_1,
-                'name': 'ned',
-                'self': '/employees/%s' % employee_id_1}],
             'average_section_total': 105.0,
             'average_bracket_calc': 149.0,
-            'primary_sections': [
-                {'id': section_id_1,
-                 'distance_from_average': 15.0,
-                 'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
-                 'division_name': 'sales',
-                 'parent_division_sections': '/divisions/%s' % division_id_1,
-                 'section_total': 120,
-                 'name': 'primary'}
-             ],
+            'older_employees': '/divisions/%s/older_employees' % division_id_1,
+            'primary_sections': '/divisions/%s/primary_sections' % division_id_1,
             'sections': '/divisions/%s/sections' % division_id_1,
             'self': '/divisions/%s' % division_id_1,
             'yearly_sales': 100}, division_1)
