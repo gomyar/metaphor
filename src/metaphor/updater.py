@@ -60,8 +60,9 @@ class Updater(object):
             affected_ids = set(affected_ids)
             if affected_ids:
                 for affected_id in affected_ids:
+                    affected_id = self.schema.encodeid(affected_id)
                     if affected_id != resource_id:
-                        self.update_calc(calc_spec_name, calc_field_name, self.schema.encodeid(affected_id))
+                        self.update_calc(calc_spec_name, calc_field_name, affected_id)
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields):
