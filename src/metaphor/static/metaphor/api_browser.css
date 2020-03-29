@@ -29,6 +29,8 @@ div.button.create_resource {
 div.spec_name {
     margin : 10px;
     height : 20px;
+    right : 350px;
+    display : inline-block;
 }
 div.spec_name div.title {
     font-size : 18px;
