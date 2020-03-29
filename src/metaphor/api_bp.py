@@ -87,49 +87,25 @@ def schema_editor():
 
 @admin_bp.route("/schema_editor/api", methods=['GET'])
 def schema_editor_api():
-    schema = current_app.config['api'].schema
-    schema_db = schema.db['metaphor_schema'].find_one()
-    schema_json = {
-        'version': 'tbd',
-        'specs': schema_db['specs'] if schema_db else {},
-        'root': schema_db['root'] if schema_db else {},
-    }
-    return jsonify(schema_json)
+    admin_api = current_app.config['admin_api']
+    return jsonify(admin_api.format_schema())
 
 
 @admin_bp.route("/schema_editor/api/specs", methods=['POST'])
 def schema_editor_create_spec():
-    schema = current_app.config['api'].schema
-    spec_name = request.json['spec_name']
-    schema.db['metaphor_schema'].update(
-        {'_id': schema._id},
-        {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
-    schema.load_schema()
+    admin_api = current_app.config['admin_api']
+    admin_api.create_spec(request.json['spec_name'])
     return jsonify({'success': 1})
 
 
 @admin_bp.route("/schema_editor/api/specs/<spec_name>/fields", methods=['POST'])
 def schema_editor_create_field(spec_name):
-    schema = current_app.config['api'].schema
+    admin_api = current_app.config['admin_api']
+
     field_name = request.json['field_name']
     field_type = request.json['field_type']
     field_target = request.json['field_target']
     calc_str = request.json['calc_str']
 
-    if field_type == 'calc':
-        field_data = {'type': 'calc', 'calc_str': calc_str}
-    elif field_type in ('int', 'str', 'float', 'bool'):
-        field_data = {'type': field_type}
-    else:
-        field_data = {'type': field_type, 'target_spec_name': field_target}
-
-    if spec_name == 'root':
-        schema.db['metaphor_schema'].update(
-            {'_id': schema._id},
-            {"$set": {'root.%s' % (field_name,): field_data}})
-    else:
-        schema.db['metaphor_schema'].update(
-            {'_id': schema._id},
-            {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}})
-    schema.load_schema()
+    admin_api.create_field(spec_name, field_name, field_type, field_target, calc_str)
     return jsonify({'success': 1})

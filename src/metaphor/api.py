@@ -63,7 +63,12 @@ class Api(object):
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
             # add to root spec no need to check existance
-            return self.schema.insert_resource(root_field_spec.target_spec_name, data, path)
+            return self.updater.create_resource(
+                root_field_spec.target_spec_name,
+                'root',
+                path,
+                None,
+                data)
 
     def get(self, path):
         path = path.strip().strip('/')
