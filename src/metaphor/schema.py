@@ -222,7 +222,6 @@ class Schema(object):
         data['_parent_field_name'] = parent_field_name
         data['_parent_canonical_url'] = self.load_canonical_parent_url(parent_type, parent_id)
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
-        self._update_dependencies(spec_name, data)
         return self.encodeid(new_resource_id)
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
@@ -239,13 +238,6 @@ class Schema(object):
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},
             return_document=ReturnDocument.AFTER)
-        self._update_dependencies(spec_name, save_data)
-
-    def _update_dependencies(self, spec_name, save_data):
-        spec = self.specs[spec_name]
-        for field_name in save_data:
-            # find dependencies and update
-            pass
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$push': {parent_field: {'_id': self.decodeid(link_id)}}})

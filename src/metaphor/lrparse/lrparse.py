@@ -30,6 +30,9 @@ class ResourceRef(object):
     def root_collection(self):
         return self.resource_ref.root_collection()
 
+    def get_resource_dependencies(self):
+        return {self.spec.name} | self.resource_ref.get_resource_dependencies()
+
     def infer_type(self):
         return self.resource_ref.infer_type().build_child_spec(self.field_name)
 
@@ -84,6 +87,12 @@ class FieldRef(ResourceRef, Calc):
             }})
         return aggregation, child_spec, is_aggregate
 
+    def get_resource_dependencies(self):
+        return self.resource_ref.get_resource_dependencies()
+
+    def get_field_dependencies(self):
+        return {self.spec.name} | self.resource_ref.get_field_dependencies()
+
 
 class RootResourceRef(ResourceRef):
     def __init__(self, resource_name, parser, spec):
@@ -100,6 +109,9 @@ class RootResourceRef(ResourceRef):
 
     def root_collection(self):
         return self.spec.schema.db['resource_%s' % self.spec.name]
+
+    def get_resource_dependencies(self):
+        return {self.spec.name}
 
     def infer_type(self):
         return self.spec

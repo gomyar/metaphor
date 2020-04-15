@@ -542,3 +542,15 @@ class LRParseTest(unittest.TestCase):
              'age': 31,
              'name': 'bob'},
             ], tree.calculate(division_id_1))
+
+    def test_dependencies(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
+
+        tree = parse("employees[age>40].division[name='sales'].yearly_sales", employee_spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'employee',
+                'division',
+            })
