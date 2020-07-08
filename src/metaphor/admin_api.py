@@ -39,4 +39,6 @@ class AdminApi(object):
                 {'_id': self.schema._id},
                 {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}})
         self.schema.load_schema()
-#        if field_type == 'calc':
+        if field_type == 'calc':
+            for resource in self.schema.db['resource_%s' % spec_name].find({}, {'_id': 1}):
+                self.updater.update_calc(spec_name, field_name, self.schema.encodeid(resource['_id']))

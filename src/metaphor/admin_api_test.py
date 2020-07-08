@@ -44,3 +44,16 @@ class AdminApiTest(unittest.TestCase):
 
         branch = self.api.get('/branches/%s' % branch_id)
         self.assertEquals(21, branch['average_age'])
+
+    def test_add_calc_field_updates_resources(self):
+        employee_id = self.api.post('/employees', {'name': 'Bob', 'age': 21})
+        employee_id_2 = self.api.post('/employees', {'name': 'Ned', 'age': 17})
+        branch_id = self.api.post('/branches', {'name': 'Sales'})
+        self.api.post('/branches/%s/employees' % branch_id, {'id': employee_id})
+        self.api.post('/branches/%s/employees' % branch_id, {'id': employee_id_2})
+
+        self.admin_api.create_field('branch', 'max_age', 'calc', calc_str='max(self.employees.age)')
+
+        branch = self.api.get('/branches/%s' % branch_id)
+        self.assertEquals(19, branch['average_age'])
+        self.assertEquals(21, branch['max_age'])

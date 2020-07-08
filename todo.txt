@@ -61,4 +61,5 @@ mutating the schema:
    - calc changes alter the micro uuid
  - should be possible to apply any change to a schema, and to alert for data deletion on a major change
 
-
+ - may mark each resource by the hash of the schema used to create / last update it. On load, if the has is different from the current schema, reload the schema
+ - might also have to mutate the just-loaded resource on demand
