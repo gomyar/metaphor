@@ -1,5 +1,21 @@
 
 
+
+Update algorithmL
+
+ - create updater for each update spawned by a request (single field update or single object creation/deletion)
+   - also for calc updates which may affect multiple objects
+   - fields: update_id, spec_name field_name, running_at
+ - run updater: aggregate calc dependencies, retrieve cursor to resource ids
+ - iterate each resource:
+ - for each resource, atomically read fields and mark as "being updated by"-> this update_id
+   - if "being_updated_by" field is not null, then back off
+ - calculate result:
+ - attempt save:
+   - if "being_updated_by" has changed, back off 
+
+
+
 basic REST:
  - GET by url:
    - nested resource (collection/id/resource.field)

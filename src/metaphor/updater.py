@@ -48,42 +48,130 @@ class Updater(object):
             result = results[0]
         return result
 
-    def update_fields(self, spec_name, resource_id, **fields):
-        spec = self.schema.specs[spec_name]
-        self.schema.update_resource_fields(spec_name, resource_id, fields)
-        self._perform_calc_updates(spec_name, resource_id, fields)
+    def _perform_calc_updates(self, spec_name, resource_id, field_names):
+        # TODO: split this method into two methods: one for resource updates and one for field updates
+        log.debug("_perform_calc_updates: %s, %s, %s", spec_name, resource_id, field_names)
 
-    def _perform_calc_updates(self, spec_name, resource_id, fields):
-        log.debug("_perform_calc_updates: %s, %s, %s", spec_name, resource_id, fields.keys())
-
-        # update resources' own calcs first
         spec = self.schema.specs[spec_name]
-        for field_name, field in spec.fields.items():
-            log.debug("Check field: %s", field_name)
-            if field.field_type == 'calc':
+
+        changed_fields = {"%s.%s" % (spec_name, field_name) for field_name in field_names}
+        for field_name in spec.fields.keys():
+            # find local dependencies
+            field = spec.fields[field_name]
+            if field.field_type == 'calc' and self.schema.calc_trees[(spec_name, field_name)].get_resource_dependencies().intersection(changed_fields):
+                # recalc local calcs
                 self.update_calc(spec_name, field_name, resource_id)
+                # todo: add check for whether calc value changed
+                self._perform_calc_updates(spec_name, resource_id, [field_name])
 
-        # update everybody else's
-        for (calc_spec_name, calc_field_name), calc_tree in sorted(self.schema.calc_trees.items()):
+        # find foreign dependencies
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # for each resource id, recalc calc
             affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
             affected_ids = set(affected_ids)
             for affected_id in affected_ids:
                 affected_id = self.schema.encodeid(affected_id)
                 if affected_id != resource_id:
                     self.update_calc(calc_spec_name, calc_field_name, affected_id)
-#                    self._perform_calc_updates(calc_spec_name, affected_id, {calc_field_name: None})
+                    self._perform_calc_updates(calc_spec_name, affected_id, [calc_field_name])
+
+    def _recalc_for_field_update(self, spec, field_spec_name, field_name, resource_id):
+        # find foreign dependencies
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # update for fields
+            field_dep = "%s.%s" % (field_spec_name, field_name)
+            if field_dep in calc_tree.get_resource_dependencies():
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                affected_ids = set(affected_ids)
+                for affected_id in affected_ids:
+                    affected_id = self.schema.encodeid(affected_id)
+                    self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                    self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
+        return resource_id
+
+    def _recalc_for_resource_create():
+        pass
+
+    def _recalc_for_resource_delete():
+        pass
+
+    def _recalc_for_resource_linked():
+        pass
+
+    def _recalc_for_resource_unlinked():
+        pass
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields):
         spec = self.schema.specs[spec_name]
+        # must add _create_updated field to resource instead of creating updater document
         resource_id = self.schema.insert_resource(
             spec_name, fields, parent_field_name, parent_spec_name,
             parent_id)
-        self._perform_calc_updates(spec_name, resource_id, fields)
+
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # update for resources
+            if spec_name in calc_tree.get_resource_dependencies():
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                affected_ids = set(affected_ids)
+                for affected_id in affected_ids:
+                    affected_id = self.schema.encodeid(affected_id)
+                    self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                    self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
+
+            # update for fields
+            for field_name in fields:
+                field_dep = "%s.%s" % (spec_name, field_name)
+                if field_dep in calc_tree.get_resource_dependencies():
+                    affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                    affected_ids = set(affected_ids)
+                    for affected_id in affected_ids:
+                        affected_id = self.schema.encodeid(affected_id)
+                        self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                        self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
+        # recalc local calcs
+        for field_name, field_spec in spec.fields.items():
+            if field_spec.field_type == 'calc':
+                self.update_calc(spec.name, field_name, resource_id)
+                self._recalc_for_field_update(spec, spec.name, field_name, [resource_id])
+
         return resource_id
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         self.schema.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, link_id)
         parent_spec = self.schema.specs[parent_spec_name]
         spec = parent_spec.build_child_spec(parent_field)
-        self._perform_calc_updates(spec.name, link_id, {parent_field: None})
+
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # update for resources
+            if spec.name in calc_tree.get_resource_dependencies():
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, link_id)
+                affected_ids = set(affected_ids)
+                for affected_id in affected_ids:
+                    affected_id = self.schema.encodeid(affected_id)
+                    self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                    self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
+    def update_fields(self, spec_name, resource_id, fields):
+        spec = self.schema.specs[spec_name]
+        self.schema.update_resource_fields(spec_name, resource_id, fields)
+
+        # update local resource calcs
+        #   update dependent field calcs (involving fields)
+        # update foreign resource calcs (involving fields)
+
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # update for fields
+            for field_name in fields:
+                field_dep = "%s.%s" % (spec_name, field_name)
+                if field_dep in calc_tree.get_resource_dependencies():
+                    affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                    affected_ids = set(affected_ids)
+                    for affected_id in affected_ids:
+                        affected_id = self.schema.encodeid(affected_id)
+                        self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                        self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+

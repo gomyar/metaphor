@@ -53,7 +53,7 @@ class UpdaterTest(unittest.TestCase):
             'older_employees': [ObjectId(employee_id_1[2:])],
         }, division_data)
 
-        self.updater.update_fields('employee', employee_id_1, age=20)
+        self.updater.update_fields('employee', employee_id_1, {"age": 20})
 
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
@@ -202,6 +202,8 @@ class UpdaterTest(unittest.TestCase):
             'name': 'mike', 'age': 51})
 
         # add manager
+        calc_spec = self.schema.calc_trees[('employee', 'all_my_subordinates')]
+        self.assertEquals({'employee', 'division'}, calc_spec.get_resource_dependencies())
         self.updater.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_1)
 
         employee_data = self.db.resource_employee.find_one()

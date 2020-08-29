@@ -553,4 +553,7 @@ class LRParseTest(unittest.TestCase):
             {
                 'employee',
                 'division',
+                'employee.age',
+                'division.name',
+                'division.yearly_sales',
             })

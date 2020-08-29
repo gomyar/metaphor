@@ -130,3 +130,9 @@ class ApiTest(unittest.TestCase):
         # test calculated resource collection endpoint
         older_employees = self.api.get('/divisions/%s/older_employees' % division_id_1)
         self.assertEquals(1, len(older_employees))
+
+#    def test_get_affected_local_calcs_for_field(self):
+#        self.assertEquals(['distance_from_average'], self.api.updater.get_affected_local_calcs_for_field('section', 'section_total'))
+
+#    def test_get_affected_foreign_calcs_for_field(self):
+#        self.assertEquals([('division', 'average_section_total'), ('division', 'average_bracket_calc')], self.api.updater.get_affected_foreign_calcs_for_field('section', 'section_total'))

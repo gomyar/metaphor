@@ -28,7 +28,7 @@ class Api(object):
         return self.updater.update_fields(
             spec.name,
             self.schema.encodeid(resource['_id']),
-            **data)
+            data)
 
     def post(self, path, data):
         path = path.strip().strip('/')

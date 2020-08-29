@@ -88,10 +88,7 @@ class FieldRef(ResourceRef, Calc):
         return aggregation, child_spec, is_aggregate
 
     def get_resource_dependencies(self):
-        return self.resource_ref.get_resource_dependencies()
-
-    def get_field_dependencies(self):
-        return {self.spec.name} | self.resource_ref.get_field_dependencies()
+        return self.resource_ref.get_resource_dependencies() | {'%s.%s' % (self.spec.spec.name, self.field_name)}
 
 
 class RootResourceRef(ResourceRef):
@@ -408,6 +405,12 @@ class ReverseLinkResourceRef(ResourceRef):
     def is_collection(self):
         return True
 
+    def get_resource_dependencies(self):
+        deps = super(ReverseLinkResourceRef, self).get_resource_dependencies()
+        # employee.division
+        deps.add("%s.%s" % (self.spec.name, self.resource_ref.spec.name))
+        return deps
+
 
 class ParentCollectionResourceRef(ResourceRef):
     def aggregation(self, self_id):
@@ -525,7 +528,15 @@ class FilteredResourceRef(ResourceRef):
         return True
 
     def resource_ref_snippet(self):
-        return self.resource_ref.resource_ref_snippet()
+        field_snippets = self.filter_ref.resource_ref_fields()
+        resource_ref_snippet = self.resource_ref.resource_ref_snippet()
+        return {"%s.%s" % (resource_ref_snippet, field) for field in field_snippets}
+
+    def get_resource_dependencies(self):
+        deps = super(FilteredResourceRef, self).get_resource_dependencies()
+        for field_name in self.filter_ref.resource_ref_fields():
+            deps.add("%s.%s" % (self.spec.name, field_name))
+        return deps
 
     def __repr__(self):
         return "F[%s %s]" % (self.resource_ref, self.filter_ref)
@@ -589,6 +600,9 @@ class Operator(Calc):
         return (
             self.lhs.build_reverse_aggregations(resource_spec, resource_id) +
             self.rhs.build_reverse_aggregations(resource_spec, resource_id))
+
+    def get_resource_dependencies(self):
+        return self.lhs.get_resource_dependencies() | self.lhs.get_resource_dependencies()
 
     def __repr__(self):
         return "O[%s%s%s]" % (self.lhs, self.op, self.rhs)
@@ -698,6 +712,9 @@ class Brackets(Calc):
     def __repr__(self):
         return "(" + str(self.calc) + ")"
 
+    def get_resource_dependencies(self):
+        return self.calc.get_resource_dependencies()
+
 
 class FunctionCall(Calc):
     def __init__(self, tokens, parser):
@@ -716,6 +733,16 @@ class FunctionCall(Calc):
             'average': self._average,
             'sum': self._sum,
         }
+
+    def get_resource_dependencies(self):
+        deps = set()
+        for param in self.params:
+            deps = deps.union(param.get_resource_dependencies())
+        return deps
+
+    # todo: this function needs to return a list or set for multiple params
+    def resource_ref_snippet(self):
+        return self.params[0].resource_ref_snippet()
 
     def infer_type(self):
         return Field('function', 'float')
