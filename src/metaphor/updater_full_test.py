@@ -203,7 +203,7 @@ class UpdaterTest(unittest.TestCase):
 
         # add manager
         calc_spec = self.schema.calc_trees[('employee', 'all_my_subordinates')]
-        self.assertEquals({'employee', 'division'}, calc_spec.get_resource_dependencies())
+        self.assertEquals({'division.managers', 'division.employees'}, calc_spec.get_resource_dependencies())
         self.updater.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_1)
 
         employee_data = self.db.resource_employee.find_one()

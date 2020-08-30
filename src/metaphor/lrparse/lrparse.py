@@ -31,7 +31,7 @@ class ResourceRef(object):
         return self.resource_ref.root_collection()
 
     def get_resource_dependencies(self):
-        return {self.spec.name} | self.resource_ref.get_resource_dependencies()
+        return self.resource_ref.get_resource_dependencies()
 
     def infer_type(self):
         return self.resource_ref.infer_type().build_child_spec(self.field_name)
@@ -108,7 +108,10 @@ class RootResourceRef(ResourceRef):
         return self.spec.schema.db['resource_%s' % self.spec.name]
 
     def get_resource_dependencies(self):
-        return {self.spec.name}
+        if self.resource_name == 'self':
+            return set()
+        else:
+            return {"root.%s" % self.resource_name}
 
     def infer_type(self):
         return self.spec
@@ -213,6 +216,9 @@ class CollectionResourceRef(ResourceRef):
     def is_collection(self):
         return True
 
+    def get_resource_dependencies(self):
+        return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
+
 
 class LinkCollectionResourceRef(ResourceRef):
     def aggregation(self, self_id):
@@ -260,6 +266,9 @@ class LinkCollectionResourceRef(ResourceRef):
     def is_collection(self):
         return True
 
+    def get_resource_dependencies(self):
+        return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
+
 
 class LinkResourceRef(ResourceRef):
     def aggregation(self, self_id):
@@ -305,6 +314,9 @@ class LinkResourceRef(ResourceRef):
         )
         aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
+
+    def get_resource_dependencies(self):
+        return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
 
 
 class CalcResourceRef(ResourceRef):
@@ -358,6 +370,9 @@ class CalcResourceRef(ResourceRef):
         aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
         return aggregation
 
+    def get_resource_dependencies(self):
+        return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
+
 
 class ReverseLinkResourceRef(ResourceRef):
     def aggregation(self, self_id):
@@ -406,10 +421,9 @@ class ReverseLinkResourceRef(ResourceRef):
         return True
 
     def get_resource_dependencies(self):
-        deps = super(ReverseLinkResourceRef, self).get_resource_dependencies()
-        # employee.division
-        deps.add("%s.%s" % (self.spec.name, self.resource_ref.spec.name))
-        return deps
+        _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
+        return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
+
 
 
 class ParentCollectionResourceRef(ResourceRef):
@@ -506,6 +520,10 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
 
     def is_collection(self):
         return True
+
+    def get_resource_dependencies(self):
+        _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
+        return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
 
 class FilteredResourceRef(ResourceRef):

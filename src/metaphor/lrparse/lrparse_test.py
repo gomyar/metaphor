@@ -551,9 +551,51 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(
             tree.get_resource_dependencies(),
             {
-                'employee',
-                'division',
+                'root.employees',
+                'employee.division',
                 'employee.age',
                 'division.name',
                 'division.yearly_sales',
             })
+
+        tree = parse("self.age", employee_spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'employee.age',
+            })
+
+        tree = parse("self.parttimers", division_spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'division.parttimers',
+            })
+
+        tree = parse("self.division.parttimers", employee_spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'employee.division',
+                'division.parttimers',
+            })
+
+        # referenced calc
+        self.schema.add_calc(employee_spec, 'my_division', 'self.division.link_employee_division')
+        tree = parse("self.my_division", employee_spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'employee.my_division',
+            })
+
+        # reverse link
+        tree = parse("self.division.link_employee_division.name", employee_spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'employee.division',
+                'employee.name',
+            })
+
+
