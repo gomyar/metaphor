@@ -174,3 +174,9 @@ class Updater(object):
                         affected_id = self.schema.encodeid(affected_id)
                         self.update_calc(calc_spec_name, calc_field_name, affected_id)
                         self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
+        # recalc local calcs
+        for field_name, field_spec in spec.fields.items():
+            if field_spec.field_type == 'calc':
+                self.update_calc(spec.name, field_name, resource_id)
+                self._recalc_for_field_update(spec, spec.name, field_name, resource_id)
