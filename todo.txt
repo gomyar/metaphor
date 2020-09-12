@@ -24,6 +24,12 @@ Small todos:
  - calcs
    - add 
 
+ - add orderedlist type (possibly ordered link list)
+   - complicated, may involve linked list impl with $graphLookup aggregation
+   - pay attention to atomic changes to items in the list, whether adding / deleting / reordering
+     - maybe "PATCH" with _order field? for reordering call
+
+
 Update algorithmL
 
  - create updater for each update spawned by a request (single field update or single object creation/deletion)

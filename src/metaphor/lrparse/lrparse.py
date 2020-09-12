@@ -618,6 +618,10 @@ class Operator(Calc):
                 return lhs < rhs
             elif op == '=':
                 return lhs == rhs
+            elif op == '>=':
+                return lhs >= rhs
+            elif op == '<=':
+                return lhs <= rhs
         except TypeError as te:
             return None
         except AttributeError as te:
@@ -640,6 +644,8 @@ class Condition(object):
         '=': '$eq',
         '>': '$gt',
         '<': '$lt',
+        '>=': '$gte',
+        '<=': '$lte',
     }
 
     def __init__(self, tokens, parser):
@@ -882,6 +888,8 @@ class Parser(object):
             [(NAME, '=', ConstRef) , Condition],
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
+            [(NAME, '>=', ConstRef) , Condition],
+            [(NAME, '<=', ConstRef) , Condition],
             [(Calc, '+', Calc) , Operator],
             [(Calc, '-', Calc) , Operator],
             [(Calc, '*', Calc) , Operator],
@@ -889,6 +897,8 @@ class Parser(object):
             [(Calc, '>', Calc) , Operator],
             [(Calc, '<', Calc) , Operator],
             [(Calc, '=', Calc) , Operator],
+            [(Calc, '>=', Calc) , Operator],
+            [(Calc, '<=', Calc) , Operator],
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],

@@ -315,6 +315,12 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.salary = self.tax", employee_spec)
         self.assertTrue(False is tree.calculate(employee_id_1))
 
+        tree = parse("self.salary <= self.tax", employee_spec)
+        self.assertTrue(False is tree.calculate(employee_id_1))
+
+        tree = parse("self.salary >= self.tax", employee_spec)
+        self.assertTrue(True is tree.calculate(employee_id_1))
+
     def test_calc_nones(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "int")
@@ -607,4 +613,40 @@ class LRParseTest(unittest.TestCase):
                 'employee.name',
             })
 
+    def test_gte(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
 
+        tree = parse("employees[age>=40]", employee_spec)
+
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        calculated = tree.calculate(employee_id)
+        self.assertEquals([{
+            '_id': self.schema.decodeid(employee_id),
+            'name': 'sailor',
+            'age': 40,
+            '_parent_canonical_url': '/',
+            '_parent_field_name': 'employees',
+            '_parent_id': None,
+            '_parent_type': 'root',
+        }], calculated)
+
+    def test_lte(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
+
+        tree = parse("employees[age<=40]", employee_spec)
+
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        calculated = tree.calculate(employee_id)
+        self.assertEquals([{
+            '_id': self.schema.decodeid(employee_id),
+            'name': 'sailor',
+            'age': 40,
+            '_parent_canonical_url': '/',
+            '_parent_field_name': 'employees',
+            '_parent_id': None,
+            '_parent_type': 'root',
+        }], calculated)
