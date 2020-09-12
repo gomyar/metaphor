@@ -594,7 +594,10 @@ class Operator(Calc):
         self._parser = parser
 
     def infer_type(self):
-        return self.lhs.infer_type()
+        if self.op in ('<', '>', '='):
+            return Field('function', 'bool')
+        else:
+            return self.lhs.infer_type()
 
     def calculate(self, self_id):
         lhs = self.lhs.calculate(self_id)
@@ -609,6 +612,12 @@ class Operator(Calc):
                 return lhs * rhs
             elif op == '/':
                 return lhs / rhs
+            elif op == '>':
+                return lhs > rhs
+            elif op == '<':
+                return lhs < rhs
+            elif op == '=':
+                return lhs == rhs
         except TypeError as te:
             return None
         except AttributeError as te:
@@ -877,6 +886,9 @@ class Parser(object):
             [(Calc, '-', Calc) , Operator],
             [(Calc, '*', Calc) , Operator],
             [(Calc, '/', Calc) , Operator],
+            [(Calc, '>', Calc) , Operator],
+            [(Calc, '<', Calc) , Operator],
+            [(Calc, '=', Calc) , Operator],
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],

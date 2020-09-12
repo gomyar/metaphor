@@ -1,5 +1,28 @@
 
 
+Small todos:
+ - bugs:
+   - if an error occurs creating a field, the field is still added
+ - js popups:
+   - clear popup before "create" or "new" 
+   - allow pressing Enter key to submit
+ - schema editor
+   - add delete for fields
+   - add delete for resources
+     - possibly need some sort of versioning warning
+     - possibly add "deprecated" bool to fields / resources
+   - filter own spec from "add field" -> "collection" type dropdown
+   - add date field type
+   - add new calc functions:
+     - now()
+   - add < and > and = as operators (like + or -) which resolve to boolean values (not just used in filter expressions)
+
+   - need to be able to experimentally create schemas without applying them immediately
+     - an edited schema could be called a "patch" on a given schema "version" 
+       - could highlight mutators required to apply patch
+
+ - calcs
+   - add 
 
 Update algorithmL
 

@@ -287,7 +287,7 @@ class LRParseTest(unittest.TestCase):
         # parents[name='ned'].entities[averagePay>average(self.children[self.type='boss'].pay)]
         pass
 
-    def test_calc_plus(self):
+    def test_calc_operators(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "int")
         employee_spec.fields["tax"] = Field("tax", "int")
@@ -305,6 +305,15 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("self.salary / self.tax", employee_spec)
         self.assertEquals(5, tree.calculate(employee_id_1))
+
+        tree = parse("self.salary < self.tax", employee_spec)
+        self.assertTrue(False is tree.calculate(employee_id_1))
+
+        tree = parse("self.salary > self.tax", employee_spec)
+        self.assertTrue(True is tree.calculate(employee_id_1))
+
+        tree = parse("self.salary = self.tax", employee_spec)
+        self.assertTrue(False is tree.calculate(employee_id_1))
 
     def test_calc_nones(self):
         employee_spec = self.schema.specs['employee']
