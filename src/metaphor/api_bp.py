@@ -59,6 +59,8 @@ def api(path):
         return jsonify(api.patch(path, request.json))
     if request.method == 'GET':
         return jsonify(api.get(path))
+    if request.method == 'DELETE':
+        return jsonify(api.delete(path))
 
 
 @browser_bp.route("/", methods=['GET'])

@@ -146,6 +146,28 @@ var browser = {
                 location.reload();
             },
             loading.dec_loading);
+    },
+    delete_resource: function(resource) {
+        if (confirm("Are you sure you wish to delete : " + resource.id + " ?")) {
+            browser._perform_delete(resource);
+        }
+    },
+    delete_link: function(resource) {
+        if (confirm("Are you sure you wish to delete link to : " + resource.id + " ?")) {
+            browser._perform_delete(resource);
+        }
+    },
+    _perform_delete: function(resource) {
+        loading.inc_loading();
+        var resource_url = window.location.protocol + '//' + window.location.host + "/api" + resource.self;
+        turtlegui.ajax.delete(
+            resource_url,
+            function(data) {
+                console.log("Deleted");
+                location.reload();
+            },
+            loading.dec_loading
+        );
     }
 };
 

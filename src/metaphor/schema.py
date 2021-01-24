@@ -224,6 +224,12 @@ class Schema(object):
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
+    def delete_resource(self, spec_name, resource_id):
+        self.db['resource_%s' % spec_name].delete_one({'_id': self.decodeid(resource_id)})
+
+    def delete_linkcollection_entry(self, spec_name, parent_id, field_name, resource_id):
+        self.db['resource_%s' % spec_name].update({"_id": parent_id} ,{"$pull": {'parttimers': {"_id": self.decodeid(resource_id)}}})
+
     def update_resource_fields(self, spec_name, resource_id, field_data):
         spec = self.specs[spec_name]
         save_data = {}
@@ -240,7 +246,7 @@ class Schema(object):
             return_document=ReturnDocument.AFTER)
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
-        self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$push': {parent_field: {'_id': self.decodeid(link_id)}}})
+        self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
 
     def validate_spec(self, spec_name, data):

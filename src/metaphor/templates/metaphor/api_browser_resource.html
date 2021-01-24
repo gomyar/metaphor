@@ -3,15 +3,15 @@
     <div class="field" gui-list="api.spec.fields" gui-item="field" gui-key="field_name">
         <div class="field_name" gui-text="field_name"></div>
         <div class="field_data" gui-switch="field.type">
-            <div class="field_link" gui-case="int" gui-text="resource[field_name]"></div>
-            <div class="field_link" gui-case="float" gui-text="resource[field_name]"></div>
-            <div class="field_link" gui-case="str" gui-text="resource[field_name]"></div>
-            <div class="field_link" gui-case="bool" gui-text="resource[field_name]"></div>
+            <div class="field_link" gui-case="'int'" gui-text="resource[field_name]"></div>
+            <div class="field_link" gui-case="'float'" gui-text="resource[field_name]"></div>
+            <div class="field_link" gui-case="'str'" gui-text="resource[field_name]"></div>
+            <div class="field_link" gui-case="'bool'" gui-text="resource[field_name]"></div>
 
-            <div class="field_link" gui-case="link" gui-text="resource[field_name]"></div>
-            <a class="field_collection" gui-case="collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
-            <a class="field_collection" gui-case="linkcollection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
-            <a class="field_collection" gui-case="reverse_link_collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+            <div class="field_link" gui-case="'link'" gui-text="resource[field_name]"></div>
+            <a class="field_collection" gui-case="'collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+            <a class="field_collection" gui-case="'linkcollection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+            <a class="field_collection" gui-case="'reverse_link_collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
         </div>
     </div>
 </div>

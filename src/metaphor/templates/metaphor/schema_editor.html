@@ -1,7 +1,7 @@
 <html>
 <head>
 
-<script src="https://rawgit.com/gomyar/turtlegui/v4.0.4/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v5.2/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/admin/static/metaphor/schema_editor.js"></script>
 
 <link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v4.0.4/turtlegui.css"/>
@@ -93,25 +93,25 @@
                 </div>
             </div>
             <div gui-switch="create_field.field_type">
-                <div class="formfield" gui-case="collection">
+                <div class="formfield" gui-case="'collection'">
                     <div class="label">Target Spec:</div>
                     <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
                         <option gui-val="spec_name" gui-text="spec_name"></option>
                     </select>
                 </div>
-                <div class="formfield" gui-case="link">
+                <div class="formfield" gui-case="'link'">
                     <div class="label">Target Spec:</div>
                     <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
                         <option gui-val="spec_name" gui-text="spec_name"></option>
                     </select>
                 </div>
-                <div class="formfield" gui-case="linkcollection">
+                <div class="formfield" gui-case="'linkcollection'">
                     <div class="label">Target Spec:</div>
                     <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
                         <option gui-val="spec_name" gui-text="spec_name"></option>
                     </select>
                 </div>
-                <div class="formfield" gui-case="calc">
+                <div class="formfield" gui-case="'calc'">
                     <div class="label">Calc:</div>
                     <input type="text" gui-val="create_field.calc_str"></input>
                 </div>

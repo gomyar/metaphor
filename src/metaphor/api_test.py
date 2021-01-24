@@ -487,6 +487,77 @@ class ApiTest(unittest.TestCase):
         self.assertFalse(can_post)
         self.assertTrue(is_linkcollection)
 
+    def test_delete_resource(self):
+        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 35}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'Sales'}, 'divisions')
+
+        self.api.post('/divisions/%s/parttimers' % division_id_1, {'id': employee_id_2})
+
+        self.assertEquals('Sales', self.api.get('/divisions/%s' % division_id_1)['name'])
+
+        self.api.delete('/employees/%s' % employee_id_2)
+
+        new_employees = list(self.db['resource_employee'].find())
+
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 41,
+             'name': 'ned'},
+            {'_id': self.schema.decodeid(employee_id_3),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 35,
+             'name': 'fred'}], new_employees)
+        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1))
+
+    def test_delete_linkcollection_entry(self):
+        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.api.post('/divisions/%s/parttimers' % division_id_1, {'id': employee_id_2})
+
+        self.assertEquals(1, len(self.api.get('/divisions/%s/all_employees' % division_id_1)))
+
+        self.api.delete('/divisions/%s/parttimers/%s' % (division_id_1, employee_id_2))
+
+        self.assertEquals([], self.api.get('/divisions/%s/all_employees' % division_id_1))
+
+    def test_delete_link(self):
+        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_2)
+
+        self.api.delete('/divisions/%s/parttimers/%s' % (division_id_1, employee_id_2))
+
+        result = self.api.get('/divisions/%s/parttimers' % (division_id_1,))
+        self.assertEquals([], result)
+
+        result = self.api.get('/divisions/%s/all_employees' % (division_id_1,))
+        self.assertEquals([], result)
+
+    def test_delete_404(self):
+        pass
+
     def test_reserved_words(self):
         # link_*
         # parent_*

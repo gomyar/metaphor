@@ -70,6 +70,39 @@ class Api(object):
                 None,
                 data)
 
+    def delete(self, path):
+        path = path.strip().strip('/')
+
+        if '/' in path:
+            parent_field_path = '/'.join(path.split('/')[:-1])
+            resource_id = path.split('/')[-1]
+
+            tree = parse_canonical_url(path, self.schema.root)
+            parent_field_tree = parse_canonical_url(parent_field_path, self.schema.root)
+
+            parent_path = '/'.join(parent_field_path.split('/')[:-1])
+            field_name = parent_field_path.split('/')[-1]
+
+            if type(parent_field_tree) == LinkCollectionResourceRef:
+                parent_tree = parse_canonical_url(parent_path, self.schema.root)
+                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
+
+                # if we're using a simplified parser we can probably just pull the id off the path
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                return self.updater.delete_linkcollection_entry(
+                    spec.name,
+                    parent_resource['_id'],
+                    field_name,
+                    resource_id)
+            else:
+                aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None)
+
+                return self.updater.delete_resource(spec.name, resource_id, spec.name, field_name)
+        else:
+            raise Exception("Cannot delete root resource")
+
     def get(self, path):
         path = path.strip().strip('/')
         tree = parse_url(path, self.schema.root)

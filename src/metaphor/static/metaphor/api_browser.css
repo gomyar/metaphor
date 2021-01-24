@@ -25,6 +25,11 @@ div.button.create_resource {
     margin-left : 20px;
 }
 
+div.button.delete{
+    float : right;
+    margin-right : 50px;
+}
+
 
 div.spec_name {
     margin : 10px;

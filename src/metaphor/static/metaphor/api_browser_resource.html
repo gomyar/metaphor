@@ -1,5 +1,8 @@
 
 <div class="resource">
+    <div class="button delete" gui-show="api.can_post" gui-click="browser.delete_resource(resource)">Delete Resource</div>
+    <div class="button delete" gui-show="api.is_linkcollection" gui-click="browser.delete_link(resource)">Delete Link</div>
+
     <div class="field">
         <div class="field_name">id</div>
         <div class="field_data">
@@ -17,40 +20,40 @@
         <div class="field">
             <div class="field_name" gui-text="field_name"></div>
             <div class="field_data" gui-switch="field.type">
-                <div class="field_int" gui-case="int" gui-click="browser.set_editing_field(resource.id, field_name)">
+                <div class="field_int" gui-case="'int'" gui-click="browser.set_editing_field(resource.id, field_name)">
                     <div class="field_value" gui-text="resource[field_name]"></div>
                     <div class="field_edit" gui-show="browser.is_editing_field(resource.id, field_name)">
                         <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated()"></input>
                     </div>
                 </div>
-                <div class="field_float" gui-case="float" gui-click="browser.set_editing_field(resource.id, field_name)">
+                <div class="field_float" gui-case="'float'" gui-click="browser.set_editing_field(resource.id, field_name)">
                     <div class="field_value" gui-text="resource[field_name]"></div>
                     <div class="field_edit" gui-show="browser.is_editing_field(resource.id, field_name)">
                         <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated()"></input>
                     </div>
                 </div>
-                <div class="field_str" gui-case="str" gui-click="browser.set_editing_field(resource.id, field_name)">
+                <div class="field_str" gui-case="'str'" gui-click="browser.set_editing_field(resource.id, field_name)">
                     <div class="field_value" gui-text="resource[field_name]"></div>
                     <div class="field_edit" gui-show="browser.is_editing_field(resource.id, field_name)">
                         <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated()"></input>
                     </div>
                 </div>
-                <div class="field_bool" gui-case="bool" gui-text="resource[field_name]"></div>
-                <div class="field_calc" gui-case="calc">
+                <div class="field_bool" gui-case="'bool'" gui-text="resource[field_name]"></div>
+                <div class="field_calc" gui-case="'calc'">
                     <div gui-text="resource[field_name]" gui-show="field.is_primitive"></div>
                     <a class="field_collection"  gui-show="not(field.is_primitive)" gui-attrs="href=browser.create_relative_href(resource.self, field_name)" gui-text="browser.create_relative_link(resource.self, field_name)"></a>
                 </div>
-                <div class="field_link" gui-case="link" gui-click="browser.set_editing_field(resource.id, field_name)">
+                <div class="field_link" gui-case="'link'" gui-click="browser.set_editing_field(resource.id, field_name)">
                     <div class="field_value" gui-text="resource[field_name]"></div>
                     <div class="field_edit" gui-show="browser.is_editing_field(resource.id, field_name)">
                         <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated()"></input>
                     </div>
                 </div>
-                <a class="field_collection" gui-case="collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
-                <a class="field_collection" gui-case="linkcollection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
-                <a class="field_collection" gui-case="reverse_link_collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
-                <a class="field_collection" gui-case="reverse_link" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
-                <a class="field_collection" gui-case="parent_collection" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+                <a class="field_collection" gui-case="'collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+                <a class="field_collection" gui-case="'linkcollection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+                <a class="field_collection" gui-case="'reverse_link_collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+                <a class="field_collection" gui-case="'reverse_link'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
+                <a class="field_collection" gui-case="'parent_collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
             </div>
         </div>
     </div>
