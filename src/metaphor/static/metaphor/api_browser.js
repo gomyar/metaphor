@@ -70,10 +70,10 @@ var browser = {
             return value;
         }
     },
-    field_updated: function() {
+    field_updated: function(field_element) {
         if (event.keyCode == 13) {
             var resource = browser.get_editing_resource();    
-            var new_value = browser.parse_value(this.value);
+            var new_value = browser.parse_value(field_element.value);
             resource[browser.editing_field_name] = new_value;
             var resource_url = window.location.protocol + '//' + window.location.host + "/api" + resource.self;
             var resource_data = {};
