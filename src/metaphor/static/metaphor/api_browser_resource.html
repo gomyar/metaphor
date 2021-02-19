@@ -41,7 +41,7 @@
                 <div class="field_bool" gui-case="'bool'" gui-text="resource[field_name]"></div>
                 <div class="field_calc" gui-case="'calc'">
                     <div gui-text="resource[field_name]" gui-show="field.is_primitive"></div>
-                    <a class="field_collection"  gui-show="not(field.is_primitive)" gui-attrs="href=browser.create_relative_href(resource.self, field_name)" gui-text="browser.create_relative_link(resource.self, field_name)"></a>
+                    <a class="field_collection"  gui-show="!(field.is_primitive)" gui-attrs="href=browser.create_relative_href(resource.self, field_name)" gui-text="browser.create_relative_link(resource.self, field_name)"></a>
                 </div>
                 <div class="field_link" gui-case="'link'" gui-click="browser.set_editing_field(resource.id, field_name)">
                     <div class="field_value" gui-text="resource[field_name]"></div>

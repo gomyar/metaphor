@@ -39,7 +39,7 @@ def serialize_spec(spec):
 def search(spec_name):
     query = request.args.get('query')
     api = current_app.config['api']
-    return api.search_resource(spec_name, query)
+    return jsonify(api.search_resource(spec_name, query))
 
 
 @api_bp.route("/", methods=['GET'])

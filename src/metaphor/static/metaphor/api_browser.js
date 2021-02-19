@@ -11,9 +11,45 @@ var loading = {
     }
 };
 
-var not = function(value) {
-    return !(value);
+
+function ResourceSearch(spec, select_callback, reload_callback) {
+    this.spec = spec;
+    this.query = '';
+    this.results = [];
+    this.reload_callback = reload_callback || turtlegui.reload;
+    this.select_callback = select_callback;
+
+    this.results_popup_visible = false;
 }
+
+ResourceSearch.prototype.perform_search = function() {
+    var query_str = this.query ? '?query=' + this.query: '';
+    var self = this;  // todo: get turtlegui's ajax calls working with this
+    turtlegui.ajax.get('/search/' + this.spec.name + query_str, function(response) {
+        self.results = JSON.parse(response);
+        self.show_results_popup();
+    }, function(error) {
+        alert(error.statusText);
+    });
+}
+
+ResourceSearch.prototype.select_result = function(result) {
+    this.select_callback(result);
+    this.hide_results_popup();
+}
+
+ResourceSearch.prototype.show_results_popup = function() {
+    this.results_popup_visible = true;
+    console.log("got results: ", this.results, this.reload_callback, this.results_popup_visible);
+    this.reload_callback();
+}
+
+ResourceSearch.prototype.hide_results_popup = function() {
+    this.results_popup_visible = false;
+    this.reload_callback();
+}
+
+
 
 var browser = {
     editing_field_name: null,
@@ -21,6 +57,9 @@ var browser = {
     creating_resource_spec: false,
     creating_resource_fields: {},
     creating_link: false,
+    collection_search: new ResourceSearch(api.spec, function(result) {
+        console.log("Selected: ", result);
+    }),
 
     is_field_link: function(field) {
         return field.field_type == 'link';
@@ -168,7 +207,8 @@ var browser = {
             },
             loading.dec_loading
         );
-    }
+    },
+
 };
 
 

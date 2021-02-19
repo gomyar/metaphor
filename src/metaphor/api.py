@@ -201,11 +201,14 @@ class Api(object):
 
     def search_resource(self, spec_name, query_str):
         spec = self.schema.specs[spec_name]
-        try:
-            resource_id = self.schema.decodeid(query_str)
-            query = {'_id': resource_id}
-        except InvalidId as ie:
-            query = self._decode_query(query_str, spec)
+        if query_str:
+            try:
+                resource_id = self.schema.decodeid(query_str)
+                query = {'_id': resource_id}
+            except InvalidId as ie:
+                query = self._decode_query(query_str, spec)
+        else:
+            query = {}
         results = self.schema.db['resource_%s' % spec_name].find(query)
         resources = []
         for result in results:

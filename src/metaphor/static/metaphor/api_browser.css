@@ -21,6 +21,33 @@ div.title_version div.version{
     margin-left : 50px;
 }
 
+
+div.search_bar {
+    top : 22px;
+    margin : 10px;
+    height : 40px;
+    width : 280px;
+}
+
+div.search_form {
+    width : 400px;
+}
+
+div.search_popup {
+    z-index: 1;
+    width : 100vw;
+    height : 100vh;
+}
+
+div.search_form input {
+    display : inline-block;
+}
+
+div.search_form button {
+    display : inline-block;
+}
+
+
 div.button.create_resource {
     margin-left : 20px;
 }

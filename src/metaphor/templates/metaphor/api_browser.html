@@ -2,9 +2,9 @@
 
 <head>
 
-<script src="https://rawgit.com/gomyar/turtlegui/v5.2/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v5.6/turtlegui.js" crossorigin="anonymous"></script>
 
-<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v4.0.5/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.6/turtlegui.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/api_browser.css"/>
 
@@ -40,6 +40,10 @@ var api = {
     <div class="button create_resource" gui-show="api.is_linkcollection" gui-click="browser.show_create_link_popup()">Add Link</div>
 </div>
 
+<div class="layer anchortop search_bar">
+    <div gui-include="/browser/static/metaphor/search_form.html" gui-include-params="search=browser.collection_search"></div>
+</div>
+
 <div class="layer fullscreen resources">
     <div class="collection" gui-show="api.is_collection" gui-list="api.resource" gui-item="resource">
         <div gui-include="/browser/static/metaphor/api_browser_resource.html" gui-include-params="resource=resource"></div>
@@ -53,11 +57,9 @@ var api = {
         <div class="title">
             <div>Create</div>&nbsp;<div gui-text="api.spec.name"></div>
         </div>
-        <div class="popupform" gui-list="api.spec.fields" gui-item="field" gui-key="field_name">
-            <div class="formfield" gui-show="browser.can_edit_field(field)">
-                <div class="label api" gui-text="field_name"></div><div class="spec_name"><input type="text" gui-val="browser.creating_resource_fields[field_name]"></input></div>
-            </div>
-        </div>
+
+        <div gui-include="/browser/static/metaphor/resource_form.html" gui-include-params="spec=api.spec;resource=browser.creating_resource_fields"></div>
+
         <div class="popupbuttons">
             <div class="button" gui-click='browser.perform_create()'>Create</div>
             <div class="button" gui-click='browser.hide_create_popup()'>Close</div>
@@ -74,6 +76,7 @@ var api = {
             <div class="formfield">
                 <div class="label api" gui-text="api.spec.name"></div><div class="spec_name"><input type="text" gui-val="browser.creating_link_value"></input></div>
             </div>
+
         </div>
         <div class="popupbuttons">
             <div class="button" gui-click='browser.perform_create_link()'>Create</div>
