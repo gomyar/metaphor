@@ -12,41 +12,43 @@ var loading = {
 };
 
 
-function ResourceSearch(spec, select_callback, reload_callback) {
-    this.spec = spec;
-    this.query = '';
-    this.results = [];
-    this.reload_callback = reload_callback || turtlegui.reload;
-    this.select_callback = select_callback;
+class ResourceSearch {
+    constructor(spec, select_callback, reload_callback) {
+        this.spec = spec;
+        this.query = '';
+        this.results = [];
+        this.reload_callback = reload_callback || turtlegui.reload;
+        this.select_callback = select_callback;
 
-    this.results_popup_visible = false;
-}
+        this.results_popup_visible = false;
+    }
 
-ResourceSearch.prototype.perform_search = function() {
-    var query_str = this.query ? '?query=' + this.query: '';
-    var self = this;  // todo: get turtlegui's ajax calls working with this
-    turtlegui.ajax.get('/search/' + this.spec.name + query_str, function(response) {
-        self.results = JSON.parse(response);
-        self.show_results_popup();
-    }, function(error) {
-        alert(error.statusText);
-    });
-}
+    perform_search() {
+        var query_str = this.query ? '?query=' + this.query: '';
+        var self = this;  // todo: get turtlegui's ajax calls working with this
+        turtlegui.ajax.get('/search/' + this.spec.name + query_str, function(response) {
+            self.results = JSON.parse(response);
+            self.show_results_popup();
+        }, function(error) {
+            alert(error.statusText);
+        });
+    }
 
-ResourceSearch.prototype.select_result = function(result) {
-    this.select_callback(result);
-    this.hide_results_popup();
-}
+    select_result(result) {
+        this.select_callback(result);
+        this.hide_results_popup();
+    }
 
-ResourceSearch.prototype.show_results_popup = function() {
-    this.results_popup_visible = true;
-    console.log("got results: ", this.results, this.reload_callback, this.results_popup_visible);
-    this.reload_callback();
-}
+    show_results_popup() {
+        this.results_popup_visible = true;
+        console.log("got results: ", this.results, this.reload_callback, this.results_popup_visible);
+        this.reload_callback();
+    }
 
-ResourceSearch.prototype.hide_results_popup = function() {
-    this.results_popup_visible = false;
-    this.reload_callback();
+    hide_results_popup() {
+        this.results_popup_visible = false;
+        this.reload_callback();
+    }
 }
 
 
@@ -146,7 +148,7 @@ var browser = {
         turtlegui.reload();
     },
     can_edit_field: function(field) {
-        return field.type == 'int' || field.type == 'str';
+        return field.type == 'int' || field.type == 'str' || field.type == 'bool' ||  field.type == 'float';
     },
     perform_create: function() {
         var resource_url = window.location.protocol + '//' + window.location.host + "/api/" + api.path;
@@ -209,6 +211,12 @@ var browser = {
         );
     },
 
+    check_esc: function() {
+        console.log('event', event);
+        if (event.keyCode == 27) {
+            browser.hide_create_popup();
+        }
+    },
 };
 
 

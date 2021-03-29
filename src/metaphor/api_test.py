@@ -426,7 +426,7 @@ class ApiTest(unittest.TestCase):
             'parttimers': '/divisions/%s/parttimers' % division_id_1,
             'sections': '/divisions/%s/sections' % division_id_1,
             'self': '/divisions/%s' % division_id_1,
-            'yearly_sales': 100}], self.api.search_resource('division', 'name=sales'))
+            'yearly_sales': 100}], self.api.search_resource('division', "name='sales'"))
 
         self.assertEquals([{
             'age': 41,
@@ -450,15 +450,6 @@ class ApiTest(unittest.TestCase):
             'sections': '/divisions/%s/sections' % division_id_2,
             'self': '/divisions/%s' % division_id_2,
             'yearly_sales': 20}], self.api.search_resource('division', 'yearly_sales=20'))
-
-        # search by id directly
-        self.assertEquals([{
-            'age': 31,
-            'division': None,
-            'id': employee_id_2,
-            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
-            'name': 'bob',
-            'self': '/employees/%s' % employee_id_2}], self.api.search_resource('employee', employee_id_2))
 
     def test_can_post(self):
         self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.link_employee_division')

@@ -3,6 +3,7 @@ import os
 from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
 from metaphor.lrparse.lrparse import parse_canonical_url
+from metaphor.lrparse.lrparse import parse_filter
 from metaphor.lrparse.lrparse import CollectionResourceRef
 from metaphor.lrparse.lrparse import RootResourceRef
 from metaphor.lrparse.lrparse import LinkCollectionResourceRef
@@ -202,11 +203,8 @@ class Api(object):
     def search_resource(self, spec_name, query_str):
         spec = self.schema.specs[spec_name]
         if query_str:
-            try:
-                resource_id = self.schema.decodeid(query_str)
-                query = {'_id': resource_id}
-            except InvalidId as ie:
-                query = self._decode_query(query_str, spec)
+            query = parse_filter(query_str, spec)
+            query = query.condition_aggregation(spec)
         else:
             query = {}
         results = self.schema.db['resource_%s' % spec_name].find(query)
@@ -215,24 +213,3 @@ class Api(object):
             resource_id = self.schema.encodeid(result['_id'])
             resources.append(self.encode_resource(spec, result))
         return resources
-
-    def _decode_query(self, query_str, spec):
-        query = {}
-        for q in query_str.split(','):
-            if '=' in q:
-                key, val = q.split('=')
-                field_type = spec.fields[key].field_type
-                if field_type == 'int':
-                    val = int(val)
-                if field_type == 'float':
-                    val = float(val)
-                query[key] = val
-            elif '>' in q:
-                key, val = q.split('>')
-                val = float(val)
-                query[key] = {'$gt': val}
-            elif '<' in q:
-                key, val = q.split('<')
-                val = float(val)
-                query[key] = {'$lt': val}
-        return query

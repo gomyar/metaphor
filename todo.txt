@@ -1,4 +1,26 @@
 
+Search:
+ - search by resource, by field value(s)
+ - return list of resources (include canonical url for each)
+
+Permissioning:
+ - Users
+   - get a /me endpoint
+   - contain group memberships
+ - Groups
+   - Resource collection fields also contain a list of groups which can read
+     - And a separate collection for groups which can create
+   - A single Resource has a list of groups for edit
+   - Requests are filtered by the list of read groups in a collection
+   - Posts are allowed based on the list of post groups in a collection
+   - Put requests are allowed base on the list of put groups in a collection
+
+Pagination
+ - do this
+
+Expand by get param:
+ - aggregate calls on all GET requests, which optional expand
+ - expand through links honours the permissions (groups) of the linked resource
 
 Small todos:
  - bugs:

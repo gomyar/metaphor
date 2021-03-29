@@ -1041,6 +1041,26 @@ class CanonicalUrlParser(Parser):
         ]
 
 
+class FilterParser(Parser):
+    def __init__(self, tokens, spec):
+        self.tokens = tokens
+        self.spec = spec
+        self.shifted = []
+        self.patterns = [
+            [(NAME, '=', ConstRef) , Condition],
+            [(NAME, '>', ConstRef) , Condition],
+            [(NAME, '<', ConstRef) , Condition],
+            [(NAME, '>=', ConstRef) , Condition],
+            [(NAME, '<=', ConstRef) , Condition],
+            [(Condition, '&', Condition) , AndCondition],
+            [(Condition, '|', Condition) , OrCondition],
+            [(Condition, ',', Condition) , AndCondition],
+            [('[', Condition, ']'), Filter],
+            [(STRING,), ConstRef],
+            [(NUMBER,), ConstRef],
+        ]
+
+
 def parse(line, spec):
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return Parser(lex(tokens), spec).parse()
@@ -1054,3 +1074,8 @@ def parse_url(line, spec):
 def parse_canonical_url(line, spec):
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return CanonicalUrlParser(lex(tokens), spec).parse()
+
+
+def parse_filter(line, spec):
+    tokens = tokenize.generate_tokens(StringIO(line).read)
+    return FilterParser(lex(tokens), spec).parse()

@@ -2,9 +2,9 @@
 
 <head>
 
-<script src="https://rawgit.com/gomyar/turtlegui/v5.6/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v5.10/turtlegui.js" crossorigin="anonymous"></script>
 
-<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.6/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.10/turtlegui.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/api_browser.css"/>
 
@@ -36,8 +36,8 @@ var api = {
     <div class="title">Spec</div>
     <div class="name" gui-text="api.spec.name"></div>
     <div class="is_collection" gui-show="api.is_collection">collection</div>
-    <div class="button create_resource" gui-show="api.can_post" gui-click="browser.show_create_popup()">Create</div>
-    <div class="button create_resource" gui-show="api.is_linkcollection" gui-click="browser.show_create_link_popup()">Add Link</div>
+    <div tabIndex="0" class="button create_resource" gui-show="api.can_post" gui-click="browser.show_create_popup()">Create</div>
+    <div tabIndex="0" class="button create_resource" gui-show="api.is_linkcollection" gui-click="browser.show_create_link_popup()">Add Link</div>
 </div>
 
 <div class="layer anchortop search_bar">
@@ -52,7 +52,7 @@ var api = {
     </div>
 </div>
 
-<div id="create_resource" class="popupwrapper" gui-show="browser.creating_resource_spec">
+<div id="create_resource" class="popupwrapper" gui-show="browser.creating_resource_spec" tabIndex="0" gui-keyup="browser.check_esc()">
     <div class="popup">
         <div class="title">
             <div>Create</div>&nbsp;<div gui-text="api.spec.name"></div>

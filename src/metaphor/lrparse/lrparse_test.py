@@ -1,7 +1,7 @@
 
 import unittest
 
-from .lrparse import parse
+from .lrparse import parse, parse_filter
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
@@ -650,3 +650,49 @@ class LRParseTest(unittest.TestCase):
             '_parent_id': None,
             '_parent_type': 'root',
         }], calculated)
+
+    def test_search_filter(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("age<=40", employee_spec)
+
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        self.assertEqual({'age': {'$lte': 40}}, tree.condition_aggregation(employee_spec))
+
+    def test_search_filter_multiple(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("age<=40 & name='sailor'", employee_spec)
+
+        employee_id = self.schema.insert_resource(
+            'employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        self.assertEqual(
+            {'$and': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
+            tree.condition_aggregation(employee_spec))
+
+    def test_search_filter_commas_are_nice(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("age<=40, name='sailor'", employee_spec)
+
+        employee_id = self.schema.insert_resource(
+            'employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        self.assertEqual(
+            {'$and': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
+            tree.condition_aggregation(employee_spec))
+
+    def test_search_filter_commas_and_or(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("age<=40, name='sailor' | name='weaver'", employee_spec)
+
+        employee_id = self.schema.insert_resource(
+            'employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        self.assertEqual(
+            {'$or': [{'$and': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
+                     {'name': {'$eq': 'weaver'}}]},
+            tree.condition_aggregation(employee_spec))
