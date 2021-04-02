@@ -1054,7 +1054,7 @@ class FilterParser(Parser):
             [(NAME, '<=', ConstRef) , Condition],
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
-            [(Condition, ',', Condition) , AndCondition],
+            [(Condition, ',', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
             [(STRING,), ConstRef],
             [(NUMBER,), ConstRef],

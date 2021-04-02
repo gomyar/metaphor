@@ -681,7 +681,7 @@ class LRParseTest(unittest.TestCase):
             'employee', {'name': 'sailor', 'age': 40}, 'employees')
 
         self.assertEqual(
-            {'$and': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
+            {'$or': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
             tree.condition_aggregation(employee_spec))
 
     def test_search_filter_commas_and_or(self):
@@ -693,6 +693,6 @@ class LRParseTest(unittest.TestCase):
             'employee', {'name': 'sailor', 'age': 40}, 'employees')
 
         self.assertEqual(
-            {'$or': [{'$and': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
+            {'$or': [{'$or': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
                      {'name': {'$eq': 'weaver'}}]},
             tree.condition_aggregation(employee_spec))
