@@ -2,9 +2,9 @@
 
 <head>
 
-<script src="https://rawgit.com/gomyar/turtlegui/v5.10/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v5.11/turtlegui.js" crossorigin="anonymous"></script>
 
-<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.10/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.11/turtlegui.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/api_browser.css"/>
 
@@ -36,12 +36,8 @@ var api = {
     <div class="title">Spec</div>
     <div class="name" gui-text="api.spec.name"></div>
     <div class="is_collection" gui-show="api.is_collection">collection</div>
-    <div tabIndex="0" class="button create_resource" gui-show="api.can_post" gui-click="browser.show_create_popup()">Create</div>
-    <div tabIndex="0" class="button create_resource" gui-show="api.is_linkcollection" gui-click="browser.show_create_link_popup()">Add Link</div>
-</div>
-
-<div class="layer anchortop search_bar">
-    <div gui-include="/browser/static/metaphor/search_form.html" gui-include-params="search=browser.collection_search"></div>
+    <button tabIndex="0" class="button create_resource" gui-show="api.can_post" gui-click="browser.show_create_popup()">Create</button>
+    <button tabIndex="0" class="button create_resource" gui-show="api.is_linkcollection" gui-click="browser.show_create_link_popup()">Add Link</button>
 </div>
 
 <div class="layer fullscreen resources">
@@ -58,12 +54,16 @@ var api = {
             <div>Create</div>&nbsp;<div gui-text="api.spec.name"></div>
         </div>
 
-        <div gui-include="/browser/static/metaphor/resource_form.html" gui-include-params="spec=api.spec;resource=browser.creating_resource_fields"></div>
+        <form>
+
+        <div gui-include="/browser/static/metaphor/resource_form.html" gui-include-params="spec=api.spec;resource=browser.creating_resource_fields" gui-include-nocache="true"></div>
 
         <div class="popupbuttons">
-            <div class="button" gui-click='browser.perform_create()'>Create</div>
-            <div class="button" gui-click='browser.hide_create_popup()'>Close</div>
+            <button type="submit" class="button" gui-click='browser.perform_create()'>Create</button>
+            <button class="button" gui-click='browser.hide_create_popup()'>Close</button>
         </div>
+
+        </form>
     </div>
 </div>
 

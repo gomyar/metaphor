@@ -48,11 +48,11 @@ div.search_form button {
 }
 
 
-div.button.create_resource {
+.button.create_resource {
     margin-left : 20px;
 }
 
-div.button.delete{
+.button.delete{
     float : right;
     margin-right : 50px;
 }
@@ -94,22 +94,22 @@ div.resources div.resource {
     display : block;
 }
 
-div.resources div.resource div.field:hover {
+div.field:hover {
     background-color : lightgrey;
 }
 
-div.resources div.resource div.field div.field_name{
+div.field div.field_name{
     font-size : 14px;
     min-width : 250px;
     margin-left : 20px;
     display : inline-block;
     vertical-align : top;
 }
-div.resources div.resource div.field div.field_name::after{
+div.field div.field_name::after{
     content: ' :';
 }
 
-div.resources div.resource div.field div.field_data {
+div.field div.field_data {
     font-size : 12px;
     min-width : 50px;
     margin-left : 20px;
@@ -118,22 +118,22 @@ div.resources div.resource div.field div.field_data {
     height : 14px;
 }
 
-div.resources div.resource div.field div.field_data div {
+div.field div.field_data div {
     height : 14px;
 }
 
-div.resources div.resource div.field div.field_edit {
+div.field div.field_edit {
     margin-top : -14px;
 }
 
-div.resources div.resource div.field div.field_data div.field_str div.field_value::before{
+div.field div.field_data div.field_str div.field_value::before{
     content: '"';
 }
-div.resources div.resource div.field div.field_data div.field_str div.field_value::after{
+div.field div.field_data div.field_str div.field_value::after{
     content: '"';
 }
 
-div.resources div.resource div.field div.target {
+div.field div.target {
     font-size : 12px;
     min-width : 50px;
     margin-left : 20px;

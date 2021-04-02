@@ -212,9 +212,9 @@ class Schema(object):
     def load_canonical_parent_url(self, parent_type, parent_id):
         if parent_id:
             parent_data = self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
-            return os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
+            return os.path.join(parent_data.get('_parent_canonical_url') or '/', parent_data['_parent_field_name'], parent_id)
         else:
-            return "/"
+            return None
 
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None):
         data['_parent_type'] = parent_type or 'root'

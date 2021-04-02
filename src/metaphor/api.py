@@ -165,7 +165,7 @@ class Api(object):
 
     def encode_resource(self, spec, resource_data):
         self_url = os.path.join(
-            resource_data['_parent_canonical_url'],
+            resource_data.get('_parent_canonical_url') or '/',
             resource_data['_parent_field_name'],
             self.schema.encodeid(resource_data['_id']))
         encoded = {
@@ -180,7 +180,7 @@ class Api(object):
                 else:
                     encoded[field_name] = None
             elif field.field_type == 'parent_collection':
-                encoded[field_name] = resource_data['_parent_canonical_url']
+                encoded[field_name] = resource_data.get('_parent_canonical_url')
             elif field.field_type in ('linkcollection', 'collection', 'reverse_link', 'reverse_link_collection'):
                 encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type == 'calc':
