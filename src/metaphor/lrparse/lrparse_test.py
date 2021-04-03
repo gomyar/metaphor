@@ -51,6 +51,10 @@ class LRParseTest(unittest.TestCase):
                             "type": "linkcollection",
                             "target_spec_name": "employee",
                         },
+                        "partners": {
+                            "type": "collection",
+                            "target_spec_name": "employee",
+                        },
                     },
                 },
                 "section": {
@@ -111,7 +115,7 @@ class LRParseTest(unittest.TestCase):
             '_id': self.schema.decodeid(division_id),
             'name': 'sales',
             'yearly_sales': 10,
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -219,6 +223,8 @@ class LRParseTest(unittest.TestCase):
 
         aggregation, spec, is_aggregate = tree.aggregation(employee_id)
         self.assertEquals([
+            {'$match': {'$and': [{'_parent_field_name': 'employees'},
+                                 {'_parent_canonical_url': '/'}]}},
             {'$match': {'age': {'$gt': 40}}},
             {'$lookup': {'as': '_field_division',
                         'foreignField': '_id',
@@ -240,6 +246,8 @@ class LRParseTest(unittest.TestCase):
 
         aggregation, spec, is_aggregate = tree.aggregation(employee_id)
         self.assertEquals([
+            {'$match': {'$and': [{'_parent_field_name': 'employees'},
+                                 {'_parent_canonical_url': '/'}]}},
             {'$match': {'$and' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
             {'$project': {'name': True}}], aggregation)
         self.assertEquals(self.schema.specs['employee'].fields['name'],
@@ -253,6 +261,8 @@ class LRParseTest(unittest.TestCase):
 
         aggregation, spec, is_aggregate = tree.aggregation(employee_id)
         self.assertEquals([
+            {'$match': {'$and': [{'_parent_field_name': 'employees'},
+                                 {'_parent_canonical_url': '/'}]}},
             {'$match': {'$or' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
             {'$project': {'name': True}}], aggregation)
         self.assertEquals(self.schema.specs['employee'].fields['name'],
@@ -521,7 +531,7 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEquals([{
             '_id': self.schema.decodeid(employee_id_1),
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -543,14 +553,14 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
-             '_parent_canonical_url': None,
+             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
              'age': 41,
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
-             '_parent_canonical_url': None,
+             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -626,7 +636,7 @@ class LRParseTest(unittest.TestCase):
             '_id': self.schema.decodeid(employee_id),
             'name': 'sailor',
             'age': 40,
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -645,7 +655,7 @@ class LRParseTest(unittest.TestCase):
             '_id': self.schema.decodeid(employee_id),
             'name': 'sailor',
             'age': 40,
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -696,3 +706,21 @@ class LRParseTest(unittest.TestCase):
             {'$or': [{'$or': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
                      {'name': {'$eq': 'weaver'}}]},
             tree.condition_aggregation(employee_spec))
+
+    def test_resources_in_different_collections(self):
+        tree = parse("employees", self.schema.root)
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        employee_id_4 = self.schema.insert_resource('employee', {'name': 'pete', 'age': 60}, 'partners', 'division', division_id_1)
+
+        result = tree.calculate(employee_id_1)
+        self.assertEquals(3, len(result))
+
+        employee_spec = self.schema.specs['employee']
+        tree = parse("max(employees.age)", employee_spec)
+        self.assertEquals(41, tree.calculate(employee_id_1))

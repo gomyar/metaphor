@@ -19,7 +19,16 @@ var schema = {
                 alert("Error loading spec: " + data.error);
             }
         );
-    }
+    },
+
+    significant_field: function(spec, field_name) {
+        return spec.significant_field == field_name;
+    },
+
+    select_significant_field: function(spec, field_name) {
+        spec.significant_field = field_name;
+        turtlegui.reload();
+    },
 };
 
 var loading = {

@@ -46,7 +46,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             'name': 'sales',
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -59,7 +59,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             'name': 'sales',
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -78,7 +78,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             'name': 'sales',
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -94,7 +94,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             'name': 'sales',
-            '_parent_canonical_url': None,
+            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -163,7 +163,7 @@ class UpdaterTest(unittest.TestCase):
             "_parent_field_name" : "divisions",
             "_parent_id" : None,
             "_parent_type" : "root",
-            "_parent_canonical_url" : None,
+            "_parent_canonical_url" : '/',
             "name" : "sales",
             "managers" : [
                     {

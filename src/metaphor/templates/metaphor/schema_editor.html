@@ -1,10 +1,10 @@
 <html>
 <head>
 
-<script src="https://rawgit.com/gomyar/turtlegui/v5.6/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://rawgit.com/gomyar/turtlegui/v5.11/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/admin/static/metaphor/schema_editor.js"></script>
 
-<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v4.0.4/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.11/turtlegui.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/schema_editor.css"/>
 
@@ -50,6 +50,7 @@
             <div class="title" gui-text="spec_name"></div> 
             <div class="fields" gui-list="spec.fields" gui-item="field" gui-key="field_name">
                 <div class="field">
+                    <input type="radio" gui-val="schema.significant_field(spec, field_name)" gui-click="schema.select_significant_field(spec, field_name)"></input>
                     <div class="name" gui-text="field_name"></div>
                     <div class="type" gui-text="field.type"></div>
                     <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>

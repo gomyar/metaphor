@@ -1,0 +1,34 @@
+
+<!-- Template for Resource Create / Edit. Expects params: spec, resource -->
+
+<div gui-list="spec.fields" gui-item="field" gui-key="field_name" gui-index="index">
+    <div class="field" gui-show="browser.can_edit_field(field)">
+        <div class="field_name" gui-text="field_name"></div>
+        <div class="field_data" gui-switch="field.type">
+            <div gui-case="'int'" class="field_int">
+                <input gui-val="resource[field_name]" gui-parse-func="parseInt" gui-focus="index == 1"></input>
+            </div>
+            <div gui-case="'float'" class="field_float">
+                <input gui-val="resource[field_name]" gui-parse-func="parseFloat" gui-focus="index == 1"></input>
+            </div>
+            <div gui-case="'str'" class="field_str">
+                <input gui-val="resource[field_name]" gui-focus="index == 1"></input>
+            </div>
+            <div gui-case="'bool'" class="field_bool">
+                <input type="checkbox" gui-val="resource[field_name]" gui-focus="index == 1"></input>
+            </div>
+            <div gui-case="'link'" class="field_link">
+                <input gui-val="search.search_text" gui-change="search.search_text_entered(spec)" gui-focus="index == 1"></input>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div gui-show="search.is_shown" gui-list="search.results" gui-item="result">
+    <div class="search_result">
+        <div class="resource_url" gui-text="result.url"></div>
+        <div class="resource_description" gui-text="result.significant_field"></div>
+    </div>
+</div>
+

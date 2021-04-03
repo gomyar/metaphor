@@ -123,7 +123,12 @@ class RootResourceRef(ResourceRef):
             ]
             return aggregation, self.spec, False
         else:
-            return [], self.spec, True
+            return [
+                {"$match": {"$and": [
+                    {"_parent_field_name": self.resource_name},
+                    {"_parent_canonical_url": '/'},
+                ]}}
+            ], self.spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id, field=None):
         return []

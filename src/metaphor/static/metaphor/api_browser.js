@@ -52,6 +52,18 @@ class ResourceSearch {
 }
 
 
+var search = {
+    is_shown: false,
+    search_text: null,
+    search_spec: null,
+
+    search_text_entered: function(spec) {
+        this.is_shown = true;
+        this.search_spec = spec;
+    }
+}
+
+
 
 var browser = {
     editing_field_name: null,
