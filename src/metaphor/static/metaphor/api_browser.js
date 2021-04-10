@@ -13,22 +13,27 @@ var loading = {
 
 
 class ResourceSearch {
-    constructor(spec, select_callback, reload_callback) {
-        this.spec = spec;
-        this.query = '';
-        this.results = [];
-        this.reload_callback = reload_callback || turtlegui.reload;
+    constructor(spec, select_callback) {
+        this.search_spec = spec;
         this.select_callback = select_callback;
-
-        this.results_popup_visible = false;
+        this.search_text = '';
+        this.results = [];
     }
 
     perform_search() {
-        var query_str = this.query ? '?query=' + this.query: '';
-        var self = this;  // todo: get turtlegui's ajax calls working with this
-        turtlegui.ajax.get('/search/' + this.spec.name + query_str, function(response) {
-            self.results = JSON.parse(response);
-            self.show_results_popup();
+        var query_str = "";
+        for (var field_name in this.search_spec.fields) {
+            var field = this.search_spec.fields[field_name];
+            if (field.type == 'str') {
+                if (query_str) {
+                    query_str += "|";
+                }
+                query_str += field_name + "~'" + this.search_text + "'";
+            }
+        }
+        turtlegui.ajax.get('/search/' + this.search_spec.name + '?query=' + query_str, (response) => {
+            this.results = JSON.parse(response);
+            turtlegui.reload();
         }, function(error) {
             alert(error.statusText);
         });
@@ -36,33 +41,24 @@ class ResourceSearch {
 
     select_result(result) {
         this.select_callback(result);
-        this.hide_results_popup();
-    }
-
-    show_results_popup() {
-        this.results_popup_visible = true;
-        console.log("got results: ", this.results, this.reload_callback, this.results_popup_visible);
-        this.reload_callback();
-    }
-
-    hide_results_popup() {
-        this.results_popup_visible = false;
-        this.reload_callback();
     }
 }
 
 
 var search = {
-    is_shown: false,
-    search_text: null,
-    search_spec: null,
+    search: null,
 
-    search_text_entered: function(spec) {
-        this.is_shown = true;
-        this.search_spec = spec;
+    show: function(spec_name, select_callback) {
+        this.search = new ResourceSearch(api.schema.specs[spec_name], select_callback);
+        turtlegui.reload();
+        return false;
+    },
+
+    hide: function() {
+        this.search = null;
+        turtlegui.reload();
     }
 }
-
 
 
 var browser = {
@@ -160,7 +156,7 @@ var browser = {
         turtlegui.reload();
     },
     can_edit_field: function(field) {
-        return field.type == 'int' || field.type == 'str' || field.type == 'bool' ||  field.type == 'float';
+        return field.type == 'int' || field.type == 'str' || field.type == 'bool' ||  field.type == 'float' || field.type == 'link';
     },
     perform_create: function() {
         var resource_url = window.location.protocol + '//' + window.location.host + "/api/" + api.path;
@@ -223,10 +219,42 @@ var browser = {
         );
     },
 
+    show_link_search: function(field_name, field) {
+        search.show(field.target_spec_name, function(result) {
+            browser.creating_resource_fields[field_name] = result.id;
+            search.hide();
+        });
+    },
+
+    show_resource_link_search: function(resource, field_name, field) {
+        search.show(field.target_spec_name, function(result) {
+            console.log('Selecting', result);
+            resource[field_name] = result.id;
+            var resource_url = window.location.protocol + '//' + window.location.host + "/api" + resource.self;
+            var resource_data = {};
+            resource_data[field_name] = result.id;
+            turtlegui.ajax.patch(
+                resource_url, 
+                resource_data,
+                function(data) {
+                    console.log("Updated");
+                    browser.editing_field_name = null;
+                    browser.editing_resource_id = null;
+                    loading.dec_loading();
+                },
+                loading.dec_loading);
+            search.hide();
+        });
+    },
+
+
     check_esc: function() {
-        console.log('event', event);
         if (event.keyCode == 27) {
-            browser.hide_create_popup();
+            if (search.is_shown) {
+                search.hide();
+            } else {
+                browser.hide_create_popup();
+            }
         }
     },
 };

@@ -674,6 +674,27 @@ class Condition(object):
         return {self.field_name}
 
 
+class LikeCondition(Condition):
+    def __init__(self, tokens, parser):
+        self.field_name, _, self.const = tokens
+        self._parser = parser
+
+    def condition_aggregation(self, spec):
+        field_spec = spec.build_child_spec(self.field_name)
+        if type(self.const.value) is not str:
+            raise Exception("Incorrect type for condition: %s ~ %s" %(
+                self.field_name, self.const.value))
+        aggregation = {
+            self.field_name: {'$regex': self.const.value, '$options': 'i'}}
+        return aggregation
+
+    def __repr__(self):
+        return "O[%s ~ %s]" % (self.field_name, self.const)
+
+    def resource_ref_fields(self):
+        return {self.field_name}
+
+
 class AndCondition(Condition):
     def __init__(self, tokens, parser):
         self.lhs, _, self.rhs = tokens
@@ -902,6 +923,7 @@ class Parser(object):
             [(Calc, '>', Calc) , Operator],
             [(Calc, '<', Calc) , Operator],
             [(Calc, '=', Calc) , Operator],
+            [(NAME, '~', ConstRef) , LikeCondition],
             [(Calc, '>=', Calc) , Operator],
             [(Calc, '<=', Calc) , Operator],
             [(Condition, '&', Condition) , AndCondition],
@@ -1055,6 +1077,7 @@ class FilterParser(Parser):
             [(NAME, '=', ConstRef) , Condition],
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
+            [(NAME, '~', ConstRef) , LikeCondition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
             [(Condition, '&', Condition) , AndCondition],

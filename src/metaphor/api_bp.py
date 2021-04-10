@@ -33,6 +33,12 @@ def serialize_spec(spec):
             name: serialize_field(f) for name, f in spec.fields.items()
         },
     }
+def serialize_schema(schema):
+    return {
+        'specs': {
+            name: serialize_spec(spec) for name, spec in schema.specs.items()
+        }
+    }
 
 
 @search_bp.route("/<spec_name>", methods=['GET'])
@@ -69,7 +75,8 @@ def browser_root():
     resource = dict((key, '/' + key) for key in api.schema.root.fields.keys())
     spec = api.schema.root
     return render_template('metaphor/api_browser.html',
-        path='/', resource=resource, spec=serialize_spec(spec), is_collection=False, can_post=False, is_linkcollection=False)
+        path='/', resource=resource, spec=serialize_spec(spec), is_collection=False, can_post=False, is_linkcollection=False,
+        schema=serialize_schema(api.schema))
 
 
 @browser_bp.route("/<path:path>", methods=['GET'])
@@ -78,8 +85,8 @@ def browser(path):
     resource = api.get(path)
     spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path)
     return render_template('metaphor/api_browser.html',
-        path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection)
-
+        path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection,
+        schema=serialize_schema(api.schema))
 
 
 @admin_bp.route("/schema_editor")

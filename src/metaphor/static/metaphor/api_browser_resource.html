@@ -47,6 +47,7 @@
                     <div class="field_value" gui-text="resource[field_name]"></div>
                     <div class="field_edit" gui-show="browser.is_editing_field(resource.id, field_name)">
                         <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated(this)"></input>
+                        <button class="button" gui-click="browser.show_resource_link_search(resource, field_name, field)">&#128270;</button>
                     </div>
                 </div>
                 <a class="field_collection" gui-case="'collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>

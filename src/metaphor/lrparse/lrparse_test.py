@@ -694,6 +694,25 @@ class LRParseTest(unittest.TestCase):
             {'$or': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
             tree.condition_aggregation(employee_spec))
 
+    def test_search_filter_like_string(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("name~'sam'", employee_spec)
+
+        self.assertEqual(
+            {'name': {'$options': 'i', '$regex': 'sam'}},
+            tree.condition_aggregation(employee_spec))
+
+    def test_search_filter_like_string_or(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("name~'sam',name~'bob'", employee_spec)
+
+        self.assertEqual(
+            {'$or': [{'name': {'$options': 'i', '$regex': 'sam'}},
+                     {'name': {'$options': 'i', '$regex': 'bob'}}]},
+            tree.condition_aggregation(employee_spec))
+
     def test_search_filter_commas_and_or(self):
         employee_spec = self.schema.specs['employee']
 

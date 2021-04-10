@@ -6,29 +6,28 @@
         <div class="field_name" gui-text="field_name"></div>
         <div class="field_data" gui-switch="field.type">
             <div gui-case="'int'" class="field_int">
+                &nbsp;
                 <input gui-val="resource[field_name]" gui-parse-func="parseInt" gui-focus="index == 1"></input>
             </div>
             <div gui-case="'float'" class="field_float">
+                &nbsp;
                 <input gui-val="resource[field_name]" gui-parse-func="parseFloat" gui-focus="index == 1"></input>
             </div>
             <div gui-case="'str'" class="field_str">
+                &nbsp;
                 <input gui-val="resource[field_name]" gui-focus="index == 1"></input>
             </div>
             <div gui-case="'bool'" class="field_bool">
+                &nbsp;
                 <input type="checkbox" gui-val="resource[field_name]" gui-focus="index == 1"></input>
             </div>
             <div gui-case="'link'" class="field_link">
-                <input gui-val="search.search_text" gui-change="search.search_text_entered(spec)" gui-focus="index == 1"></input>
+                &nbsp;
+                <span class="link_id" gui-text="resource[field_name]"></span>
+                <button class="button" gui-click="browser.show_link_search(field_name, field)">&#128270;</button>
             </div>
         </div>
     </div>
 </div>
 
-
-<div gui-show="search.is_shown" gui-list="search.results" gui-item="result">
-    <div class="search_result">
-        <div class="resource_url" gui-text="result.url"></div>
-        <div class="resource_description" gui-text="result.significant_field"></div>
-    </div>
-</div>
 

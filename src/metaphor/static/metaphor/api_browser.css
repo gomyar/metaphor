@@ -22,30 +22,20 @@ div.title_version div.version{
 }
 
 
-div.search_bar {
-    top : 22px;
-    margin : 10px;
-    height : 40px;
-    width : 280px;
+div.create_popup {
+    margin: auto;
+    border : 1px solid black;
+    background-color : white;
+    padding : 10px;
+
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+
+    left : 10%;
+    right : 50%;
 }
 
-div.search_form {
-    width : 400px;
-}
-
-div.search_popup {
-    z-index: 1;
-    width : 100vw;
-    height : 100vh;
-}
-
-div.search_form input {
-    display : inline-block;
-}
-
-div.search_form button {
-    display : inline-block;
-}
 
 
 .button.create_resource {
@@ -94,6 +84,9 @@ div.resources div.resource {
     display : block;
 }
 
+div.field {
+}
+
 div.field:hover {
     background-color : lightgrey;
 }
@@ -115,15 +108,32 @@ div.field div.field_data {
     margin-left : 20px;
     display : inline-block;
     width : 600px;
-    height : 14px;
+    height : 20px;
+    vertical-align: top;
 }
 
+div.field div.field_data input {
+    vertical-align : top;
+}
+
+div.field div.field_data div.field_link button {
+    vertical-align : top;
+}
+
+div.field div.field_data div.field_link span.link_id {
+    height : 20px;
+    display : inline-block;
+    width: 183px;
+    border : 1px solid grey;
+}
+
+
 div.field div.field_data div {
-    height : 14px;
+    height : 20px;
 }
 
 div.field div.field_edit {
-    margin-top : -14px;
+    margin-top : -20px;
 }
 
 div.field div.field_data div.field_str div.field_value::before{
@@ -142,4 +152,12 @@ div.field div.target {
 
 div.rootresource {
     top : 50px;
+}
+
+div.search_results {
+}
+
+div.popup.search_popup {
+    max-height : 90%;
+    overflow-y: auto;
 }

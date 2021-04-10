@@ -14,6 +14,7 @@ var api = {
     path: "{{ path }}",
     resource: {{ resource|tojson|safe }},
     spec: {{ spec|tojson|safe }},
+    schema: {{ schema|tojson|safe }},
     is_collection: {{ is_collection|tojson }},
     is_resource: {{ (not is_collection)|tojson }},
     can_post: {{ can_post|tojson }},
@@ -49,12 +50,10 @@ var api = {
 </div>
 
 <div id="create_resource" class="popupwrapper" gui-show="browser.creating_resource_spec" tabIndex="0" gui-keyup="browser.check_esc()">
-    <div class="popup">
+    <div class="popup create_popup">
         <div class="title">
             <div>Create</div>&nbsp;<div gui-text="api.spec.name"></div>
         </div>
-
-        <form>
 
         <div gui-include="/browser/static/metaphor/resource_form.html" gui-include-params="spec=api.spec;resource=browser.creating_resource_fields" gui-include-nocache="true"></div>
 
@@ -63,7 +62,6 @@ var api = {
             <button class="button" gui-click='browser.hide_create_popup()'>Close</button>
         </div>
 
-        </form>
     </div>
 </div>
 
@@ -85,6 +83,26 @@ var api = {
     </div>
 </div>
 
+<div class="popupwrapper" gui-show="search.search" tabIndex="0" gui-keyup="browser.check_esc()">
+    <div class="popup search_popup">
+        <label>Search</label>
+        <div class="search_text">
+            <input type=text gui-val="search.search.search_text"></input>
+            <button class="button" gui-click="search.search.perform_search()">&#128270;</button>
+        </div>
+        <div class="search_results" gui-list="search.search.results" gui-item="result">
+            <div class="search_result">
+                <div class="resource_url" gui-text="result.self"></div>
+                <div class="resource_description" gui-text="result.id"></div>
+                <div class="button resource_select" gui-click="search.search.select_result(result)">Select</div>
+            </div>
+        </div>
+
+        <div class="popupbuttons">
+            <div class="button" gui-click='search.hide()'>Close</div>
+        </div>
+    </div>
+</div>
 
 </body>
 
