@@ -216,7 +216,24 @@ class Schema(object):
         else:
             return '/'
 
+    def check_field_types(self, spec_name, data):
+        pass
+
+    def _parse_fields(self, spec_name, resource_data):
+        parsed_data = {}
+        spec = self.specs[spec_name]
+        for field_name, field_value in resource_data.items():
+            field = spec.fields[field_name]
+            if field.field_type == 'link':
+                parsed_data[field_name] = self.decodeid(field_value)
+                parsed_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
+            else:
+                parsed_data[field_name] = field_value
+        return parsed_data
+
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None):
+        data = self._parse_fields(spec_name, data)
+
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
@@ -231,15 +248,7 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update({"_id": parent_id} ,{"$pull": {'parttimers': {"_id": self.decodeid(resource_id)}}})
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
-        spec = self.specs[spec_name]
-        save_data = {}
-        for field_name, field_value in field_data.items():
-            field = spec.fields[field_name]
-            if field.field_type == 'link':
-                save_data[field_name] = self.decodeid(field_value)
-                save_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
-            else:
-                save_data[field_name] = field_value
+        save_data = self._parse_fields(spec_name, field_data)
         new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},

@@ -333,6 +333,23 @@ class ApiTest(unittest.TestCase):
              'age': 31,
              'name': 'bob'}], new_employees)
 
+    def test_post_with_link(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+
+        self.assertEquals(1, len(self.api.get('/employees')))
+        new_employees = list(self.db['resource_employee'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 41,
+             'division': self.schema.decodeid(division_id_1),
+             '_canonical_url_division': '/divisions/%s' % division_id_1,
+             'name': 'ned'}], new_employees)
+
     def test_patch(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')

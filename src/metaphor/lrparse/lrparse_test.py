@@ -272,8 +272,6 @@ class LRParseTest(unittest.TestCase):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
         division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
 
-        self.schema.insert_resource('employee', {'id': division_id}, 'employees')
-
         tree = parse("self.division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
         aggregation, spec, is_aggregate = tree.aggregation(employee_id)
