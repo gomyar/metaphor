@@ -1,5 +1,6 @@
 
 import unittest
+from urllib.error import HTTPError
 
 from pymongo import MongoClient
 
@@ -562,6 +563,61 @@ class ApiTest(unittest.TestCase):
 
         result = self.api.get('/divisions/%s/all_employees' % (division_id_1,))
         self.assertEquals([], result)
+
+    def test_expand(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+
+        self.assertEquals([{
+            'id': employee_id_1,
+            'age': 41,
+            'division': {
+                'id': division_id_1,
+                'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+                'parttimers': '/divisions/%s/parttimers' % division_id_1,
+                'sections': '/divisions/%s/sections' % division_id_1,
+                'name': 'sales',
+                'yearly_sales': 100,
+                'self': '/divisions/%s' % division_id_1},
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+            'name': 'ned',
+            'self': '/employees/%s' % employee_id_1}]
+            , self.api.get('/employees', expand='division'))
+
+        self.assertEqual({
+            'id': division_id_1,
+            'link_employee_division': {'age': 41,
+                                        'division': '/divisions/%s' % division_id_1,
+                                        'id': employee_id_1,
+                                        'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+                                        'name': 'ned',
+                                        'self': '/employees/%s' % employee_id_1},
+            'name': 'sales',
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
+            'self': '/divisions/%s' % division_id_1,
+            'yearly_sales': 100}
+            , self.api.get('/divisions/%s' % division_id_1, expand='link_employee_division'))
+
+    def test_expand_400(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+
+        try:
+            self.api.get('/employees', expand='nonexistant')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('nonexistant not a field of employee', he.reason)
+
+    def test_expand_400_field_type(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+
+        try:
+            self.api.get('/employees', expand='name')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Unable to expand field name of type str', he.reason)
 
     def test_delete_404(self):
         pass

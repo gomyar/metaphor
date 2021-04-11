@@ -1,5 +1,7 @@
 
 import os
+from urllib.error import HTTPError
+
 from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
 from metaphor.lrparse.lrparse import parse_canonical_url
@@ -104,16 +106,14 @@ class Api(object):
         else:
             raise Exception("Cannot delete root resource")
 
-    def get(self, path):
+    def get(self, path, expand=None):
         path = path.strip().strip('/')
         tree = parse_url(path, self.schema.root)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
-        aggregate_query.extend(self.create_field_expansion_aggregations(spec))
-
-        # links
-        # collections
+        if expand:
+            aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand))
 
         # run mongo query from from root_resource collection
         cursor = tree.root_collection().aggregate(aggregate_query)
@@ -121,11 +121,11 @@ class Api(object):
         results = [row for row in cursor]
 
         if is_aggregate:
-            return [self.encode_resource(spec, row) for row in results]
+            return [self.encode_resource(spec, row, expand) for row in results]
         elif spec.is_field():
             return results[0][self.field_name] if results else None
         else:
-            return self.encode_resource(spec, results[0]) if results else None
+            return self.encode_resource(spec, results[0], expand) if results else None
 
     def get_spec_for(self, path):
         path = path.strip().strip('/')
@@ -140,10 +140,13 @@ class Api(object):
             type(tree) in (LinkCollectionResourceRef,),
         )
 
-    def create_field_expansion_aggregations(self, spec):
+    def create_field_expansion_aggregations(self, spec, expand_str):
         aggregate_query = []
-        # apply expansions to fields
-        for field_name, field in spec.fields.items():
+        for field_name in expand_str.split(','):
+            if field_name not in spec.fields:
+                raise HTTPError('', 400, '%s not a field of %s' % (field_name, spec.name), None, None)
+            field = spec.fields[field_name]
+
             if field.field_type == 'link':
                 # add check for ' if in "expand" parameter'
                 aggregate_query.append(
@@ -153,7 +156,13 @@ class Api(object):
                             "foreignField": "_id",
                             "as": "_expanded_%s" % field_name,
                     }})
-            if field.field_type == 'reverse_link':
+                aggregate_query.append(
+                    {"$unwind": "$_expanded_%s" % field_name}
+                )
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
+            elif field.field_type == 'reverse_link':
                 aggregate_query.append(
                     {"$lookup": {
                             "from": "resource_%s" % field.target_spec_name,
@@ -161,9 +170,30 @@ class Api(object):
                             "foreignField": field.reverse_link_field,
                             "as": "_expanded_%s" % field_name,
                     }})
+                aggregate_query.append(
+                    {"$unwind": "$_expanded_%s" % field_name}
+                )
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
+            else:
+                raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
         return aggregate_query
 
-    def encode_resource(self, spec, resource_data):
+    def _create_expand_dict(self, expand):
+        expand_dict = {}
+        expand = expand or ''
+        for expansion in expand.split(','):
+            if '.' in expansion:
+                name, value = expansion.split('.', 1)
+                expand_dict[name] = value
+            else:
+                expand_dict[expansion] = ''
+        return expand_dict
+
+    def encode_resource(self, spec, resource_data, expand=None):
+        expand_dict = self._create_expand_dict(expand)
+
         self_url = os.path.join(
             resource_data['_parent_canonical_url'],
             resource_data['_parent_field_name'],
@@ -176,12 +206,21 @@ class Api(object):
             field_value = resource_data.get(field_name)
             if field.field_type == 'link':
                 if field_value:
-                    encoded[field_name] = resource_data['_canonical_url_%s' % field_name]
+                    if field_name in expand_dict:
+                        encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                    else:
+                        encoded[field_name] = resource_data['_canonical_url_%s' % field_name]
                 else:
                     encoded[field_name] = None
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
                 encoded[field_name] = resource_data['_parent_canonical_url']
-            elif field.field_type in ('linkcollection', 'collection', 'reverse_link', 'reverse_link_collection'):
+            elif field.field_type in ('reverse_link',):
+                if field_name in expand_dict:
+                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                else:
+                    # TODO: A canonical link would be better
+                    encoded[field_name] = os.path.join(self_url, field_name)
+            elif field.field_type in ('linkcollection', 'collection', 'reverse_link_collection'):
                 encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
