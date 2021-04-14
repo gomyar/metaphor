@@ -599,6 +599,18 @@ class ApiTest(unittest.TestCase):
             'yearly_sales': 100}
             , self.api.get('/divisions/%s' % division_id_1, expand='link_employee_division'))
 
+
+    def test_root(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+
+        self.assertEqual([{
+            'age': 41,
+            'division': None,
+            'id': employee_id_1,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+            'name': 'ned',
+            'self': '/employees/%s' % employee_id_1}], self.api.get('/employees'))
+
     def test_expand_400(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
@@ -619,15 +631,27 @@ class ApiTest(unittest.TestCase):
             self.assertEqual(400, he.code)
             self.assertEqual('Unable to expand field name of type str', he.reason)
 
-    def test_delete_404(self):
-        pass
+    def test_404(self):
+        try:
+            self.api.get('/schmemployees')
+        except HTTPError as he:
+            self.assertEqual(404, he.code)
+            self.assertEqual('Not Found', he.reason)
 
-    def test_reserved_words(self):
-        # link_*
-        # parent_*
-        # root
-        # self
-        # id
-        # _*
-        # [0-9]*
-        pass
+        try:
+            self.api.post('/schmemployees', {})
+        except HTTPError as he:
+            self.assertEqual(404, he.code)
+            self.assertEqual('Not Found', he.reason)
+
+        try:
+            self.api.patch('/schmemployees', {})
+        except HTTPError as he:
+            self.assertEqual(404, he.code)
+            self.assertEqual('Not Found', he.reason)
+
+        try:
+            self.api.delete('/schmemployees')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Cannot delete root resource', he.reason)

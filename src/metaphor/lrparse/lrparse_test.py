@@ -156,8 +156,8 @@ class LRParseTest(unittest.TestCase):
         result = tree.calculate(employee_id_1)
 
         # just making up for a lack of ordering
-        division_1 = result[1]
-        division_2 = result[0]
+        division_1 = [r for r in result if r['name'] == 'sales'][0]
+        division_2 = [r for r in result if r['name'] == 'marketting'][0]
 
         self.assertEquals('sales', division_1['name'])
         self.assertEquals('marketting', division_2['name'])
@@ -201,19 +201,50 @@ class LRParseTest(unittest.TestCase):
             {'$project': {'name': True}}
         ], aggregation)
 
-    def _test_condition_nofield(self):
-        try:
-            parse("employees[total_nonexistant>100]")
-            self.fail("should have thrown")
-        except Exception as e:
-            self.assertEquals("", str(e))
 
-    def _test_const_type(self):
+    def test_nonexistant_field_in_calc(self):
         try:
-            parse("employees[age>'str']")
+            tree = parse("self.nonexistant", self.schema.specs['employee'])
+            self.fail("should have thrown")
+        except SyntaxError as e:
+            self.assertEquals("No such field nonexistant in employee", str(e))
+
+    def test_validate_condition_nofield(self):
+        try:
+            tree = parse("employees[total_nonexistant>100]", self.schema.specs['employee'])
+            tree.validate()
+            self.fail("should have thrown")
+        except SyntaxError as e:
+            self.assertEquals("Resource employee has no field total_nonexistant", str(e))
+
+    def test_validate_const_type(self):
+        try:
+            tree = parse("employees[age>'str']", self.schema.specs['employee'])
+            tree.validate()
             self.fail("should have thrown")
         except Exception as e:
-            self.assertEquals("", str(e))
+            self.assertEquals('Cannot compare "int > str"', str(e))
+
+    def test_validate_collection(self):
+        try:
+            tree = parse("employees.nonexistant", self.schema.specs['employee'])
+            self.fail("should have thrown")
+        except Exception as e:
+            self.assertEquals('No such field nonexistant in employee', str(e))
+
+    def test_validate_filtered_collection(self):
+        try:
+            tree = parse("employees[age>21].nonexistant", self.schema.specs['employee'])
+            self.fail("should have thrown")
+        except Exception as e:
+            self.assertEquals('No such field nonexistant in employee', str(e))
+
+    def test_nonexistant_root_collection(self):
+        try:
+            parse("nonexistant", self.schema.specs['employee'])
+            self.fail("should have thrown")
+        except SyntaxError as e:
+            self.assertEquals("Cannot parse expression: nonexistant", str(e))
 
     def test_aggregation(self):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
@@ -741,3 +772,19 @@ class LRParseTest(unittest.TestCase):
         employee_spec = self.schema.specs['employee']
         tree = parse("max(employees.age)", employee_spec)
         self.assertEquals(41, tree.calculate(employee_id_1))
+
+    def test_validate_root(self):
+        try:
+            tree = parse("schmemployees", self.schema.root)
+            tree.validate()
+            self.fail("should have thrown")
+        except SyntaxError as se:
+            self.assertEqual("Cannot parse expression: schmemployees", str(se))
+
+    def test_validate_condition(self):
+        try:
+            tree = parse("employees[nope>21]", self.schema.root)
+            tree.validate()
+            self.fail("should have thrown")
+        except SyntaxError as se:
+            self.assertEqual("Resource employee has no field nope", str(se))

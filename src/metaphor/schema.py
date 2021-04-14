@@ -17,7 +17,7 @@ class Field(object):
             'str': [str],
             'int': [float, int],
             'float': [float, int],
-            'bool': [bool, float, int, str],
+            'bool': [bool],
         }
         self.spec = None
 
@@ -79,6 +79,8 @@ class Spec(object):
         return "<Spec %s>" % (self.name,)
 
     def build_child_spec(self, name):
+        if name not in self.fields:
+            raise SyntaxError("No such field %s in %s" % (name, self.name))
         if self.fields[name].is_primitive():
             return self.fields[name]
         elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection'):
@@ -89,7 +91,7 @@ class Spec(object):
             tree = parse(field.calc_str, self)
             return tree.infer_type()
         else:
-            raise Exception('Unrecognised field type')
+            raise SyntaxError('Unrecognised field type')
 
     def resolve_child(self, child_path):
         ''' child_path "self.division.name" dot-separated child specs '''

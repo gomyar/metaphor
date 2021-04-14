@@ -100,6 +100,10 @@ class RootResourceRef(ResourceRef):
         else:
             self.spec = self.root_spec(spec.schema)
 
+    def validate(self):
+        if self.resource_name is not "self" and self.resource_name not in self.spec.schema.root.fields:
+            raise SyntaxError("No such resource: %s" % self.resource_name)
+
     def root_spec(self, schema):
         return schema.specs[
             schema.root.fields[self.resource_name].target_spec_name]
@@ -538,6 +542,10 @@ class FilteredResourceRef(ResourceRef):
         self.filter_ref = filter_ref
         self.spec = spec
 
+    def validate(self):
+        self.resource_ref.validate()
+        self.filter_ref.validate(self.resource_ref)
+
     def infer_type(self):
         return self.resource_ref.infer_type()
 
@@ -653,6 +661,14 @@ class Condition(object):
         '<=': '$lte',
     }
 
+    def validate(self, resource_ref):
+        lhs = resource_ref.infer_type()
+        if self.field_name not in lhs.fields:
+            raise SyntaxError("Resource %s has no field %s" % (lhs.name, self.field_name))
+        field = lhs.fields[self.field_name]
+        if not field.check_comparable_type(self.const.value):
+            raise SyntaxError("Cannot compare \"%s %s %s\"" % (field.field_type, self.operator, type(self.const.value).__name__))
+
     def __init__(self, tokens, parser):
         self.field_name, self.operator, self.const = tokens
         self._parser = parser
@@ -731,6 +747,9 @@ class Filter(object):
     def __init__(self, tokens, parser):
         self.condition = tokens[1]
         self._parser = parser
+
+    def validate(self, resource_ref):
+        self.condition.validate(resource_ref)
 
     def __repr__(self):
         return "[%s]" % (self.condition,)
@@ -1022,6 +1041,9 @@ class Parser(object):
             raise Exception("Calc cannot be 'self' only.")
 
         tree = self.shifted[0][1]
+
+        if type(tree) is str:
+            raise SyntaxError('Cannot parse expression: %s' % tree)
 
         return tree
 

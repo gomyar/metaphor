@@ -57,3 +57,50 @@ class AdminApiTest(unittest.TestCase):
         branch = self.api.get('/branches/%s' % branch_id)
         self.assertEquals(19, branch['average_age'])
         self.assertEquals(21, branch['max_age'])
+
+    def test_reserved_words(self):
+        # link_*
+        try:
+            self.admin_api.create_field('branch', 'link_something', 'str')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Field name cannot begin with "link_"', he.reason)
+
+        # parent_*
+        try:
+            self.admin_api.create_field('branch', 'parent_something', 'str')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Field name cannot begin with "parent_"', he.reason)
+
+        # self
+        try:
+            self.admin_api.create_field('branch', 'self', 'str')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Field name cannot be reserverd word "self"', he.reason)
+
+        # id
+        try:
+            self.admin_api.create_field('branch', 'id', 'str')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Field name cannot be reserverd word "id"', he.reason)
+
+
+        # _*
+        try:
+            self.admin_api.create_field('branch', '_name', 'str')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Field name cannot begin with an underscore "_"', he.reason)
+
+
+        # [0-9]*
+        try:
+            self.admin_api.create_field('branch', '123name', 'str')
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('Field name cannot begin with an number', he.reason)
+
+        # root

@@ -21,7 +21,11 @@ class Api(object):
 
     def patch(self, path, data):
         path = path.strip().strip('/')
-        tree = parse_canonical_url(path, self.schema.root)
+        try:
+            tree = parse_canonical_url(path, self.schema.root)
+        except SyntaxError as te:
+            raise HTTPError('', 404, "Not Found", None, None)
+
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
         cursor = tree.root_collection().aggregate(aggregate_query)
@@ -38,7 +42,11 @@ class Api(object):
 
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
-            tree = parse_canonical_url(parent_path, self.schema.root)
+            try:
+                tree = parse_canonical_url(parent_path, self.schema.root)
+            except SyntaxError as te:
+                raise HTTPError('', 404, "Not Found", None, None)
+
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
             field_spec = spec.fields[field_name]
@@ -62,6 +70,9 @@ class Api(object):
                     parent_id,
                     data)
         else:
+            if path not in self.schema.root.fields:
+                raise HTTPError('', 404, "Not Found", None, None)
+
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
@@ -80,7 +91,11 @@ class Api(object):
             parent_field_path = '/'.join(path.split('/')[:-1])
             resource_id = path.split('/')[-1]
 
-            tree = parse_canonical_url(path, self.schema.root)
+            try:
+                tree = parse_canonical_url(path, self.schema.root)
+            except ValueError as ve:
+                raise HTTPError('', 404, "Not Found", None, None)
+
             parent_field_tree = parse_canonical_url(parent_field_path, self.schema.root)
 
             parent_path = '/'.join(parent_field_path.split('/')[:-1])
@@ -104,11 +119,14 @@ class Api(object):
 
                 return self.updater.delete_resource(spec.name, resource_id, spec.name, field_name)
         else:
-            raise Exception("Cannot delete root resource")
+            raise HTTPError('', 400, "Cannot delete root resource", None, None)
 
     def get(self, path, expand=None):
         path = path.strip().strip('/')
-        tree = parse_url(path, self.schema.root)
+        try:
+            tree = parse_url(path, self.schema.root)
+        except SyntaxError as te:
+            raise HTTPError('', 404, "Not Found", None, None)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -122,8 +140,8 @@ class Api(object):
 
         if is_aggregate:
             return [self.encode_resource(spec, row, expand) for row in results]
-        elif spec.is_field():
-            return results[0][self.field_name] if results else None
+#        elif spec.is_field():
+#            return results[0][self.field_name] if results else None
         else:
             return self.encode_resource(spec, results[0], expand) if results else None
 

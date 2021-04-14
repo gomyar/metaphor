@@ -1,7 +1,19 @@
 
-Search:
- - search by resource, by field value(s)
- - return list of resources (include canonical url for each)
+ - bug: calcs which evaluate to a single link id throw an error
+
+ - restrict allowed field names
+ - proper http error codes (400 404 etc)
+ - cascading delete
+ - delete spec field, update all resources
+   - throw error if field used in calc
+ - rename field - maybe - would also have to update any calcs using the field
+
+ - update entry in resource (updateid, timestamp etc)
+   - sync updates across cluster using redis
+
+ - adding invalid calc field raises exception
+ - adding calc field with cyclic dependency raises error
+
 
 Permissioning:
  - Users
@@ -19,8 +31,20 @@ Pagination
  - do this
 
 Expand by get param:
- - aggregate calls on all GET requests, which optional expand
+ - aggregate calls on all GET requests, which optional expand - done
  - expand through links honours the permissions (groups) of the linked resource
+ - add nested expand (maybe)
+
+Nested fields
+ - handy for smaller, reused resources (Point, currency, x, y etc)
+ - dot notation within calcs
+ - may be possible to cheat and create long structured field names (i.e. point__x, point__y etc)
+
+
+Move resource:
+ - patch against _parent_id and _parent_field
+ - works for links and collections
+
 
 Small todos:
  - bugs:
