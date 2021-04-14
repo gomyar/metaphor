@@ -29,12 +29,24 @@ class Updater(object):
     def update_calc(self, resource_name, calc_field_name, resource_id):
         log.debug("Updating calc: %s %s %s", resource_name, calc_field_name, resource_id)
         calc_tree = self.schema.calc_trees[resource_name, calc_field_name]
+
+        update_result = {}
         if calc_tree.infer_type().is_primitive():
             result = calc_tree.calculate(resource_id)
-        else:
+            update_result[calc_field_name] = result
+        elif calc_tree.is_collection():
             result = self._calculate_resource(calc_tree, resource_id)
+            update_result[calc_field_name] = result
+        else:
+            # link result
+            result = self._calculate_resource(calc_tree, resource_id)
+            update_result[calc_field_name] = result
+            if result:
+                update_result['_canonical_url_%s' % calc_field_name] = self.schema.load_canonical_parent_url(calc_tree.infer_type().name, self.schema.encodeid(result))
+            else:
+                update_result['_canonical_url_%s' % calc_field_name] = None
         log.debug("Writing : %s", result)
-        self.schema.db['resource_%s' % resource_name].update({'_id': self.schema.decodeid(resource_id)}, {"$set": {calc_field_name: result}})
+        self.schema.db['resource_%s' % resource_name].update({'_id': self.schema.decodeid(resource_id)}, {"$set": update_result})
 
     def _calculate_resource(self, calc_tree, resource_id):
         aggregate_query, _, is_aggregate = calc_tree.aggregation(resource_id)
@@ -48,7 +60,7 @@ class Updater(object):
         if is_aggregate:
             result = results
         else:
-            result = results[0]
+            result = results[0] if results else None
         return result
 
     def _perform_updates_for_affected_calcs(self, spec, resource_id, calc_spec_name, calc_field_name):
@@ -57,7 +69,6 @@ class Updater(object):
             affected_id = self.schema.encodeid(affected_id)
             self.update_calc(calc_spec_name, calc_field_name, affected_id)
             self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
-
 
     def _recalc_for_field_update(self, spec, field_spec_name, field_name, resource_id):
         # find foreign dependencies

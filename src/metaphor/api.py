@@ -252,7 +252,7 @@ class Api(object):
                 elif tree.is_collection():
                     encoded[field_name] = os.path.join(self_url, field_name)
                 else:
-                    encoded[field_name] = self.encode_resource(tree.infer_type(), calc_result)
+                    encoded[field_name] = resource_data['_canonical_url_%s' % field.field_name] if calc_result else None
             else:
                 encoded[field_name] = field_value
         return encoded

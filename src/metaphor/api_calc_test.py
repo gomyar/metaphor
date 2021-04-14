@@ -29,6 +29,10 @@ class ApiTest(unittest.TestCase):
                             "type": "link",
                             "target_spec_name": "division",
                         },
+                        "division_link": {
+                            "type": "calc",
+                            "calc_str": "self.division",
+                        },
                     },
                 },
                 "division": {
@@ -131,8 +135,18 @@ class ApiTest(unittest.TestCase):
         older_employees = self.api.get('/divisions/%s/older_employees' % division_id_1)
         self.assertEquals(1, len(older_employees))
 
-#    def test_get_affected_local_calcs_for_field(self):
-#        self.assertEquals(['distance_from_average'], self.api.updater.get_affected_local_calcs_for_field('section', 'section_total'))
+    def test_calc_link_1(self):
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
 
-#    def test_get_affected_foreign_calcs_for_field(self):
-#        self.assertEquals([('division', 'average_section_total'), ('division', 'average_bracket_calc')], self.api.updater.get_affected_foreign_calcs_for_field('section', 'section_total'))
+    def test_calc_link(self):
+        division_id_1 = self.api.post('divisions', {'name': 'sales', 'yearly_sales': 100})
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41, 'division': division_id_1})
+
+        self.assertEqual({
+            'age': 41,
+            'division': '/divisions/%s' % division_id_1,
+            'division_link': '/divisions/%s' % division_id_1,
+            'id': employee_id_1,
+            'name': 'ned',
+            'self': '/employees/%s' % employee_id_1}
+            , self.api.get('/employees/%s' % employee_id_1))
