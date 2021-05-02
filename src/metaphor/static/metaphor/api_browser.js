@@ -71,9 +71,6 @@ var browser = {
         console.log("Selected: ", result);
     }),
 
-    is_field_link: function(field) {
-        return field.field_type == 'link';
-    },
     create_href: function(field_value) {
         return window.location.protocol + '//' + window.location.host + "/browser" + field_value;
     },
@@ -121,29 +118,38 @@ var browser = {
     },
     field_updated: function(field_element) {
         if (event.keyCode == 13) {
-            var resource = browser.get_editing_resource();    
             var new_value = browser.parse_value(field_element.value);
-            resource[browser.editing_field_name] = new_value;
-            var resource_url = window.location.protocol + '//' + window.location.host + "/api" + resource.self;
-            var resource_data = {};
-            resource_data[browser.editing_field_name] = new_value;
-
-            loading.inc_loading();
-            turtlegui.ajax.patch(
-                resource_url, 
-                resource_data,
-                function(data) {
-                    console.log("Updated");
-                    browser.editing_field_name = null;
-                    browser.editing_resource_id = null;
-                    loading.dec_loading();
-                },
-                loading.dec_loading);
+            var resource = browser.get_editing_resource();    
+            browser._perform_field_update(resource, browser.editing_field_name, new_value);
         } else if (event.keyCode == 27) {
             browser.editing_field_name = null;
             browser.editing_resource_id = null;
             turtlegui.reload();
         }
+    },
+    _perform_field_update: function(resource, field_name, field_value) {
+        resource[field_name] = field_value;
+        var resource_url = window.location.protocol + '//' + window.location.host + "/api" + resource.self;
+        var resource_data = {};
+        resource_data[field_name] = field_value;
+
+        loading.inc_loading();
+        turtlegui.ajax.patch(
+            resource_url, 
+            resource_data,
+            function(data) {
+                console.log("Updated");
+                browser.editing_field_name = null;
+                browser.editing_resource_id = null;
+                loading.dec_loading();
+            },
+            loading.dec_loading);
+    },
+    unlink_field: function(resource, field_name) {
+        if (confirm("Unlink field: " + field_name + "?")) {
+            browser._perform_field_update(resource, field_name, null);
+        }
+        return false;
     },
     show_create_popup: function() {
         browser.creating_resource_spec = true;

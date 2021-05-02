@@ -136,6 +136,12 @@ div.field div.field_edit {
     margin-top : -20px;
 }
 
+div.field button.field_unlink {
+    margin-top : -25px;
+    float: right;
+}
+
+
 div.field div.field_data div.field_str div.field_value::before{
     content: '"';
 }

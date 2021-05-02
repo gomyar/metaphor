@@ -1,5 +1,5 @@
 
- - bug: calcs which evaluate to a single link id throw an error
+ - bug: calcs which evaluate to a single link id throw an error - done
 
  - restrict allowed field names
  - proper http error codes (400 404 etc)

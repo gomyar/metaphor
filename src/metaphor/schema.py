@@ -226,7 +226,7 @@ class Schema(object):
         spec = self.specs[spec_name]
         for field_name, field_value in resource_data.items():
             field = spec.fields[field_name]
-            if field.field_type == 'link':
+            if field.field_type == 'link' and field_value is not None:
                 parsed_data[field_name] = self.decodeid(field_value)
                 parsed_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
             else:

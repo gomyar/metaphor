@@ -41,7 +41,7 @@
                 <div class="field_bool" gui-case="'bool'" gui-text="resource[field_name]"></div>
                 <div class="field_calc" gui-case="'calc'">
                     <div gui-text="resource[field_name]" gui-show="field.is_primitive"></div>
-                    <a class="field_collection"  gui-show="!(field.is_primitive)" gui-attrs="href=browser.create_relative_href(resource.self, field_name)" gui-text="browser.create_relative_link(resource.self, field_name)"></a>
+                    <a class="field_collection"  gui-show="!(field.is_primitive) && resource[field_name]" gui-attrs="href=browser.create_relative_href(resource.self, field_name)" gui-text="browser.create_relative_link(resource.self, field_name)"></a>
                 </div>
                 <div class="field_link" gui-case="'link'" gui-click="browser.set_editing_field(resource.id, field_name)">
                     <div class="field_value" gui-text="resource[field_name]"></div>
@@ -49,6 +49,7 @@
                         <input gui-id="browser.field_edit_id(resource.id, field_name)" gui-bind="keyup" gui-event="browser.field_updated(this)"></input>
                         <button class="button" gui-click="browser.show_resource_link_search(resource, field_name, field)">&#128270;</button>
                     </div>
+                    <button class="button field_unlink" gui-click="browser.unlink_field(resource, field_name)" gui-show="resource[field_name]">Unlink</button>
                 </div>
                 <a class="field_collection" gui-case="'collection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>
                 <a class="field_collection" gui-case="'linkcollection'" gui-attrs="href=browser.create_href(resource[field_name])" gui-text="resource[field_name]"></a>

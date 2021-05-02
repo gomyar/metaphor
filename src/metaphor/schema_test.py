@@ -340,3 +340,6 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals(buddy_spec, calc_field.infer_type())
         self.assertFalse(calc_field.is_primitive())
         self.assertTrue(calc_field.is_collection())
+
+    def test_parse_fields_test(self):
+        # add parsing and validation for field types
