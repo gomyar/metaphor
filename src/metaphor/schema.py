@@ -270,3 +270,6 @@ class Schema(object):
                 if field.field_type != field_type:
                     errors.append({'error': "Invalid type: %s for field '%s' of '%s'" % (field_type, field_name, spec_name)})
         return errors
+
+    def remove_spec_field(self, spec_name, field_name):
+        self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})

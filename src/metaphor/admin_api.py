@@ -1,5 +1,6 @@
 
 from metaphor.updater import Updater
+from urllib.error import HTTPError
 
 
 class AdminApi(object):
@@ -22,7 +23,20 @@ class AdminApi(object):
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
         self.schema.load_schema()
 
+    def _check_field_name(self, field_name):
+        if not field_name:
+            raise HTTPError(None, 400, 'Field name cannot be blank', None, None)
+        for start in ('link_', 'parent_', '_'):
+            if field_name.startswith(start):
+                raise HTTPError(None, 400, 'Field name cannot begin with "%s"' % (start,), None, None)
+        if field_name in ('self', 'id'):
+            raise HTTPError(None, 400, 'Field name cannot be reserverd word "%s"' % (field_name,), None, None)
+        if not field_name[0].isalpha():
+            raise HTTPError(None, 400, 'First character must be letter', None, None)
+
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+        self._check_field_name(field_name)
+
         if field_type == 'calc':
             field_data = {'type': 'calc', 'calc_str': calc_str}
         elif field_type in ('int', 'str', 'float', 'bool'):
@@ -42,3 +56,28 @@ class AdminApi(object):
         if field_type == 'calc':
             for resource in self.schema.db['resource_%s' % spec_name].find({}, {'_id': 1}):
                 self.updater.update_calc(spec_name, field_name, self.schema.encodeid(resource['_id']))
+
+    def _check_field_dependencies(self, spec_name, field_name):
+        all_deps = []
+        for name, spec in self.schema.specs.items():
+            for fname, field in spec.fields.items():
+                if field.field_type == 'calc':
+                    calc = self.schema.calc_trees[(name, fname)]
+                    if "%s.%s" % (spec_name, field_name) in calc.get_resource_dependencies():
+                        all_deps.append('%s.%s' % (name, fname))
+        if all_deps:
+            raise HTTPError(None, 400, '%s.%s referenced by %s' % (spec_name, field_name, all_deps), None, None)
+
+    def delete_field(self, spec_name, field_name):
+        self._check_field_dependencies(spec_name, field_name)
+
+        spec = self.schema.specs[spec_name]
+        field = spec.fields[field_name]
+        if field.field_type in ('link', 'linkcollection'):
+            self.schema.specs[field.target_spec_name].fields.pop('link_%s_%s' % (spec_name, field_name))
+        spec.fields.pop(field_name)
+
+        self.schema.db['metaphor_schema'].update(
+            {'_id': self.schema._id},
+            {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
+        self.updater.remove_spec_field(spec_name, field_name)

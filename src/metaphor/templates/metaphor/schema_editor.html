@@ -23,7 +23,7 @@
     <div class="specs_title">
         <div class="title">root</div>
         <div class="controls">
-            <div class="button" gui-click="create_field.show_create('root')">Add Root</div> 
+            <button class="button" gui-click="create_field.show_create('root')">Add Root</button>
         </div>
     </div>
 
@@ -40,7 +40,7 @@
     <div class="specs_title">
         <div class="title">Specs</div>
         <div class="controls">
-            <div class="button" gui-click="create_spec.show_popup()">Create Spec</div> 
+            <button class="button" gui-click="create_spec.show_popup()">Create Spec</button> 
         </div>
     </div>
 
@@ -53,11 +53,14 @@
                     <input type="radio" gui-val="schema.significant_field(spec, field_name)" gui-click="schema.select_significant_field(spec, field_name)"></input>
                     <div class="name" gui-text="field_name"></div>
                     <div class="type" gui-text="field.type"></div>
-                    <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
-                    <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                    <div class="field_options">
+                        <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
+                        <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                    </div>
+                    <button class="button delete_field" gui-click="schema.delete_field(spec, field_name)">Delete</button>
                 </div>
             </div>
-            <div class="button" gui-click="create_field.show_create(spec_name)">Add Field</div> 
+            <button class="button" gui-click="create_field.show_create(spec_name)">Add Field</button> 
         </div>
     </div>
 </div>

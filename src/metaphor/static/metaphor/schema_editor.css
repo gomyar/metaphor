@@ -64,6 +64,14 @@ div.specs div.spec div.button {
     margin-left : 50px;
 }
 
+div.specs div.spec div.field div.field_options {
+    width : 350px;
+    display: inline-block;
+}
+
+div.specs div.spec div.field button.delete_field {
+}
+
 div.specs div.spec div.field input[type="radio"] {
     display : inline-block;
     width : 10px;

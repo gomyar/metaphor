@@ -29,6 +29,22 @@ var schema = {
         spec.significant_field = field_name;
         turtlegui.reload();
     },
+
+    delete_field: function(spec, field_name) {
+        if (confirm("Delete " + spec.name + "." + field_name + "?")) {
+            turtlegui.ajax.patch(
+                '/admin/schema_editor/api/specs/' + spec.name + '/fields',
+                {field_name: null},
+                function(data) {
+                    schema.load_specs();
+                },
+                function(data) {
+                    loading.dec_loading();
+                    alert("Error creating spec: " + data.error);
+                }
+            );
+        }
+    },
 };
 
 var loading = {

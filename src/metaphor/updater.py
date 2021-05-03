@@ -225,3 +225,6 @@ class Updater(object):
                 field_dep = "%s.%s" % (spec_name, field_name)
                 if field_dep in calc_tree.get_resource_dependencies():
                     self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
+
+    def remove_spec_field(self, spec_name, field_name):
+        self.schema.remove_spec_field(spec_name, field_name)

@@ -343,3 +343,4 @@ class SchemaTest(unittest.TestCase):
 
     def test_parse_fields_test(self):
         # add parsing and validation for field types
+        pass
