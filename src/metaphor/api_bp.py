@@ -107,18 +107,21 @@ def schema_editor_create_spec():
     return jsonify({'success': 1})
 
 
-@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields", methods=['POST', 'PATCH'])
+@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields", methods=['POST'])
 def schema_editor_create_field(spec_name):
     admin_api = current_app.config['admin_api']
-    if request.method == 'POST':
 
-        field_name = request.json['field_name']
-        field_type = request.json['field_type']
-        field_target = request.json['field_target']
-        calc_str = request.json['calc_str']
+    field_name = request.json['field_name']
+    field_type = request.json['field_type']
+    field_target = request.json['field_target']
+    calc_str = request.json['calc_str']
 
-        admin_api.create_field(spec_name, field_name, field_type, field_target, calc_str)
-        return jsonify({'success': 1})
-    elif request.method == 'PATCH':
-        admin_api.delete_field(spec_name, field_name)
-        return jsonify({'success': 1})
+    admin_api.create_field(spec_name, field_name, field_type, field_target, calc_str)
+    return jsonify({'success': 1})
+
+
+@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields/<field_name>", methods=['DELETE'])
+def schema_editor_delete_field(spec_name, field_name):
+    admin_api = current_app.config['admin_api']
+    admin_api.delete_field(spec_name, field_name)
+    return jsonify({'success': 1})

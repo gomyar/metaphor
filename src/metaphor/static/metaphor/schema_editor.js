@@ -30,17 +30,16 @@ var schema = {
         turtlegui.reload();
     },
 
-    delete_field: function(spec, field_name) {
-        if (confirm("Delete " + spec.name + "." + field_name + "?")) {
-            turtlegui.ajax.patch(
-                '/admin/schema_editor/api/specs/' + spec.name + '/fields',
-                {field_name: null},
+    delete_field: function(spec_name, field_name) {
+        if (confirm("Delete " + spec_name + "." + field_name + "?")) {
+            turtlegui.ajax.delete(
+                '/admin/schema_editor/api/specs/' + spec_name + '/fields/' + field_name,
                 function(data) {
                     schema.load_specs();
                 },
                 function(data) {
                     loading.dec_loading();
-                    alert("Error creating spec: " + data.error);
+                    alert("Error deleting spec: " + data.error);
                 }
             );
         }
