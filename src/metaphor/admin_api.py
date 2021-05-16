@@ -2,6 +2,9 @@
 from metaphor.updater import Updater
 from urllib.error import HTTPError
 
+from metaphor.lrparse.lrparse import parse
+from toposort import toposort, CircularDependencyError
+
 
 class AdminApi(object):
     def __init__(self, schema):
@@ -20,7 +23,8 @@ class AdminApi(object):
     def create_spec(self, spec_name):
         self.schema.db['metaphor_schema'].update(
             {'_id': self.schema._id},
-            {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
+            {"$set": {'specs.%s' % spec_name: {'fields': {}}}},
+            upsert=True)
         self.schema.load_schema()
 
     def _check_field_name(self, field_name):
@@ -36,16 +40,23 @@ class AdminApi(object):
 
     def _check_calc_syntax(self, spec_name, calc_str):
         try:
-            from metaphor.lrparse.lrparse import parse
             spec = self.schema.specs[spec_name]
             tree = parse(calc_str, spec)
         except SyntaxError as se:
             raise HTTPError(None, 400, 'SyntaxError in calc: %s' % str(se), None, None)
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+        if spec_name is not 'root' and spec_name not in self.schema.specs:
+            raise HTTPError(None, 404, 'Not Found', None, None)
+        if spec_name is not 'root' and field_name in self.schema.specs[spec_name].fields:
+            raise HTTPError(None, 400, 'Field already exists: %s' % field_name, None, None)
         self._check_field_name(field_name)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str)
+
+    def _update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
         if calc_str:
             self._check_calc_syntax(spec_name, calc_str)
+            self._check_circular_dependencies(spec_name, field_name, calc_str)
 
         if field_type == 'calc':
             field_data = {'type': 'calc', 'calc_str': calc_str}
@@ -57,17 +68,29 @@ class AdminApi(object):
         if spec_name == 'root':
             self.schema.db['metaphor_schema'].update(
                 {'_id': self.schema._id},
-                {"$set": {'root.%s' % (field_name,): field_data}})
+                {"$set": {'root.%s' % (field_name,): field_data}},
+                upsert=True)
         else:
             self.schema.db['metaphor_schema'].update(
                 {'_id': self.schema._id},
-                {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}})
+                {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}},
+                upsert=True)
         self.schema.load_schema()
         if field_type == 'calc':
             for resource in self.schema.db['resource_%s' % spec_name].find({}, {'_id': 1}):
                 self.updater.update_calc(spec_name, field_name, self.schema.encodeid(resource['_id']))
 
+    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+        if spec_name is not 'root' and field_name not in self.schema.specs[spec_name].fields:
+            raise HTTPError(None, 400, 'Field does not exist: %s' % field_name, None, None)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str)
+
     def _check_field_dependencies(self, spec_name, field_name):
+        all_deps = self._get_field_dependencies(spec_name, field_name)
+        if all_deps:
+            raise HTTPError(None, 400, '%s.%s referenced by %s' % (spec_name, field_name, all_deps), None, None)
+
+    def _get_field_dependencies(self, spec_name, field_name):
         all_deps = []
         for name, spec in self.schema.specs.items():
             for fname, field in spec.fields.items():
@@ -75,8 +98,23 @@ class AdminApi(object):
                     calc = self.schema.calc_trees[(name, fname)]
                     if "%s.%s" % (spec_name, field_name) in calc.get_resource_dependencies():
                         all_deps.append('%s.%s' % (name, fname))
-        if all_deps:
-            raise HTTPError(None, 400, '%s.%s referenced by %s' % (spec_name, field_name, all_deps), None, None)
+        return all_deps
+
+    def _check_circular_dependencies(self, spec_name, field_name, calc_str):
+        spec = self.schema.specs[spec_name]
+        tree = parse(calc_str, spec)
+        deps = tree.get_resource_dependencies()
+        dep_tree = {}
+        for name, spec in self.schema.specs.items():
+            for fname, field in spec.fields.items():
+                if field.field_type == 'calc':
+                    calc = self.schema.calc_trees[(name, fname)]
+                    dep_tree["%s.%s" % (name, fname)] = calc.get_resource_dependencies()
+        dep_tree["%s.%s" % (spec_name, field_name)] = deps
+        try:
+            list(toposort(dep_tree))
+        except CircularDependencyError as cde:
+            raise HTTPError(None, 400, '%s.%s has circular dependencies: %s' % (spec_name, field_name, cde.data), None, None)
 
     def delete_field(self, spec_name, field_name):
         self._check_field_dependencies(spec_name, field_name)

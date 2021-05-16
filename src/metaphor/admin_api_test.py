@@ -144,6 +144,32 @@ class AdminApiTest(unittest.TestCase):
         # check field was not saved to the DB
         self.assertEqual(['name', 'employees', 'average_age'], list(self.db['metaphor_schema'].find_one()['specs']['branch']['fields'].keys()))
 
+    def test_check_spec_exists(self):
+        try:
+            self.admin_api.create_field('nonexistant', 'name', 'str')
+            self.fail("Should have thrown")
+        except HTTPError as he:
+            self.assertEqual(404, he.code)
+            self.assertEqual("Not Found", he.reason)
+
+    def test_check_field_already_exists(self):
+        try:
+            self.admin_api.create_field('employee', 'name', 'str')
+            self.fail("Should have thrown")
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual("Field already exists: name", he.reason)
+
+    def test_check_circular_dependency(self):
+        self.admin_api.create_field('employee', 'my_age', 'calc', calc_str='self.age')
+        self.admin_api.create_field('employee', 'other_field', 'calc', calc_str='self.my_age')
+        try:
+            self.admin_api.update_field('employee', 'my_age', 'calc', calc_str='self.other_field')
+            self.fail("Should have thrown")
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual("employee.my_age has circular dependencies: {'employee.my_age': {'employee.other_field'}, 'employee.other_field': {'employee.my_age'}}", he.reason)
+
     def test_reserved_words(self):
         # link_*
         try:
