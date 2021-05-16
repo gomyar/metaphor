@@ -1,9 +1,8 @@
 
  - bug: calcs which evaluate to a single link id throw an error - done
 
- - restrict allowed field names
- - proper http error codes (400 404 etc)
- - cascading delete
+ - restrict allowed field names - done
+ - proper http error codes (400 404 etc) - done
  - delete spec field, update all resources
    - throw error if field used in calc
  - rename field - maybe - would also have to update any calcs using the field
@@ -11,9 +10,10 @@
  - update entry in resource (updateid, timestamp etc)
    - sync updates across cluster using redis
 
- - adding invalid calc field raises exception
+ - adding invalid calc field raises exception - done
  - adding calc field with cyclic dependency raises error
 
+ - cascading delete
 
 Permissioning:
  - Users

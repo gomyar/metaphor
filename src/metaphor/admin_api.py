@@ -34,8 +34,18 @@ class AdminApi(object):
         if not field_name[0].isalpha():
             raise HTTPError(None, 400, 'First character must be letter', None, None)
 
+    def _check_calc_syntax(self, spec_name, calc_str):
+        try:
+            from metaphor.lrparse.lrparse import parse
+            spec = self.schema.specs[spec_name]
+            tree = parse(calc_str, spec)
+        except SyntaxError as se:
+            raise HTTPError(None, 400, 'SyntaxError in calc: %s' % str(se), None, None)
+
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
         self._check_field_name(field_name)
+        if calc_str:
+            self._check_calc_syntax(spec_name, calc_str)
 
         if field_type == 'calc':
             field_data = {'type': 'calc', 'calc_str': calc_str}

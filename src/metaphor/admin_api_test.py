@@ -133,6 +133,17 @@ class AdminApiTest(unittest.TestCase):
         self.assertEquals(19, branch['average_age'])
         self.assertEquals(21, branch['max_age'])
 
+    def test_error_on_invalid_calc(self):
+        try:
+            self.admin_api.create_field('branch', 'max_age', 'calc', calc_str='max(self.i_dont_exist.age)')
+            self.fail("Should have thrown")
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual('SyntaxError in calc: No such field i_dont_exist in branch', he.reason)
+
+        # check field was not saved to the DB
+        self.assertEqual(['name', 'employees', 'average_age'], list(self.db['metaphor_schema'].find_one()['specs']['branch']['fields'].keys()))
+
     def test_reserved_words(self):
         # link_*
         try:
