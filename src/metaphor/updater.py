@@ -87,18 +87,6 @@ class Updater(object):
 
         return resource_id
 
-    def _recalc_for_resource_create():
-        pass
-
-    def _recalc_for_resource_delete():
-        pass
-
-    def _recalc_for_resource_linked():
-        pass
-
-    def _recalc_for_resource_unlinked():
-        pass
-
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields):
         spec = self.schema.specs[spec_name]

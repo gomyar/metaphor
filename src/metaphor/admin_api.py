@@ -46,9 +46,9 @@ class AdminApi(object):
             raise HTTPError(None, 400, 'SyntaxError in calc: %s' % str(se), None, None)
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
-        if spec_name is not 'root' and spec_name not in self.schema.specs:
+        if spec_name != 'root' and spec_name not in self.schema.specs:
             raise HTTPError(None, 404, 'Not Found', None, None)
-        if spec_name is not 'root' and field_name in self.schema.specs[spec_name].fields:
+        if spec_name != 'root' and field_name in self.schema.specs[spec_name].fields:
             raise HTTPError(None, 400, 'Field already exists: %s' % field_name, None, None)
         self._check_field_name(field_name)
         self._update_field(spec_name, field_name, field_type, field_target, calc_str)
