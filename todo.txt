@@ -20,6 +20,12 @@ Updates:
  - it doesn't matter if two updates are run on a resource at once, as long as the internal fields are kept consistent
 
 
+Extra calcs:
+ - order(collection, field, field, ...)
+ - first(collection)
+ - last(collection)
+
+
 Permissioning:
  - Users
    - get a /me endpoint

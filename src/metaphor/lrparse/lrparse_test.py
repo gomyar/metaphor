@@ -417,6 +417,61 @@ class LRParseTest(unittest.TestCase):
         tree = parse("round(round(self.salary, 4), 3)", employee_spec)
         self.assertEquals(10.123, tree.calculate(employee_id_1))
 
+    def test_ternary_condition(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4}, 'employees')
+
+        tree = parse("self.salary < 2 -> 5 : 10", employee_spec)
+        self.assertEquals(10, tree.calculate(employee_id_1))
+
+        tree = parse("self.salary > 10 -> 5 : 10", employee_spec)
+        self.assertEquals(5, tree.calculate(employee_id_1))
+
+        tree = parse("(self.salary + 5) > 15 -> 5 : 10", employee_spec)
+        self.assertEquals(5, tree.calculate(employee_id_1))
+
+    def test_ternary_condition_rhs(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4}, 'employees')
+
+        tree = parse("self.salary > self.tax -> 'greater' : 'wrong'", employee_spec)
+        self.assertEquals('greater', tree.calculate(employee_id_1))
+
+        tree = parse("self.salary < (self.tax + 10) -> 'less' : 'wrong'", employee_spec)
+        self.assertEquals('less', tree.calculate(employee_id_1))
+
+    def test_ternary_condition_resource(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4}, 'employees')
+
+        tree = parse("self.salary > 10 -> self.salary : 0", employee_spec)
+        self.assertEquals(10.6, tree.calculate(employee_id_1))
+
+        tree = parse("self.salary < 10 -> 0 : self.tax", employee_spec)
+        self.assertEquals(2.4, tree.calculate(employee_id_1))
+
+    def test_ternary_resource_plus_const(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["tax"] = Field("tax", "float")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary': 10.6, 'tax': 2.4}, 'employees')
+
+        tree = parse("self.salary > 10 -> 11 : self.salary", employee_spec)
+        self.assertEquals(11, tree.calculate(employee_id_1))
+
+        tree = parse("self.salary < 10 -> self.tax: 12", employee_spec)
+        self.assertEquals(12, tree.calculate(employee_id_1))
+
     def test_math_functions(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "float")

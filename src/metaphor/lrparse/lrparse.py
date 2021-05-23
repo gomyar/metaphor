@@ -763,6 +763,69 @@ class Filter(object):
         return self.condition.resource_ref_fields()
 
 
+class ResourceRefTernary(ResourceRef):
+    def __init__(self, tokens, parser, spec):
+        self.condition = tokens[0]
+        self.then_clause = tokens[2]
+        self.else_clause = tokens[4]
+        self.spec = spec
+        self._parser = parser
+
+    def validate(self, resource_ref):
+        self.condition.validate(self.spec)
+        self.then_clause.validate(resource_ref)
+        self.else_clause.validate(resource_ref)
+
+    def __repr__(self):
+        return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
+
+    def aggregation(self, self_id):
+
+        then_agg, spec, is_aggregate = self.then_clause.aggregation(self_id)
+        else_agg, _, _ = self.else_clause.aggregation(self_id)
+
+        aggregation = {
+            "$cond": {
+                "if": self.condition.condition_aggregation(self.spec),
+                "then": then_agg,
+                "else": else_agg
+            }
+        }
+
+        return aggregation, spec, True
+
+    def resource_ref_fields(self):
+        return self.condition.resource_ref_fields() + self.then_clause.resource_ref_fields() + self.else_clause.resource_ref_fields()
+
+
+class CalcTernary(Calc):
+    def __init__(self, tokens, parser, spec):
+        self.condition = tokens[0]
+        self.then_clause = tokens[2]
+        self.else_clause = tokens[4]
+        self.spec = spec
+        self._parser = parser
+
+    def get_resource_dependencies(self):
+        deps = set()
+        deps = deps.union(self.condition.get_resource_dependencies())
+        deps = deps.union(self.then_clause.get_resource_dependencies())
+        deps = deps.union(self.then_clause.get_resource_dependencies())
+        return deps
+
+    def infer_type(self):
+        return self.then_clause.infer_type()
+
+    def calculate(self, self_id):
+        if self.condition.calculate(self_id):
+            return self.then_clause.calculate(self_id)
+        else:
+            return self.else_clause.calculate(self_id)
+
+    def __repr__(self):
+        return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
+
+
 class ParameterList(object):
     def __init__(self, tokens, parser):
         self._parser = parser
@@ -897,6 +960,7 @@ def lex(raw_tokens):
     ignore_list = [
         tokenize.NEWLINE,
         tokenize.COMMENT,
+        tokenize.Whitespace,
     ]
     tokens = []
     for token_type, value, line, col, _ in raw_tokens:
@@ -916,6 +980,8 @@ def lex(raw_tokens):
         elif token_type == tokenize.ENDMARKER:
             pass
         elif token_type == tokenize.NEWLINE:
+            pass
+        elif token_type == tokenize.COLON:
             pass
         else:
             raise Exception("Unexpected token [%s] at line %s col %s" % (
@@ -960,6 +1026,11 @@ class Parser(object):
             [(NAME, Filter), self._create_filtered_resource_ref],
             [(ResourceRef, '.', NAME), self._create_resource_ref],
             [(NAME, '.', NAME), self._create_resource_ref],
+
+            [(Operator, '->', Calc, ':', Calc), self._create_calc_ternary],
+            [(Operator, '->', ResourceRef, ':', ResourceRef), self._create_ternary],
+            [(Operator, '->', ResourceRef, ':', Calc), self._create_ternary],
+            [(Operator, '->', Calc, ':', ResourceRef), self._create_ternary],
         ]
 
     def _create_resource_ref(self, tokens, parser):
@@ -988,6 +1059,12 @@ class Parser(object):
             return FieldRef(root_resource_ref, field_name, parser, child_spec)
         return ResourceRef(root_resource_ref, field_name, parser, child_spec)
 
+    def _create_ternary(self, tokens, parser):
+        return ResourceRefTernary(tokens, parser, self.spec)
+
+    def _create_calc_ternary(self, tokens, parser):
+        return CalcTernary(tokens, parser, self.spec)
+
     def _create_filtered_resource_ref(self, tokens, parser):
         if isinstance(tokens[0], str):
             root_resource_ref = RootResourceRef(tokens[0], parser, self.spec)
@@ -1014,11 +1091,11 @@ class Parser(object):
     def match_and_reduce(self):
         for pattern, reduced_class in self.patterns:
             last_shifted = self.shifted[-len(pattern):]
-#            print "Checking %s against %s" % (pattern,last_shifted)
+#            print ("Checking %s against %s" % (pattern,last_shifted))
             if self.match_pattern(pattern, last_shifted):
-#                print "** Reducing %s(%s)" % (reduced_class, last_shifted)
+#                print ("** Reducing %s(%s)" % (reduced_class, last_shifted))
                 self._reduce(reduced_class, last_shifted)
-#                print "** shifted: %s" % (self.shifted,)
+#                print ("** shifted: %s" % (self.shifted,))
                 return True
 
         return False
