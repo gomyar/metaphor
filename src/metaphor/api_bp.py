@@ -60,6 +60,7 @@ def api_root():
     api = current_app.config['api']
     if request.method == 'GET':
         root_data = dict((key, '/'+ key) for key in api.schema.root.fields.keys())
+        root_data['ego'] = '/ego'
         return jsonify(root_data)
 
 
@@ -82,6 +83,7 @@ def api(path):
 def browser_root():
     api = current_app.config['api']
     resource = dict((key, '/' + key) for key in api.schema.root.fields.keys())
+    resource['ego'] = '/ego'
     spec = api.schema.root
     return render_template('metaphor/api_browser.html',
         path='/', resource=resource, spec=serialize_spec(spec), is_collection=False, can_post=False, is_linkcollection=False,
@@ -92,7 +94,7 @@ def browser_root():
 @login_required
 def browser(path):
     api = current_app.config['api']
-    resource = api.get(path)
+    resource = api.get(path, None, flask_login.current_user)
     spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path)
     return render_template('metaphor/api_browser.html',
         path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection,

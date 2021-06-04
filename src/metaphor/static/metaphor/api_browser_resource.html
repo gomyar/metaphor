@@ -3,18 +3,25 @@
     <button class="button delete" gui-show="api.can_post" gui-click="browser.delete_resource(resource)">Delete Resource</button>
     <button class="button delete" gui-show="api.is_linkcollection" gui-click="browser.delete_link(resource)">Delete Link</button>
 
-    <div class="field">
+    <div class="field" gui-show="api.spec.name != 'root'">
         <div class="field_name">id</div>
         <div class="field_data">
             <div class="field_id" gui-text="resource.id"></div>
         </div>
     </div>
-    <div class="field">
+    <div class="field" gui-show="api.spec.name != 'root'">
         <div class="field_name">self</div>
         <div class="field_data">
             <a class="field_collection" gui-attrs="href=browser.create_href(resource.self)" gui-text="resource.self"></a>
         </div>
     </div>
+    <div class="field" gui-show="api.spec.name == 'root'">
+        <div class="field_name">ego</div>
+        <div class="field_data">
+            <a class="field_collection"  gui-attrs="href=browser.create_href('/ego')">/ego</a>
+        </div>
+    </div>
+
 
     <div gui-list="api.spec.fields" gui-item="field" gui-key="field_name">
         <div class="field">

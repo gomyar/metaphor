@@ -46,6 +46,10 @@ def create_app(db):
 
     init_login(app)
 
+    @app.route("/")
+    def index():
+        return redirect(url_for('browser.browser', path=''))
+
     return app
 
 
@@ -54,11 +58,6 @@ client = MongoClient(os.environ.get('METAPHOR_MONGO_HOST', 'localhost'),
 db = client[os.environ.get('METAPHOR_DBNAME', 'metaphor')]
 
 app = create_app(db)
-
-
-@app.route("/")
-def index():
-    return redirect(url_for('browser.browser', path=''))
 
 
 if __name__ == '__main__':

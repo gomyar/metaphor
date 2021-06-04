@@ -19,6 +19,18 @@ class ServerTest(TestCase):
         self.app = create_app(self.db)
         self.client = self.app.test_client()
 
+        self.schema.create_user('bob', 'password')
+        self.client.post('/login', data={
+            "username": "bob",
+            "password": "password",
+        }, follow_redirects=True)
+
     def test_get(self):
         response = self.client.get('/api/')
-        self.assertEqual({'groups': '/groups', 'users': '/users'}, response.json)
+        self.assertEqual({'groups': '/groups', 'users': '/users', 'ego': '/ego'}, response.json)
+
+    def test_ego(self):
+        response = self.client.get('/api/ego/')
+
+        self.assertEqual('bob', response.json['username'])
+        self.assertEqual(False, response.json['is_admin'])

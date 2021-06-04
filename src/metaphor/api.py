@@ -159,11 +159,11 @@ class Api(object):
         else:
             return self.encode_resource(spec, results[0], expand) if results else None
 
-    def get_spec_for(self, path):
+    def get_spec_for(self, path, user=None):
         path = path.strip().strip('/')
         tree = parse_url(path, self.schema.root)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None, user.username if user else None)
         return (
             spec,
             is_aggregate,
