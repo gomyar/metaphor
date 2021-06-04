@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash
 
 
 class Field(object):
@@ -115,6 +117,18 @@ class Spec(object):
 
     def is_field(self):
         return False
+
+
+class User(UserMixin):
+    def __init__(self, username, admin=False):
+        self.username = username
+        self.admin = admin
+
+    def get_id(self):
+        return self.username
+
+    def is_admin(self):
+        return self.admin
 
 
 class Schema(object):
@@ -273,3 +287,62 @@ class Schema(object):
 
     def remove_spec_field(self, spec_name, field_name):
         self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
+
+    def load_user(self, username, load_hash=False):
+        user_data = self.db['resource_user'].find_one({'username': username})
+        user = User(username, user_data.get('is_admin') == True)
+        if load_hash:
+            user.pw_hash = user_data['pw_hash']
+        return user
+
+    def create_initial_schema(self):
+        self.db.metaphor_schema.insert_one({
+            "specs": {
+                "user" : {
+                    "fields" : {
+                        "username" : {
+                            "type" : "str"
+                        },
+                        "pw_hash" : {
+                            "type" : "str"
+                        },
+                        "is_admin" : {
+                            "type" : "bool"
+                        },
+                        "groups": {
+                            "type": "linkcollection",
+                            "target_spec_name": "group"
+                        },
+                    }
+                },
+                "group" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                    }
+                },
+            },
+            "root": {
+                "users" : {
+                    "type" : "collection",
+                    "target_spec_name" : "user"
+                },
+                "groups" : {
+                    "type" : "collection",
+                    "target_spec_name" : "group"
+                },
+            },
+            "created": datetime.now()
+        })
+
+    def create_user(self, username, password, admin=False):
+        pw_hash = generate_password_hash(password)
+        self.db.resource_user.insert_one({
+            "_parent_type" : "root",
+            "_parent_id" : None,
+            "_parent_field_name" : "users",
+            "_parent_canonical_url" : "/",
+            "username": username,
+            "pw_hash": pw_hash,
+            "is_admin": admin})

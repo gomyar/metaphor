@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  metaphor:
+    image: metaphor:latest
+    environment:
+      - SECRET_KEY=keepitsecretkeepitsafe
+      - SERVER_NAME=0.0.0.0:8000
+      - FLASK_APP=server.py
+      - FLASK_DEBUG=1
+      - FLASK_RUN_PORT=8000
+      - METAPHOR_DBNAME=metaphor
+      - METAPHOR_MONGO_HOST=mongo
+      - METAPHOR_MONGO_PORT=27017
+    volumes:
+      - "${PWD}/src/:/app/"
+    entrypoint: ["python3", "server.py"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - mongo
+    stdin_open: true
+    tty: true
+
+  mongo:
+    image: mongo
+    ports:
+     - "127.0.0.1:27017:27017"

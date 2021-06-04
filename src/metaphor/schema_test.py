@@ -5,6 +5,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 from metaphor.schema import Schema, Spec, Field
+from werkzeug.security import check_password_hash
 
 
 class SchemaTest(unittest.TestCase):
@@ -13,6 +14,7 @@ class SchemaTest(unittest.TestCase):
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = Schema(self.db)
+        self.maxDiff = None
 
     def test_load_basic_spec(self):
         self.db.metaphor_schema.insert_one({
@@ -344,3 +346,24 @@ class SchemaTest(unittest.TestCase):
     def test_parse_fields_test(self):
         # add parsing and validation for field types
         pass
+
+    def test_initialize_schema(self):
+        self.schema.create_initial_schema()
+
+        schema = self.db.metaphor_schema.find_one()
+        self.assertEqual({
+            "groups": {"target_spec_name": "group", "type": "collection"},
+            "users": {"target_spec_name": "user", "type": "collection"}}, schema['root'])
+        self.assertEqual({
+            "group": {"fields": {"name": {"type": "str"}}},
+            "user": {"fields": {"groups": {"target_spec_name": "group",
+                                "type": "linkcollection"},
+                                "is_admin": {"type": "bool"},
+                                "pw_hash": {"type": "str"},
+                                "username": {"type": "str"}}}}, schema['specs'])
+
+        self.schema.create_user('bob', 'password', True)
+        bob = self.db.resource_user.find_one()
+        self.assertEqual('bob', bob['username'])
+        self.assertEqual(True, bob['is_admin'])
+        self.assertTrue(check_password_hash(bob['pw_hash'], 'password'))

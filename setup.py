@@ -13,4 +13,5 @@ setup(
     package_dir={ '': 'src'},
     install_requires=[req.strip() for req in requirements],
     package_data={'static': ['*'], 'templates': ['*']},
+    scripts=['bin/metaphor'],
 )

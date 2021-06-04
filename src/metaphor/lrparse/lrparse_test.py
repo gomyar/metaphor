@@ -843,3 +843,7 @@ class LRParseTest(unittest.TestCase):
             self.fail("should have thrown")
         except SyntaxError as se:
             self.assertEqual("Resource employee has no field nope", str(se))
+
+    def test_ego(self):
+        tree = parse("ego", self.schema.root)
+        self.assertEqual({}, tree.calculate())

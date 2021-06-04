@@ -24,6 +24,11 @@ Extra calcs:
  - order(collection, field, field, ...)
  - first(collection)
  - last(collection)
+ - now()
+
+Extra fields:
+ - date field
+   - include simple calcs (now() + '1d') - could interpret a str as a delta
 
 
 Permissioning:
@@ -37,6 +42,20 @@ Permissioning:
    - Requests are filtered by the list of read groups in a collection
    - Posts are allowed based on the list of post groups in a collection
    - Put requests are allowed base on the list of put groups in a collection
+
+ A user is a member of a group
+ A group may have read / write / update / delete permissions on a resource
+ A resources permissions are inherited by its direct children by default
+ A user may create a link if they have write access on the source resource and read on the target
+ A user may read / expand a link if they have read access on the source and target
+
+
+/api/auth/(session|oauth2|...)
+/api/me
+/api/users
+/api/groups
+
+/api/[root collection(s)]
 
 
 Pagination

@@ -5,6 +5,9 @@ from flask import render_template
 from flask import current_app
 from flask import request
 from flask import jsonify
+from flask_login import login_required
+
+import flask_login
 
 api_bp = Blueprint('api', __name__, template_folder='templates',
                    static_folder='static', url_prefix='/api')
@@ -26,6 +29,7 @@ def serialize_field(field):
         return {'type': field.field_type}
     else:
         return {'type': field.field_type, 'target_spec_name': field.target_spec_name}
+
 def serialize_spec(spec):
     return {
         'name': spec.name,
@@ -33,6 +37,7 @@ def serialize_spec(spec):
             name: serialize_field(f) for name, f in spec.fields.items()
         },
     }
+
 def serialize_schema(schema):
     return {
         'specs': {
@@ -42,6 +47,7 @@ def serialize_schema(schema):
 
 
 @search_bp.route("/<spec_name>", methods=['GET'])
+@login_required
 def search(spec_name):
     query = request.args.get('query')
     api = current_app.config['api']
@@ -49,6 +55,7 @@ def search(spec_name):
 
 
 @api_bp.route("/", methods=['GET'])
+@login_required
 def api_root():
     api = current_app.config['api']
     if request.method == 'GET':
@@ -57,19 +64,21 @@ def api_root():
 
 
 @api_bp.route("/<path:path>", methods=['GET', 'POST', 'DELETE', 'PUT', 'PATCH'])
+@login_required
 def api(path):
     api = current_app.config['api']
     if request.method == 'POST':
-        return jsonify(api.post(path, request.json))
+        return jsonify(api.post(path, request.json, flask_login.current_user))
     if request.method == 'PATCH':
-        return jsonify(api.patch(path, request.json))
+        return jsonify(api.patch(path, request.json, flask_login.current_user))
     if request.method == 'GET':
-        return jsonify(api.get(path))
+        return jsonify(api.get(path, None, flask_login.current_user))
     if request.method == 'DELETE':
-        return jsonify(api.delete(path))
+        return jsonify(api.delete(path, flask_login.current_user))
 
 
 @browser_bp.route("/", methods=['GET'])
+@login_required
 def browser_root():
     api = current_app.config['api']
     resource = dict((key, '/' + key) for key in api.schema.root.fields.keys())
@@ -80,6 +89,7 @@ def browser_root():
 
 
 @browser_bp.route("/<path:path>", methods=['GET'])
+@login_required
 def browser(path):
     api = current_app.config['api']
     resource = api.get(path)
@@ -90,25 +100,37 @@ def browser(path):
 
 
 @admin_bp.route("/schema_editor")
+@login_required
 def schema_editor():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
     return render_template('metaphor/schema_editor.html')
 
 
 @admin_bp.route("/schema_editor/api", methods=['GET'])
+@login_required
 def schema_editor_api():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     return jsonify(admin_api.format_schema())
 
 
 @admin_bp.route("/schema_editor/api/specs", methods=['POST'])
+@login_required
 def schema_editor_create_spec():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     admin_api.create_spec(request.json['spec_name'])
     return jsonify({'success': 1})
 
 
 @admin_bp.route("/schema_editor/api/specs/<spec_name>/fields", methods=['POST'])
+@login_required
 def schema_editor_create_field(spec_name):
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
 
     field_name = request.json['field_name']
@@ -121,7 +143,10 @@ def schema_editor_create_field(spec_name):
 
 
 @admin_bp.route("/schema_editor/api/specs/<spec_name>/fields/<field_name>", methods=['DELETE'])
+@login_required
 def schema_editor_delete_field(spec_name, field_name):
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     admin_api.delete_field(spec_name, field_name)
     return jsonify({'success': 1})

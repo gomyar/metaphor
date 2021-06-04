@@ -655,3 +655,14 @@ class ApiTest(unittest.TestCase):
         except HTTPError as he:
             self.assertEqual(400, he.code)
             self.assertEqual('Cannot delete root resource', he.reason)
+
+    def test_get_root(self):
+        root_dict = self.api.get('/')
+        self.assertEquals({
+            'auth': '/auth',
+            'ego': '/ego',
+            'users': '/users',
+            'groups': '/groups',
+            'employees': '/employees',
+            'divisions': '/division',
+        }, root_dict)

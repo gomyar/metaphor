@@ -1,0 +1,21 @@
+
+<html>
+
+<body>
+
+<form action="/login" method="post" accept-charset="utf-8">
+    <label>Username</label>
+    
+    <input id="id_username" maxlength="254" name="username" type="text" />
+
+    <label>Password</label>
+    
+    <input id="id_password" name="password" type="password" />
+    
+    <input type="hidden" name="next" value="{{ next_url }}" />
+    <input id="id_login" class="button small" type="submit" value="Login"/>
+</form>
+
+</body>
+
+</html>

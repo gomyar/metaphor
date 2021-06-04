@@ -43,3 +43,13 @@ Having done that, navigate to [http://localhost:8000/browser/](http://localhost:
 Here resources can be interacted with.
 
 The api proper is located at: [http://localhost:8000/api/](http://localhost:8000/api/)
+
+Server Initial setup:
+
+To create an initial schema:
+
+metaphor init_schema
+
+To create an initial superuser:
+
+metaphor create_superuser

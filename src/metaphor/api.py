@@ -19,7 +19,7 @@ class Api(object):
         self.schema = schema
         self.updater = Updater(schema)
 
-    def patch(self, path, data):
+    def patch(self, path, data, user=None):
         path = path.strip().strip('/')
         try:
             tree = parse_canonical_url(path, self.schema.root)
@@ -37,7 +37,7 @@ class Api(object):
             self.schema.encodeid(resource['_id']),
             data)
 
-    def post(self, path, data):
+    def post(self, path, data, user=None):
         path = path.strip().strip('/')
 
         if '/' in path:
@@ -84,7 +84,7 @@ class Api(object):
                 None,
                 data)
 
-    def delete(self, path):
+    def delete(self, path, user=None):
         path = path.strip().strip('/')
 
         if '/' in path:
@@ -121,14 +121,28 @@ class Api(object):
         else:
             raise HTTPError('', 400, "Cannot delete root resource", None, None)
 
-    def get(self, path, expand=None):
+    def _get_root(self):
+        root_resource = {
+            'auth': '/auth',
+            'ego': '/ego',
+            'users': '/users',
+            'groups': '/groups',
+            'employees': '/employees',
+            'divisions': '/division',
+        }
+        return root_resource
+
+    def get(self, path, expand=None, user=None):
         path = path.strip().strip('/')
+        if not path:
+            return self._get_root()
+
         try:
             tree = parse_url(path, self.schema.root)
         except SyntaxError as te:
             raise HTTPError('', 404, "Not Found", None, None)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None, user.username if user else None)
 
         if expand:
             aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand))

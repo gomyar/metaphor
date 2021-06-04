@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+from datetime import datetime
+import argparse
+from pymongo import MongoClient
+from pymongo.database import Database
+from metaphor.schema import Schema
+
+
+
+def run_init_schema(mongohost, mongodb):
+    client = MongoClient(host=[mongohost])
+    db = client[mongodb]
+    if list(db.list_collections()):
+        print("The given Database is not empty. Please run init_schema against a blank Database")
+    else:
+        schema = Schema(db)
+        schema.create_initial_schema()
+        print("Schema created in database '%s'" % db.name)
+
+
+def run_create_superuser(mongohost, mongodb):
+    client = MongoClient(host=[mongohost])
+    db = client[mongodb]
+    username = input("Input username: ")
+    password = input("Input password: ")
+    if username and password:
+        if db.resource_user.find_one({'username': username}):
+            print("User %s already exists" % username)
+        else:
+            schema = Schema(db)
+            schema.create_user(username, password, True)
+            print("User %s created" % username)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Metaphor init scripts')
+
+    parser.add_argument(
+        'command', type=str,
+        help='Command to run: init_schema|create_superuser')
+    parser.add_argument(
+        '--mongohost', type=str,
+        help='Mongo connection: mongodb://[username:password@]host[:port]')
+    parser.add_argument(
+        '--mongodb', type=str,
+        help='Mongo database')
+
+    args = parser.parse_args()
+
+    commands = {
+        'init_schema': run_init_schema,
+        'create_superuser': run_create_superuser,
+    }
+
+    commands[args.command](
+        args.mongohost or 'mongodb://localhost:27017',
+        args.mongodb or 'metaphor')
