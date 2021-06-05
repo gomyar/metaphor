@@ -52,8 +52,8 @@ class ResourceRef(object):
         else:
             return results[0]
 
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         return aggregation, child_spec, is_aggregate
 
@@ -78,8 +78,8 @@ class ResourceRef(object):
 
 
 class FieldRef(ResourceRef, Calc):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         aggregation.append(
             {"$project": {
@@ -122,34 +122,31 @@ class RootResourceRef(ResourceRef):
     def infer_type(self):
         return self.spec
 
-    def aggregation(self, self_id, username=None):
-        if self.resource_name == 'self':
+    def aggregation(self, self_id, user=None):
+        if user:
             aggregation = [
-                {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
+                {"$match": {"_groups.read": {"$in": user.groups}}}
             ]
-            if username:
-                aggregation.extend([
-                    {"$lookup": {
-                        "from": "resource_group",
-                        "localField": "_groups",
-                        "foreignField": "name",
-                        "as": "__groups",
-                    }},
-
-                ])
+        else:
+            aggregation = []
+        if self.resource_name == 'self':
+            aggregation.extend([
+                {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
+            ])
             return aggregation, self.spec, False
         elif self.resource_name == 'ego':
-            aggregation = [
-                {"$match": {"username": username}}
-            ]
+            aggregation.extend([
+                {"$match": {"username": user.username}}
+            ])
             return aggregation, self.spec, False
         else:
-            return [
+            aggregation.extend([
                 {"$match": {"$and": [
                     {"_parent_field_name": self.resource_name},
                     {"_parent_canonical_url": '/'},
                 ]}}
-            ], self.spec, True
+            ])
+            return aggregation, self.spec, True
 
     def reverse_aggregation(self, parent_spec, resource_spec, resource_id, field=None):
         return []
@@ -177,8 +174,8 @@ class IDResourceRef(ResourceRef):
     def infer_type(self):
         return self.spec
 
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         aggregation.append(
             {"$match": {"_id": self.spec.schema.decodeid(self.resource_id)}}
         )
@@ -196,8 +193,8 @@ class CollectionResourceRef(ResourceRef):
         super(CollectionResourceRef, self).__init__(resource_ref, field_name, parser, spec)
         self.parent_spec = parent_spec
 
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         # if linkcollection / collection
         aggregation.append(
@@ -247,8 +244,8 @@ class CollectionResourceRef(ResourceRef):
 
 
 class LinkCollectionResourceRef(ResourceRef):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         # if linkcollection / collection
         aggregation.append(
@@ -297,8 +294,8 @@ class LinkCollectionResourceRef(ResourceRef):
 
 
 class LinkResourceRef(ResourceRef):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         # if linkcollection / collection
         # if link
@@ -346,8 +343,8 @@ class LinkResourceRef(ResourceRef):
 
 
 class CalcResourceRef(ResourceRef):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         calc_tree = spec.schema.calc_trees[spec.name, self.field_name]
         calc_spec = calc_tree.infer_type()
         if spec.fields[self.field_name].is_primitive():
@@ -401,8 +398,8 @@ class CalcResourceRef(ResourceRef):
 
 
 class ReverseLinkResourceRef(ResourceRef):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         aggregation.append(
             {"$lookup": {
@@ -453,8 +450,8 @@ class ReverseLinkResourceRef(ResourceRef):
 
 
 class ParentCollectionResourceRef(ResourceRef):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         aggregation.append(
             {"$lookup": {
@@ -500,8 +497,8 @@ class ParentCollectionResourceRef(ResourceRef):
 
 
 class ReverseLinkCollectionResourceRef(ResourceRef):
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         # when a reverse aggregate is followed by another reverse aggregate
         # reverse link to collection (through _owners)
@@ -566,8 +563,8 @@ class FilteredResourceRef(ResourceRef):
     def infer_type(self):
         return self.resource_ref.infer_type()
 
-    def aggregation(self, self_id, username=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, username)
+    def aggregation(self, self_id, user=None):
+        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         filter_agg = self.filter_ref.filter_aggregation(spec)
         aggregation.append(filter_agg)
         return aggregation, spec, True
@@ -796,10 +793,10 @@ class ResourceRefTernary(ResourceRef):
     def __repr__(self):
         return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
 
-    def aggregation(self, self_id, username=None):
+    def aggregation(self, self_id, user=None):
 
-        then_agg, spec, is_aggregate = self.then_clause.aggregation(self_id, username)
-        else_agg, _, _ = self.else_clause.aggregation(self_id, username)
+        then_agg, spec, is_aggregate = self.then_clause.aggregation(self_id, user)
+        else_agg, _, _ = self.else_clause.aggregation(self_id, user)
 
         aggregation = {
             "$cond": {

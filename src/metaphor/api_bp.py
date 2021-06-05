@@ -73,7 +73,11 @@ def api(path):
     if request.method == 'PATCH':
         return jsonify(api.patch(path, request.json, flask_login.current_user))
     if request.method == 'GET':
-        return jsonify(api.get(path, None, flask_login.current_user))
+        result = api.get(path, None, flask_login.current_user)
+        if result is not None:
+            return jsonify(result)
+        else:
+            return "Not Found", 404
     if request.method == 'DELETE':
         return jsonify(api.delete(path, flask_login.current_user))
 

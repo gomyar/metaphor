@@ -142,7 +142,7 @@ class Api(object):
         except SyntaxError as te:
             raise HTTPError('', 404, "Not Found", None, None)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None, user.username if user else None)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 
         if expand:
             aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand))
@@ -156,14 +156,16 @@ class Api(object):
             return [self.encode_resource(spec, row, expand) for row in results]
 #        elif spec.is_field():
 #            return results[0][self.field_name] if results else None
+        elif results:
+            return self.encode_resource(spec, results[0], expand)
         else:
-            return self.encode_resource(spec, results[0], expand) if results else None
+            return None
 
     def get_spec_for(self, path, user=None):
         path = path.strip().strip('/')
         tree = parse_url(path, self.schema.root)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None, user.username if user else None)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
         return (
             spec,
             is_aggregate,

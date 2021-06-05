@@ -120,8 +120,9 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, admin=False):
+    def __init__(self, username, groups, admin=False):
         self.username = username
+        self.groups = groups
         self.admin = admin
 
     def get_id(self):
@@ -289,8 +290,22 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
 
     def load_user(self, username, load_hash=False):
-        user_data = self.db['resource_user'].find_one({'username': username})
-        user = User(username, user_data.get('is_admin') == True)
+        #user_data = self.db['resource_user'].find_one({'username': username})
+        user_data = self.db['resource_user'].aggregate([
+            {"$match": {"username": username}},
+            {"$lookup": {"from": "resource_group",
+                         "localField": "groups._id",
+                         "foreignField": "_id",
+                         "as": "_groups"}},
+            {"$project": {
+                "username": True,
+                "pw_hash": True,
+                "is_admin": True,
+                "_groups.name": True,
+            }},
+        ]).next()
+        user = User(username, [g['name'] for g in user_data.get('_groups', [])],
+                    user_data.get('is_admin') == True)
         if load_hash:
             user.pw_hash = user_data['pw_hash']
         return user
@@ -338,7 +353,7 @@ class Schema(object):
 
     def create_user(self, username, password, admin=False):
         pw_hash = generate_password_hash(password)
-        self.db.resource_user.insert_one({
+        user_id = self.db.resource_user.insert({
             "_parent_type" : "root",
             "_parent_id" : None,
             "_parent_field_name" : "users",
@@ -346,3 +361,9 @@ class Schema(object):
             "username": username,
             "pw_hash": pw_hash,
             "is_admin": admin})
+        return self.encodeid(user_id)
+
+    def grant_read_to_group(self, spec_name, resource_id, group):
+        self.db['resource_%s' % spec_name].update({
+            '_id': self.decodeid(resource_id)},
+            {"$addToSet": {"_groups.read": group}})

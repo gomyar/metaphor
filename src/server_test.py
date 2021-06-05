@@ -11,15 +11,17 @@ class ServerTest(TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
 
-        self.schema.create_initial_schema()
-        self.schema.load_schema()
+        Schema(self.db).create_initial_schema()
 
         self.app = create_app(self.db)
+        self.schema = self.app.config['api'].schema
+
         self.client = self.app.test_client()
 
-        self.schema.create_user('bob', 'password')
+        user_id = self.schema.create_user('bob', 'password')
+        group_id_1 = self.schema.insert_resource('group', {'name': 'managers'}, 'groups')
+        self.schema.create_linkcollection_entry('user', user_id, 'groups', group_id_1)
         self.client.post('/login', data={
             "username": "bob",
             "password": "password",
@@ -34,3 +36,20 @@ class ServerTest(TestCase):
 
         self.assertEqual('bob', response.json['username'])
         self.assertEqual(False, response.json['is_admin'])
+
+    def test_group_access(self):
+        employee_spec = self.schema.add_spec('employee')
+        self.schema.add_field(employee_spec, 'name', 'str')
+
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'fred'}, 'employees')
+
+        response = self.client.get('/api/employees/%s' % employee_id_1)
+        self.assertEqual(404, response.status_code)
+
+        self.schema.grant_read_to_group('employee', employee_id_1, 'managers')
+
+        response = self.client.get('/api/employees/%s' % employee_id_1)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual('fred', response.json['name'])
