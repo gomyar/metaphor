@@ -135,9 +135,9 @@ class RootResourceRef(ResourceRef):
             ])
             return aggregation, self.spec, False
         elif self.resource_name == 'ego':
-            aggregation.extend([
+            aggregation = [
                 {"$match": {"username": user.username}}
-            ])
+            ]
             return aggregation, self.spec, False
         else:
             aggregation.extend([

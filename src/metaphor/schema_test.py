@@ -145,6 +145,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals(ObjectId(employee_id[2:]), self.schema.decodeid(employee_id))
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id),
+            '_canonical_url': '/employees/%s' % employee_id,
             'name': 'Bob',
             '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
@@ -294,6 +295,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
@@ -306,6 +308,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
@@ -317,6 +320,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(section_id_1),
+            '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
             '_parent_field_name': 'sections',

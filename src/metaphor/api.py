@@ -140,7 +140,7 @@ class Api(object):
         try:
             tree = parse_url(path, self.schema.root)
         except SyntaxError as te:
-            raise HTTPError('', 404, "Not Found", None, None)
+            return None
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 

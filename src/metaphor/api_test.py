@@ -275,6 +275,7 @@ class ApiTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(section_id_1),
+            '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
             '_parent_field_name': 'sections',
@@ -318,6 +319,7 @@ class ApiTest(unittest.TestCase):
         new_employees = list(self.db['resource_employee'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
+             '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -327,6 +329,7 @@ class ApiTest(unittest.TestCase):
              '_canonical_url_division': '/divisions/%s' % division_id_1,
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
+             '_canonical_url': '/employees/%s' % employee_id_2,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -342,6 +345,7 @@ class ApiTest(unittest.TestCase):
         new_employees = list(self.db['resource_employee'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
+             '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -360,6 +364,7 @@ class ApiTest(unittest.TestCase):
         employees = list(self.db['resource_employee'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
+             '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -372,6 +377,7 @@ class ApiTest(unittest.TestCase):
         divisions = list(self.db['resource_division'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(division_id_1),
+             '_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'divisions',
              '_parent_id': None,
@@ -394,6 +400,7 @@ class ApiTest(unittest.TestCase):
         new_divisions = list(self.db['resource_division'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(division_id_1),
+             '_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'divisions',
              '_parent_id': None,
@@ -405,6 +412,7 @@ class ApiTest(unittest.TestCase):
         new_sections = list(self.db['resource_section'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(section_id_1),
+             '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
              '_parent_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_field_name': 'sections',
              '_parent_id': self.schema.decodeid(division_id_1),
@@ -515,6 +523,7 @@ class ApiTest(unittest.TestCase):
 
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
+             '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -522,6 +531,7 @@ class ApiTest(unittest.TestCase):
              'age': 41,
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_3),
+             '_canonical_url': '/employees/%s' % employee_id_3,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,

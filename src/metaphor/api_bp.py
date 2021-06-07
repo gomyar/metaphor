@@ -99,7 +99,7 @@ def browser_root():
 def browser(path):
     api = current_app.config['api']
     resource = api.get(path, None, flask_login.current_user)
-    spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path)
+    spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path, flask_login.current_user)
     return render_template('metaphor/api_browser.html',
         path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection,
         schema=serialize_schema(api.schema))

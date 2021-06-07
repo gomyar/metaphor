@@ -46,6 +46,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             'name': 'sales',
+            '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
@@ -59,6 +60,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             'name': 'sales',
+            '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
@@ -77,6 +79,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
@@ -93,6 +96,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
@@ -104,6 +108,7 @@ class UpdaterTest(unittest.TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id_1),
+            '_canonical_url': '/divisions/%s/employees/%s' % (division_id_1, employee_id_1),
             'name': 'Bob',
             'age': 41,
             '_parent_canonical_url': '/divisions/%s' % division_id_1,
@@ -160,6 +165,7 @@ class UpdaterTest(unittest.TestCase):
             division_data['older_non_retired_managers'])
         self.assertEquals({
             "_id" : self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             "_parent_field_name" : "divisions",
             "_parent_id" : None,
             "_parent_type" : "root",
@@ -209,6 +215,7 @@ class UpdaterTest(unittest.TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEquals({
             "_id" : self.schema.decodeid(employee_id_1),
+            '_canonical_url': '/divisions/%s/employees/%s' % (division_id_1, employee_id_1),
             "_parent_field_name" : "employees",
             "_parent_id" : self.schema.decodeid(division_id_1),
             "_parent_type" : "division",

@@ -48,8 +48,23 @@ class ServerTest(TestCase):
         response = self.client.get('/api/employees/%s' % employee_id_1)
         self.assertEqual(404, response.status_code)
 
-        self.schema.grant_read_to_group('employee', employee_id_1, 'managers')
+#        self.schema.grant_read_to_group('employee', employee_id_1, 'managers')
+        self.schema.grant_read('managers', '/employees/%s' % employee_id_1)
 
         response = self.client.get('/api/employees/%s' % employee_id_1)
         self.assertEqual(200, response.status_code)
         self.assertEqual('fred', response.json['name'])
+
+    def test_grant_group_permissions(self):
+        employee_spec = self.schema.add_spec('employee')
+        self.schema.add_field(employee_spec, 'name', 'str')
+
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'fred'}, 'employees')
+
+        response = self.client.post('/api/groups', {'name': 'managers', 'read_urls': ['/employees']})
+        self.assertEqual(201, response.status_code)
+
+        response = self.client.get('/api/employees/%s' % employee_id_1)
+        self.assertEqual(200, response.status_code)

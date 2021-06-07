@@ -113,6 +113,7 @@ class LRParseTest(unittest.TestCase):
         calculated = tree.calculate(employee_id)
         self.assertEquals({
             '_id': self.schema.decodeid(division_id),
+            '_canonical_url': '/divisions/%s' % division_id,
             'name': 'sales',
             'yearly_sales': 10,
             '_parent_canonical_url': '/',
@@ -615,6 +616,7 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEquals([{
             '_id': self.schema.decodeid(employee_id_1),
+            '_canonical_url': '/employees/%s' % employee_id_1,
             '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
@@ -637,6 +639,7 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
+             '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -644,6 +647,7 @@ class LRParseTest(unittest.TestCase):
              'age': 41,
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
+             '_canonical_url': '/employees/%s' % employee_id_2,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
@@ -718,6 +722,7 @@ class LRParseTest(unittest.TestCase):
         calculated = tree.calculate(employee_id)
         self.assertEquals([{
             '_id': self.schema.decodeid(employee_id),
+            '_canonical_url': '/employees/%s' % employee_id,
             'name': 'sailor',
             'age': 40,
             '_parent_canonical_url': '/',
@@ -737,6 +742,7 @@ class LRParseTest(unittest.TestCase):
         calculated = tree.calculate(employee_id)
         self.assertEquals([{
             '_id': self.schema.decodeid(employee_id),
+            '_canonical_url': '/employees/%s' % employee_id,
             'name': 'sailor',
             'age': 40,
             '_parent_canonical_url': '/',

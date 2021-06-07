@@ -251,10 +251,14 @@ class Schema(object):
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None):
         data = self._parse_fields(spec_name, data)
 
+        new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
+        parent_canonical_url = self.load_canonical_parent_url(parent_type, parent_id)
+        data['_id'] = new_id
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
-        data['_parent_canonical_url'] = self.load_canonical_parent_url(parent_type, parent_id)
+        data['_parent_canonical_url'] = parent_canonical_url
+        data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 

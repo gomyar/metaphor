@@ -27,6 +27,9 @@ Extra calcs:
  - now()
 
 Extra fields:
+ - idstring: a string field that can be used as an id - lower case letters and underscores only
+ - uniqueid: same as idstring, but must be unique
+   - can also be used as a url identifier
  - date field
    - include simple calcs (now() + '1d') - could interpret a str as a delta
 

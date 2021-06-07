@@ -42,6 +42,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
@@ -58,6 +59,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
