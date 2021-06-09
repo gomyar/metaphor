@@ -68,18 +68,32 @@ def api_root():
 @login_required
 def api(path):
     api = current_app.config['api']
+    user = flask_login.current_user
     if request.method == 'POST':
-        return jsonify(api.post(path, request.json, flask_login.current_user))
+        # check permissions
+        if not any(grant_url['url'].startswith('/'+path) for grant_url in flask_login.current_user.create_grants):
+            return "Not Allowed", 403
+
+        return jsonify(api.post(path, request.json)), 201
     if request.method == 'PATCH':
-        return jsonify(api.patch(path, request.json, flask_login.current_user))
+        if not any(grant_url['url'].startswith('/'+path) for grant_url in flask_login.current_user.update_grants):
+            return "Not Allowed", 403
+
+        user.grants = user.update_grants
+        return jsonify(api.patch(path, request.json, user))
     if request.method == 'GET':
-        result = api.get(path, None, flask_login.current_user)
+        user.grants = [g['_id'] for g in user.read_grants]
+        result = api.get(path, None, user)
         if result is not None:
             return jsonify(result)
         else:
             return "Not Found", 404
     if request.method == 'DELETE':
-        return jsonify(api.delete(path, flask_login.current_user))
+        if not any(grant_url['url'].startswith('/'+path) for grant_url in flask_login.current_user.delete_grants):
+            return "Not Allowed", 403
+
+        user.grants = user.delete_grants
+        return jsonify(api.delete(path, user))
 
 
 @browser_bp.route("/", methods=['GET'])
@@ -98,8 +112,10 @@ def browser_root():
 @login_required
 def browser(path):
     api = current_app.config['api']
-    resource = api.get(path, None, flask_login.current_user)
-    spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path, flask_login.current_user)
+    user = flask_login.current_user
+    user.grants = user.read_grants
+    resource = api.get(path, None, user)
+    spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path, user)
     return render_template('metaphor/api_browser.html',
         path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection,
         schema=serialize_schema(api.schema))

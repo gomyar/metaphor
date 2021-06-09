@@ -32,6 +32,7 @@ Extra fields:
    - can also be used as a url identifier
  - date field
    - include simple calcs (now() + '1d') - could interpret a str as a delta
+ - password field - ostensibly for use with users, but can be used for other resource maybe
 
 
 Permissioning:

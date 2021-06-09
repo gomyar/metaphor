@@ -88,12 +88,12 @@ class Updater(object):
         return resource_id
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
-                        parent_id, fields):
+                        parent_id, fields, grants=None):
         spec = self.schema.specs[spec_name]
         # must add _create_updated field to resource instead of creating updater document
         resource_id = self.schema.insert_resource(
             spec_name, fields, parent_field_name, parent_spec_name,
-            parent_id)
+            parent_id, grants)
 
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
             # update for resources
@@ -113,7 +113,15 @@ class Updater(object):
                 self.update_calc(spec.name, field_name, resource_id)
                 self._recalc_for_field_update(spec, spec.name, field_name, resource_id)
 
+        # check if new resource is read grant
+        if spec_name == 'grant' and fields['type'] == 'read':
+            self._update_grants(resource_id, fields['type'], fields['url'])
+
         return resource_id
+
+    def _update_grants(self, grant_id, grant_type, url):
+        for spec_name, spec in self.schema.specs.items():
+            self.schema.db['resource_%s' % spec_name].update({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         self.schema.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, link_id)
@@ -128,8 +136,8 @@ class Updater(object):
         # recalc local calcs
         for field_name, field_spec in parent_spec.fields.items():
             if field_spec.field_type == 'calc':
-                self.update_calc(parent_spec_name, field_name, link_id)
-                self._recalc_for_field_update(spec, parent_spec_name, field_name, link_id)
+                self.update_calc(parent_spec_name, field_name, parent_id)
+                self._recalc_for_field_update(spec, parent_spec_name, field_name, parent_id)
 
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
         spec = self.schema.specs[spec_name]

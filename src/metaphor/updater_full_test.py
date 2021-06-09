@@ -45,6 +45,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_grants': [],
             'name': 'sales',
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_canonical_url': '/',
@@ -59,6 +60,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_grants': [],
             'name': 'sales',
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_canonical_url': '/',
@@ -79,6 +81,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
@@ -96,6 +99,7 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
@@ -108,6 +112,7 @@ class UpdaterTest(unittest.TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s/employees/%s' % (division_id_1, employee_id_1),
             'name': 'Bob',
             'age': 41,
@@ -165,6 +170,7 @@ class UpdaterTest(unittest.TestCase):
             division_data['older_non_retired_managers'])
         self.assertEquals({
             "_id" : self.schema.decodeid(division_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             "_parent_field_name" : "divisions",
             "_parent_id" : None,
@@ -215,6 +221,7 @@ class UpdaterTest(unittest.TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEquals({
             "_id" : self.schema.decodeid(employee_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s/employees/%s' % (division_id_1, employee_id_1),
             "_parent_field_name" : "employees",
             "_parent_id" : self.schema.decodeid(division_id_1),

@@ -125,7 +125,7 @@ class RootResourceRef(ResourceRef):
     def aggregation(self, self_id, user=None):
         if user:
             aggregation = [
-                {"$match": {"_groups.read": {"$in": user.groups}}}
+                {"$match": {"_grants": {"$in": user.grants}}}
             ]
         else:
             aggregation = []

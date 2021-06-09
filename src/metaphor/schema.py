@@ -4,7 +4,6 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash
 
 
 class Field(object):
@@ -120,16 +119,15 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, groups, admin=False):
+    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants):
         self.username = username
-        self.groups = groups
-        self.admin = admin
+        self.read_grants = read_grants
+        self.create_grants = create_grants
+        self.update_grants = update_grants
+        self.delete_grants = delete_grants
 
     def get_id(self):
         return self.username
-
-    def is_admin(self):
-        return self.admin
 
 
 class Schema(object):
@@ -248,7 +246,7 @@ class Schema(object):
                 parsed_data[field_name] = field_value
         return parsed_data
 
-    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None):
+    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None):
         data = self._parse_fields(spec_name, data)
 
         new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
@@ -259,6 +257,7 @@ class Schema(object):
         data['_parent_field_name'] = parent_field_name
         data['_parent_canonical_url'] = parent_canonical_url
         data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
+        data['_grants'] = grants or []
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
@@ -294,22 +293,12 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
 
     def load_user(self, username, load_hash=False):
-        #user_data = self.db['resource_user'].find_one({'username': username})
-        user_data = self.db['resource_user'].aggregate([
-            {"$match": {"username": username}},
-            {"$lookup": {"from": "resource_group",
-                         "localField": "groups._id",
-                         "foreignField": "_id",
-                         "as": "_groups"}},
-            {"$project": {
-                "username": True,
-                "pw_hash": True,
-                "is_admin": True,
-                "_groups.name": True,
-            }},
-        ]).next()
-        user = User(username, [g['name'] for g in user_data.get('_groups', [])],
-                    user_data.get('is_admin') == True)
+        user_data = self.db['resource_user'].find_one({'username': username})
+        user = User(username,
+                    user_data['read_grants'],
+                    user_data['create_grants'],
+                    user_data['update_grants'],
+                    user_data['delete_grants'])
         if load_hash:
             user.pw_hash = user_data['pw_hash']
         return user
@@ -325,12 +314,25 @@ class Schema(object):
                         "pw_hash" : {
                             "type" : "str"
                         },
-                        "is_admin" : {
-                            "type" : "bool"
-                        },
                         "groups": {
                             "type": "linkcollection",
                             "target_spec_name": "group"
+                        },
+                        "read_grants": {
+                            "type": "calc",
+                            "calc_str": "self.groups.grants[type='read'].url",
+                        },
+                        "create_grants": {
+                            "type": "calc",
+                            "calc_str": "self.groups.grants[type='create'].url",
+                        },
+                        "update_grants": {
+                            "type": "calc",
+                            "calc_str": "self.groups.grants[type='update'].url",
+                        },
+                        "delete_grants": {
+                            "type": "calc",
+                            "calc_str": "self.groups.grants[type='delete'].url",
                         },
                     }
                 },
@@ -339,8 +341,23 @@ class Schema(object):
                         "name" : {
                             "type" : "str"
                         },
+                        "grants": {
+                            "type": "collection",
+                            "target_spec_name": "grant"
+                        },
                     }
                 },
+                "grant" : {
+                    "fields" : {
+                        "type" : {
+                            "type" : "str"
+                        },
+                        "url" : {
+                            "type" : "str"
+                        },
+                    }
+                },
+
             },
             "root": {
                 "users" : {
@@ -355,19 +372,9 @@ class Schema(object):
             "created": datetime.now()
         })
 
-    def create_user(self, username, password, admin=False):
-        pw_hash = generate_password_hash(password)
-        user_id = self.db.resource_user.insert({
-            "_parent_type" : "root",
-            "_parent_id" : None,
-            "_parent_field_name" : "users",
-            "_parent_canonical_url" : "/",
-            "username": username,
-            "pw_hash": pw_hash,
-            "is_admin": admin})
-        return self.encodeid(user_id)
+        self.load_schema()
+        group_id = self.insert_resource('group', {'name': 'admin'}, '/groups')
 
-    def grant_read_to_group(self, spec_name, resource_id, group):
-        self.db['resource_%s' % spec_name].update({
-            '_id': self.decodeid(resource_id)},
-            {"$addToSet": {"_groups.read": group}})
+        for grant_type in ['read', 'create', 'update', 'delete']:
+            self.insert_resource('grant', {'type': grant_type, 'url': '/groups'}, 'grants', 'group', group_id)
+            self.insert_resource('grant', {'type': grant_type, 'url': '/users'}, 'grants', 'group', group_id)

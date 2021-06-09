@@ -5,7 +5,8 @@ import argparse
 from pymongo import MongoClient
 from pymongo.database import Database
 from metaphor.schema import Schema
-
+from metaphor.updater import Updater
+from werkzeug.security import generate_password_hash
 
 
 def run_init_schema(mongohost, mongodb):
@@ -29,7 +30,16 @@ def run_create_superuser(mongohost, mongodb):
             print("User %s already exists" % username)
         else:
             schema = Schema(db)
-            schema.create_user(username, password, True)
+            schema.load_schema()
+
+            updater = Updater(schema)
+
+            pw_hash = generate_password_hash(password)
+            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'pw_hash': pw_hash})
+
+            admin_group = db.resource_group.find_one({'name': 'admin'})
+            updater.create_linkcollection_entry('user', user_id, 'groups', schema.encodeid(admin_group['_id']))
+
             print("User %s created" % username)
 
 

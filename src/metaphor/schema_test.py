@@ -6,6 +6,7 @@ from pymongo import MongoClient
 
 from metaphor.schema import Schema, Spec, Field
 from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
 
 
 class SchemaTest(unittest.TestCase):
@@ -145,6 +146,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals(ObjectId(employee_id[2:]), self.schema.decodeid(employee_id))
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id),
+            '_grants': [],
             '_canonical_url': '/employees/%s' % employee_id,
             'name': 'Bob',
             '_parent_canonical_url': '/',
@@ -295,6 +297,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
             '_parent_type': 'root',
@@ -308,6 +311,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
             '_parent_type': 'root',
@@ -320,6 +324,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(section_id_1),
+            '_grants': [],
             '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
@@ -359,15 +364,33 @@ class SchemaTest(unittest.TestCase):
             "groups": {"target_spec_name": "group", "type": "collection"},
             "users": {"target_spec_name": "user", "type": "collection"}}, schema['root'])
         self.assertEqual({
-            "group": {"fields": {"name": {"type": "str"}}},
-            "user": {"fields": {"groups": {"target_spec_name": "group",
-                                "type": "linkcollection"},
-                                "is_admin": {"type": "bool"},
-                                "pw_hash": {"type": "str"},
-                                "username": {"type": "str"}}}}, schema['specs'])
+            'grant': {'fields': {'type': {'type': 'str'}, 'url': {'type': 'str'}}},
+            'group': {'fields': {'grants': {'target_spec_name': 'grant',
+                                            'type': 'collection'},
+                                'name': {'type': 'str'}}},
+            'user': {'fields': {'create_grants': {'calc_str': "self.groups.grants[type='create'].url",
+                                                'type': 'calc'},
+                                'delete_grants': {'calc_str': "self.groups.grants[type='delete'].url",
+                                                'type': 'calc'},
+                                'groups': {'target_spec_name': 'group',
+                                            'type': 'linkcollection'},
+                                'pw_hash': {'type': 'str'},
+                                'read_grants': {'calc_str': "self.groups.grants[type='read'].url",
+                                                'type': 'calc'},
+                                'update_grants': {'calc_str': "self.groups.grants[type='update'].url",
+                                                'type': 'calc'},
+                                'username': {'type': 'str'}}}}, schema['specs'])
 
-        self.schema.create_user('bob', 'password', True)
+        groups = list(self.db.resource_group.find())
+        self.assertEqual(1, len(groups))
+        self.assertEqual('admin', groups[0]['name'])
+
+        grants = list(self.db.resource_grant.find())
+        self.assertEqual(8, len(grants))
+
+        pw_hash = generate_password_hash('password')
+        self.user_id = self.api.post('/users', {'username': 'bob', 'pw_hash': pw_hash})
+
         bob = self.db.resource_user.find_one()
         self.assertEqual('bob', bob['username'])
-        self.assertEqual(True, bob['is_admin'])
         self.assertTrue(check_password_hash(bob['pw_hash'], 'password'))
