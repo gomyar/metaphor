@@ -226,10 +226,13 @@ class Schema(object):
 
     def load_canonical_parent_url(self, parent_type, parent_id):
         if parent_id:
-            parent_data = self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
+            parent_data = self.load_parent_data(parent_type, parent_id)
             return os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
         else:
             return '/'
+
+    def load_parent_data(self, parent_type, parent_id):
+        return self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
 
     def check_field_types(self, spec_name, data):
         pass
@@ -250,14 +253,21 @@ class Schema(object):
         data = self._parse_fields(spec_name, data)
 
         new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
-        parent_canonical_url = self.load_canonical_parent_url(parent_type, parent_id)
+        if parent_id:
+            parent_data = self.load_parent_data(parent_type, parent_id)
+            parent_canonical_url = os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
+            grants = parent_data['_grants']
+        else:
+            # assume grants taken from root
+            parent_canonical_url = '/'
+            grants = grants or []
         data['_id'] = new_id
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
         data['_parent_canonical_url'] = parent_canonical_url
         data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
-        data['_grants'] = grants or []
+        data['_grants'] = grants
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
@@ -294,14 +304,17 @@ class Schema(object):
 
     def load_user(self, username, load_hash=False):
         user_data = self.db['resource_user'].find_one({'username': username})
-        user = User(username,
-                    user_data['read_grants'],
-                    user_data['create_grants'],
-                    user_data['update_grants'],
-                    user_data['delete_grants'])
-        if load_hash:
-            user.pw_hash = user_data['pw_hash']
-        return user
+        if user_data:
+            user = User(username,
+                        user_data['read_grants'],
+                        user_data['create_grants'],
+                        user_data['update_grants'],
+                        user_data['delete_grants'])
+            if load_hash:
+                user.pw_hash = user_data['pw_hash']
+            return user
+        else:
+            return None
 
     def create_initial_schema(self):
         self.db.metaphor_schema.insert_one({

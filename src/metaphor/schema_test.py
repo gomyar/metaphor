@@ -387,10 +387,3 @@ class SchemaTest(unittest.TestCase):
 
         grants = list(self.db.resource_grant.find())
         self.assertEqual(8, len(grants))
-
-        pw_hash = generate_password_hash('password')
-        self.user_id = self.api.post('/users', {'username': 'bob', 'pw_hash': pw_hash})
-
-        bob = self.db.resource_user.find_one()
-        self.assertEqual('bob', bob['username'])
-        self.assertTrue(check_password_hash(bob['pw_hash'], 'password'))

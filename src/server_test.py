@@ -112,3 +112,26 @@ class ServerTest(TestCase):
 
         yes_response = self.client.post('/api/employees', data=json.dumps({'name': 'willblend'}), content_type='application/json')
         self.assertEqual(201, yes_response.status_code)
+
+    def test_create_subresource_inherits_grants(self):
+        employee_spec = self.schema.add_spec('employee')
+        self.schema.add_field(employee_spec, 'name', 'str')
+        skill_spec = self.schema.add_spec('skill')
+        self.schema.add_field(skill_spec, 'name', 'str')
+
+        self.schema.add_field(employee_spec, 'skills', 'collection', 'skill')
+
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/employees'})
+
+        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
+
+        employee = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        self.assertEqual([self.schema.decodeid(self.grant_id_1)], employee['_grants'])
+
+        skill_id_1 = self.api.post('/employees/%s/skills' % employee_id_1, {'name': 'basket'})
+
+        skill = self.db['resource_skill'].find_one({"_id": self.schema.decodeid(skill_id_1)})
+        # note: only read grants are cached in the resource
+        self.assertEqual([self.schema.decodeid(self.grant_id_1)], skill['_grants'])
