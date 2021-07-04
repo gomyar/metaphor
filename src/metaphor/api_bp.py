@@ -71,15 +71,14 @@ def api(path):
     user = flask_login.current_user
     if request.method == 'POST':
         # check permissions
-        if not any(grant_url['url'].startswith('/'+path) for grant_url in flask_login.current_user.create_grants):
+        if not any(('/'+path).startswith(grant_url['url']) for grant_url in flask_login.current_user.create_grants):
             return "Not Allowed", 403
 
         return jsonify(api.post(path, request.json)), 201
     if request.method == 'PATCH':
-        if not any(grant_url['url'].startswith('/'+path) for grant_url in flask_login.current_user.update_grants):
+        if not any(('/'+path).startswith(grant_url['url']) for grant_url in flask_login.current_user.update_grants):
             return "Not Allowed", 403
 
-        user.grants = user.update_grants
         return jsonify(api.patch(path, request.json, user))
     if request.method == 'GET':
         user.grants = [g['_id'] for g in user.read_grants]
@@ -89,10 +88,9 @@ def api(path):
         else:
             return "Not Found", 404
     if request.method == 'DELETE':
-        if not any(grant_url['url'].startswith('/'+path) for grant_url in flask_login.current_user.delete_grants):
+        if not any(('/'+path).startswith(grant_url['url']) for grant_url in flask_login.current_user.delete_grants):
             return "Not Allowed", 403
 
-        user.grants = user.delete_grants
         return jsonify(api.delete(path, user))
 
 
@@ -113,7 +111,7 @@ def browser_root():
 def browser(path):
     api = current_app.config['api']
     user = flask_login.current_user
-    user.grants = user.read_grants
+    user.grants = [g['_id'] for g in user.read_grants]
     resource = api.get(path, None, user)
     spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path, user)
     return render_template('metaphor/api_browser.html',

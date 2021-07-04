@@ -363,12 +363,12 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             "groups": {"target_spec_name": "group", "type": "collection"},
             "users": {"target_spec_name": "user", "type": "collection"}}, schema['root'])
-        self.assertEqual({
-            'grant': {'fields': {'type': {'type': 'str'}, 'url': {'type': 'str'}}},
+        self.assertEqual({'grant': {'fields': {'type': {'type': 'str'}, 'url': {'type': 'str'}}},
             'group': {'fields': {'grants': {'target_spec_name': 'grant',
                                             'type': 'collection'},
                                 'name': {'type': 'str'}}},
-            'user': {'fields': {'create_grants': {'calc_str': "self.groups.grants[type='create'].url",
+            'user': {'fields': {'admin': {'type': 'bool'},
+                                'create_grants': {'calc_str': "self.groups.grants[type='create'].url",
                                                 'type': 'calc'},
                                 'delete_grants': {'calc_str': "self.groups.grants[type='delete'].url",
                                                 'type': 'calc'},
@@ -380,10 +380,3 @@ class SchemaTest(unittest.TestCase):
                                 'update_grants': {'calc_str': "self.groups.grants[type='update'].url",
                                                 'type': 'calc'},
                                 'username': {'type': 'str'}}}}, schema['specs'])
-
-        groups = list(self.db.resource_group.find())
-        self.assertEqual(1, len(groups))
-        self.assertEqual('admin', groups[0]['name'])
-
-        grants = list(self.db.resource_grant.find())
-        self.assertEqual(8, len(grants))

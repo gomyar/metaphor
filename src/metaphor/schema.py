@@ -119,15 +119,19 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants):
+    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants, admin=False):
         self.username = username
         self.read_grants = read_grants
         self.create_grants = create_grants
         self.update_grants = update_grants
         self.delete_grants = delete_grants
+        self.admin = admin
 
     def get_id(self):
         return self.username
+
+    def is_admin(self):
+        return self.admin
 
 
 class Schema(object):
@@ -309,7 +313,8 @@ class Schema(object):
                         user_data['read_grants'],
                         user_data['create_grants'],
                         user_data['update_grants'],
-                        user_data['delete_grants'])
+                        user_data['delete_grants'],
+                        user_data.get('admin'))
             if load_hash:
                 user.pw_hash = user_data['pw_hash']
             return user
@@ -346,6 +351,9 @@ class Schema(object):
                         "delete_grants": {
                             "type": "calc",
                             "calc_str": "self.groups.grants[type='delete'].url",
+                        },
+                        "admin": {
+                            "type": "bool",
                         },
                     }
                 },
@@ -386,8 +394,13 @@ class Schema(object):
         })
 
         self.load_schema()
-        group_id = self.insert_resource('group', {'name': 'admin'}, '/groups')
+#        group_id = self.insert_resource('group', {'name': 'admin'}, '/groups')
 
-        for grant_type in ['read', 'create', 'update', 'delete']:
-            self.insert_resource('grant', {'type': grant_type, 'url': '/groups'}, 'grants', 'group', group_id)
-            self.insert_resource('grant', {'type': grant_type, 'url': '/users'}, 'grants', 'group', group_id)
+#        for grant_type in ['read', 'create', 'update', 'delete']:
+#            self.insert_resource('grant', {'type': grant_type, 'url': '/groups'}, 'grants', 'group', group_id)
+#            self.insert_resource('grant', {'type': grant_type, 'url': '/users'}, 'grants', 'group', group_id)
+#            self.insert_resource('grant', {'type': grant_type, 'url': '/'}, 'grants', 'group', group_id)
+
+    def read_root_grants(self, path):
+        return [g['_id'] for g in self.db['resource_grant'].find({'url': '/%s' % path, 'type': 'read'}, {'_id': True})]
+

@@ -113,6 +113,22 @@ class ServerTest(TestCase):
         yes_response = self.client.post('/api/employees', data=json.dumps({'name': 'willblend'}), content_type='application/json')
         self.assertEqual(201, yes_response.status_code)
 
+    def test_can_patch_with_grant(self):
+        employee_spec = self.schema.add_spec('employee')
+        self.schema.add_field(employee_spec, 'name', 'str')
+
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
+
+        no_response = self.client.patch('/api/employees', data=json.dumps({'name': 'wontblend'}), content_type='application/json')
+        self.assertEqual(403, no_response.status_code)
+
+        grant_id_2 = self.api.patch('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': '/employees'})
+
+        yes_response = self.client.patch('/api/employees', data=json.dumps({'name': 'willblend'}), content_type='application/json')
+        self.assertEqual(200, yes_response.status_code)
+
     def test_create_subresource_inherits_grants(self):
         employee_spec = self.schema.add_spec('employee')
         self.schema.add_field(employee_spec, 'name', 'str')

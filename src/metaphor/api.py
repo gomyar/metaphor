@@ -83,10 +83,7 @@ class Api(object):
                 path,
                 None,
                 data,
-                self._read_root_grants(path))
-
-    def _read_root_grants(self, path):
-        return [g['_id'] for g in self.schema.db['resource_grant'].find({'url': '/%s' % path, 'type': 'read'}, {'_id': True})]
+                self.schema.read_root_grants(path))
 
     def delete(self, path, user=None):
         path = path.strip().strip('/')

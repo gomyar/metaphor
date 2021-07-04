@@ -1,4 +1,7 @@
 
+ - bug: delete does not update calcs correctly - attempt delete of grant after it's been created - cached grant still exists in user
+
+
  - bug: calcs which evaluate to a single link id throw an error - done
 
  - restrict allowed field names - done

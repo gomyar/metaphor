@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import datetime
+import getpass
 import argparse
 from pymongo import MongoClient
 from pymongo.database import Database
@@ -17,6 +18,14 @@ def run_init_schema(mongohost, mongodb):
     else:
         schema = Schema(db)
         schema.create_initial_schema()
+
+        updater = Updater(schema)
+        group_id = updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'}, schema.read_root_grants('groups'))
+
+        for grant_type in ['read', 'create', 'update', 'delete']:
+            updater.create_resource('grant', 'group', 'grants', group_id, {'type': grant_type, 'url': '/users'})
+            updater.create_resource('grant', 'group', 'grants', group_id, {'type': grant_type, 'url': '/groups'})
+
         print("Schema created in database '%s'" % db.name)
 
 
@@ -24,7 +33,7 @@ def run_create_superuser(mongohost, mongodb):
     client = MongoClient(host=[mongohost])
     db = client[mongodb]
     username = input("Input username: ")
-    password = input("Input password: ")
+    password = getpass.getpass("Input password: ")
     if username and password:
         if db.resource_user.find_one({'username': username}):
             print("User %s already exists" % username)
@@ -35,7 +44,7 @@ def run_create_superuser(mongohost, mongodb):
             updater = Updater(schema)
 
             pw_hash = generate_password_hash(password)
-            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'pw_hash': pw_hash})
+            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'pw_hash': pw_hash, 'admin': True}, schema.read_root_grants('users'))
 
             admin_group = db.resource_group.find_one({'name': 'admin'})
             updater.create_linkcollection_entry('user', user_id, 'groups', schema.encodeid(admin_group['_id']))
