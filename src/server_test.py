@@ -151,3 +151,28 @@ class ServerTest(TestCase):
         skill = self.db['resource_skill'].find_one({"_id": self.schema.decodeid(skill_id_1)})
         # note: only read grants are cached in the resource
         self.assertEqual([self.schema.decodeid(self.grant_id_1)], skill['_grants'])
+
+
+    def test_delete_grant_updates_user_grants(self):
+        company_spec = self.schema.add_spec('company')
+        self.schema.add_field(company_spec, 'name', 'str')
+
+        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
+
+        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/companies'})
+
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
+
+        self.assertEqual([{'url': '/companies', '_id': self.schema.decodeid(grant_1)}], user['create_grants'])
+
+        # delete link to group
+        self.api.delete('/users/%s/groups/%s' % (self.user_id, self.group_id))
+
+        # assert grants are removed
+        self.assertEqual([], user['create_grants'])
+
+    def test_delete_group_updates_user_grants(self):
+        pass
+
+    def test_delete_group_deletes_child_grants(self):
+        pass

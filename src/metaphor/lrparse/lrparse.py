@@ -94,6 +94,7 @@ class FieldRef(ResourceRef, Calc):
 class RootResourceRef(ResourceRef):
     def __init__(self, resource_name, parser, spec):
         self.resource_name = resource_name
+        self.parent_spec = None
         self._parser = parser
         if self.resource_name == 'self':
             self.spec = spec

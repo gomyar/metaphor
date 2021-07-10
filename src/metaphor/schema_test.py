@@ -352,6 +352,9 @@ class SchemaTest(unittest.TestCase):
         self.assertFalse(calc_field.is_primitive())
         self.assertTrue(calc_field.is_collection())
 
+    def test_delete_linkcollection_entry(self):
+        pass
+
     def test_parse_fields_test(self):
         # add parsing and validation for field types
         pass

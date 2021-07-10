@@ -279,7 +279,7 @@ class Schema(object):
         self.db['resource_%s' % spec_name].delete_one({'_id': self.decodeid(resource_id)})
 
     def delete_linkcollection_entry(self, spec_name, parent_id, field_name, resource_id):
-        self.db['resource_%s' % spec_name].update({"_id": parent_id} ,{"$pull": {'parttimers': {"_id": self.decodeid(resource_id)}}})
+        self.db['resource_%s' % spec_name].update({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         save_data = self._parse_fields(spec_name, field_data)

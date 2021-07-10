@@ -1,6 +1,10 @@
 
  - bug: delete does not update calcs correctly - attempt delete of grant after it's been created - cached grant still exists in user
+ - bug: delete must cascade
+   - this should fix problem deleting parent resources which contain child resources which are used in a calc (group/grant)
 
+ - q: do links in colections need their own url (for deleting from collection)?
+   - "link": /users/ID123/groups/ID456
 
  - bug: calcs which evaluate to a single link id throw an error - done
 

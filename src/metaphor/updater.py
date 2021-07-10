@@ -121,7 +121,7 @@ class Updater(object):
 
     def _update_grants(self, grant_id, grant_type, url):
         for spec_name, spec in self.schema.specs.items():
-            self.schema.db['resource_%s' % spec_name].update({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
+            self.schema.db['resource_%s' % spec_name].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         self.schema.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, link_id)
@@ -142,26 +142,31 @@ class Updater(object):
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
         spec = self.schema.specs[spec_name]
 
-        # must add _create_updated field to resource instead of creating updater document
-        self.schema.delete_resource(spec_name, resource_id)
+        cursors = []
 
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
             # update for resources
             # unsure if this is necessary
             if "%s.%s" % (parent_spec_name, parent_field_name) in calc_tree.get_resource_dependencies():
-                self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
+                #self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
 
-            # update for fields
-            for field_name in spec.fields:
-                field_dep = "%s.%s" % (spec_name, field_name)
-                if field_dep in calc_tree.get_resource_dependencies():
-                    self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                if affected_ids:
+                    cursors.append((affected_ids, calc_spec_name, calc_field_name))
+
+        # must add _create_updated field to resource instead of creating updater document
+        self.schema.delete_resource(spec_name, resource_id)
+
+        for affected_ids, calc_spec_name, calc_field_name in cursors:
+            for affected_id in affected_ids:
+                affected_id = self.schema.encodeid(affected_id)
+                self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
 
         return resource_id
 
     def delete_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        spec = self.schema.specs[parent_spec_name]
-
         parent_spec = self.schema.specs[parent_spec_name]
         spec = parent_spec.build_child_spec(parent_field)
 
@@ -174,7 +179,8 @@ class Updater(object):
 
                 affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, link_id)
 
-                cursors.append((affected_ids, calc_spec_name, calc_field_name))
+                if affected_ids:
+                    cursors.append((affected_ids, calc_spec_name, calc_field_name))
 
         # perform delete
         self.schema.delete_linkcollection_entry(

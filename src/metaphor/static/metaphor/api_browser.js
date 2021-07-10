@@ -204,17 +204,17 @@ var browser = {
     },
     delete_resource: function(resource) {
         if (confirm("Are you sure you wish to delete : " + resource.id + " ?")) {
-            browser._perform_delete(resource);
+            browser._perform_delete(resource.self);
         }
     },
     delete_link: function(resource) {
         if (confirm("Are you sure you wish to delete link to : " + resource.id + " ?")) {
-            browser._perform_delete(resource);
+            browser._perform_delete(api.path + "/" + resource.id);
         }
     },
-    _perform_delete: function(resource) {
+    _perform_delete: function(resource_path) {
         loading.inc_loading();
-        var resource_url = window.location.protocol + '//' + window.location.host + "/api" + resource.self;
+        var resource_url = window.location.protocol + '//' + window.location.host + "/api/" + resource_path;
         turtlegui.ajax.delete(
             resource_url,
             function(data) {

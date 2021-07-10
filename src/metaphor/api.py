@@ -118,7 +118,8 @@ class Api(object):
             else:
                 aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None)
 
-                return self.updater.delete_resource(spec.name, resource_id, spec.name, field_name)
+                parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
+                return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
         else:
             raise HTTPError('', 400, "Cannot delete root resource", None, None)
 
