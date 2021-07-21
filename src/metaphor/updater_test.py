@@ -362,3 +362,21 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals(
             [self.schema.decodeid(division_id_1)],
             list(self.updater.get_affected_ids_for_resource('division', 'all_employees', self.employee_spec, employee_id_1)))
+
+    def test_delete_resource_deletes_children(self):
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 21})
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'ned', 'age': 31})
+
+        self.assertEqual(1, self.db['resource_division'].count())
+        self.assertEqual(2, self.db['resource_employee'].count())
+
+        self.updater.delete_resource('division', division_id_1, None, 'divisions')
+
+        self.assertEqual(0, self.db['resource_division'].count())
+        self.assertEqual(0, self.db['resource_employee'].count())
+

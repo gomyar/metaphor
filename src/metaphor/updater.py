@@ -163,6 +163,11 @@ class Updater(object):
                 self.update_calc(calc_spec_name, calc_field_name, affected_id)
                 self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
 
+        # delete child resources
+        for field_name, field in spec.fields.items():
+            if field.field_type == 'collection':
+                for child_resource in self.schema.db['resource_%s' % field.target_spec_name].find({'_parent_id': self.schema.decodeid(resource_id)}, {'_id': 1}):
+                    self.delete_resource(field.target_spec_name, self.schema.encodeid(child_resource['_id']), spec_name, field_name)
 
         return resource_id
 
@@ -177,7 +182,7 @@ class Updater(object):
             # update for resources
             if "%s.%s" % (parent_spec_name, parent_field) in calc_tree.get_resource_dependencies():
 
-                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, link_id)
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, self.schema.specs[parent_spec_name], self.schema.encodeid(parent_id))
 
                 if affected_ids:
                     cursors.append((affected_ids, calc_spec_name, calc_field_name))

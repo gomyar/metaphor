@@ -660,6 +660,31 @@ class LRParseTest(unittest.TestCase):
              'name': 'bob'},
             ], tree.calculate(division_id_1))
 
+
+    def test_linkcollection_reverse_aggregation(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_1)
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_2)
+        self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_3)
+
+        tree = parse('self.parttimers.age', self.schema.specs['division'])
+
+        # testing reverse aggregation when a resource in the "middle" of the calc is added/removed/updated
+        self.assertEqual([
+            {'$lookup': {'as': '_field_parttimers',
+             'foreignField': 'parttimers._id',
+             'from': 'resource_division',
+             'localField': '_id'}},
+            {'$group': {'_id': '$_field_parttimers'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}], tree.reverse_aggregation(
+            self.schema.specs['division'], self.schema.specs['employee'], employee_id_2))
+
     def test_dependencies(self):
         employee_spec = self.schema.specs['employee']
         division_spec = self.schema.specs['division']
