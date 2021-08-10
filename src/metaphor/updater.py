@@ -158,6 +158,15 @@ class Updater(object):
                 if affected_ids:
                     cursors.append((affected_ids, calc_spec_name, calc_field_name))
 
+            # find root collection dependencies
+            if parent_spec_name is None:
+                for field_name, field in self.schema.root.fields.items():
+                    if field.field_type in ['collection', 'linkcollection']:
+                        if field.target_spec_name == spec_name:
+                            affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
+                            if affected_ids:
+                                cursors.append((affected_ids, calc_spec_name, calc_field_name))
+
         # must add _create_updated field to resource instead of creating updater document
         self.schema.delete_resource(spec_name, resource_id)
 

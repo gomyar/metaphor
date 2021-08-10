@@ -394,12 +394,6 @@ class Schema(object):
         })
 
         self.load_schema()
-#        group_id = self.insert_resource('group', {'name': 'admin'}, '/groups')
-
-#        for grant_type in ['read', 'create', 'update', 'delete']:
-#            self.insert_resource('grant', {'type': grant_type, 'url': '/groups'}, 'grants', 'group', group_id)
-#            self.insert_resource('grant', {'type': grant_type, 'url': '/users'}, 'grants', 'group', group_id)
-#            self.insert_resource('grant', {'type': grant_type, 'url': '/'}, 'grants', 'group', group_id)
 
     def read_root_grants(self, path):
         return [g['_id'] for g in self.db['resource_grant'].find({'url': '/%s' % path, 'type': 'read'}, {'_id': True})]

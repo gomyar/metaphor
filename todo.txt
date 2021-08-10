@@ -1,6 +1,6 @@
 
- - bug: delete does not update calcs correctly - attempt delete of grant after it's been created - cached grant still exists in user
- - bug: delete must cascade
+ - bug: delete does not update calcs correctly - attempt delete of grant after it's been created - cached grant still exists in user - done
+ - bug: delete must cascade - done
    - this should fix problem deleting parent resources which contain child resources which are used in a calc (group/grant)
 
  - q: do links in colections need their own url (for deleting from collection)?
@@ -11,7 +11,7 @@
  - restrict allowed field names - done
  - proper http error codes (400 404 etc) - done
  - delete spec field, update all resources
-   - throw error if field used in calc
+  - throw error if field used in calc
  - rename field - maybe - would also have to update any calcs using the field
 
  - update entry in resource (updateid, timestamp etc)
@@ -20,7 +20,7 @@
  - adding invalid calc field raises exception - done
  - adding calc field with cyclic dependency raises error
 
- - cascading delete
+ - cascading delete - done
 
 
 Updates:
@@ -44,7 +44,7 @@ Extra fields:
 
 Permissioning:
  - Users
-   - get a /me endpoint
+   - get a /ego endpoint - done
    - contain group memberships
  - Groups
    - Resource collection fields also contain a list of groups which can read
@@ -61,8 +61,12 @@ Permissioning:
  A user may read / expand a link if they have read access on the source and target
 
 
+Add "plot access" graph:
+  - visualize the resources a user / group has access to in terms of the schema
+
+
 /api/auth/(session|oauth2|...)
-/api/me
+/api/ego
 /api/users
 /api/groups
 
@@ -76,7 +80,7 @@ Pagination
 Expand by get param:
  - aggregate calls on all GET requests, which optional expand - done
  - expand through links honours the permissions (groups) of the linked resource
- - add nested expand (maybe)
+ - add nested expand (yes, definitely)
 
 Nested fields
  - handy for smaller, reused resources (Point, currency, x, y etc)
@@ -87,6 +91,16 @@ Nested fields
 Move resource:
  - patch against _parent_id and _parent_field
  - works for links and collections
+
+
+Pull link collections out to link table (maybe)
+
+
+Nested Resources (based on existing resource spec)
+
+Nested Collections (ordered, based on existing resource spec)
+
+OR Possibly specify complex field types BUT not as easy to move to own collection afterwards
 
 
 Small todos:

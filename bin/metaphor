@@ -67,7 +67,7 @@ def run_create_user(mongohost, mongodb):
             updater = Updater(schema)
 
             pw_hash = generate_password_hash(password)
-            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'pw_hash': pw_hash, 'admin': False})
+            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'pw_hash': pw_hash, 'admin': False}, schema.read_root_grants('users'))
 
             print("User %s created" % username)
 

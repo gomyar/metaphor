@@ -37,7 +37,6 @@ class UpdaterTest(unittest.TestCase):
         user_db = self.db['resource_user'].find_one()
         self.assertEqual(1, len(user_db['read_grants']))
 
-        #self.updater.delete_linkcollection_entry('group', self.schema.decodeid(self.admin_group_id), 'grants', self.grant_id)
         self.updater.delete_linkcollection_entry('user', self.schema.decodeid(self.user_id), 'groups', self.admin_group_id)
 
         user_db = self.db['resource_user'].find_one()
