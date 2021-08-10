@@ -1,4 +1,6 @@
 
+from metaphor.lrparse.reverse_aggregator import ReverseAggregator
+
 import logging
 
 log = logging.getLogger('metaphor')
@@ -23,8 +25,10 @@ class Updater(object):
 
     def build_reverse_aggregations_to_calc(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
         calc_tree = self.schema.calc_trees[calc_spec_name, calc_field_name]
-        aggregations = calc_tree.build_reverse_aggregations(resource_spec, resource_id)
+        aggregations = ReverseAggregator(self.schema).get_for_resource(calc_tree, resource_spec.name, self.schema.decodeid(resource_id))
         return aggregations
+#        aggregations = calc_tree.build_reverse_aggregations(resource_spec, resource_id)
+#        return aggregations
 
     def update_calc(self, resource_name, calc_field_name, resource_id):
         log.debug("Updating calc: %s %s %s", resource_name, calc_field_name, resource_id)
@@ -182,7 +186,7 @@ class Updater(object):
             # update for resources
             if "%s.%s" % (parent_spec_name, parent_field) in calc_tree.get_resource_dependencies():
 
-                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, self.schema.specs[parent_spec_name], self.schema.encodeid(parent_id))
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, link_id)
 
                 if affected_ids:
                     cursors.append((affected_ids, calc_spec_name, calc_field_name))

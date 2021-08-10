@@ -52,12 +52,32 @@ def run_create_superuser(mongohost, mongodb):
             print("User %s created" % username)
 
 
+def run_create_user(mongohost, mongodb):
+    client = MongoClient(host=[mongohost])
+    db = client[mongodb]
+    username = input("Input username: ")
+    password = getpass.getpass("Input password: ")
+    if username and password:
+        if db.resource_user.find_one({'username': username}):
+            print("User %s already exists" % username)
+        else:
+            schema = Schema(db)
+            schema.load_schema()
+
+            updater = Updater(schema)
+
+            pw_hash = generate_password_hash(password)
+            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'pw_hash': pw_hash, 'admin': False})
+
+            print("User %s created" % username)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Metaphor init scripts')
 
     parser.add_argument(
         'command', type=str,
-        help='Command to run: init_schema|create_superuser')
+        help='Command to run: init_schema|create_superuser|create_user')
     parser.add_argument(
         '--mongohost', type=str,
         help='Mongo connection: mongodb://[username:password@]host[:port]')
@@ -70,6 +90,7 @@ if __name__ == '__main__':
     commands = {
         'init_schema': run_init_schema,
         'create_superuser': run_create_superuser,
+        'create_user': run_create_user,
     }
 
     commands[args.command](

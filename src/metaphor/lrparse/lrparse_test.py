@@ -880,3 +880,25 @@ class LRParseTest(unittest.TestCase):
             self.fail("should have thrown")
         except SyntaxError as se:
             self.assertEqual("Resource employee has no field nope", str(se))
+
+    def test_calc_result(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
+
+        tree = parse("max(employees[age>=40].age) + 15", employee_spec)
+
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        calculated = tree.calculate(employee_id)
+        self.assertEqual(55, calculated)
+
+    def test_basic_calc_result(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
+
+        tree = parse("10 + (15 / 3)", employee_spec)
+
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 40}, 'employees')
+
+        calculated = tree.calculate(employee_id)
+        self.assertEqual(15, calculated)

@@ -169,6 +169,7 @@ class ServerTest(TestCase):
         self.api.delete('/users/%s/groups/%s' % (self.user_id, self.group_id))
 
         # assert grants are removed
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
         self.assertEqual([], user['create_grants'])
 
     def test_delete_group_updates_user_grants(self):
