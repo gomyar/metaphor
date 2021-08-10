@@ -4,7 +4,7 @@ from unittest import TestCase
 from server import create_app
 from pymongo import MongoClient
 from metaphor.schema import Schema
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 class ServerTest(TestCase):
@@ -22,8 +22,7 @@ class ServerTest(TestCase):
 
         self.client = self.app.test_client()
 
-        pw_hash = generate_password_hash('password')
-        self.user_id = self.api.post('/users', {'username': 'bob', 'password': pw_hash})
+        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
@@ -211,9 +210,9 @@ class ServerTest(TestCase):
     def test_create_password(self):
         user_id = self.api.post('/users', {'username': 'fred', 'password': 'secret'})
         user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(user_id)})
-        self.assertEqual(generate_password_hash('secret'), user['password'])
+        self.assertTrue(check_password_hash(user['password'], 'secret'))
 
     def test_patch_password(self):
         self.api.patch('/users/%s' % self.user_id, {'password': 'secret'})
         user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
-        self.assertEqual(generate_password_hash('secret'), user['password'])
+        self.assertTrue(check_password_hash(user['password'], 'secret'))

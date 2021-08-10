@@ -675,15 +675,27 @@ class LRParseTest(unittest.TestCase):
         tree = parse('self.parttimers.age', self.schema.specs['division'])
 
         # testing reverse aggregation when a resource in the "middle" of the calc is added/removed/updated
+        # Note: the first aggregation is the "tracker" aggregation
         self.assertEqual([
-            {'$lookup': {'as': '_field_parttimers',
-             'foreignField': 'parttimers._id',
-             'from': 'resource_division',
-             'localField': '_id'}},
-            {'$group': {'_id': '$_field_parttimers'}},
-            {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}], tree.reverse_aggregation(
-            self.schema.specs['division'], self.schema.specs['employee'], employee_id_2))
+            [
+                {'$lookup': {'as': '_field_parttimers',
+                'foreignField': 'parttimers._id',
+                'from': 'resource_division',
+                'localField': '_id'}},
+                {'$group': {'_id': '$_field_parttimers'}},
+                {'$unwind': '$_id'},
+                {'$replaceRoot': {'newRoot': '$_id'}}],
+            [
+                {'$match': {'_id': self.schema.decodeid(employee_id_2)}},
+                {'$lookup': {'as': '_field_parttimers',
+                                'foreignField': 'parttimers._id',
+                                'from': 'resource_division',
+                                'localField': '_id'}},
+                {'$group': {'_id': '$_field_parttimers'}},
+                {'$unwind': '$_id'},
+                {'$replaceRoot': {'newRoot': '$_id'}}
+            ],
+        ], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2))
 
     def test_dependencies(self):
         employee_spec = self.schema.specs['employee']

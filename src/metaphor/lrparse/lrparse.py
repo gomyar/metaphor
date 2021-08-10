@@ -60,13 +60,6 @@ class ResourceRef(object):
     def build_reverse_aggregations(self, resource_spec, resource_id):
         return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
 
-    def create_reverse(self):
-        return []
-
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id)
-        return aggregation
-
     def __repr__(self):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
 

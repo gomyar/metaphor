@@ -1,4 +1,7 @@
 
+ - unique fields (user username)
+
+
  - bug: delete does not update calcs correctly - attempt delete of grant after it's been created - cached grant still exists in user - done
  - bug: delete must cascade - done
    - this should fix problem deleting parent resources which contain child resources which are used in a calc (group/grant)
