@@ -26,7 +26,7 @@ class UpdaterTest(unittest.TestCase):
 
         self.grant_id = self.updater.create_resource('grant', 'group', 'grants', self.admin_group_id, {'type': 'read', 'url': '/companies'})
 
-        self.user_id = self.updater.create_resource('user', 'root', 'users', None, {'username': 'bob', 'pw_hash': 'hash', 'admin': True}, self.schema.read_root_grants('users'))
+        self.user_id = self.updater.create_resource('user', 'root', 'users', None, {'username': 'bob', 'password': 'hash', 'admin': True}, self.schema.read_root_grants('users'))
 
         self.updater.create_linkcollection_entry('user', self.user_id, 'groups', self.admin_group_id)
 

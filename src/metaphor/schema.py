@@ -316,7 +316,7 @@ class Schema(object):
                         user_data['delete_grants'],
                         user_data.get('admin'))
             if load_hash:
-                user.pw_hash = user_data['pw_hash']
+                user.password = user_data['password']
             return user
         else:
             return None
@@ -329,7 +329,7 @@ class Schema(object):
                         "username" : {
                             "type" : "str"
                         },
-                        "pw_hash" : {
+                        "password" : {
                             "type" : "str"
                         },
                         "groups": {

@@ -23,7 +23,7 @@ class ServerTest(TestCase):
         self.client = self.app.test_client()
 
         pw_hash = generate_password_hash('password')
-        self.user_id = self.api.post('/users', {'username': 'bob', 'pw_hash': pw_hash})
+        self.user_id = self.api.post('/users', {'username': 'bob', 'password': pw_hash})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
@@ -193,3 +193,27 @@ class ServerTest(TestCase):
 
     def test_delete_group_deletes_child_grants(self):
         pass
+
+    def test_serialize_password(self):
+        user = self.api.get('/users/%s' % self.user_id)
+        self.assertEqual({
+            'admin': None,
+            'create_grants': [],
+            'delete_grants': [],
+            'groups': '/users/%s/groups' % self.user_id,
+            'id': self.user_id,
+            'password': '<password>',
+            'read_grants': ['/employees'],
+            'self': '/users/%s' % self.user_id,
+            'update_grants': [],
+            'username': 'bob'}, user)
+
+    def test_create_password(self):
+        user_id = self.api.post('/users', {'username': 'fred', 'password': 'secret'})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(user_id)})
+        self.assertEqual(generate_password_hash('secret'), user['password'])
+
+    def test_patch_password(self):
+        self.api.patch('/users/%s' % self.user_id, {'password': 'secret'})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
+        self.assertEqual(generate_password_hash('secret'), user['password'])

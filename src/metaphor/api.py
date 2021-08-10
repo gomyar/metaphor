@@ -13,6 +13,8 @@ from metaphor.schema import CalcField
 from metaphor.updater import Updater
 from bson.errors import InvalidId
 
+from werkzeug.security import generate_password_hash
+
 
 class Api(object):
     def __init__(self, schema):
@@ -31,6 +33,9 @@ class Api(object):
         cursor = tree.root_collection().aggregate(aggregate_query)
 
         resource = next(cursor)
+
+        if spec.name == 'user':
+            data['password'] = generate_password_hash(data['password'])
 
         return self.updater.update_fields(
             spec.name,
@@ -75,6 +80,9 @@ class Api(object):
 
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
+
+            if root_field_spec.target_spec_name == 'user':
+                data['password'] = generate_password_hash(data['password'])
 
             # add to root spec no need to check existance
             return self.updater.create_resource(
@@ -271,6 +279,8 @@ class Api(object):
                     encoded[field_name] = os.path.join(self_url, field_name)
                 else:
                     encoded[field_name] = resource_data['_canonical_url_%s' % field.field_name] if calc_result else None
+            elif spec.name == 'user' and field_name == 'password':
+                encoded[field_name] = '<password>'
             else:
                 encoded[field_name] = field_value
         return encoded

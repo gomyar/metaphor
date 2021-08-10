@@ -47,7 +47,7 @@ def login():
     api = current_app.config['api']
     if request.method == 'POST':
         user = api.schema.load_user(request.form['username'], True)
-        if user and check_password_hash(user.pw_hash, \
+        if user and check_password_hash(user.password, \
                                         request.form['password']):
             login_user(user)
 

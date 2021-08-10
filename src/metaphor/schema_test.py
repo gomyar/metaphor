@@ -377,7 +377,7 @@ class SchemaTest(unittest.TestCase):
                                                 'type': 'calc'},
                                 'groups': {'target_spec_name': 'group',
                                             'type': 'linkcollection'},
-                                'pw_hash': {'type': 'str'},
+                                'password': {'type': 'str'},
                                 'read_grants': {'calc_str': "self.groups.grants[type='read'].url",
                                                 'type': 'calc'},
                                 'update_grants': {'calc_str': "self.groups.grants[type='update'].url",
