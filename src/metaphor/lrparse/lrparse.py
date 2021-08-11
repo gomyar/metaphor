@@ -58,7 +58,21 @@ class ResourceRef(object):
         return aggregation, child_spec, is_aggregate
 
     def build_reverse_aggregations(self, resource_spec, resource_id):
-        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+        # create own agg
+        agg = self.create_reverse()
+
+        # get all subsequent aggs
+        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+
+        # prepend own agg to initial (ignored) agg chain
+        aggregations[0] = agg + aggregations[0]
+
+        # if own spec same as changed resource spec
+        if self.spec == resource_spec:
+            # duplicate initial agg chain, add match, and return
+            aggregations.insert(0, list(aggregations[0]))
+            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
+        return aggregations
 
     def __repr__(self):
         return "R[%s %s]" % (self.resource_ref, self.field_name)
@@ -79,6 +93,9 @@ class FieldRef(ResourceRef, Calc):
 
     def get_resource_dependencies(self):
         return self.resource_ref.get_resource_dependencies() | {'%s.%s' % (self.spec.spec.name, self.field_name)}
+
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
 
 
 class RootResourceRef(ResourceRef):
@@ -142,9 +159,6 @@ class RootResourceRef(ResourceRef):
             ])
             return aggregation, self.spec, True
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id, field=None):
-        return []
-
     def is_collection(self):
         if self.resource_name == 'self':
             return False
@@ -181,6 +195,9 @@ class IDResourceRef(ResourceRef):
     def __repr__(self):
         return "I[%s.%s]" % (self.resource_ref, self.resource_id,)
 
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+
 
 class CollectionResourceRef(ResourceRef):
     def __init__(self, resource_ref, field_name, parser, spec, parent_spec):
@@ -209,49 +226,11 @@ class CollectionResourceRef(ResourceRef):
         )
         return aggregation, child_spec, True
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                "from": "resource_%s" % (self.parent_spec.name,),
-                "localField": "_parent_id",
-                "foreignField": "_id",
-                "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def is_collection(self):
         return True
 
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
 
     def create_reverse(self):
         return [
@@ -290,27 +269,6 @@ class LinkCollectionResourceRef(ResourceRef):
         )
         return aggregation, child_spec, True
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": "%s._id" % self.field_name,
-                    "localField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def create_reverse(self):
         return [
             {"$lookup": {
@@ -329,23 +287,6 @@ class LinkCollectionResourceRef(ResourceRef):
 
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
 
 
 class LinkResourceRef(ResourceRef):
@@ -372,27 +313,6 @@ class LinkResourceRef(ResourceRef):
         )
         return aggregation, child_spec, is_aggregate
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "localField": "_id",
-                    "foreignField": self.field_name,
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def create_reverse(self):
         return [
             {"$lookup": {
@@ -408,23 +328,6 @@ class LinkResourceRef(ResourceRef):
 
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
 
 
 class CalcResourceRef(ResourceRef):
@@ -457,27 +360,6 @@ class CalcResourceRef(ResourceRef):
             is_aggregate = is_aggregate or calc_tree.is_collection()
         return aggregation, calc_spec, is_aggregate
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": self.field_name,
-                    "localField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
 
@@ -493,25 +375,6 @@ class CalcResourceRef(ResourceRef):
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
-
-
 
 
 class ReverseLinkResourceRef(ResourceRef):
@@ -536,27 +399,6 @@ class ReverseLinkResourceRef(ResourceRef):
         )
         return aggregation, child_spec, True
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "localField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
-                    "foreignField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def is_collection(self):
         return True
 
@@ -576,23 +418,6 @@ class ReverseLinkResourceRef(ResourceRef):
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
 
 
 class ParentCollectionResourceRef(ResourceRef):
@@ -617,27 +442,6 @@ class ParentCollectionResourceRef(ResourceRef):
         )
         return aggregation, child_spec, False
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": "_parent_id",
-                    "localField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def is_collection(self):
         return False
 
@@ -653,23 +457,6 @@ class ParentCollectionResourceRef(ResourceRef):
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
 
 
 class ReverseLinkCollectionResourceRef(ResourceRef):
@@ -696,27 +483,6 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
         )
         return aggregation, child_spec, True
 
-    def reverse_aggregation(self, parent_spec, resource_spec, resource_id):
-        aggregation = []
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": "_id",
-                    "localField": "%s._id" % (self.resource_ref.spec.fields[self.field_name].reverse_link_field,),
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.extend(self.resource_ref.reverse_aggregation(parent_spec, resource_spec, resource_id))
-        return aggregation
-
     def is_collection(self):
         return True
 
@@ -736,23 +502,6 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
-
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        # create own agg
-        agg = self.create_reverse()
-
-        # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
-
-        # prepend own agg to initial (ignored) agg chain
-        aggregations[0] = agg + aggregations[0]
-
-        # if own spec same as changed resource spec
-        if self.spec == resource_spec:
-            # duplicate initial agg chain, add match, and return
-            aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
-        return aggregations
 
 
 class FilteredResourceRef(ResourceRef):
@@ -789,6 +538,9 @@ class FilteredResourceRef(ResourceRef):
             deps.add("%s.%s" % (self.spec.name, field_name))
         return deps
 
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+
     def __repr__(self):
         return "F[%s %s]" % (self.resource_ref, self.filter_ref)
 
@@ -817,9 +569,6 @@ class ConstRef(Calc):
 
     def __repr__(self):
         return "C[%s]" % (self.value,)
-
-    def create_reverse(self):
-        return []
 
 
 class Operator(Calc):
@@ -875,9 +624,6 @@ class Operator(Calc):
 
     def __repr__(self):
         return "O[%s%s%s]" % (self.lhs, self.op, self.rhs)
-
-    def create_reverse(self):
-        return []  # ?  [[]]
 
 
 class Condition(object):
