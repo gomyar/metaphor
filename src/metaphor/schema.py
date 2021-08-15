@@ -15,10 +15,10 @@ class Field(object):
         self.target_spec_name = target_spec_name
         self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
-            'str': [str],
-            'int': [float, int],
-            'float': [float, int],
-            'bool': [bool],
+            'str': ['str'],
+            'int': ['float', 'int'],
+            'float': ['float', 'int'],
+            'bool': ['bool'],
         }
         self.spec = None
 
@@ -31,8 +31,8 @@ class Field(object):
     def is_field(self):
         return True
 
-    def check_comparable_type(self, value):
-        return type(value) in self._comparable_types.get(self.field_type, [])
+    def check_comparable_type(self, ctype):
+        return ctype in self._comparable_types.get(self.field_type, [])
 
     def __repr__(self):
         return "<Field %s %s %s>" % (self.name, self.field_type, self.target_spec_name or '')
@@ -75,6 +75,10 @@ class Spec(object):
         self.name = name
         self.schema = schema
         self.fields = {}
+
+    @property
+    def field_type(self):
+        return self.name
 
     def __repr__(self):
         return "<Spec %s>" % (self.name,)

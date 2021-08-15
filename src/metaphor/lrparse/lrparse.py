@@ -80,6 +80,9 @@ class ResourceRef(object):
     def resource_ref_snippet(self):
         return self.resource_ref.resource_ref_snippet() + '.' + self.field_name
 
+    def validate(self):
+        pass
+
 
 class FieldRef(ResourceRef, Calc):
     def aggregation(self, self_id, user=None):
@@ -513,7 +516,7 @@ class FilteredResourceRef(ResourceRef):
 
     def validate(self):
         self.resource_ref.validate()
-        self.filter_ref.validate(self.resource_ref)
+        self.filter_ref.validate_ref(self.spec)
 
     def infer_type(self):
         return self.resource_ref.infer_type()
@@ -546,7 +549,7 @@ class FilteredResourceRef(ResourceRef):
 
 
 class ConstRef(Calc):
-    ALLOWED_TYPES = (int, float, str)
+    ALLOWED_TYPES = {int: 'int', float: 'float', str: 'str', bool: 'bool'}
 
     def __init__(self, tokens, parser):
         self._parser = parser
@@ -555,11 +558,23 @@ class ConstRef(Calc):
             self.value = const.strip('"')
         elif const[0] == "'" and const[-1] == "'":
             self.value = const.strip("'")
+        elif const == 'true':
+            self.value = True
+        elif const == 'false':
+            self.value = False
         else:
             try:
                 self.value = int(const)
             except ValueError as v:
                 self.value = float(const)
+        self.const_type = ConstRef.ALLOWED_TYPES[type(self.value)]
+
+    def infer_type(self):
+        return Field('const', ConstRef.ALLOWED_TYPES[type(self.value)])
+
+    def validate(self):
+        if type(self.value) not in ConstRef.ALLOWED_TYPES:
+            raise SyntaxError("Unrecognised type for const: %s" % (type(self.value)))
 
     def calculate(self, self_id):
         return self.value
@@ -570,6 +585,8 @@ class ConstRef(Calc):
     def __repr__(self):
         return "C[%s]" % (self.value,)
 
+    def get_resource_dependencies(self):
+        return set()
 
 class Operator(Calc):
     def __init__(self, tokens, parser):
@@ -583,6 +600,10 @@ class Operator(Calc):
             return Field('function', 'bool')
         else:
             return self.lhs.infer_type()
+
+    def validate_ref(self, spec):
+        if not self.lhs.infer_type().check_comparable_type(self.rhs.infer_type().field_type):
+            raise SyntaxError("Illegal types for operator %s %s %s" % (self.lhs.infer_type().field_type, self.op, self.rhs.infer_type().field_type))
 
     def calculate(self, self_id):
         lhs = self.lhs.calculate(self_id)
@@ -620,7 +641,7 @@ class Operator(Calc):
         return [[]] + lhs_aggs + rhs_aggs # add dummy tracker ( as calcs are top level )
 
     def get_resource_dependencies(self):
-        return self.lhs.get_resource_dependencies() | self.lhs.get_resource_dependencies()
+        return self.lhs.get_resource_dependencies() | self.rhs.get_resource_dependencies()
 
     def __repr__(self):
         return "O[%s%s%s]" % (self.lhs, self.op, self.rhs)
@@ -635,12 +656,11 @@ class Condition(object):
         '<=': '$lte',
     }
 
-    def validate(self, resource_ref):
-        lhs = resource_ref.infer_type()
-        if self.field_name not in lhs.fields:
-            raise SyntaxError("Resource %s has no field %s" % (lhs.name, self.field_name))
-        field = lhs.fields[self.field_name]
-        if not field.check_comparable_type(self.const.value):
+    def validate_ref(self, spec):
+        if self.field_name not in spec.fields:
+            raise SyntaxError("Resource %s has no field %s" % (spec.name, self.field_name))
+        field = spec.fields[self.field_name]
+        if not field.check_comparable_type(self.const.const_type):
             raise SyntaxError("Cannot compare \"%s %s %s\"" % (field.field_type, self.operator, type(self.const.value).__name__))
 
     def __init__(self, tokens, parser):
@@ -649,7 +669,7 @@ class Condition(object):
 
     def condition_aggregation(self, spec):
         field_spec = spec.build_child_spec(self.field_name)
-        if not field_spec.check_comparable_type(self.const.value):
+        if not field_spec.check_comparable_type(self.const.const_type):
             raise Exception("Incorrect type for condition: %s %s %s" %(
                 self.field_name, self.operator, self.const.value))
         aggregation = {
@@ -722,8 +742,8 @@ class Filter(object):
         self.condition = tokens[1]
         self._parser = parser
 
-    def validate(self, resource_ref):
-        self.condition.validate(resource_ref)
+    def validate_ref(self, spec):
+        self.condition.validate_ref(spec)
 
     def __repr__(self):
         return "[%s]" % (self.condition,)
@@ -745,10 +765,12 @@ class ResourceRefTernary(ResourceRef):
         self.spec = spec
         self._parser = parser
 
-    def validate(self, resource_ref):
-        self.condition.validate(self.spec)
-        self.then_clause.validate(resource_ref)
-        self.else_clause.validate(resource_ref)
+    def validate(self):
+        self.condition.validate_ref(self.spec)
+        self.then_clause.validate()
+        self.else_clause.validate()
+        if not self.then_clause.infer_type().check_comparable_type(self.else_clause.infer_type().field_type):
+            raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (self.then_clause.infer_type().field_type, self.else_clause.infer_type().field_type))
 
     def __repr__(self):
         return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
@@ -787,6 +809,13 @@ class CalcTernary(Calc):
         deps = deps.union(self.then_clause.get_resource_dependencies())
         return deps
 
+    def validate(self):
+        self.condition.validate_ref(self.spec)
+        self.then_clause.validate()
+        self.else_clause.validate()
+        if not self.then_clause.infer_type().check_comparable_type(self.else_clause.infer_type().field_type):
+            raise SyntaxError("Both sides of ternary must return same type")
+
     def infer_type(self):
         return self.then_clause.infer_type()
 
@@ -795,6 +824,15 @@ class CalcTernary(Calc):
             return self.then_clause.calculate(self_id)
         else:
             return self.else_clause.calculate(self_id)
+
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        cond_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id)
+        then_aggs = self.then_clause.build_reverse_aggregations(resource_spec, resource_id)
+        else_aggs = self.else_clause.build_reverse_aggregations(resource_spec, resource_id)
+        cond_aggs = cond_aggs[1:] # remove trackers
+        then_aggs = then_aggs[1:] # remove trackers
+        else_aggs = else_aggs[1:] # remove trackers
+        return [[]] + cond_aggs + then_aggs + else_aggs # add dummy tracker ( as calcs are top level )
 
     def __repr__(self):
         return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
@@ -1105,7 +1143,6 @@ class Parser(object):
         self.shifted.append((type(reduction), reduction))
 
 
-
 class UrlParser(Parser):
     def __init__(self, tokens, spec):
         self.tokens = tokens
@@ -1115,6 +1152,7 @@ class UrlParser(Parser):
             [(NAME, '=', ConstRef) , Condition],
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
+            [(NAME, '~', ConstRef) , LikeCondition],
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],

@@ -224,14 +224,14 @@ class LRParseTest(unittest.TestCase):
             tree = parse("employees[age>'str']", self.schema.specs['employee'])
             tree.validate()
             self.fail("should have thrown")
-        except Exception as e:
+        except SyntaxError as e:
             self.assertEquals('Cannot compare "int > str"', str(e))
 
     def test_validate_collection(self):
         try:
             tree = parse("employees.nonexistant", self.schema.specs['employee'])
             self.fail("should have thrown")
-        except Exception as e:
+        except SyntaxError as e:
             self.assertEquals('No such field nonexistant in employee', str(e))
 
     def test_validate_filtered_collection(self):
@@ -240,6 +240,22 @@ class LRParseTest(unittest.TestCase):
             self.fail("should have thrown")
         except Exception as e:
             self.assertEquals('No such field nonexistant in employee', str(e))
+
+    def test_validate_ternary(self):
+        try:
+            tree = parse("max(employees.age) < 50 -> 'young' : 14", self.schema.specs['employee'])
+            tree.validate()
+            self.fail("should have thrown")
+        except SyntaxError as e:
+            self.assertEquals('Both sides of ternary must return same type', str(e))
+
+    def test_validate_resource_ternary(self):
+        try:
+            tree = parse("max(employees.age) < 50 -> employees.age : divisions.sections", self.schema.specs['employee'])
+            tree.validate()
+            self.fail("should have thrown")
+        except SyntaxError as e:
+            self.assertEquals('Both sides of ternary must return same type (int != section)', str(e))
 
     def test_nonexistant_root_collection(self):
         try:

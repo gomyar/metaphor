@@ -1,6 +1,7 @@
 
  - unique fields (user username)
 
+ - gonna need brackets in the Conditions at some point ( A | ( B & C ) )
 
  - bug: delete does not update calcs correctly - attempt delete of grant after it's been created - cached grant still exists in user - done
  - bug: delete must cascade - done

@@ -187,3 +187,28 @@ class AggregatorTest(unittest.TestCase):
             '_parent_id': None,
             '_parent_type': 'root',
             'name': 'Sales'}, next(result))
+
+    def test_ternary_aggregate(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'Sales'}, 'divisions')
+
+        section_id_1 = self.schema.insert_resource('section', {'name': 'Sales'}, 'sections', 'division', division_id_1)
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 10}, 'employees', 'division', division_id_1)
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 10}, 'employees', 'division', division_id_1)
+
+        self.schema.create_linkcollection_entry('section', section_id_1, 'members', employee_id_1)
+
+        tree = parse('max(self.employees.age) > 20 -> max(self.employees.age) : min(divisions.sections.members.age)', self.schema.specs['division'])
+
+        aggregations = self.aggregator.get_for_resource(tree, 'employee', self.schema.decodeid(employee_id_1))
+
+        result = self.schema.db['resource_employee'].aggregate(aggregations[0])
+        self.assertEqual({
+            '_canonical_url': '/divisions/%s' % division_id_1,
+            '_grants': [],
+            '_id': self.schema.decodeid(division_id_1),
+            '_parent_canonical_url': '/',
+            '_parent_field_name': 'divisions',
+            '_parent_id': None,
+            '_parent_type': 'root',
+            'name': 'Sales'}, next(result))

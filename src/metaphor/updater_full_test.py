@@ -235,3 +235,10 @@ class UpdaterTest(unittest.TestCase):
                 self.schema.decodeid(employee_id_3),
                 self.schema.decodeid(employee_id_4),
             ]}, employee_data)
+
+    def test_resource_deps_for_field(self):
+        self.schema.add_calc(self.employee_spec, 'all_ages', 'divisions.employees.age + 10')
+
+        # add manager
+        calc_spec = self.schema.calc_trees[('employee', 'all_ages')]
+        self.assertEquals({'division.employees', 'root.divisions', 'employee.age'}, calc_spec.get_resource_dependencies())
