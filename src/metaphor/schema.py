@@ -88,7 +88,7 @@ class Spec(object):
             raise SyntaxError("No such field %s in %s" % (name, self.name))
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection'):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection', 'orderedcollection'):
             return self.schema.specs[self.fields[name].target_spec_name]
         elif self.fields[name].field_type == 'calc':
             from metaphor.lrparse.lrparse import parse
@@ -295,6 +295,11 @@ class Schema(object):
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
+
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
+        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, grants)
+        self.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, resource_id)
+        return resource_id
 
     def validate_spec(self, spec_name, data):
         spec = self.specs[spec_name]

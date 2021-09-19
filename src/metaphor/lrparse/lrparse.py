@@ -117,7 +117,7 @@ class RootResourceRef(ResourceRef):
         return [[]]
 
     def validate(self):
-        if self.resource_name is not "self" and self.resource_name not in self.spec.schema.root.fields:
+        if self.resource_name != "self" and self.resource_name not in self.spec.schema.root.fields:
             raise SyntaxError("No such resource: %s" % self.resource_name)
 
     def root_spec(self, schema):
@@ -1056,6 +1056,8 @@ class Parser(object):
         if root_resource_ref.spec.fields[field_name].field_type == 'collection':
             return CollectionResourceRef(root_resource_ref, field_name, parser, child_spec, root_resource_ref.spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'linkcollection':
+            return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
+        if root_resource_ref.spec.fields[field_name].field_type == 'orderedcollection':
             return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'link':
             return LinkResourceRef(root_resource_ref, field_name, parser, child_spec)

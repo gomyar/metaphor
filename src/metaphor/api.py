@@ -34,7 +34,7 @@ class Api(object):
 
         resource = next(cursor)
 
-        if spec.name == 'user':
+        if spec.name == 'user' and data.get('password'):
             data['password'] = generate_password_hash(data['password'])
 
         return self.updater.update_fields(
@@ -67,6 +67,13 @@ class Api(object):
                     parent_id,
                     field_name,
                     data['id'])
+            elif field_spec.field_type == 'orderedcollection':
+                return self.updater.create_orderedcollection_entry(
+                    field_spec.target_spec_name,
+                    spec.name,
+                    field_name,
+                    parent_id,
+                    data)
             else:
                 return self.updater.create_resource(
                     field_spec.target_spec_name,

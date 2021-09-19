@@ -143,6 +143,24 @@ class Updater(object):
                 self.update_calc(parent_spec_name, field_name, parent_id)
                 self._recalc_for_field_update(spec, parent_spec_name, field_name, parent_id)
 
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
+        resource_id = self.schema.create_orderedcollection_entry(spec_name, parent_spec_name, parent_field, parent_id, data, grants)
+        parent_spec = self.schema.specs[parent_spec_name]
+        spec = parent_spec.build_child_spec(parent_field)
+
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # update for resources
+            if "%s.%s" % (parent_spec_name, parent_field) in calc_tree.get_resource_dependencies():
+                self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
+
+        # recalc local calcs
+        for field_name, field_spec in parent_spec.fields.items():
+            if field_spec.field_type == 'calc':
+                self.update_calc(parent_spec_name, field_name, parent_id)
+                self._recalc_for_field_update(spec, parent_spec_name, field_name, parent_id)
+
+        return resource_id
+
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
         spec = self.schema.specs[spec_name]
 

@@ -55,6 +55,10 @@ class ApiTest(unittest.TestCase):
                         "name": {
                             "type": "str",
                         },
+                        "contractors": {
+                            "type": "orderedcollection",
+                            "target_spec_name": "employee",
+                        }
                     },
                 },
             },
@@ -397,6 +401,7 @@ class ApiTest(unittest.TestCase):
         section_id_1 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'appropriation'})
 
         self.assertEquals([{
+            'contractors': None,
             'name': 'appropriation',
             'id': section_id_1,
             'parent_division_sections': '/divisions/%s' % division_id_1,
@@ -686,3 +691,64 @@ class ApiTest(unittest.TestCase):
             'employees': '/employees',
             'divisions': '/division',
         }, root_dict)
+
+    def test_orderedcollection(self):
+        self.schema.add_calc(self.schema.specs['division'], 'all_contractors', 'self.sections.contractors')
+
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        section_id_1 = self.schema.insert_resource('section', {'name': 'engineering'}, 'sections', 'division', division_id_1)
+
+        # test creation
+        contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1), {'name': 'Angus'})
+        self.assertEqual({
+            '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+            '_grants': [],
+            '_id': self.schema.decodeid(section_id_1),
+            '_parent_canonical_url': '/divisions/%s' % division_id_1,
+            '_parent_field_name': 'sections',
+            '_parent_id': self.schema.decodeid(division_id_1),
+            '_parent_type': 'division',
+            'contractors': [{'_id': self.schema.decodeid(contractor_id)}],
+            'name': 'engineering'}, self.db.resource_section.find_one({'_id': self.schema.decodeid(section_id_1)}))
+        self.assertEqual({
+            '_canonical_url': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),
+            '_grants': [],
+            '_id': self.schema.decodeid(contractor_id),
+            '_parent_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+            '_parent_field_name': 'contractors',
+            '_parent_id': self.schema.decodeid(section_id_1),
+            '_parent_type': 'section',
+            'name': 'Angus'}, self.db.resource_employee.find_one(self.schema.decodeid(contractor_id)))
+
+        # test calc update
+        self.assertEqual([
+            {
+                'id': contractor_id,
+                'name': 'Angus',
+                'age': None,
+                'division': None,
+                'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id),
+                'self': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),
+            },
+        ], self.api.get('/divisions/%s/all_contractors' % (division_id_1, )))
+
+        # test reverse link
+
+        # test link to orderedcollection resource from another linkcollection or link
+        self.schema.add_field(self.schema.specs['division'], 'manager', 'link', 'employee')
+        self.api.patch('/divisions/%s' % division_id_1, {'manager': contractor_id})
+        contractor = self.api.get('/divisions/%s/manager' % division_id_1)
+        self.assertEqual({
+            'id': contractor_id,
+            'name': 'Angus',
+            'age': None,
+            'division': None,
+            'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id),
+            'link_division_manager': '/divisions/%s/sections/%s/contractors/%s/link_division_manager' % (division_id_1, section_id_1, contractor_id),
+            'self': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),
+        }, contractor)
+
+        # test deletion (with all of the above)
+        self.api.delete('/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id))
+        self.assertEqual([], self.api.get('/divisions/%s/all_contractors' % division_id_1))
