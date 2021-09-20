@@ -380,3 +380,29 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual(0, self.db['resource_division'].count())
         self.assertEqual(0, self.db['resource_employee'].count())
 
+    def test_delete_resource_deletes_links_to_resource(self):
+        self.schema.add_field(self.division_spec, 'employees', 'linkcollection', 'employee')
+        self.schema.add_field(self.division_spec, 'manager', 'link', 'employee')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+        employee_id_1 = self.schema.insert_resource(
+            'employee', {'name': 'Fred'}, 'employees')
+
+        self.schema.create_linkcollection_entry('division', division_id_1, 'employees', employee_id_1)
+        self.schema.update_resource_fields('division', division_id_1, {'manager': employee_id_1})
+
+        self.updater.delete_resource('employee', employee_id_1, 'root', 'employees')
+
+        self.assertEqual({
+            '_canonical_url': '/divisions/%s' % division_id_1,
+            '_canonical_url_manager': '/employees/%s' % employee_id_1,
+            '_grants': [],
+            '_id': self.schema.decodeid(division_id_1),
+            '_parent_canonical_url': '/',
+            '_parent_field_name': 'divisions',
+            '_parent_id': None,
+            '_parent_type': 'root',
+            'employees': [],
+            'manager': None,
+            'name': 'sales'}, self.db['resource_division'].find_one())

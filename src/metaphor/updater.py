@@ -200,6 +200,21 @@ class Updater(object):
                 for child_resource in self.schema.db['resource_%s' % field.target_spec_name].find({'_parent_id': self.schema.decodeid(resource_id)}, {'_id': 1}):
                     self.delete_resource(field.target_spec_name, self.schema.encodeid(child_resource['_id']), spec_name, field_name)
 
+        # delete any links to resource
+        for linked_spec_name, spec in self.schema.specs.items():
+            for field_name, field in spec.fields.items():
+                if field.field_type == 'link' and field.target_spec_name == spec_name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({field_name: self.schema.decodeid(resource_id)}):
+                        # call update_resource on resource
+                        self.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
+
+                if field.field_type == 'linkcollection' and field.target_spec_name == spec_name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({'%s._id' % field_name: self.schema.decodeid(resource_id)}):
+                        # call update_resource on resource
+                        self.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, resource_id)
+
         return resource_id
 
     def delete_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
@@ -234,6 +249,58 @@ class Updater(object):
             if field_spec.field_type == 'calc':
                 self.update_calc(parent_spec_name, field_name, link_id)
                 self._recalc_for_field_update(spec, parent_spec_name, field_name, link_id)
+
+        # run update
+        return link_id
+
+    def delete_orderedcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
+        parent_spec = self.schema.specs[parent_spec_name]
+        spec = parent_spec.build_child_spec(parent_field)
+
+        cursors = []
+
+        # find affected resources before deleting
+        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
+            # update for resources
+            if "%s.%s" % (parent_spec_name, parent_field) in calc_tree.get_resource_dependencies():
+
+                affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, link_id)
+
+                if affected_ids:
+                    cursors.append((affected_ids, calc_spec_name, calc_field_name))
+
+        # perform delete
+        self.schema.delete_linkcollection_entry(
+            parent_spec_name, parent_id, parent_field, link_id)
+        self.schema.delete_resource(spec.name, link_id)
+
+        # update affected resources
+        for affected_ids, calc_spec_name, calc_field_name in cursors:
+            for affected_id in affected_ids:
+                affected_id = self.schema.encodeid(affected_id)
+                self.update_calc(calc_spec_name, calc_field_name, affected_id)
+                self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+
+        # recalc local calcs
+        for field_name, field_spec in parent_spec.fields.items():
+            if field_spec.field_type == 'calc':
+                self.update_calc(parent_spec_name, field_name, link_id)
+                self._recalc_for_field_update(spec, parent_spec_name, field_name, link_id)
+
+        # delete any links to resource
+        for linked_spec_name, linked_spec in self.schema.specs.items():
+            for field_name, field in linked_spec.fields.items():
+                if field.field_type == 'link' and field.target_spec_name == spec.name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({field_name: self.schema.decodeid(link_id)}):
+                        # call update_resource on resource
+                        self.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
+
+                if field.field_type == 'linkcollection' and field.target_spec_name == spec.name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({'%s._id' % field_name: self.schema.decodeid(link_id)}):
+                        # call update_resource on resource
+                        self.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, resource_id)
 
         # run update
         return link_id

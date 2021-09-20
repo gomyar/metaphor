@@ -752,3 +752,13 @@ class ApiTest(unittest.TestCase):
         # test deletion (with all of the above)
         self.api.delete('/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id))
         self.assertEqual([], self.api.get('/divisions/%s/all_contractors' % division_id_1))
+        self.assertEqual({
+            'all_contractors': '/divisions/%s/all_contractors' % division_id_1,
+            'id': division_id_1,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+            'manager': None,
+            'name': 'sales',
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
+            'self': '/divisions/%s' % division_id_1,
+            'yearly_sales': 100}, self.api.get('/divisions/%s' % division_id_1))

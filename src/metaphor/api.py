@@ -9,6 +9,7 @@ from metaphor.lrparse.lrparse import parse_filter
 from metaphor.lrparse.lrparse import CollectionResourceRef
 from metaphor.lrparse.lrparse import RootResourceRef
 from metaphor.lrparse.lrparse import LinkCollectionResourceRef
+from metaphor.lrparse.lrparse import OrderedCollectionResourceRef
 from metaphor.schema import CalcField
 from metaphor.updater import Updater
 from bson.errors import InvalidId
@@ -126,6 +127,19 @@ class Api(object):
                 parent_resource = next(cursor)
 
                 return self.updater.delete_linkcollection_entry(
+                    spec.name,
+                    parent_resource['_id'],
+                    field_name,
+                    resource_id)
+            elif type(parent_field_tree) == OrderedCollectionResourceRef:
+                parent_tree = parse_canonical_url(parent_path, self.schema.root)
+                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
+
+                # if we're using a simplified parser we can probably just pull the id off the path
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                return self.updater.delete_orderedcollection_entry(
                     spec.name,
                     parent_resource['_id'],
                     field_name,

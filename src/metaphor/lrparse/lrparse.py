@@ -292,6 +292,10 @@ class LinkCollectionResourceRef(ResourceRef):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
 
 
+class OrderedCollectionResourceRef(LinkCollectionResourceRef):
+    pass
+
+
 class LinkResourceRef(ResourceRef):
     def aggregation(self, self_id, user=None):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
@@ -1058,7 +1062,7 @@ class Parser(object):
         if root_resource_ref.spec.fields[field_name].field_type == 'linkcollection':
             return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'orderedcollection':
-            return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
+            return OrderedCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'link':
             return LinkResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'calc':

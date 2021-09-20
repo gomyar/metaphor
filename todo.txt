@@ -1,4 +1,14 @@
 
+Shortlist:
+ - pagination
+ - collection functions
+ - expand / fields params
+ - schema mutations
+ - schema import / export
+ - updates
+
+
+todo:
  - unique fields (user username)
 
  - gonna need brackets in the Conditions at some point ( A | ( B & C ) )
@@ -85,6 +95,8 @@ Expand by get param:
  - aggregate calls on all GET requests, which optional expand - done
  - expand through links honours the permissions (groups) of the linked resource
  - add nested expand (yes, definitely)
+ - optional: add offset / limit
+
 
 Nested fields
  - handy for smaller, reused resources (Point, currency, x, y etc)
@@ -101,8 +113,10 @@ Pull link collections out to link table (maybe)
 
 
 Nested Resources (based on existing resource spec)
+ - not doing this, would make aggregates unworkable, staying with resources in own mongo collections for now
 
 Nested Collections (ordered, based on existing resource spec)
+ - not doing this either
 
 OR Possibly specify complex field types BUT not as easy to move to own collection afterwards
 
@@ -137,7 +151,7 @@ Small todos:
      - maybe "PATCH" with _order field? for reordering call
 
 
-Update algorithmL
+Update algorithm:
 
  - create updater for each update spawned by a request (single field update or single object creation/deletion)
    - also for calc updates which may affect multiple objects
@@ -149,7 +163,6 @@ Update algorithmL
  - calculate result:
  - attempt save:
    - if "being_updated_by" has changed, back off 
-
 
 
 basic REST:
@@ -204,6 +217,7 @@ permissions:
  - a user has access through a group - groups are assigned permissions to resources and all children
    - linked resources are not included - the canonical parent for a linked resource will need to be permissioned independently
  - permissions do not apply to or affect calcs
+ - open question: should group permissions be applied to the schema? if so how do group changes affect schema versioning?
 
 
 mutating the schema:
@@ -215,3 +229,15 @@ mutating the schema:
 
  - may mark each resource by the hash of the schema used to create / last update it. On load, if the has is different from the current schema, reload the schema
  - might also have to mutate the just-loaded resource on demand
+
+ - mutations:
+   - add field (minor if defaulted or nullable, major if field is required)
+   - add resource (minor)
+   - update calc (minor if return type does not change / major if the return type changes?)
+   - delete field (major)
+   - delete resource(major)
+
+
+export / import schema:
+ - import updates the schema
+   - checks update against existing schema, reports potential changes (and resource/field deletions)
