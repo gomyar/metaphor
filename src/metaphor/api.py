@@ -1,6 +1,9 @@
 
 import os
 from urllib.error import HTTPError
+from urllib.parse import urlencode, urlparse, parse_qs
+
+from flask import request
 
 from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
@@ -163,7 +166,12 @@ class Api(object):
         }
         return root_resource
 
-    def get(self, path, expand=None, user=None):
+    def get(self, path, args=None, user=None):
+        args = args or {}
+        expand = args.get('expand')
+        page = int(args.get('page', 0))
+        page_size = int(args.get('page_size', 100))
+
         path = path.strip().strip('/')
         if not path:
             return self._get_root()
@@ -175,20 +183,68 @@ class Api(object):
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 
-        if expand:
-            aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand))
-
-        # run mongo query from from root_resource collection
-        cursor = tree.root_collection().aggregate(aggregate_query)
-
-        results = [row for row in cursor]
-
         if is_aggregate:
-            return [self.encode_resource(spec, row, expand) for row in results]
-#        elif spec.is_field():
-#            return results[0][self.field_name] if results else None
-        elif results:
-            return self.encode_resource(spec, results[0], expand)
+
+            page_agg = self.create_pagination_aggregations(page, page_size)
+
+            if expand:
+                page_agg['$facet']["results"].extend(self.create_field_expansion_aggregations(spec, expand))
+
+            aggregate_query.append(page_agg)
+
+            # run mongo query from from root_resource collection
+            cursor = tree.root_collection().aggregate(aggregate_query)
+
+            page_results = next(cursor)
+
+            results = list(page_results['results'])
+            count = page_results['count'][0]['total']
+
+            return {
+                "results": [self.encode_resource(spec, row, expand) for row in results],
+                "count": count,
+                "next": self._next_link(path, args, count, page, page_size),
+                "previous": self._previous_link(path, args, count, page, page_size),
+            }
+
+        else:
+            if expand:
+                aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand))
+
+            # run mongo query from from root_resource collection
+            cursor = tree.root_collection().aggregate(aggregate_query)
+            result = next(cursor, None)
+
+            if result:
+                return self.encode_resource(spec, result, expand)
+            else:
+                return None
+
+    def _next_link(self, path, args, count, page, page_size):
+        if count >= (page + 1) * page_size:
+            query = urlparse(request.url)
+
+            new_args = dict(args)
+            new_args['page'] = page + 1
+            new_args['page_size'] = page_size
+            new_q = urlencode(new_args)
+
+            query = query._replace(query=new_q)
+            return query.geturl()
+        else:
+            return None
+
+    def _previous_link(self, path, args, count, page, page_size):
+        if page:
+            query = urlparse(request.url)
+
+            new_args = dict(args)
+            new_args['page'] = page - 1
+            new_args['page_size'] = page_size
+            new_q = urlencode(new_args)
+
+            query = query._replace(query=new_q)
+            return query.geturl()
         else:
             return None
 
@@ -204,6 +260,15 @@ class Api(object):
                            RootResourceRef),
             type(tree) in (LinkCollectionResourceRef,),
         )
+
+
+    def create_pagination_aggregations(self, page, page_size):
+        return {
+            "$facet": {
+                "count": [ {"$count": "total"} ],
+                "results": [ {"$skip": page * page_size}, {"$limit": page_size} ],
+            }
+        }
 
     def create_field_expansion_aggregations(self, spec, expand_str):
         aggregate_query = []

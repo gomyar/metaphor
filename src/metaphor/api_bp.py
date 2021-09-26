@@ -82,7 +82,7 @@ def api(path):
         return jsonify(api.patch(path, request.json, user))
     if request.method == 'GET':
         user.grants = [g['_id'] for g in user.read_grants]
-        result = api.get(path, None, user)
+        result = api.get(path, request.args, user)
         if result is not None:
             return jsonify(result)
         else:

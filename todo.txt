@@ -6,6 +6,7 @@ Shortlist:
  - schema mutations
  - schema import / export
  - updates
+ - groups to schema, users to runtime
 
 
 todo:
