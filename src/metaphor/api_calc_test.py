@@ -132,7 +132,7 @@ class ApiTest(unittest.TestCase):
             'yearly_sales': 100}, division_1)
 
         # test calculated resource collection endpoint
-        older_employees = self.api.get('/divisions/%s/older_employees' % division_id_1)
+        older_employees = self.api.get('/divisions/%s/older_employees' % division_id_1)['results']
         self.assertEquals(1, len(older_employees))
 
     def test_calc_link_1(self):

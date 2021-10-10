@@ -198,7 +198,7 @@ class Api(object):
             page_results = next(cursor)
 
             results = list(page_results['results'])
-            count = page_results['count'][0]['total']
+            count = page_results['count'][0]['total'] if page_results['count'] else 0
 
             return {
                 "results": [self.encode_resource(spec, row, expand) for row in results],

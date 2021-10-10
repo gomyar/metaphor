@@ -154,7 +154,7 @@ class ApiTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_3, {'division': division_id_2})
 
-        linked_employees = self.api.get('divisions/%s/link_employee_division' % division_id_1)
+        linked_employees = self.api.get('divisions/%s/link_employee_division' % division_id_1)['results']
         self.assertEquals([{
             'id': employee_id_1,
             'self': '/employees/%s' % employee_id_1,
@@ -172,7 +172,7 @@ class ApiTest(unittest.TestCase):
         }
         ], linked_employees)
 
-        linked_employees_2 = self.api.get('divisions/%s/link_employee_division' % division_id_2)
+        linked_employees_2 = self.api.get('divisions/%s/link_employee_division' % division_id_2)['results']
         self.assertEquals([{
             'id': employee_id_3,
             'self': '/employees/%s' % employee_id_3,
@@ -192,7 +192,7 @@ class ApiTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id_1, {'division': division_id_1})
         self.schema.update_resource_fields('employee', employee_id_2, {'division': division_id_1})
 
-        employees = self.api.get('/employees')
+        employees = self.api.get('/employees')['results']
         self.assertEquals([{
             'id': employee_id_1,
             'self': '/employees/%s' % employee_id_1,
@@ -301,7 +301,7 @@ class ApiTest(unittest.TestCase):
             'parent_division_sections': '/divisions/%s' % division_id_1,
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             'link_employee_section': '/divisions/%s/sections/%s/link_employee_section' % (division_id_1, section_id_1),
-        }], self.api.get('/divisions/%s/sections' % (division_id_1,)))
+        }], self.api.get('/divisions/%s/sections' % (division_id_1,))['results'])
 
         self.assertEquals([
             {'id': employee_id_1,
@@ -309,7 +309,7 @@ class ApiTest(unittest.TestCase):
              'section': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
              'self': '/employees/%s' % employee_id_1,
             }
-        ], self.api.get('/divisions/%s/sections/%s/link_employee_section' % (division_id_1, section_id_1)))
+        ], self.api.get('/divisions/%s/sections/%s/link_employee_section' % (division_id_1, section_id_1))['results'])
 
     def test_post(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
@@ -320,7 +320,7 @@ class ApiTest(unittest.TestCase):
 
         employee_id_2 = self.api.post('/employees', {'name': 'bob', 'age': 31})
 
-        self.assertEquals(2, len(self.api.get('/employees')))
+        self.assertEquals(2, self.api.get('/employees')['count'])
         new_employees = list(self.db['resource_employee'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
@@ -348,7 +348,7 @@ class ApiTest(unittest.TestCase):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
 
-        self.assertEquals(1, len(self.api.get('/employees')))
+        self.assertEquals(1, len(self.api.get('/employees')['results']))
         new_employees = list(self.db['resource_employee'].find())
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
@@ -406,7 +406,7 @@ class ApiTest(unittest.TestCase):
             'id': section_id_1,
             'parent_division_sections': '/divisions/%s' % division_id_1,
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
-        }], self.api.get('/divisions/%s/sections' % division_id_1))
+        }], self.api.get('/divisions/%s/sections' % division_id_1)['results'])
 
         new_divisions = list(self.db['resource_division'].find())
         self.assertEquals([
@@ -440,14 +440,14 @@ class ApiTest(unittest.TestCase):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
-        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1))
+        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1)['results'])
 
         self.api.post('/divisions/%s/parttimers' % division_id_1, {'id': employee_id_1})
 
-        parttimers = self.api.get('/divisions/%s/parttimers' % division_id_1)
+        parttimers = self.api.get('/divisions/%s/parttimers' % division_id_1)['results']
         self.assertEquals(employee_id_1, parttimers[0]['id'])
 
-        reverse_linked_employees = self.api.get('/employees/%s/link_division_parttimers' % employee_id_1)
+        reverse_linked_employees = self.api.get('/employees/%s/link_division_parttimers' % employee_id_1)['results']
         self.assertEquals(1, len(reverse_linked_employees))
 
     def test_search(self):
@@ -553,7 +553,7 @@ class ApiTest(unittest.TestCase):
              '_parent_type': 'root',
              'age': 35,
              'name': 'fred'}], new_employees)
-        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1))
+        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1)['results'])
 
     def test_delete_linkcollection_entry(self):
         self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
@@ -565,11 +565,12 @@ class ApiTest(unittest.TestCase):
 
         self.api.post('/divisions/%s/parttimers' % division_id_1, {'id': employee_id_2})
 
-        self.assertEquals(1, len(self.api.get('/divisions/%s/all_employees' % division_id_1)))
+        self.assertEquals(1, len(self.api.get('/divisions/%s/all_employees' % division_id_1)['results']))
+        self.assertEquals(1, self.api.get('/divisions/%s/all_employees' % division_id_1)['count'])
 
         self.api.delete('/divisions/%s/parttimers/%s' % (division_id_1, employee_id_2))
 
-        self.assertEquals([], self.api.get('/divisions/%s/all_employees' % division_id_1))
+        self.assertEquals([], self.api.get('/divisions/%s/all_employees' % division_id_1)['results'])
 
     def test_delete_link(self):
         self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
@@ -583,10 +584,10 @@ class ApiTest(unittest.TestCase):
 
         self.api.delete('/divisions/%s/parttimers/%s' % (division_id_1, employee_id_2))
 
-        result = self.api.get('/divisions/%s/parttimers' % (division_id_1,))
+        result = self.api.get('/divisions/%s/parttimers' % (division_id_1,))['results']
         self.assertEquals([], result)
 
-        result = self.api.get('/divisions/%s/all_employees' % (division_id_1,))
+        result = self.api.get('/divisions/%s/all_employees' % (division_id_1,))['results']
         self.assertEquals([], result)
 
     def test_expand(self):
@@ -607,7 +608,7 @@ class ApiTest(unittest.TestCase):
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'name': 'ned',
             'self': '/employees/%s' % employee_id_1}]
-            , self.api.get('/employees', expand='division'))
+            , self.api.get('/employees', args={"expand": 'division'})['results'])
 
         self.assertEqual({
             'id': division_id_1,
@@ -622,7 +623,7 @@ class ApiTest(unittest.TestCase):
             'sections': '/divisions/%s/sections' % division_id_1,
             'self': '/divisions/%s' % division_id_1,
             'yearly_sales': 100}
-            , self.api.get('/divisions/%s' % division_id_1, expand='link_employee_division'))
+            , self.api.get('/divisions/%s' % division_id_1, args={"expand": 'link_employee_division'}))
 
 
     def test_root(self):
@@ -634,14 +635,14 @@ class ApiTest(unittest.TestCase):
             'id': employee_id_1,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'name': 'ned',
-            'self': '/employees/%s' % employee_id_1}], self.api.get('/employees'))
+            'self': '/employees/%s' % employee_id_1}], self.api.get('/employees')['results'])
 
     def test_expand_400(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
 
         try:
-            self.api.get('/employees', expand='nonexistant')
+            self.api.get('/employees', args={"expand": 'nonexistant'})
         except HTTPError as he:
             self.assertEqual(400, he.code)
             self.assertEqual('nonexistant not a field of employee', he.reason)
@@ -651,7 +652,7 @@ class ApiTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
 
         try:
-            self.api.get('/employees', expand='name')
+            self.api.get('/employees', args={"expand": 'name'})
         except HTTPError as he:
             self.assertEqual(400, he.code)
             self.assertEqual('Unable to expand field name of type str', he.reason)
@@ -731,7 +732,7 @@ class ApiTest(unittest.TestCase):
                 'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id),
                 'self': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),
             },
-        ], self.api.get('/divisions/%s/all_contractors' % (division_id_1, )))
+        ], self.api.get('/divisions/%s/all_contractors' % (division_id_1, ))['results'])
 
         # test reverse link
 
@@ -751,7 +752,7 @@ class ApiTest(unittest.TestCase):
 
         # test deletion (with all of the above)
         self.api.delete('/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id))
-        self.assertEqual([], self.api.get('/divisions/%s/all_contractors' % division_id_1))
+        self.assertEqual([], self.api.get('/divisions/%s/all_contractors' % division_id_1)['results'])
         self.assertEqual({
             'all_contractors': '/divisions/%s/all_contractors' % division_id_1,
             'id': division_id_1,
