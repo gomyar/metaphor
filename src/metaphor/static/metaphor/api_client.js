@@ -42,6 +42,18 @@ class ApiClient {
         return this.api_root + this.path;
     }
 
+    get_breadcrumbs() {
+        var crumbs = [];
+        crumbs.push({'name': 'api', 'url': '/'});
+        var baseurl = '';
+        var urls = this.path.split('/');
+        for (var i=1; i<urls.length; i++) {
+            baseurl = baseurl + '/' + urls[i];
+            crumbs.push({'name': urls[i], 'url': baseurl});
+        }
+        return crumbs;
+    }
+
     load() {
         turtlegui.ajax.get(
             this.full_path(),

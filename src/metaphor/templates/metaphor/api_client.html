@@ -13,6 +13,13 @@
 
 <body>
 
+    <div class="anchortop topbar">
+        <span><b>Location:</b></span>
+        <span class="breadcrumbs" gui-list="api.get_breadcrumbs()" gui-item="crumb">
+            <span>/<a gui-attrs="href='/client'+crumb.url" gui-text="crumb.name"></a></span>
+        </span>
+    </div>
+
     <div class="fullscreen resource_view">
         <div class="resource_template" gui-tree="api.root_resource" gui-nodeitem="resource">
             <div>

@@ -6,12 +6,22 @@ body {
     border: 0px;
 }
 
+div.topbar {
+    position : absolute;
+    height : 50px;
+    margin : 10px 20px 0px 20px;
+}
+
+span.breadcrumbs {
+}
+
 div.resource_view {
-    margin : 20px;
+    position : absolute;
+    margin : 40px 20px 20px 20px;
+    overflow-y: scroll;
 }
 
 div.collection {
-    margin-left: 26px;
 }
 
 div.resource {
@@ -86,6 +96,10 @@ div.field div.field_value span.expand_button:hover {
 
 div.field div.field_value a {
     font-weight: normal;
+}
+
+div.field div.field_value div.expanded_collection {
+    padding-left: 26px;
 }
 
 div.field div.field_value div.expanded_link {
