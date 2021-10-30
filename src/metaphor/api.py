@@ -331,6 +331,12 @@ class Api(object):
         encoded = {
             'id': self.schema.encodeid(resource_data['_id']),
             'self': self_url,
+            '_meta': {
+                'spec': {
+                    'name': spec.name,
+                    'is_collection': False,
+                }
+            }
         }
         for field_name, field in spec.fields.items():
             field_value = resource_data.get(field_name)

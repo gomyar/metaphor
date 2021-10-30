@@ -1,0 +1,84 @@
+
+body {
+    font-family : "Courier New", Courier, monospace;
+}
+
+div.collection {
+}
+
+div.resource {
+    border : 1px solid grey;
+    background-color : white;
+}
+
+div.fields {
+    margin-left : 20px;
+}
+
+div.pagination {
+    display: inline-block;
+    color : #bcbcbc;
+    font-size: 12px;
+}
+
+div.pagination span.pages {
+    display: inline-block;
+    width : 60px;
+    text-align : center;
+}
+
+div.pagination span.control {
+    display: inline-block;
+    width : 30px;
+    text-align : center;
+    color : black;
+    border : 1px solid #bcbcbc;
+    cursor : pointer;
+}
+
+div.pagination span.control:hover {
+    border : 1px solid grey;
+}
+
+div.field div.field_name {
+    display: inline-block;
+    width: 100px;
+    vertical-align: top;
+}
+div.field div.field_name:after {
+    content: ':';
+}
+
+div.field {
+    margin : 2px;
+    background-color : #dedede;
+}
+
+div.field div.field_value span.expand_button {
+    width: 20px;
+    text-align : center;
+    display: inline-block;
+    border : 1px solid #bcbcbc;
+    cursor : pointer;
+}
+
+div.field div.field_value span.expand_button:hover {
+    border : 1px solid grey;
+}
+
+div.field div.field_name {
+    width: 160px;
+    display: inline-block;
+    font-weight: bold;
+}
+
+
+div.field div.field_value {
+    display: inline-block;
+    width: auto;
+    min-width : 160px;
+}
+
+div.field div.field_value.simple {
+    white-space: pre;
+}

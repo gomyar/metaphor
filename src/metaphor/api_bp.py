@@ -61,6 +61,7 @@ def api_root():
     if request.method == 'GET':
         root_data = dict((key, '/'+ key) for key in api.schema.root.fields.keys())
         root_data['ego'] = '/ego'
+        root_data['_meta'] = {'spec': {'name': 'root'}}
         return jsonify(root_data)
 
 

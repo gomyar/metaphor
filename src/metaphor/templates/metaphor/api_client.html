@@ -1,0 +1,70 @@
+<html>
+
+<head>
+
+    <link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.11/turtlegui.css"/>
+    <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
+<!--    <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/api_browser.css"/>-->
+    <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/client.css"/>
+
+    <script src="https://rawgit.com/gomyar/turtlegui/v5.11/turtlegui.js" crossorigin="anonymous"></script>
+    <script src="/admin/static/metaphor/api_client.js"></script>
+
+</head>
+
+<body>
+
+    <div class="fullscreen resource_view">
+        <div class="resource_template" gui-tree="api.root_resource" gui-nodeitem="resource">
+            <div>
+                <div class="collection" gui-show="api.is_collection(resource)">
+                    <div class="pagination">
+                        <span class="pages">
+                            <span>1</span> of <span>1</span>
+                        </span>
+                        <span class="control">&#171;</span>&nbsp;
+                        <span class="control">&#8249;</span>&nbsp;
+                        <span class="control">&#8250;</span>&nbsp;
+                        <span class="control">&#187;</span>
+                        <span class="control">&#x21bb;</span>
+                    </div>
+                    <div class="collection_results" gui-list="resource.results" gui-item="item">
+                        <div gui-node="item"></div>
+                    </div>
+                </div>
+                <div class="resource" gui-show="api.is_resource(resource)">
+
+                    <div class="fields" gui-list="resource._meta.spec.fields" gui-key="field_name" gui-item="field">
+                        <div class="field">
+                            <div class="field_name" gui-text="field_name"></div>
+                            <div class="field_value" gui-show="field.type=='collection'" >
+                                <span class="expand_button" gui-show="!api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
+                                <!-- possible expansion to collection -->
+                                <span class="collection_url" gui-show="!api.is_expanded(resource, field_name)">
+                                    <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                </span>
+                                <span class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource[field_name]"></span>
+                            </div>
+                            <div class="field_value" gui-show="field.type=='link'">
+                                <span class="expand_button" gui-show="!api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field)">+</span>
+                                <!-- possible expansion to resource -->
+                                <span class="link_url" gui-show="!api.is_expanded(resource, field_name)" gui-text="resource[field_name]">
+                                    <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                </span>
+                                <span class="expanded_link" gui-node="resource[field_name]"></span>
+                            </div>
+                            <div class="field_value simple" gui-show="api.is_simple(field)" gui-text="resource[field_name]">
+                                <!-- int / str / float -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+</body>
+
+</html>
+
+

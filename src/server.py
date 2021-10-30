@@ -23,6 +23,7 @@ from metaphor.api_bp import admin_bp
 from metaphor.api_bp import search_bp
 from metaphor.login_bp import login_bp
 from metaphor.login_bp import init_login
+from metaphor.client_bp import client_bp
 
 import logging
 
@@ -40,6 +41,7 @@ def create_app(db):
     app.config['admin_api'] = AdminApi(schema)
     app.register_blueprint(api_bp)
     app.register_blueprint(browser_bp)
+    app.register_blueprint(client_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(search_bp)
     app.register_blueprint(login_bp)
