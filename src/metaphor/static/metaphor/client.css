@@ -6,6 +6,10 @@ body {
     border: 0px;
 }
 
+div.resource_view {
+    margin : 20px;
+}
+
 div.collection {
     margin-left: 26px;
 }

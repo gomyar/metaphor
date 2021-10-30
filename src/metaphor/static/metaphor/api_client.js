@@ -12,8 +12,10 @@ class Resource {
         this._expanded = {};
         if (data._meta.spec.name == 'root') {
             this._meta.spec = {'fields': Schema.root};
+            this._meta.spec.name = 'root';
         } else {
             this._meta.spec = Schema.specs[data._meta.spec.name];
+            this._meta.spec.name = data._meta.spec.name;
         }
     }
 }
