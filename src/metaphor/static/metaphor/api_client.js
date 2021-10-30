@@ -9,6 +9,7 @@ var Schema = {
 class Resource {
     constructor(data) {
         Object.assign(this, data);
+        this._expanded = {};
         if (data._meta.spec.name == 'root') {
             this._meta.spec = {'fields': Schema.root};
         } else {
@@ -72,15 +73,12 @@ class ApiClient {
         turtlegui.ajax.get(
             this.api_root + resource[field_name],
             (success) => {
-                var collection = JSON.parse(success);
-                resource[field_name] = new Collection(collection);
+                resource._expanded[field_name] = new Collection(JSON.parse(success));
                 turtlegui.reload(element);
             },
             (error) => {
                 alert("Error loading " + field_name);
             });
-        event.stopPropagation();
-        return false;
     }
 
     expand_link(element, resource, field_name, field) {
@@ -88,20 +86,27 @@ class ApiClient {
         turtlegui.ajax.get(
             this.api_root + resource[field_name],
             (success) => {
-                var linked_resource = new Resource(JSON.parse(success));
-                resource[field_name] = linked_resource;
+                resource._expanded[field_name] = new Resource(JSON.parse(success));
                 turtlegui.reload(element);
             },
             (error) => {
                 console.log('Error loading', error);
                 alert("Error loading " + field_name);
             });
-        event.stopPropagation();
-        return false;
+    }
+
+    collapse_collection(element, resource, field_name, field) {
+        delete resource._expanded[field_name];
+        turtlegui.reload(element);
+    }
+
+    collapse_link(element, resource, field_name, field) {
+        delete resource._expanded[field_name];
+        turtlegui.reload(element);
     }
 
     is_expanded(resource, field_name) {
-        return typeof(resource[field_name]) == 'object';
+        return resource._expanded[field_name] != null;
     }
 }
 

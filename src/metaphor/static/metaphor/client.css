@@ -1,18 +1,22 @@
 
 body {
     font-family : "Courier New", Courier, monospace;
+    margin: 0px;
+    padding: 0px;
+    border: 0px;
 }
 
 div.collection {
+    margin-left: 26px;
 }
 
 div.resource {
-    border : 1px solid grey;
+    border-bottom : 1px solid lightgrey;
     background-color : white;
+    margin-bottom: 20px;
 }
 
 div.fields {
-    margin-left : 20px;
 }
 
 div.pagination {
@@ -40,22 +44,31 @@ div.pagination span.control:hover {
     border : 1px solid grey;
 }
 
+div.field {
+    border-left: 1px solid lightgrey;
+    border-top: 1px solid lightgrey;
+}
+
 div.field div.field_name {
     display: inline-block;
-    width: 100px;
     vertical-align: top;
+    width: 160px;
+    font-weight: normal;
 }
 div.field div.field_name:after {
     content: ':';
 }
 
-div.field {
-    margin : 2px;
-    background-color : #dedede;
+div.field div.field_value {
+    font-weight: bold;
+    display: inline-block;
+    width: auto;
+    min-width : 160px;
 }
 
 div.field div.field_value span.expand_button {
     width: 20px;
+    height : 16px;
     text-align : center;
     display: inline-block;
     border : 1px solid #bcbcbc;
@@ -66,19 +79,21 @@ div.field div.field_value span.expand_button:hover {
     border : 1px solid grey;
 }
 
-div.field div.field_name {
-    width: 160px;
-    display: inline-block;
-    font-weight: bold;
+
+div.field div.field_value a {
+    font-weight: normal;
 }
 
+div.field div.field_value div.expanded_link {
+    padding-left: 26px;
+}
 
-div.field div.field_value {
-    display: inline-block;
-    width: auto;
-    min-width : 160px;
+div.field div.field_value.id {
+    font-weight: normal;
+    font-style: italic;
 }
 
 div.field div.field_value.simple {
     white-space: pre;
 }
+

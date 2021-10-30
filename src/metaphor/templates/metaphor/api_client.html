@@ -34,24 +34,40 @@
                 </div>
                 <div class="resource" gui-show="api.is_resource(resource)">
 
+                    <div class="fields">
+                        <div class="field">
+                            <div class="field_name">ID</div>
+                            <div class="field_value id" gui-text="resource.id"></div>
+                        </div>
+                        <div class="field">
+                            <div class="field_name">self</div>
+                            <div class="field_value">
+                                <div class="link_url">
+                                    <a gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="fields" gui-list="resource._meta.spec.fields" gui-key="field_name" gui-item="field">
                         <div class="field">
                             <div class="field_name" gui-text="field_name"></div>
                             <div class="field_value" gui-show="field.type=='collection'" >
                                 <span class="expand_button" gui-show="!api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
+                                <span class="expand_button" gui-show="api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
                                 <!-- possible expansion to collection -->
-                                <span class="collection_url" gui-show="!api.is_expanded(resource, field_name)">
+                                <span class="collection_url">
                                     <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
-                                <span class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource[field_name]"></span>
+                                <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
                             </div>
                             <div class="field_value" gui-show="field.type=='link'">
                                 <span class="expand_button" gui-show="!api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field)">+</span>
+                                <span class="expand_button" gui-show="api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
                                 <!-- possible expansion to resource -->
-                                <span class="link_url" gui-show="!api.is_expanded(resource, field_name)" gui-text="resource[field_name]">
+                                <span class="link_url">
                                     <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
-                                <span class="expanded_link" gui-node="resource[field_name]"></span>
+                                <div class="expanded_link" gui-node="resource._expanded[field_name]"></div>
                             </div>
                             <div class="field_value simple" gui-show="api.is_simple(field)" gui-text="resource[field_name]">
                                 <!-- int / str / float -->
