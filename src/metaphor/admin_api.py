@@ -1,9 +1,67 @@
 
+import json
+
 from metaphor.updater import Updater
 from urllib.error import HTTPError
 
 from metaphor.lrparse.lrparse import parse
 from toposort import toposort, CircularDependencyError
+
+from .schema import Schema, Spec, Field, CalcField
+
+
+class SchemaSerializer(object):
+    def __init__(self):
+        self.serializers = dict(
+            Schema=self._serialize_schema,
+            Spec=self._serialize_spec,
+            Field=self._serialize_field,
+            CalcField=self._serialize_calcfield,
+        )
+
+    def serialize(self, pyobject):
+        encoded_str = json.dumps(pyobject, default=self._encode, indent=4)
+        return json.loads(encoded_str)
+
+    def _encode(self, obj):
+        obj_name =  type(obj).__name__
+        if obj_name in self.serializers:
+            data = self.serializers[obj_name](obj)
+            return data
+        raise TypeError("Cannot serialize object %s" % obj_name)
+
+    def _serialize_schema(self, schema):
+        return {
+            'specs': schema.specs,
+            'version': 'tbd',
+            'root': schema.root,
+        }
+
+    def _serialize_spec(self, spec):
+        return {
+            'name': spec.name,
+            'fields': spec.fields,
+        }
+
+    def _serialize_field(self, field):
+        return {
+            'name': field.name,
+            'type': field.field_type,
+            'target_spec_name': field.target_spec_name,
+            'is_collection': field.is_collection(),
+        }
+
+    def _serialize_calcfield(self, field):
+        calc_data = {
+            'name': field.field_name,
+            'type': field.field_type,
+            'is_collection': field.is_collection(),
+            'target_spec_name': None,
+        }
+        calc_type = field.infer_type()
+        if not calc_type.is_primitive():
+            calc_data['target_spec_name'] = calc_type.name
+        return calc_data
 
 
 class AdminApi(object):
@@ -12,13 +70,7 @@ class AdminApi(object):
         self.updater = Updater(schema)
 
     def format_schema(self):
-        schema_db = self.schema.db['metaphor_schema'].find_one()
-        schema_json = {
-            'version': 'tbd',
-            'specs': schema_db['specs'] if schema_db else {},
-            'root': schema_db['root'] if schema_db else {},
-        }
-        return schema_json
+        return SchemaSerializer().serialize(self.schema)
 
     def create_spec(self, spec_name):
         self.schema.db['metaphor_schema'].update(

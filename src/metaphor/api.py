@@ -170,7 +170,7 @@ class Api(object):
         args = args or {}
         expand = args.get('expand')
         page = int(args.get('page', 0))
-        page_size = int(args.get('page_size', 100))
+        page_size = int(args.get('page_size', 10))
 
         path = path.strip().strip('/')
         if not path:

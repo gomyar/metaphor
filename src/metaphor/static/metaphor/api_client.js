@@ -11,21 +11,81 @@ class Resource {
         Object.assign(this, data);
         this._expanded = {};
         if (data._meta.spec.name == 'root') {
-            this._meta.spec = {'fields': Schema.root};
-            this._meta.spec.name = 'root';
+            this._meta.spec = Schema.root;
         } else {
             this._meta.spec = Schema.specs[data._meta.spec.name];
-            this._meta.spec.name = data._meta.spec.name;
         }
     }
 }
 
 class Collection {
-    constructor(collection) {
-        for (var i=0; i<collection.results.length; i++) {
-            collection.results[i] = new Resource(collection.results[i]);
+    constructor(collection, collection_url) {
+        this.results = this._parse_results(collection.results);
+        this.count = collection.count;
+        this.previous = collection.previous;
+        this.next = collection.next;
+
+        this._page_size = 10;
+        this._page = 0;
+        this._collection_url = collection_url;
+    }
+
+    _parse_results(results) {
+        var resources = []
+        for (var i=0; i<results.length; i++) {
+            resources[i] = new Resource(results[i]);
         }
-        Object.assign(this, collection);
+        return resources;
+    }
+
+    _total_pages() {
+        return Math.ceil(this.count / this._page_size);
+    }
+
+    _next() {
+        if (this._page + 1 < this._total_pages()) {
+            this._page += 1;
+            this._fetch();
+        }
+    }
+
+    _previous() {
+        if (this._page > 0) {
+            this._page -= 1;
+            this._fetch();
+        }
+    }
+
+    _last() {
+        if (this._page + 1 < this._total_pages()) {
+            this._page = this._total_pages() - 1;
+            this._fetch();
+        }
+    }
+
+    _first() {
+        if (this._page > 0) {
+            this._page = 0;
+            this._fetch();
+        }
+    }
+
+    _fetch() {
+        turtlegui.ajax.get(
+            this._collection_url + "?page=" + this._page + "&page_size=" + this._page_size,
+            (success) => {
+                var collection = JSON.parse(success);
+
+                this.results = this._parse_results(collection.results);
+                this.count = collection.count;
+                this.previous = collection.previous;
+                this.next = collection.next;
+
+                turtlegui.reload();
+            },
+            (error) => {
+                alert("Error getting api " + this._collection_url + ": " + error.status); 
+            });
     }
 }
 
@@ -62,7 +122,7 @@ class ApiClient {
                 if (this.is_resource(resource_data)) {
                     this.root_resource = new Resource(resource_data);
                 } else {
-                    this.root_resource = new Collection(resource_data);
+                    this.root_resource = new Collection(resource_data, this.full_path());
                 }
                 turtlegui.reload();
             },
@@ -72,22 +132,30 @@ class ApiClient {
     }
 
     is_simple(field) {
-        return ['str', 'int', 'float'].includes(field.type);
+        return ['str', 'int', 'float', 'bool'].includes(field.type);
     }
 
     is_collection(resource) {
-        return resource._meta == undefined && resource.count != null && resource.results !=null;
+        return resource instanceof Collection;
     }
 
     is_resource(resource) {
         return resource._meta != undefined;
     }
 
+    is_field_collection(field) {
+        return field.is_collection;
+    }
+
+    is_field_link(field) {
+        return field.type=='link';
+    }
+
     expand_collection(element, resource, field_name, field) {
         turtlegui.ajax.get(
             this.api_root + resource[field_name],
             (success) => {
-                resource._expanded[field_name] = new Collection(JSON.parse(success));
+                resource._expanded[field_name] = new Collection(JSON.parse(success), this.api_root + resource[field_name]);
                 turtlegui.reload(element);
             },
             (error) => {

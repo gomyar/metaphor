@@ -45,16 +45,25 @@ div.pagination span.pages {
     text-align : center;
 }
 
+div.pagination span.pages.enabled {
+    color : black;
+}
+
 div.pagination span.control {
     display: inline-block;
     width : 30px;
     text-align : center;
+    color : lightgrey;
+    border : 1px solid white;
+}
+
+div.pagination span.control.enabled {
     color : black;
     border : 1px solid #bcbcbc;
     cursor : pointer;
 }
 
-div.pagination span.control:hover {
+div.pagination span.control.enabled:hover {
     border : 1px solid grey;
 }
 
@@ -113,5 +122,13 @@ div.field div.field_value.id {
 
 div.field div.field_value.simple {
     white-space: pre;
+}
+
+div.field div.field_value.simple.str::before {
+    content: '"';
+}
+
+div.field div.field_value.simple.str::after {
+    content: '"';
 }
 
