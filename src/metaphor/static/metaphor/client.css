@@ -37,6 +37,7 @@ div.pagination {
     display: inline-block;
     color : #bcbcbc;
     font-size: 12px;
+    margin-bottom: 2px;
 }
 
 div.pagination span.pages {
@@ -77,6 +78,7 @@ div.field div.field_name {
     vertical-align: top;
     width: 160px;
     font-weight: normal;
+    overflow: hidden;
 }
 div.field div.field_name:after {
     content: ':';
@@ -96,6 +98,7 @@ div.field div.field_value span.expand_button {
     display: inline-block;
     border : 1px solid #bcbcbc;
     cursor : pointer;
+    font-weight: normal;
 }
 
 div.field div.field_value span.expand_button:hover {
@@ -131,4 +134,35 @@ div.field div.field_value.simple.str::before {
 div.field div.field_value.simple.str::after {
     content: '"';
 }
+
+span.create_button {
+    display: inline-block;
+    text-align: center;
+    color: black;
+    border: 1px solid #bcbcbc;
+    cursor: pointer;
+    font-weight: normal;
+    font-size: 14px;
+    margin-left: 20px;
+}
+
+span.create_button:hover {
+    border: 1px solid grey;
+}
+
+span.control.create_button{
+    color : black;
+    border : 1px solid #bcbcbc;
+    cursor : pointer;
+    padding: 2px 6px 1px 6px;
+    width: auto;
+    margin: 1px 0px 0px 40px;
+    font-size: 12px;
+    vertical-align: top;
+}
+
+span.control.create_button:hover {
+    border : 1px solid black;
+}
+
 

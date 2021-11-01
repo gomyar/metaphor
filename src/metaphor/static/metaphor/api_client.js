@@ -25,6 +25,9 @@ class Collection {
         this.previous = collection.previous;
         this.next = collection.next;
 
+        this._meta = collection._meta;
+        this._meta.spec = Schema.specs[collection._meta.spec.name];
+
         this._page_size = 10;
         this._page = 0;
         this._collection_url = collection_url;
@@ -136,11 +139,11 @@ class ApiClient {
     }
 
     is_collection(resource) {
-        return resource instanceof Collection;
+        return resource._meta.is_collection;
     }
 
     is_resource(resource) {
-        return resource._meta != undefined;
+        return !resource._meta.is_collection;
     }
 
     is_field_collection(field) {

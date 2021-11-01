@@ -205,6 +205,15 @@ class Api(object):
                 "count": count,
                 "next": self._next_link(path, args, count, page, page_size),
                 "previous": self._previous_link(path, args, count, page, page_size),
+                '_meta': {
+                    'spec': {
+                        'name': spec.name,
+                    },
+                    'is_collection': True,
+                    'can_create': type(tree) in (CollectionResourceRef,
+                                               RootResourceRef),
+                    'can_link': type(tree) in (LinkCollectionResourceRef,),
+                }
             }
 
         else:
@@ -334,8 +343,8 @@ class Api(object):
             '_meta': {
                 'spec': {
                     'name': spec.name,
-                    'is_collection': False,
-                }
+                },
+                'is_collection': False,
             }
         }
         for field_name, field in spec.fields.items():

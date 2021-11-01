@@ -17,7 +17,11 @@
         <span><b>Location:</b></span>
         <span class="breadcrumbs" gui-list="api.get_breadcrumbs()" gui-item="crumb">
             <span>/<a gui-attrs="href='/client'+crumb.url" gui-text="crumb.name"></a></span>
+
         </span>
+
+        <span class="control create_button" gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
+        <span class="control create_button" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
     </div>
 
     <div class="fullscreen resource_view">
@@ -77,6 +81,12 @@
                                 <span class="collection_url">
                                     <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
+
+
+                                <span class="control create_button" gui-show="field.type=='collection'" gui-text="'>> create ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
+
+
                                 <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
                             </div>
                             <div class="field_value" gui-show="api.is_field_link(field)">
@@ -86,6 +96,7 @@
                                 <span class="link_url">
                                     <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
+
                                 <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
                             </div>
                             <div class="field_value simple" gui-class="field.type" gui-show="api.is_simple(field)" gui-text="resource[field_name]">
