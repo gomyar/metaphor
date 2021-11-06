@@ -123,15 +123,15 @@ div.field div.field_value.id {
     font-style: italic;
 }
 
-div.field div.field_value.simple {
+div.field div.field_value.simple span.simple_field_val {
     white-space: pre;
 }
 
-div.field div.field_value.simple.str::before {
+div.field div.field_value.simple.str span.simple_field_val::before {
     content: '"';
 }
 
-div.field div.field_value.simple.str::after {
+div.field div.field_value.simple.str span.simple_field_val::after {
     content: '"';
 }
 

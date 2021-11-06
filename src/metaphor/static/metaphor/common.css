@@ -1,8 +1,8 @@
 
 .button {
-    background-color : blue;
-    color : white;
-    font-weight : bold;
+    background-color : white;
+    color : black;
+    font-weight : normal;
     font-size : 11px;
     text-align : center;
     min-width : 80px;
@@ -14,7 +14,7 @@
 }
 
 .button:focus {
-    box-shadow: 0px 0px 6px 6px #888888;
+    box-shadow: 0px 0px 3px 3px #888888;
 }
 
 div.popup {
@@ -60,8 +60,9 @@ div#loading {
 }
 
 div.popupwrapper div.title {
-    font-size : 12px;
+    font-size : 14px;
     font-weight : bold;
+    margin: 2px 0px 4px 0px;
 }
 
 div.popupwrapper div.title div {

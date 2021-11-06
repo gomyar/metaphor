@@ -6,6 +6,67 @@ var Schema = {
 };
 
 
+
+class ResourceSearch {
+    constructor(spec, select_callback) {
+        this.search_spec = spec;
+        this.select_callback = select_callback;
+        this.search_text = '';
+        this.results = [];
+    }
+
+    perform_search() {
+        var query_str = "";
+        for (var field_name in this.search_spec.fields) {
+            var field = this.search_spec.fields[field_name];
+            if (field.type == 'str') {
+                if (query_str) {
+                    query_str += "|";
+                }
+                query_str += field_name + "~'" + this.search_text + "'";
+            }
+        }
+        turtlegui.ajax.get('/search/' + this.search_spec.name + '?query=' + query_str, (response) => {
+            this.results = JSON.parse(response);
+            turtlegui.reload();
+        }, function(error) {
+            alert(error.statusText);
+        });
+    }
+
+    select_result(result) {
+        this.select_callback(result);
+    }
+}
+
+
+class Search {
+
+    constructor() {
+        this.search=null;
+    }
+
+    show(spec_name, select_callback) {
+        this.search = new ResourceSearch(Schema.specs[spec_name], select_callback);
+        turtlegui.reload();
+        return false;
+    }
+
+    hide() {
+        this.search = null;
+        turtlegui.reload();
+    }
+
+    show_link_search(field_name, field) {
+        search.show(field.target_spec_name, function(result) {
+            this.creating_resource_fields[field_name] = result.id;
+            search.hide();
+        });
+    }
+}
+
+var search = new Search();
+
 class Resource {
     constructor(data) {
         Object.assign(this, data);
@@ -99,6 +160,23 @@ class ApiClient {
         this.path = window.location.pathname.replace(/^\/client/g, '');
 
         this.root_resource = null;
+
+        this.creating_resource = null;
+        this.creating_resource_url = null;
+
+        this.creating_link_spec = null;
+        this.creating_link_url = null;
+        this.creating_link_id = null;
+
+        this.editing_resource = null;
+        this.editing_field = null;
+        this.editing_element = null;
+
+        this.parse_funcs = {
+            'str': String,
+            'int': parseInt,
+            'float': parseFloat
+        }
     }
 
     full_path() {
@@ -151,7 +229,7 @@ class ApiClient {
     }
 
     is_field_link(field) {
-        return field.type=='link';
+        return field.type=='link' || field.type=='parent_collection';
     }
 
     expand_collection(element, resource, field_name, field) {
@@ -193,7 +271,135 @@ class ApiClient {
     is_expanded(resource, field_name) {
         return resource._expanded[field_name] != null;
     }
+
+    show_create_resource(parent_resource, collection_field) {
+        var spec = Schema.specs[collection_field.target_spec_name];
+        this.creating_resource = {
+            "_meta": {
+                "spec": spec
+            }
+        }
+        this.creating_resource_url = parent_resource[collection_field.name];
+        turtlegui.reload();
+    }
+
+    show_create_resource(parent_resource, target_spec_name, parent_canonical_url) {
+        var spec = Schema.specs[target_spec_name];
+        this.creating_resource = {
+            "_meta": {
+                "spec": spec
+            }
+        }
+        this.creating_resource_url = parent_canonical_url;
+        turtlegui.reload();
+    }
+
+    show_create_link_collection(parent_resource, collection_field) {
+        var spec = Schema.specs[collection_field.target_spec_name];
+        this.creating_link_spec = spec;
+        this.creating_link_url = parent_resource[collection_field.name];
+        this.creating_link_id = null;
+        turtlegui.reload();
+    }
+
+
+    hide_create_popup() {
+        this.creating_resource = null;
+        turtlegui.reload();
+    }
+
+    hide_create_link_popup() {
+        this.creating_link_spec = null;
+        turtlegui.reload();
+    }
+
+
+    check_esc() {
+        if (event.keyCode == 27) {
+            this.hide_create_popup();
+            if (this.editing_field) {
+                this.editing_field = null;
+                this.editing_resource = null;
+                turtlegui.reload();
+            }
+        }
+    }
+
+    can_edit_field(field) {
+        return field.type == 'int' || field.type == 'str' || field.type == 'bool' ||  field.type == 'float' || field.type == 'link';
+    }
+ 
+    perform_create_resource() {
+        console.log('Creating', api.creating_resource);
+        var data = Object.assign({}, api.creating_resource);
+        delete data._meta;
+        turtlegui.ajax.post(
+            this.api_root + api.creating_resource_url,
+            data,
+            (success) => {
+                console.log('Created');
+                api.creating_resource = null;
+                turtlegui.reload();
+            },
+            (error) => {
+                console.log('Error creating ', error);
+                alert("Error creating " + api.creating_resource);
+            });
+        
+    }
+
+    perform_update_resource(resource, field_name) {
+        var data = {};
+        data[field_name] = resource[field_name];
+        turtlegui.ajax.patch(
+            this.api_root + resource.self,
+            data,
+            (success) => {
+            },
+            (error) => {
+                console.log('Error updating', error);
+                alert("Error updating " + resource.self);
+            });
+        
+    }
+
+
+    set_editing_field(element, resource, field) {
+        if (this.can_edit_field(field)) {
+            this.editing_resource = resource;
+            this.editing_field = field;
+            this.editing_value = resource[field.name];
+            if (this.editing_element) {
+                turtlegui.reload(this.editing_element);
+            }
+            this.editing_element = element;
+            turtlegui.reload(element);
+        }
+    }
+
+    is_editing_field(resource, field) {
+        return this.editing_resource == resource && this.editing_field == field;
+    }
+
+    field_updated(field_element) {
+        if (event.keyCode == 13) {
+            this.editing_resource[this.editing_field.name] = this.parse_funcs[this.editing_field.type](this.editing_value);
+            this.perform_update_resource(this.editing_resource, this.editing_field.name);
+            this.editing_resource = null;
+            this.editing_field = null
+            turtlegui.reload(this.editing_element);
+            this.editing_element = null;
+        } else if (event.keyCode == 27) {
+            this.editing_resource = null;
+            this.editing_field = null
+            turtlegui.reload(field_element);
+            turtlegui.reload(this.editing_element);
+            this.editing_element = null;
+        }
+    }
 }
+
+
 
 var api = new ApiClient();
 

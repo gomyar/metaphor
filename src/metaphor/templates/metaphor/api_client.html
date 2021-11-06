@@ -11,7 +11,7 @@
 
 </head>
 
-<body>
+<body gui-keyup="api.check_esc()">
 
     <div class="anchortop topbar">
         <span><b>Location:</b></span>
@@ -20,7 +20,7 @@
 
         </span>
 
-        <span class="control create_button" gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
+        <span class="control create_button" gui-click="api.show_create_resource(api.root_resource, api.root_resource._meta.spec.name, api.path)"  gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
         <span class="control create_button" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
     </div>
 
@@ -74,7 +74,7 @@
                     <div class="fields" gui-list="resource._meta.spec.fields" gui-key="field_name" gui-item="field">
                         <div class="field">
                             <div class="field_name" gui-text="field_name"></div>
-                            <div class="field_value" gui-show="api.is_field_collection(field)" >
+                            <div class="field_value" gui-show="api.is_field_collection(field) && (field.target_spec_name != null)" >
                                 <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
                                 <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
                                 <!-- possible expansion to collection -->
@@ -83,8 +83,8 @@
                                 </span>
 
 
-                                <span class="control create_button" gui-show="field.type=='collection'" gui-text="'>> create ' + field.target_spec_name"></span>
-                                <span class="control create_button" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name])" gui-show="field.type=='collection'" gui-text="'>> create ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="api.show_create_link_collection(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
 
 
                                 <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
@@ -99,15 +99,82 @@
 
                                 <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
                             </div>
-                            <div class="field_value simple" gui-class="field.type" gui-show="api.is_simple(field)" gui-text="resource[field_name]">
+                            <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type" gui-show="api.is_simple(field) || field.target_spec_name==null">
                                 <!-- int / str / float -->
+                                <span class="simple_field_val" gui-text="resource[field_name]"></span>
+                                <input gui-show="api.is_editing_field(resource, field)" gui-val="api.editing_value" gui-bind="keyup" gui-event="api.field_updated(this)" gui-parse-func="api.parse_funcs[field.type]"></input>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
+    <div id="create_resource" class="popupwrapper" gui-show="api.creating_resource" tabIndex="0" gui-keyup="api.check_esc()">
+        <div class="popup create_popup">
+            <div class="title">
+                <div>Create</div>&nbsp;<div gui-text="api.creating_resource._meta.spec.name"></div>
+                <div>at</div>
+                <div gui-text="api.creating_resource_url"></div>
+            </div>
+
+            <div gui-list="api.creating_resource._meta.spec.fields" gui-item="field" gui-key="field_name" gui-index="index">
+                <div class="field" gui-show="api.can_edit_field(field)">
+                    <div class="field_name" gui-text="field_name"></div>
+                    <div class="field_value" gui-switch="field.type">
+                        <div gui-case="'int'" class="field_int">
+                            &nbsp;
+                            <input gui-val="api.creating_resource[field_name]" gui-parse-func="parseInt" gui-focus="index == 1"></input>
+                        </div>
+                        <div gui-case="'float'" class="field_float">
+                            &nbsp;
+                            <input gui-val="api.creating_resource[field_name]" gui-parse-func="parseFloat" gui-focus="index == 1"></input>
+                        </div>
+                        <div gui-case="'str'" class="field_str">
+                            &nbsp;
+                            <input gui-val="api.creating_resource[field_name]" gui-focus="index == 1"></input>
+                        </div>
+                        <div gui-case="'bool'" class="field_bool">
+                            &nbsp;
+                            <input type="checkbox" gui-val="api.creating_resource[field_name]" gui-focus="index == 1"></input>
+                        </div>
+                        <div gui-case="'link'" class="field_link">
+                            &nbsp;
+                            <span class="link_id" gui-text="api.creating_resource[field_name]"></span>
+                            <button class="button" gui-click="search.show_link_search(field_name, field)">&#128270;</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="popupbuttons">
+                <button type="submit" class="button" gui-click='api.perform_create_resource()'>Create</button>
+                <button class="button" gui-click='api.hide_create_popup()'>Close</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="create_link" class="popupwrapper" gui-show="api.creating_link_spec">
+        <div class="popup">
+            <div class="title">
+                <div>Link</div>&nbsp;<div gui-text="api.creating_link_spec.name"></div>
+                <div>to</div>
+                <div gui-text="api.creating_link_url"></div>
+            </div>
+            <div class="popupform" >
+                <div class="formfield">
+                    <div class="label api" gui-text="api.creating_link_spec.name"></div><div class="spec_name"><input type="text" gui-val="api.creating_link_id"></input></div>
+                </div>
+
+            </div>
+            <div class="popupbuttons">
+                <div class="button" gui-click='api.perform_create_link()'>Create</div>
+                <div class="button" gui-click='api.hide_create_link_popup()'>Close</div>
+            </div>
+        </div>
+    </div>
         
 </body>
 
