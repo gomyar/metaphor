@@ -386,16 +386,34 @@ class Api(object):
                 encoded[field_name] = field_value
         return encoded
 
-    def search_resource(self, spec_name, query_str):
+    def search_resource(self, spec_name, query_str, page=0, page_size=10):
         spec = self.schema.specs[spec_name]
         if query_str:
             query = parse_filter(query_str, spec)
             query = query.condition_aggregation(spec)
         else:
             query = {}
-        results = self.schema.db['resource_%s' % spec_name].find(query)
-        resources = []
-        for result in results:
-            resource_id = self.schema.encodeid(result['_id'])
-            resources.append(self.encode_resource(spec, result))
-        return resources
+        pagination = self.create_pagination_aggregations(page, page_size)
+        aggregation = [
+            {"$match": query},
+            pagination,
+        ]
+
+        cursor = self.schema.db['resource_%s' % spec_name].aggregate(aggregation)
+        page_results = next(cursor)
+
+        results = list(page_results['results'])
+        count = page_results['count'][0]['total'] if page_results['count'] else 0
+
+        return {
+            "results": [self.encode_resource(spec, row) for row in results],
+            "count": count,
+            "next": self._next_link(None, {}, count, page, page_size),
+            "previous": self._previous_link(None, {}, count, page, page_size),
+            '_meta': {
+                'spec': {
+                    'name': spec.name,
+                },
+                'is_collection': True,
+            }
+        }

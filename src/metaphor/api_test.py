@@ -473,15 +473,20 @@ class ApiTest(unittest.TestCase):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
-        self.assertEquals([{
-            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
-            'id': division_id_1,
-            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
-            'name': 'sales',
-            'parttimers': '/divisions/%s/parttimers' % division_id_1,
-            'sections': '/divisions/%s/sections' % division_id_1,
-            'self': '/divisions/%s' % division_id_1,
-            'yearly_sales': 100}], self.api.search_resource('division', "name='sales'"))
+        self.assertEquals({
+            'results': [{
+                '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
+                'id': division_id_1,
+                'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+                'name': 'sales',
+                'parttimers': '/divisions/%s/parttimers' % division_id_1,
+                'sections': '/divisions/%s/sections' % division_id_1,
+                'self': '/divisions/%s' % division_id_1,
+                'yearly_sales': 100}],
+            'count': 1,
+            'next': None,
+            'previous': None,
+            }, self.api.search_resource('division', "name='sales'"))
 
         self.assertEquals([{
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},

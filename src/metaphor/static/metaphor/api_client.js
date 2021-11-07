@@ -8,17 +8,18 @@ var Schema = {
 
 
 class ResourceSearch {
-    constructor(spec, select_callback) {
-        this.search_spec = spec;
-        this.select_callback = select_callback;
+    constructor(resource, field) {
+        this.resource = resource;
+        this.field = field;
+        this.spec = Schema.specs[field.target_spec_name];
         this.search_text = '';
-        this.results = [];
+        this.result_page = {results: []};
     }
 
     perform_search() {
         var query_str = "";
-        for (var field_name in this.search_spec.fields) {
-            var field = this.search_spec.fields[field_name];
+        for (var field_name in this.spec.fields) {
+            var field = this.spec.fields[field_name];
             if (field.type == 'str') {
                 if (query_str) {
                     query_str += "|";
@@ -26,17 +27,15 @@ class ResourceSearch {
                 query_str += field_name + "~'" + this.search_text + "'";
             }
         }
-        turtlegui.ajax.get('/search/' + this.search_spec.name + '?query=' + query_str, (response) => {
-            this.results = JSON.parse(response);
+        var search_query = '/search/' + this.spec.name + '?query=' + query_str;
+        turtlegui.ajax.get(search_query, (response) => {
+            this.result_page = new Collection(JSON.parse(response), search_query);
             turtlegui.reload();
         }, function(error) {
             alert(error.statusText);
         });
     }
 
-    select_result(result) {
-        this.select_callback(result);
-    }
 }
 
 
@@ -44,10 +43,11 @@ class Search {
 
     constructor() {
         this.search=null;
+        this.expanded = [];
     }
 
-    show(spec_name, select_callback) {
-        this.search = new ResourceSearch(Schema.specs[spec_name], select_callback);
+    show(resource, field) {
+        this.search = new ResourceSearch(resource, field);
         turtlegui.reload();
         return false;
     }
@@ -57,11 +57,31 @@ class Search {
         turtlegui.reload();
     }
 
-    show_link_search(field_name, field) {
-        search.show(field.target_spec_name, function(result) {
-            this.creating_resource_fields[field_name] = result.id;
-            search.hide();
-        });
+    expand(resource) {
+        this.expanded.push(resource);
+        turtlegui.reload();
+    }
+
+    is_expanded(resource) {
+        return this.expanded.indexOf(resource) != -1;
+    }
+
+    collapse(resource) {
+        var index = this.expanded.indexOf(resource);
+        this.expanded.splice(index, index + 1);
+        turtlegui.reload();
+    }
+
+    selected(resource) {
+        if (this.search.field.type == 'linkcollection') {
+            this.search.resource[this.search.field.name].push(resource.id);
+        } else if (this.search.field.type == 'link') {
+            this.search.resource[this.search.field.name] = resource.id;
+        } else {
+            alert("Search didn't get a link");
+        }
+        this.search = null;
+        turtlegui.reload();
     }
 }
 
@@ -316,8 +336,11 @@ class ApiClient {
 
     check_esc() {
         if (event.keyCode == 27) {
-            this.hide_create_popup();
-            if (this.editing_field) {
+            if (search.search) {
+                search.hide();
+            } else if (this.creating_resource) {
+                this.hide_create_popup();
+            } else if (this.editing_field) {
                 this.editing_field = null;
                 this.editing_resource = null;
                 turtlegui.reload();
@@ -360,9 +383,7 @@ class ApiClient {
                 console.log('Error updating', error);
                 alert("Error updating " + resource.self);
             });
-        
     }
-
 
     set_editing_field(element, resource, field) {
         if (this.can_edit_field(field)) {

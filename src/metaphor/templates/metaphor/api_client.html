@@ -114,7 +114,7 @@
         </div>
     </div>
 
-    <div id="create_resource" class="popupwrapper" gui-show="api.creating_resource" tabIndex="0" gui-keyup="api.check_esc()">
+    <div id="create_resource" class="popupwrapper" gui-show="api.creating_resource" tabIndex="0">
         <div class="popup create_popup">
             <div class="title">
                 <div>Create</div>&nbsp;<div gui-text="api.creating_resource._meta.spec.name"></div>
@@ -145,7 +145,7 @@
                         <div gui-case="'link'" class="field_link">
                             &nbsp;
                             <span class="link_id" gui-text="api.creating_resource[field_name]"></span>
-                            <button class="button" gui-click="search.show_link_search(field_name, field)">&#128270;</button>
+                            <button class="button" gui-click="search.show(api.creating_resource, field)">&#128270;</button>
                         </div>
                     </div>
                 </div>
@@ -179,6 +179,80 @@
         </div>
     </div>
         
+
+    <div id="search_resource" class="popupwrapper" gui-show="search.search">
+        <div class="popup">
+            <div class="title">
+                <div>Search for: </div>&nbsp;<div gui-text="search.search.field.target_spec_name"></div>
+            </div>
+
+            <div class="search_text">
+                <input type=text gui-val="search.search.search_text"></input>
+                <button class="button" gui-click="search.search.perform_search()">&#128270;</button>
+            </div>
+            <div class="search_results" gui-list="search.search.result_page.results" gui-item="resource">
+                <div>
+                    <span class="expand_button" gui-show="!search.is_expanded(resource)" gui-click="search.expand(resource)">+</span>
+                    <span class="expand_button" gui-show="search.is_expanded(resource)" gui-click="search.collapse(resource)">-</span>
+
+                    <span class="collection_url">
+                        <a gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
+                    </span>
+
+                    <span>
+                        <div class="button" gui-click='search.selected(resource)'>Select</div>
+                    </span>
+
+                    <div class="resource" gui-show="search.is_expanded(resource)" >
+
+                        <div class="fields">
+                            <div class="field">
+                                <div class="field_name">ID</div>
+                                <div class="field_value id" gui-text="resource.id"></div>
+                            </div>
+                            <div class="field">
+                                <div class="field_name">self</div>
+                                <div class="field_value">
+                                    <div class="link_url">
+                                        <a gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="fields" gui-list="resource._meta.spec.fields" gui-key="field_name" gui-item="field">
+                            <div class="field">
+                                <div class="field_name" gui-text="field_name"></div>
+                                <div class="field_value" gui-show="api.is_field_collection(field) && (field.target_spec_name != null)" >
+                                    <span class="collection_url">
+                                        <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    </span>
+                                </div>
+                                <div class="field_value" gui-show="api.is_field_link(field)">
+                                    <span class="link_url">
+                                        <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    </span>
+                                </div>
+                                <div class="field_value simple" gui-class="field.type" gui-show="api.is_simple(field)">
+                                    <!-- int / str / float -->
+                                    <span class="simple_field_val" gui-text="resource[field_name]"></span>
+                                </div>
+                                <div class="field_value simple" gui-show="field.type=='bool'" gui-text="(resource[field_name] && 'true') || 'false'">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="popupbuttons">
+                <div class="button" gui-click='search.hide()'>Close</div>
+            </div>
+
+        </div>
+    </div>
+
 </body>
 
 </html>

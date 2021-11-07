@@ -91,7 +91,7 @@ div.field div.field_value {
     min-width : 160px;
 }
 
-div.field div.field_value span.expand_button {
+span.expand_button {
     width: 20px;
     height : 16px;
     text-align : center;
@@ -101,7 +101,7 @@ div.field div.field_value span.expand_button {
     font-weight: normal;
 }
 
-div.field div.field_value span.expand_button:hover {
+span.expand_button:hover {
     border : 1px solid grey;
 }
 
@@ -165,4 +165,8 @@ span.control.create_button:hover {
     border : 1px solid black;
 }
 
-
+div.search_results {
+    margin-top: 10px;
+    max-height: 70%;
+    overflow-y: scroll;
+}
