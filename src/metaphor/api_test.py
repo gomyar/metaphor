@@ -91,6 +91,7 @@ class ApiTest(unittest.TestCase):
 
         employee_1 = self.api.get('employees/%s' % employee_id_1)
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_1,
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
@@ -101,6 +102,7 @@ class ApiTest(unittest.TestCase):
 
         employee_2 = self.api.get('employees/%s' % employee_id_2)
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_2,
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
@@ -111,6 +113,7 @@ class ApiTest(unittest.TestCase):
 
         division_1 = self.api.get('divisions/%s' % division_id_1)
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'self': '/divisions/%s' % division_id_1,
             'name': 'sales',
@@ -122,6 +125,7 @@ class ApiTest(unittest.TestCase):
 
         linked_division_1 = self.api.get('employees/%s/division' % employee_id_1)
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'self': '/divisions/%s' % division_id_1,
             'name': 'sales',
@@ -133,6 +137,7 @@ class ApiTest(unittest.TestCase):
 
         division_2 = self.api.get('divisions/%s' % division_id_2)
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_2,
             'self': '/divisions/%s' % division_id_2,
             'name': 'marketting',
@@ -156,6 +161,7 @@ class ApiTest(unittest.TestCase):
 
         linked_employees = self.api.get('divisions/%s/link_employee_division' % division_id_1)['results']
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_1,
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
@@ -163,6 +169,7 @@ class ApiTest(unittest.TestCase):
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'division': '/divisions/%s' % division_id_1,
         }, {
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_2,
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
@@ -174,6 +181,7 @@ class ApiTest(unittest.TestCase):
 
         linked_employees_2 = self.api.get('divisions/%s/link_employee_division' % division_id_2)['results']
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_3,
             'self': '/employees/%s' % employee_id_3,
             'name': 'fred',
@@ -194,6 +202,7 @@ class ApiTest(unittest.TestCase):
 
         employees = self.api.get('/employees')['results']
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_1,
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
@@ -202,6 +211,7 @@ class ApiTest(unittest.TestCase):
             'division': '/divisions/%s' % division_id_1,
         },
         {
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_2,
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
@@ -210,6 +220,7 @@ class ApiTest(unittest.TestCase):
             'division': '/divisions/%s' % division_id_1,
         },
         {
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_3,
             'self': '/employees/%s' % employee_id_3,
             'name': 'fred',
@@ -289,6 +300,7 @@ class ApiTest(unittest.TestCase):
         }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
 
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'name': 'sales',
             'self': '/divisions/%s' % division_id_1,
@@ -296,6 +308,7 @@ class ApiTest(unittest.TestCase):
         }, self.api.get('/divisions/%s' % division_id_1))
 
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'section'}},
             'id': section_id_1,
             'name': 'appropriation',
             'parent_division_sections': '/divisions/%s' % division_id_1,
@@ -304,7 +317,8 @@ class ApiTest(unittest.TestCase):
         }], self.api.get('/divisions/%s/sections' % (division_id_1,))['results'])
 
         self.assertEquals([
-            {'id': employee_id_1,
+            {'_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+             'id': employee_id_1,
              'name': 'ned',
              'section': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
              'self': '/employees/%s' % employee_id_1,
@@ -401,6 +415,7 @@ class ApiTest(unittest.TestCase):
         section_id_1 = self.api.post('/divisions/%s/sections' % division_id_1, {'name': 'appropriation'})
 
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'section'}},
             'contractors': None,
             'name': 'appropriation',
             'id': section_id_1,
@@ -459,6 +474,7 @@ class ApiTest(unittest.TestCase):
         division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'name': 'sales',
@@ -468,13 +484,16 @@ class ApiTest(unittest.TestCase):
             'yearly_sales': 100}], self.api.search_resource('division', "name='sales'"))
 
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'age': 41,
             'division': None,
             'id': employee_id_1,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'name': 'ned',
             'self': '/employees/%s' % employee_id_1},
-            {'age': 31,
+            {
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'age': 31,
             'division': None,
             'id': employee_id_2,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
@@ -482,6 +501,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_2}], self.api.search_resource('employee', 'age>30'))
 
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_2,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_2,
             'name': 'marketting',
@@ -595,9 +615,11 @@ class ApiTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
 
         self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_1,
             'age': 41,
             'division': {
+                '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
                 'id': division_id_1,
                 'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
                 'parttimers': '/divisions/%s/parttimers' % division_id_1,
@@ -611,13 +633,16 @@ class ApiTest(unittest.TestCase):
             , self.api.get('/employees', args={"expand": 'division'})['results'])
 
         self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
-            'link_employee_division': {'age': 41,
-                                        'division': '/divisions/%s' % division_id_1,
-                                        'id': employee_id_1,
-                                        'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
-                                        'name': 'ned',
-                                        'self': '/employees/%s' % employee_id_1},
+            'link_employee_division': {
+                '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+                'age': 41,
+                'division': '/divisions/%s' % division_id_1,
+                'id': employee_id_1,
+                'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+                'name': 'ned',
+                'self': '/employees/%s' % employee_id_1},
             'name': 'sales',
             'parttimers': '/divisions/%s/parttimers' % division_id_1,
             'sections': '/divisions/%s/sections' % division_id_1,
@@ -630,6 +655,7 @@ class ApiTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
 
         self.assertEqual([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'age': 41,
             'division': None,
             'id': employee_id_1,
@@ -725,6 +751,7 @@ class ApiTest(unittest.TestCase):
         # test calc update
         self.assertEqual([
             {
+                '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
                 'id': contractor_id,
                 'name': 'Angus',
                 'age': None,
@@ -741,6 +768,7 @@ class ApiTest(unittest.TestCase):
         self.api.patch('/divisions/%s' % division_id_1, {'manager': contractor_id})
         contractor = self.api.get('/divisions/%s/manager' % division_id_1)
         self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': contractor_id,
             'name': 'Angus',
             'age': None,
@@ -754,6 +782,7 @@ class ApiTest(unittest.TestCase):
         self.api.delete('/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id))
         self.assertEqual([], self.api.get('/divisions/%s/all_contractors' % division_id_1)['results'])
         self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'all_contractors': '/divisions/%s/all_contractors' % division_id_1,
             'id': division_id_1,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,

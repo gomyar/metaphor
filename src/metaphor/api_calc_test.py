@@ -120,6 +120,7 @@ class ApiTest(unittest.TestCase):
         # test resource type
         division_1 = self.api.get('/divisions/%s' % division_id_1)
         self.assertEquals({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'name': 'sales',
@@ -143,6 +144,7 @@ class ApiTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41, 'division': division_id_1})
 
         self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'age': 41,
             'division': '/divisions/%s' % division_id_1,
             'division_link': '/divisions/%s' % division_id_1,
