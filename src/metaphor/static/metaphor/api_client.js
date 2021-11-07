@@ -213,7 +213,7 @@ class ApiClient {
     }
 
     is_simple(field) {
-        return ['str', 'int', 'float', 'bool'].includes(field.type);
+        return ['str', 'int', 'float'].includes(field.type);
     }
 
     is_collection(resource) {

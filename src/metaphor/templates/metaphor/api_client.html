@@ -99,10 +99,13 @@
 
                                 <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
                             </div>
-                            <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type" gui-show="api.is_simple(field) || field.target_spec_name==null">
+                            <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type" gui-show="api.is_simple(field)">
                                 <!-- int / str / float -->
                                 <span class="simple_field_val" gui-text="resource[field_name]"></span>
                                 <input gui-show="api.is_editing_field(resource, field)" gui-val="api.editing_value" gui-bind="keyup" gui-event="api.field_updated(this)" gui-parse-func="api.parse_funcs[field.type]"></input>
+                            </div>
+                            <div class="field_value simple" gui-show="field.type=='bool'">
+                                <input type="checkbox" gui-val="resource[field_name]" gui-change="api.perform_update_resource(resource, field_name)"></input>
                             </div>
                         </div>
                     </div>
