@@ -21,7 +21,7 @@
         </span>
 
         <span class="control create_button" gui-click="api.show_create_resource(api.root_resource, api.root_resource._meta.spec.name, api.path)"  gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
-        <span class="control create_button" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
+        <span class="control create_button" gui-click="search.show_create_linkcollection_search(api.root_resource)" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
     </div>
 
     <div class="fullscreen resource_view">
@@ -84,7 +84,7 @@
 
 
                                 <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name])" gui-show="field.type=='collection'" gui-text="'>> create ' + field.target_spec_name"></span>
-                                <span class="control create_button" gui-click="api.show_create_link_collection(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
 
 
                                 <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
@@ -96,6 +96,8 @@
                                 <span class="link_url">
                                     <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
+
+                                <span class="control create_button" gui-click="search.show_link_field_search_and_save(resource, field)" gui-text="'>> link ' + field.target_spec_name"></span>
 
                                 <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]"></div>
                             </div>
@@ -145,7 +147,7 @@
                         <div gui-case="'link'" class="field_link">
                             &nbsp;
                             <span class="link_id" gui-text="api.creating_resource[field_name]"></span>
-                            <button class="button" gui-click="search.show(api.creating_resource, field)">&#128270;</button>
+                            <button class="button" gui-click="search.show_linkcollection_field_search(api.creating_resource, field)">&#128270;</button>
                         </div>
                     </div>
                 </div>
@@ -173,8 +175,8 @@
 
             </div>
             <div class="popupbuttons">
-                <div class="button" gui-click='api.perform_create_link()'>Create</div>
-                <div class="button" gui-click='api.hide_create_link_popup()'>Close</div>
+                <button class="button" gui-click='api.perform_create_link()'>Create</button>
+                <button class="button" gui-click='api.hide_create_link_popup()'>Close</button>
             </div>
         </div>
     </div>
@@ -183,7 +185,7 @@
     <div id="search_resource" class="popupwrapper" gui-show="search.search">
         <div class="popup">
             <div class="title">
-                <div>Search for: </div>&nbsp;<div gui-text="search.search.field.target_spec_name"></div>
+                <div>Search for: </div>&nbsp;<div gui-text="search.search.spec.name"></div>
             </div>
 
             <div class="search_text">
@@ -200,7 +202,7 @@
                     </span>
 
                     <span>
-                        <div class="button" gui-click='search.selected(resource)'>Select</div>
+                        <div class="button" gui-click='search.search.selected_callback(resource)'>Select</div>
                     </span>
 
                     <div class="resource" gui-show="search.is_expanded(resource)" >
@@ -247,7 +249,7 @@
             </div>
 
             <div class="popupbuttons">
-                <div class="button" gui-click='search.hide()'>Close</div>
+                <button class="button" gui-click='search.hide()'>Close</button>
             </div>
 
         </div>
