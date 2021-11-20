@@ -53,6 +53,14 @@ class Search {
         turtlegui.reload();
     }
 
+    show_link_field_search(resource, field) {
+        this.search = new ResourceSearch(field.target_spec_name, (selected_resource) => {
+            resource[field.name] = selected_resource.id;
+            this.hide();
+        });
+        turtlegui.reload();
+    }
+
     show_create_linkcollection_search(collection) {
         this.search = new ResourceSearch(collection._meta.spec.name, (selected_resource) => {
             api.perform_post_link_to_collection(collection, selected_resource.id);
@@ -64,6 +72,7 @@ class Search {
     show_linkcollection_field_search_and_save(resource, field) {
         this.search = new ResourceSearch(field.target_spec_name, (selected_resource) => {
             api.perform_post_link_to_url(api.api_root + resource[field.name], selected_resource.id);
+            resource._fetch();
             this.hide();
         });
         turtlegui.reload();
@@ -72,6 +81,7 @@ class Search {
     show_link_field_search_and_save(resource, field) {
         this.search = new ResourceSearch(field.target_spec_name, (selected_resource) => {
             api.perform_update_resource(resource, field.name, selected_resource.id);
+            resource._fetch();
             this.hide();
         });
         turtlegui.reload();
@@ -214,6 +224,7 @@ class ApiClient {
 
         this.creating_resource = null;
         this.creating_resource_url = null;
+        this.creating_parent_resource = null;
 
         this.creating_link_spec = null;
         this.creating_link_url = null;
@@ -280,7 +291,17 @@ class ApiClient {
     }
 
     is_field_link(field) {
-        return field.type=='link' || field.type=='parent_collection';
+        return field.type=='link';
+    }
+
+    is_field_parent_collection(field) {
+        return field.type=='parent_collection';
+    }
+
+    is_linkcollection(resource, field_name) {
+        if (resource != null && field_name != null) {
+            return resource._meta.can_link && resource._meta.is_collection;
+        }
     }
 
     expand_collection(element, resource, field_name, field) {
@@ -323,17 +344,6 @@ class ApiClient {
         return resource._expanded[field_name] != null;
     }
 
-    show_create_resource(parent_resource, collection_field) {
-        var spec = Schema.specs[collection_field.target_spec_name];
-        this.creating_resource = {
-            "_meta": {
-                "spec": spec
-            }
-        }
-        this.creating_resource_url = parent_resource[collection_field.name];
-        turtlegui.reload();
-    }
-
     show_create_resource(parent_resource, target_spec_name, parent_canonical_url) {
         var spec = Schema.specs[target_spec_name];
         this.creating_resource = {
@@ -341,6 +351,7 @@ class ApiClient {
                 "spec": spec
             }
         }
+        this.creating_parent_resource = parent_resource;
         this.creating_resource_url = parent_canonical_url;
         turtlegui.reload();
     }
@@ -393,7 +404,7 @@ class ApiClient {
             (success) => {
                 console.log('Created');
                 api.creating_resource = null;
-                turtlegui.reload();
+                api.creating_parent_resource._fetch();
             },
             (error) => {
                 console.log('Error creating ', error);
@@ -428,20 +439,6 @@ class ApiClient {
                 console.log('Error updating', error);
                 alert("Error updating " + resource.self);
             });
-    }
-
-    perform_delete_resource(resource, resource_element) {
-        if (confirm("Delete resource at: " + resource.self + "?")) {
-            turtlegui.ajax.delete(
-                this.api_root + resource.self,
-                (success) => {
-                    resource_element.remove();
-                },
-                (error) => {
-                    console.log('Error deleting', error);
-                    alert("Error deleting" + resource.self);
-                });
-        }
     }
 
     perform_post_link_to_url(collection_url, link_id) {
@@ -490,11 +487,17 @@ class ApiClient {
         }
     }
 
+    unlink_field(resource, field) {
+        if (confirm("Delete link '" + field.name + "'?")) {
+            this.perform_update_resource(resource, field.name, null);
+        }
+    }
+
     unlink_from_collection(resource, parent_resource, field_name) {
         console.log('Unlinking', resource);
         console.log('from', parent_resource);
         console.log('field_name', field_name);
-        if (confirm("Delete resource at: " + resource.self + "?")) {
+        if (confirm("Unlink resource: " + resource.self + "?")) {
             turtlegui.ajax.delete(
                 parent_resource._collection_url + "/" + resource.id,
                 (success) => {
@@ -505,17 +508,23 @@ class ApiClient {
                     alert("Error deleting" + parent_resource._collection_url + "/" + resource.id);
                 });
         }
- 
     }
 
-    unlink_field(resource, field) {
-        this.perform_update_resource(resource, field.name, null);
+    perform_delete_resource(resource, parent_resource) {
+        if (confirm("Delete resource at: " + resource.self + "?")) {
+            turtlegui.ajax.delete(
+                this.api_root + resource.self,
+                (success) => {
+                    parent_resource._fetch();
+                },
+                (error) => {
+                    console.log('Error deleting', error);
+                    alert("Error deleting" + resource.self);
+                });
+        }
     }
 
-    delete_resource(resource, parent_element) {
-        console.log('Delete', resource);
-        this.perform_delete_resource(resource, parent_element);
-    }
+
 }
 
 

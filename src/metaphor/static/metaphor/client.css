@@ -25,9 +25,9 @@ div.collection {
 }
 
 div.resource {
-    border-bottom : 1px solid lightgrey;
     background-color : white;
     margin-bottom: 20px;
+    border: 1px solid grey;
 }
 
 div.fields {

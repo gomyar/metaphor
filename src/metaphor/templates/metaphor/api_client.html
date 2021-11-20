@@ -62,8 +62,8 @@
                         <div class="field" gui-show="resource._meta.spec.name != 'root'">
                             <div class="field_name">ID</div>
                             <div class="field_value id" gui-text="resource.id"></div>
-                            <span class="control create_button" gui-show="field.type == 'collection'" gui-click="api.delete_resource(resource, this.parentElement.parentElement)" gui-text="'>> delete ' + field.target_spec_name"></span>
-                            <span class="control create_button" gui-show="field.type == 'linkcollection'" gui-click="api.unlink_from_collection(resource, parent_resource, parent_field_name)" gui-text="'>> unlink ' + field.target_spec_name"></span>
+                            <span class="control create_button" gui-show="!api.is_linkcollection(parent_resource, parent_field_name)" gui-click="api.perform_delete_resource(resource, parent_resource)" gui-text="'>> delete ' + resource._meta.spec.name"></span>
+                            <span class="control create_button" gui-show="api.is_linkcollection(parent_resource, parent_field_name)"  gui-click="api.unlink_from_collection(resource, parent_resource, parent_field_name)" gui-text="'>> unlink ' + resource._meta.spec.name"></span>
                         </div>
                         <div class="field" gui-show="resource._meta.spec.name != 'root'">
                             <div class="field_name">self</div>
@@ -105,6 +105,18 @@
 
                                 <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
+                            <div class="field_value" gui-show="api.is_field_parent_collection(field)">
+                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
+                                <!-- possible expansion to resource -->
+                                <span class="link_url">
+                                    <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                </span>
+
+
+                                <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
+                            </div>
+ 
                             <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type" gui-show="api.is_simple(field)">
                                 <!-- int / str / float -->
                                 <span class="simple_field_val" gui-text="resource[field_name]"></span>
@@ -154,7 +166,7 @@
                         <div gui-case="'link'" class="field_link">
                             &nbsp;
                             <span class="link_id" gui-text="api.creating_resource[field_name]"></span>
-                            <button class="button" gui-click="search.show_linkcollection_field_search(api.creating_resource, field)">&#128270;</button>
+                            <button class="button" gui-click="search.show_link_field_search(api.creating_resource, field)">&#128270;</button>
                         </div>
                     </div>
                 </div>
