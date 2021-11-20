@@ -430,6 +430,20 @@ class ApiClient {
             });
     }
 
+    perform_delete_resource(resource, resource_element) {
+        if (confirm("Delete resource at: " + resource.self + "?")) {
+            turtlegui.ajax.delete(
+                this.api_root + resource.self,
+                (success) => {
+                    resource_element.remove();
+                },
+                (error) => {
+                    console.log('Error deleting', error);
+                    alert("Error deleting" + resource.self);
+                });
+        }
+    }
+
     perform_post_link_to_url(collection_url, link_id) {
         turtlegui.ajax.post(
             collection_url,
@@ -474,6 +488,33 @@ class ApiClient {
             turtlegui.reload(this.editing_element);
             this.editing_element = null;
         }
+    }
+
+    unlink_from_collection(resource, parent_resource, field_name) {
+        console.log('Unlinking', resource);
+        console.log('from', parent_resource);
+        console.log('field_name', field_name);
+        if (confirm("Delete resource at: " + resource.self + "?")) {
+            turtlegui.ajax.delete(
+                parent_resource._collection_url + "/" + resource.id,
+                (success) => {
+                    parent_resource._fetch()
+                },
+                (error) => {
+                    console.log('Error deleting', error);
+                    alert("Error deleting" + parent_resource._collection_url + "/" + resource.id);
+                });
+        }
+ 
+    }
+
+    unlink_field(resource, field) {
+        this.perform_update_resource(resource, field.name, null);
+    }
+
+    delete_resource(resource, parent_element) {
+        console.log('Delete', resource);
+        this.perform_delete_resource(resource, parent_element);
     }
 }
 
