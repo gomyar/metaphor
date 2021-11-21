@@ -12,9 +12,6 @@ import flask_login
 api_bp = Blueprint('api', __name__, template_folder='templates',
                    static_folder='static', url_prefix='/api')
 
-browser_bp = Blueprint('browser', __name__, template_folder='templates',
-                       static_folder='static', url_prefix='/browser')
-
 admin_bp = Blueprint('admin', __name__, template_folder='templates',
                      static_folder='static', url_prefix='/admin')
 
@@ -93,31 +90,6 @@ def api(path):
             return "Not Allowed", 403
 
         return jsonify(api.delete(path, user))
-
-
-@browser_bp.route("/", methods=['GET'])
-@login_required
-def browser_root():
-    api = current_app.config['api']
-    resource = dict((key, '/' + key) for key in api.schema.root.fields.keys())
-    resource['ego'] = '/ego'
-    spec = api.schema.root
-    return render_template('metaphor/api_browser.html',
-        path='/', resource=resource, spec=serialize_spec(spec), is_collection=False, can_post=False, is_linkcollection=False,
-        schema=serialize_schema(api.schema))
-
-
-@browser_bp.route("/<path:path>", methods=['GET'])
-@login_required
-def browser(path):
-    api = current_app.config['api']
-    user = flask_login.current_user
-    user.grants = [g['_id'] for g in user.read_grants]
-    resource = api.get(path, None, user)
-    spec, is_collection, can_post, is_linkcollection = api.get_spec_for(path, user)
-    return render_template('metaphor/api_browser.html',
-        path=path, resource=resource, spec=serialize_spec(spec), is_collection=is_collection, can_post=can_post, is_linkcollection=is_linkcollection,
-        schema=serialize_schema(api.schema))
 
 
 @admin_bp.route("/schema_editor")

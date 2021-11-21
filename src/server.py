@@ -18,7 +18,6 @@ from metaphor.api import Api
 from metaphor.admin_api import AdminApi
 from metaphor.schema import Schema
 from metaphor.api_bp import api_bp
-from metaphor.api_bp import browser_bp
 from metaphor.api_bp import admin_bp
 from metaphor.api_bp import search_bp
 from metaphor.login_bp import login_bp
@@ -40,7 +39,6 @@ def create_app(db):
     app.config['api'] = Api(schema)
     app.config['admin_api'] = AdminApi(schema)
     app.register_blueprint(api_bp)
-    app.register_blueprint(browser_bp)
     app.register_blueprint(client_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(search_bp)
@@ -50,7 +48,7 @@ def create_app(db):
 
     @app.route("/")
     def index():
-        return redirect(url_for('browser.browser', path=''))
+        return redirect(url_for('client.client_root'))
 
     return app
 
