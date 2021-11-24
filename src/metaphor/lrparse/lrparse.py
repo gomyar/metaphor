@@ -270,6 +270,10 @@ class LinkCollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        if user:
+            aggregation.append(
+                {"$match": {"_grants": {"$in": user.grants}}}
+            )
         return aggregation, child_spec, True
 
     def create_reverse(self):
@@ -318,6 +322,10 @@ class LinkResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        if user:
+            aggregation.append(
+                {"$match": {"_grants": {"$in": user.grants}}}
+            )
         return aggregation, child_spec, is_aggregate
 
     def create_reverse(self):
@@ -364,6 +372,10 @@ class CalcResourceRef(ResourceRef):
             aggregation.append(
                 {"$replaceRoot": {"newRoot": "$_id"}}
             )
+            if user:
+                aggregation.append(
+                    {"$match": {"_grants": {"$in": user.grants}}}
+                )
             is_aggregate = is_aggregate or calc_tree.is_collection()
         return aggregation, calc_spec, is_aggregate
 
@@ -404,6 +416,10 @@ class ReverseLinkResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        if user:
+            aggregation.append(
+                {"$match": {"_grants": {"$in": user.grants}}}
+            )
         return aggregation, child_spec, True
 
     def is_collection(self):
@@ -447,6 +463,10 @@ class ParentCollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        if user:
+            aggregation.append(
+                {"$match": {"_grants": {"$in": user.grants}}}
+            )
         return aggregation, child_spec, False
 
     def is_collection(self):
@@ -488,6 +508,10 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        if user:
+            aggregation.append(
+                {"$match": {"_grants": {"$in": user.grants}}}
+            )
         return aggregation, child_spec, True
 
     def is_collection(self):

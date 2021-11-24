@@ -103,8 +103,6 @@ def schema_editor():
 @admin_bp.route("/schema_editor/api", methods=['GET'])
 @login_required
 def schema_editor_api():
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     return jsonify(admin_api.format_schema())
 

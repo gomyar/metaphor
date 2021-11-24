@@ -1,11 +1,13 @@
 
 Shortlist:
- - pagination
+ - pagination - done
+ - expand / fields params - done
  - collection functions
- - expand / fields params
- - schema mutations
+ - updates as idempotent commands
  - schema import / export
- - updates
+ - schema mutations
+ - schema multiple versions, mutations in between
+ - estimate effects of a given change (POST/PATCH/DELETE or schema change)
  - groups to schema, users to runtime
 
 

@@ -193,6 +193,9 @@ class ServerTest(TestCase):
     def test_delete_group_deletes_child_grants(self):
         pass
 
+    def test_delete_grants_deletes_grants_in_resources(self):
+        pass
+
     def test_serialize_password(self):
         user = self.api.get('/users/%s' % self.user_id)
         self.assertEqual({

@@ -315,6 +315,28 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
+            elif field.field_type in ('linkcollection', 'orderedcollection'):
+                aggregate_query.append(
+                    {"$lookup": {
+                            "from": "resource_%s" % field.target_spec_name,
+                            "localField": "%s._id" % field.name,
+                            "foreignField": "_id",
+                            "as": "_expanded_%s" % field_name,
+                    }})
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
+            elif field.field_type == 'collection':
+                aggregate_query.append(
+                    {"$lookup": {
+                            "from": "resource_%s" % field.target_spec_name,
+                            "localField": "_id",
+                            "foreignField": "_parent_id",
+                            "as": "_expanded_%s" % field_name,
+                    }})
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
             else:
                 raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
         return aggregate_query
@@ -365,8 +387,11 @@ class Api(object):
                 else:
                     # TODO: A canonical link would be better
                     encoded[field_name] = os.path.join(self_url, field_name)
-            elif field.field_type in ('linkcollection', 'collection', 'reverse_link_collection'):
-                encoded[field_name] = os.path.join(self_url, field_name)
+            elif field.field_type in ('linkcollection', 'collection', 'reverse_link_collection', 'orderedcollection'):
+                if field_name in expand_dict:
+                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
+                else:
+                    encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 res_type = tree.infer_type()
