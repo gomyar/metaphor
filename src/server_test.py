@@ -34,7 +34,7 @@ class ServerTest(TestCase):
 
     def test_get(self):
         response = self.client.get('/api/')
-        self.assertEqual({'groups': '/groups', 'users': '/users', 'ego': '/ego'}, response.json)
+        self.assertEqual({'_meta': {'spec': {'name': 'root'}}, 'groups': '/groups', 'users': '/users', 'ego': '/ego'}, response.json)
 
     def test_ego(self):
         response = self.client.get('/api/ego/')
@@ -199,6 +199,7 @@ class ServerTest(TestCase):
     def test_serialize_password(self):
         user = self.api.get('/users/%s' % self.user_id)
         self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'user'}},
             'admin': None,
             'create_grants': [],
             'delete_grants': [],
