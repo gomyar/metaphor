@@ -14,7 +14,6 @@ class Updater(object):
         log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
         affected_ids = []
         for aggregation in self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, resource_spec, resource_id):
-#            aggregation.append({"$match": {"_id": {"$ne": self.schema.decodeid(resource_id)}}})
             aggregation.append({"$project": {"_id": True}})
             cursor = self.schema.db['resource_%s' % resource_spec.name].aggregate(aggregation)
             for resource in cursor:
@@ -27,8 +26,6 @@ class Updater(object):
         calc_tree = self.schema.calc_trees[calc_spec_name, calc_field_name]
         aggregations = ReverseAggregator(self.schema).get_for_resource(calc_tree, resource_spec.name, self.schema.decodeid(resource_id))
         return aggregations
-#        aggregations = calc_tree.build_reverse_aggregations(resource_spec, resource_id)
-#        return aggregations
 
     def update_calc(self, resource_name, calc_field_name, resource_id):
         log.debug("Updating calc: %s %s %s", resource_name, calc_field_name, resource_id)

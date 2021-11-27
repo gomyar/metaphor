@@ -128,7 +128,7 @@ class Resource {
 
     _fetch() {
         turtlegui.ajax.get(
-            api.api_root + this.self,
+            api.api_root + (this.self || ''),
             (success) => {
                 var data = JSON.parse(success);
                 this._construct(data);
