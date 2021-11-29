@@ -34,7 +34,7 @@ class ServerTest(TestCase):
 
         self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
 
-        for i in range(120):
+        for i in range(12):
             self.api.post('/employees', {'name': 'fred %s' % i})
 
         # login
@@ -46,24 +46,24 @@ class ServerTest(TestCase):
     def test_get_page(self):
         # Zero-based pages you heathens
         response = self.client.get('/api/employees')
-        self.assertEqual(100, len(response.json['results']))
+        self.assertEqual(10, len(response.json['results']))
         self.assertEqual("fred 0", response.json['results'][0]['name'])
-        self.assertEqual(120, response.json['count'])
+        self.assertEqual(12, response.json['count'])
         self.assertEqual(None, response.json['previous'])
-        self.assertEqual("http://localhost/api/employees?page=1&page_size=100", response.json['next'])
+        self.assertEqual("http://localhost/api/employees?page=1&page_size=10", response.json['next'])
 
     def test_get_next_page(self):
         response = self.client.get('/api/employees?page=1')
-        self.assertEqual(20, len(response.json['results']))
-        self.assertEqual("fred 100", response.json['results'][0]['name'])
-        self.assertEqual(120, response.json['count'])
-        self.assertEqual("http://localhost/api/employees?page=0&page_size=100", response.json['previous'])
+        self.assertEqual(2, len(response.json['results']))
+        self.assertEqual("fred 10", response.json['results'][0]['name'])
+        self.assertEqual(12, response.json['count'])
+        self.assertEqual("http://localhost/api/employees?page=0&page_size=10", response.json['previous'])
         self.assertEqual(None, response.json['next'])
 
     def test_get_any_page(self):
-        response = self.client.get('/api/employees?page=2&page_size=20')
-        self.assertEqual(20, len(response.json['results']))
-        self.assertEqual("fred 40", response.json['results'][0]['name'])
-        self.assertEqual(120, response.json['count'])
-        self.assertEqual("http://localhost/api/employees?page=1&page_size=20", response.json['previous'])
-        self.assertEqual("http://localhost/api/employees?page=3&page_size=20", response.json['next'])
+        response = self.client.get('/api/employees?page=1&page_size=5')
+        self.assertEqual(5, len(response.json['results']))
+        self.assertEqual("fred 5", response.json['results'][0]['name'])
+        self.assertEqual(12, response.json['count'])
+        self.assertEqual("http://localhost/api/employees?page=0&page_size=5", response.json['previous'])
+        self.assertEqual("http://localhost/api/employees?page=2&page_size=5", response.json['next'])
