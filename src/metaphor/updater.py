@@ -1,331 +1,17 @@
 
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
 
+from metaphor.update.create_resource import CreateResourceUpdate
+from metaphor.update.fields_update import FieldsUpdate
+from metaphor.update.delete_resource import DeleteResourceUpdate
+from metaphor.update.delete_linkcollection import DeleteLinkCollectionUpdate
+from metaphor.update.delete_orderedcollection import DeleteOrderedCollectionUpdate
+from metaphor.update.create_linkcollection import CreateLinkCollectionUpdate
+from metaphor.update.create_orderedcollection import CreateOrderedCollectionUpdate
+
 import logging
 
 log = logging.getLogger('metaphor')
-
-
-class CreateResourceUpdate:
-    def __init__(self, updater, schema, spec_name, fields, parent_field_name, parent_spec_name,
-                 parent_id, grants):
-        self.updater = updater
-        self.schema = schema
-        self.spec_name = spec_name
-        self.spec = self.schema.specs[spec_name]
-        self.fields = fields
-
-        self.parent_field_name = parent_field_name
-        self.parent_spec_name = parent_spec_name
-        self.parent_id = parent_id
-        self.grants = grants
-
-    def execute(self):
-        # must add _create_updated field to resource instead of creating updater document
-        resource_id = self.schema.insert_resource(
-            self.spec_name, self.fields, self.parent_field_name, self.parent_spec_name,
-            self.parent_id, self.grants)
-
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            # unsure if this is necessary
-            if "%s.%s" % (self.parent_spec_name, self.parent_field_name) in calc_tree.get_resource_dependencies():
-                self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
-
-            # update for fields
-            for field_name in self.fields:
-                field_dep = "%s.%s" % (self.spec_name, field_name)
-                if field_dep in calc_tree.get_resource_dependencies():
-                    self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
-
-        # recalc local calcs
-        for field_name, field_spec in self.spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.spec.name, field_name, resource_id)
-                self.updater._recalc_for_field_update(self.spec, self.spec.name, field_name, resource_id)
-
-        # check if new resource is read grant
-        if self.spec_name == 'grant' and self.fields['type'] == 'read':
-            self.updater._update_grants(resource_id, self.fields['type'], self.fields['url'])
-
-        return resource_id
-
-
-class FieldsUpdate:
-    def __init__(self, updater, schema, spec_name, resource_id, fields):
-        self.updater = updater
-        self.schema = schema
-
-        self.spec_name = spec_name
-        self.resource_id = resource_id
-        self.fields = fields
-
-    def execute(self):
-        spec = self.schema.specs[self.spec_name]
-        self.schema.update_resource_fields(self.spec_name, self.resource_id, self.fields)
-
-        # update local resource calcs
-        #   update dependent field calcs (involving fields)
-        # update foreign resource calcs (involving fields)
-
-        # recalc local calcs
-        # moved this ahead of the code to recalc foreign calcs
-        # there may be an opportunity to check whether the change only affects the current resource
-        # (if there are only "self." references in the calc)
-        # this will stop the reverse aggregation, which finds itself only and becomes a no-op
-        # careful with multi layered calcs within the same resource
-        for field_name, field_spec in spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(spec.name, field_name, self.resource_id)
-                self.updater._recalc_for_field_update(spec, spec.name, field_name, self.resource_id)
-
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for fields
-            for field_name in self.fields:
-                field_dep = "%s.%s" % (self.spec_name, field_name)
-                if field_dep in calc_tree.get_resource_dependencies():
-                    self.updater._perform_updates_for_affected_calcs(spec, self.resource_id, calc_spec_name, calc_field_name)
-
-
-
-class DeleteResourceUpdate:
-    def __init__(self, updater, schema, spec_name, resource_id, parent_spec_name, parent_field_name):
-        self.updater = updater
-        self.schema = schema
-        self.spec_name = spec_name
-        self.resource_id = resource_id
-        self.parent_spec_name = parent_spec_name
-        self.parent_field_name = parent_field_name
-
-    def execute(self):
-        spec = self.schema.specs[self.spec_name]
-
-        cursors = []
-
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            # unsure if this is necessary
-            if "%s.%s" % (self.parent_spec_name, self.parent_field_name) in calc_tree.get_resource_dependencies():
-                affected_ids = self.updater.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, self.resource_id)
-                if affected_ids:
-                    cursors.append((affected_ids, calc_spec_name, calc_field_name))
-
-            # find root collection dependencies
-            if self.parent_spec_name is None:
-                for field_name, field in self.schema.root.fields.items():
-                    if field.field_type in ['collection', 'linkcollection']:
-                        if field.target_spec_name == self.spec_name:
-                            affected_ids = self.updater.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, self.resource_id)
-                            if affected_ids:
-                                cursors.append((affected_ids, calc_spec_name, calc_field_name))
-
-        # must add _create_updated field to resource instead of creating updater document
-        self.schema.delete_resource(self.spec_name, self.resource_id)
-
-        for affected_ids, calc_spec_name, calc_field_name in cursors:
-            for affected_id in affected_ids:
-                affected_id = self.schema.encodeid(affected_id)
-                self.updater.update_calc(calc_spec_name, calc_field_name, affected_id)
-                self.updater._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
-
-        # delete child resources
-        for field_name, field in spec.fields.items():
-            if field.field_type == 'collection':
-                for child_resource in self.schema.db['resource_%s' % field.target_spec_name].find({'_parent_id': self.schema.decodeid(self.resource_id)}, {'_id': 1}):
-                    self.updater.delete_resource(field.target_spec_name, self.schema.encodeid(child_resource['_id']), self.spec_name, field_name)
-
-        # delete any links to resource
-        for linked_spec_name, spec in self.schema.specs.items():
-            for field_name, field in spec.fields.items():
-                if field.field_type == 'link' and field.target_spec_name == self.spec_name:
-                    # find all resources with link to target id
-                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({field_name: self.schema.decodeid(self.resource_id)}):
-                        # call update_resource on resource
-                        self.updater.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
-
-                if field.field_type == 'linkcollection' and field.target_spec_name == self.spec_name:
-                    # find all resources with link to target id
-                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({'%s._id' % field_name: self.schema.decodeid(self.resource_id)}):
-                        # call update_resource on resource
-                        self.updater.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, self.resource_id)
-
-        return self.resource_id
-
-
-class DeleteLinkCollectionUpdate:
-    def __init__(self, updater, schema, parent_spec_name, parent_id, parent_field, link_id):
-        self.updater = updater
-        self.schema = schema
-        self.parent_spec_name = parent_spec_name
-        self.parent_id = parent_id
-        self.parent_field = parent_field
-        self.link_id = link_id
-
-    def execute(self):
-        parent_spec = self.schema.specs[self.parent_spec_name]
-        spec = parent_spec.build_child_spec(self.parent_field)
-
-        cursors = []
-
-        # find affected resources before deleting
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            if "%s.%s" % (self.parent_spec_name, self.parent_field) in calc_tree.get_resource_dependencies():
-
-                affected_ids = self.updater.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, self.link_id)
-
-                if affected_ids:
-                    cursors.append((affected_ids, calc_spec_name, calc_field_name))
-
-        # perform delete
-        self.schema.delete_linkcollection_entry(
-            self.parent_spec_name, self.parent_id, self.parent_field, self.link_id)
-
-        # update affected resources
-        for affected_ids, calc_spec_name, calc_field_name in cursors:
-            for affected_id in affected_ids:
-                affected_id = self.schema.encodeid(affected_id)
-                self.updater.update_calc(calc_spec_name, calc_field_name, affected_id)
-                self.updater._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
-
-        # recalc local calcs
-        for field_name, field_spec in parent_spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.parent_spec_name, field_name, self.link_id)
-                self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.link_id)
-
-        # run update
-        return self.link_id
-
-
-class DeleteOrderedCollectionUpdate:
-    def __init__(self, updater, schema, parent_spec_name, parent_id, parent_field, link_id):
-        self.updater = updater
-        self.schema = schema
-        self.parent_spec_name = parent_spec_name
-        self.parent_id = parent_id
-        self.parent_field = parent_field
-        self.link_id = link_id
-
-    def execute(self):
-        parent_spec = self.schema.specs[self.parent_spec_name]
-        spec = parent_spec.build_child_spec(self.parent_field)
-
-        cursors = []
-
-        # find affected resources before deleting
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            if "%s.%s" % (self.parent_spec_name, self.parent_field) in calc_tree.get_resource_dependencies():
-
-                affected_ids = self.updater.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, self.link_id)
-
-                if affected_ids:
-                    cursors.append((affected_ids, calc_spec_name, calc_field_name))
-
-        # perform delete
-        self.schema.delete_linkcollection_entry(
-            self.parent_spec_name, self.parent_id, self.parent_field, self.link_id)
-        self.schema.delete_resource(spec.name, self.link_id)
-
-        # update affected resources
-        for affected_ids, calc_spec_name, calc_field_name in cursors:
-            for affected_id in affected_ids:
-                affected_id = self.schema.encodeid(affected_id)
-                self.updater.update_calc(calc_spec_name, calc_field_name, affected_id)
-                self.updater._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
-
-        # recalc local calcs
-        for field_name, field_spec in parent_spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.parent_spec_name, field_name, self.link_id)
-                self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.link_id)
-
-        # delete any links to resource
-        for linked_spec_name, linked_spec in self.schema.specs.items():
-            for field_name, field in linked_spec.fields.items():
-                if field.field_type == 'link' and field.target_spec_name == spec.name:
-                    # find all resources with link to target id
-                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({field_name: self.schema.decodeid(self.link_id)}):
-                        # call update_resource on resource
-                        self.updater.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
-
-                if field.field_type == 'linkcollection' and field.target_spec_name == spec.name:
-                    # find all resources with link to target id
-                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({'%s._id' % field_name: self.schema.decodeid(self.link_id)}):
-                        # call update_resource on resource
-                        self.updater.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, resource_id)
-
-        # run update
-        return self.link_id
-
-
-class CreateLinkCollectionUpdate:
-    def __init__(self, updater, schema, parent_spec_name, parent_id, parent_field, link_id):
-        self.updater = updater
-        self.schema = schema
-
-        self.parent_spec_name = parent_spec_name
-        self.parent_id = parent_id
-        self.parent_field = parent_field
-        self.link_id = link_id
-
-    def execute(self):
-        self.schema.create_linkcollection_entry(self.parent_spec_name, self.parent_id, self.parent_field, self.link_id)
-        parent_spec = self.schema.specs[self.parent_spec_name]
-        spec = parent_spec.build_child_spec(self.parent_field)
-
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            if "%s.%s" % (self.parent_spec_name, self.parent_field) in calc_tree.get_resource_dependencies():
-                self.updater._perform_updates_for_affected_calcs(spec, self.link_id, calc_spec_name, calc_field_name)
-
-        # recalc local calcs
-        for field_name, field_spec in parent_spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.parent_spec_name, field_name, self.parent_id)
-                self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.parent_id)
-
-
-class CreateOrderedLinkCollectionUpdate:
-    def __init__(self, updater, schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants):
-        self.updater = updater
-        self.schema = schema
-
-        self.spec_name = spec_name
-        self.parent_spec_name = parent_spec_name
-        self.parent_field = parent_field
-        self.parent_id = parent_id
-        self.data = data
-        self.grants = grants
-
-    def execute(self):
-        resource_id = self.schema.create_orderedcollection_entry(self.spec_name, self.parent_spec_name, self.parent_field, self.parent_id, self.data, self.grants)
-        parent_spec = self.schema.specs[self.parent_spec_name]
-        spec = parent_spec.build_child_spec(self.parent_field)
-
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            if "%s.%s" % (self.parent_spec_name, self.parent_field) in calc_tree.get_resource_dependencies():
-                self.updater._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-
-        # recalc local calcs
-        for field_name, field_spec in parent_spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.parent_spec_name, field_name, self.parent_id)
-                self._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.parent_id)
-
-        return resource_id
-
-
-class CreateLinkUpdate:
-    pass
-
-
-class RecalcUpdate:
-    def __init__(self, spec_name, calc_field_name):
-        self.spec_name = spec_name
-        self.calc_field_name = calc_field_name
 
 
 class Updater(object):
@@ -410,20 +96,20 @@ class Updater(object):
 
         return resource_id
 
+    def _update_grants(self, grant_id, grant_type, url):
+        for spec_name, spec in self.schema.specs.items():
+            self.schema.db['resource_%s' % spec_name].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
+
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):
         return CreateResourceUpdate(self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
                  parent_id, grants).execute()
 
-    def _update_grants(self, grant_id, grant_type, url):
-        for spec_name, spec in self.schema.specs.items():
-            self.schema.db['resource_%s' % spec_name].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
-
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         CreateLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
 
     def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
-        return CreateOrderedLinkCollectionUpdate(self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
+        return CreateOrderedCollectionUpdate(self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
 
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
         return DeleteResourceUpdate(self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()

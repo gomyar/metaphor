@@ -330,15 +330,6 @@ class UpdaterTest(unittest.TestCase):
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'all_my_subordinates', self.division_spec, division_id_1)
         self.assertEquals([[
             {"$match": {"_id": self.schema.decodeid(division_id_1)}},
-#            {"$lookup": {
-#                "from": "resource_division",
-#                "foreignField": "_id",
-#                "localField": "_parent_id",
-#                "as": "_field_employees",
-#            }},
-#            {'$group': {'_id': '$_field_employees'}},
-#            {"$unwind": "$_id"},
-#            {'$replaceRoot': {'newRoot': '$_id'}},
             {'$lookup': {'as': '_field_link_division_managers',
                             'foreignField': '_id',
                             'from': 'resource_employee',
