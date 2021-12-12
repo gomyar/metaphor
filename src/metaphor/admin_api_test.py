@@ -230,3 +230,15 @@ class AdminApiTest(unittest.TestCase):
         except HTTPError as he:
             self.assertEqual(400, he.code)
             self.assertEqual('Field name cannot be blank', he.reason)
+
+    def test_create_calc_against_null_field(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob'})
+        self.admin_api.create_field('employee', 'my_age', 'calc', calc_str='self.age')
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'age': None,
+            'id': employee_id_1,
+            'link_branch_employees': '/employees/%s/link_branch_employees' % employee_id_1,
+            'my_age': None,
+            'name': 'bob',
+            'self': '/employees/%s' % employee_id_1}, self.api.get('/employees/%s' % employee_id_1))

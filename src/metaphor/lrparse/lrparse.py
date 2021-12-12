@@ -48,7 +48,7 @@ class ResourceRef(object):
         if is_aggregate:
             return results
         elif spec.is_field():
-            return results[0][self.field_name] if results else None
+            return results[0].get(self.field_name) if results else None
         else:
             return results[0]
 

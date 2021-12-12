@@ -395,9 +395,9 @@ class Api(object):
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 res_type = tree.infer_type()
-                calc_result = resource_data[field_name]
+                calc_result = resource_data.get(field_name)
                 if res_type.is_primitive():
-                    if tree.is_collection():
+                    if tree.is_collection() and calc_result is not None:
                         encoded[field_name] = [res[res_type.name] for res in calc_result]
                     else:
                         encoded[field_name] = calc_result

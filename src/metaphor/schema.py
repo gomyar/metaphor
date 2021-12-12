@@ -7,7 +7,7 @@ from flask_login import UserMixin
 
 
 class Field(object):
-    PRIMITIVES = ['int', 'str', 'float', 'bool']
+    PRIMITIVES = ['int', 'str', 'float', 'bool', 'datetime']
 
     def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None):
         self.name = name
@@ -19,6 +19,7 @@ class Field(object):
             'int': ['float', 'int'],
             'float': ['float', 'int'],
             'bool': ['bool'],
+            'datetime': ['datetime'],
         }
         self.spec = None
 
@@ -255,6 +256,8 @@ class Schema(object):
                 parsed_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
             elif field.field_type == 'linkcollection' and field_value is not None:
                 raise Exception("Do this")
+            elif field.field_type == 'datetime':
+                parsed_data[field_name] = datetime.fromisoformat(field_value.replace('Z', '+00:00'))
             else:
                 parsed_data[field_name] = field_value
         return parsed_data
@@ -307,11 +310,21 @@ class Schema(object):
         spec = self.specs[spec_name]
         errors = []
         for field_name, field_data in data.items():
+            if field_name not in spec.fields:
+                errors.append({'error': "Nonexistant field: '%s'" % field_name})
+                continue
+
             field = spec.fields[field_name]
             field_type = type(field_data).__name__
-            if field_type in Field.PRIMITIVES:
-                if field.field_type != field_type:
-                    errors.append({'error': "Invalid type: %s for field '%s' of '%s'" % (field_type, field_name, spec_name)})
+            if field.field_type == 'datetime':
+                try:
+                    datetime.fromisoformat(field_data)
+                except TypeError as ve:
+                    errors.append({'error': "Invalid type for field '%s' (expected 'str')" % (field_name,)})
+                except ValueError as ve:
+                    errors.append({'error': "Invalid date string for field '%s' (expected ISO format)" % (field_name,)})
+            elif not field.check_comparable_type(field_type):
+                errors.append({'error': "Invalid type: %s for field '%s' of '%s' (expected '%s')" % (field_type, field_name, spec_name, field.field_type)})
         return errors
 
     def remove_spec_field(self, spec_name, field_name):

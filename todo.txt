@@ -9,6 +9,8 @@ Shortlist:
  - schema multiple versions, mutations in between
  - estimate effects of a given change (POST/PATCH/DELETE or schema change)
  - groups to schema, users to runtime
+ - datetime
+   - now() years() months() dates() hours() minutes() seconds() milliseconds() timedelta functions
 
 
 todo:

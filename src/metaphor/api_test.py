@@ -1,5 +1,6 @@
 
 import unittest
+from datetime import datetime
 from urllib.error import HTTPError
 
 from pymongo import MongoClient
@@ -25,6 +26,9 @@ class ApiTest(unittest.TestCase):
                         },
                         "age": {
                             "type": "int"
+                        },
+                        "created": {
+                            "type": "datetime"
                         },
                         "division": {
                             "type": "link",
@@ -96,6 +100,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
             'age': 41,
+            'created': None,
             'division': '/divisions/%s' % division_id_1,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
         }, employee_1)
@@ -107,6 +112,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
             'age': 31,
+            'created': None,
             'division': '/divisions/%s' % division_id_1,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
         }, employee_2)
@@ -166,6 +172,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
             'age': 41,
+            'created': None,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'division': '/divisions/%s' % division_id_1,
         }, {
@@ -174,6 +181,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
             'age': 31,
+            'created': None,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
             'division': '/divisions/%s' % division_id_1,
         }
@@ -186,6 +194,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_3,
             'name': 'fred',
             'age': 21,
+            'created': None,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_3,
             'division': '/divisions/%s' % division_id_2,
         }], linked_employees_2)
@@ -207,6 +216,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_1,
             'name': 'ned',
             'age': 41,
+            'created': None,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'division': '/divisions/%s' % division_id_1,
         },
@@ -216,6 +226,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_2,
             'name': 'bob',
             'age': 31,
+            'created': None,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
             'division': '/divisions/%s' % division_id_1,
         },
@@ -225,6 +236,7 @@ class ApiTest(unittest.TestCase):
             'self': '/employees/%s' % employee_id_3,
             'name': 'fred',
             'age': 21,
+            'created': None,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_3,
             'division': None,
         }], employees)
@@ -356,6 +368,36 @@ class ApiTest(unittest.TestCase):
              '_parent_id': None,
              '_parent_type': 'root',
              'age': 31,
+             'name': 'bob'}], new_employees)
+
+    def test_post_datetime(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 31, 'created': '2021-12-11'})
+        new_employees = list(self.db['resource_employee'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_grants': [],
+             '_canonical_url': '/employees/%s' % employee_id_1,
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 31,
+             'created': datetime(2021, 12, 11),
+             'name': 'bob'}], new_employees)
+
+    def test_post_datetime_with_z(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 31, 'created': '2021-12-11T12:11:10.123Z'})
+        new_employees = list(self.db['resource_employee'].find())
+        self.assertEquals([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_grants': [],
+             '_canonical_url': '/employees/%s' % employee_id_1,
+             '_parent_canonical_url': '/',
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             'age': 31,
+             'created': datetime(2021, 12, 11, 12, 11, 10, 123000),
              'name': 'bob'}], new_employees)
 
     def test_post_with_link(self):
@@ -498,6 +540,7 @@ class ApiTest(unittest.TestCase):
                 '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
                 'age': 41,
                 'division': None,
+                'created': None,
                 'id': employee_id_1,
                 'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
                 'name': 'ned',
@@ -506,6 +549,7 @@ class ApiTest(unittest.TestCase):
                 '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
                 'age': 31,
                 'division': None,
+                'created': None,
                 'id': employee_id_2,
                 'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
                 'name': 'bob',
@@ -634,6 +678,7 @@ class ApiTest(unittest.TestCase):
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'id': employee_id_1,
             'age': 41,
+            'created': None,
             'division': {
                 '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
                 'id': division_id_1,
@@ -655,6 +700,7 @@ class ApiTest(unittest.TestCase):
                 '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
                 'age': 41,
                 'division': '/divisions/%s' % division_id_1,
+                'created': None,
                 'id': employee_id_1,
                 'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
                 'name': 'ned',
@@ -683,6 +729,7 @@ class ApiTest(unittest.TestCase):
 				'_meta': {'is_collection': False,
                           'spec': {'name': 'employee'}},
                 'age': 41,
+                'created': None,
                 'division': '/divisions/%s' % division_id_1,
                 'id': employee_id_1,
                 'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
@@ -691,6 +738,7 @@ class ApiTest(unittest.TestCase):
                {'_meta': {'is_collection': False,
                           'spec': {'name': 'employee'}},
                 'age': 31,
+                'created': None,
                 'division': '/divisions/%s' % division_id_1,
                 'id': employee_id_2,
                 'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_2,
@@ -740,6 +788,7 @@ class ApiTest(unittest.TestCase):
                 'spec': {'name': 'employee'}},
                 'age': None,
                 'division': None,
+                'created': None,
                 'id': contractor_id_1,
                 'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id_1),
                 'name': 'bob',
@@ -757,6 +806,7 @@ class ApiTest(unittest.TestCase):
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'age': 41,
             'division': None,
+            'created': None,
             'id': employee_id_1,
             'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
             'name': 'ned',
@@ -853,6 +903,7 @@ class ApiTest(unittest.TestCase):
                 '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
                 'id': contractor_id,
                 'name': 'Angus',
+                'created': None,
                 'age': None,
                 'division': None,
                 'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id),
@@ -872,6 +923,7 @@ class ApiTest(unittest.TestCase):
             'name': 'Angus',
             'age': None,
             'division': None,
+            'created': None,
             'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id),
             'link_division_manager': '/divisions/%s/sections/%s/contractors/%s/link_division_manager' % (division_id_1, section_id_1, contractor_id),
             'self': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),

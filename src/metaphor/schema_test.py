@@ -176,33 +176,6 @@ class SchemaTest(unittest.TestCase):
         reload_employee = self.db.resource_employee.find_one({'_id': self.schema.decodeid(employee_id)})
         self.assertEquals('Ned', reload_employee['name'])
 
-    def test_validate_spec_data(self):
-        self.db.metaphor_schema.insert_one({
-            "specs" : {
-                "employee" : {
-                    "fields" : {
-                        "name" : {
-                            "type" : "str"
-                        },
-                    },
-                },
-                "department" : {
-                    "fields" : {
-                        "employees" : {
-                            "type" : "collection",
-                            "target_spec_name": "employee",
-                        },
-                    },
-                },
-
-            }
-        })
-        self.schema.load_schema()
-
-        self.assertEquals([], self.schema.validate_spec('employee', {'name': 'Bob'}))
-        self.assertEquals([{'error': "Invalid type: int for field 'name' of 'employee'"}],
-                          self.schema.validate_spec('employee', {'name': 12}))
-
     def test_roots(self):
         self.db.metaphor_schema.insert_one({
             "specs" : {

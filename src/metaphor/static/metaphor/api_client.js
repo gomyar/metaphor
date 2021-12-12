@@ -215,6 +215,11 @@ class Collection {
 }
 
 
+function parseDate(date_str) {
+    return new Date(date_str);
+}
+
+
 class ApiClient {
     constructor() {
         this.api_root = '/api';
@@ -237,7 +242,8 @@ class ApiClient {
         this.parse_funcs = {
             'str': String,
             'int': parseInt,
-            'float': parseFloat
+            'float': parseFloat,
+            'datetime': parseDate
         }
     }
 
@@ -391,7 +397,7 @@ class ApiClient {
     }
 
     can_edit_field(field) {
-        return field.type == 'int' || field.type == 'str' || field.type == 'bool' ||  field.type == 'float' || field.type == 'link';
+        return field.type == 'int' || field.type == 'str' || field.type == 'bool' ||  field.type == 'float' || field.type == 'link' || field.type == 'datetime';
     }
  
     perform_create_resource() {

@@ -89,6 +89,7 @@ div.field div.field_value {
     display: inline-block;
     width: auto;
     min-width : 160px;
+    min-height: 16px;
 }
 
 span.expand_button {

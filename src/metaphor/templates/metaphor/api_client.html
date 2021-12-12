@@ -121,6 +121,12 @@
                                 <span class="simple_field_val" gui-text="resource[field_name]"></span>
                                 <input gui-show="api.is_editing_field(resource, field)" gui-val="api.editing_value" gui-bind="keyup" gui-event="api.field_updated(this)" gui-parse-func="api.parse_funcs[field.type]"></input>
                             </div>
+
+                            <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type" gui-show="field.type=='datetime'">
+                                <span class="simple_field_val" gui-text="resource[field_name]"></span>
+                                <input type="datetime-local" gui-show="api.is_editing_field(resource, field)" gui-val="api.editing_value" gui-bind="keyup" gui-event="api.field_updated(this)" gui-parse-func="api.parse_funcs[field.type]"></input>
+                            </div>
+
                             <div class="field_value simple" gui-show="(field.type=='calc') && (field.target_spec_name==null)">
                                 <span gui-text="resource[field_name]"></span>
                             </div>
@@ -161,6 +167,10 @@
                         <div gui-case="'bool'" class="field_bool">
                             &nbsp;
                             <input type="checkbox" gui-val="api.creating_resource[field_name]" gui-focus="index == 1"></input>
+                        </div>
+                        <div gui-case="'datetime'" class="field_bool">
+                            &nbsp;
+                            <input type="datetime-local" gui-val="api.creating_resource[field_name]" gui-focus="index == 1"></input>
                         </div>
                         <div gui-case="'link'" class="field_link">
                             &nbsp;
@@ -254,6 +264,10 @@
                                     </span>
                                 </div>
                                 <div class="field_value simple" gui-class="field.type" gui-show="api.is_simple(field)">
+                                    <!-- int / str / float -->
+                                    <span class="simple_field_val" gui-text="resource[field_name]"></span>
+                                </div>
+                                <div class="field_value simple" gui-class="field.type" gui-show="field.type=='datetime'">
                                     <!-- int / str / float -->
                                     <span class="simple_field_val" gui-text="resource[field_name]"></span>
                                 </div>
