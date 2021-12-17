@@ -821,7 +821,7 @@ class LRParseTest(unittest.TestCase):
 
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 40}, 'employees')
 
-        self.assertEqual({'age': {'$lte': 40}}, tree.condition_aggregation(employee_spec))
+        self.assertEqual({'age': {'$lte': 40}}, tree.condition_aggregation(employee_spec, employee_id))
 
     def test_search_filter_multiple(self):
         employee_spec = self.schema.specs['employee']
@@ -833,7 +833,7 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEqual(
             {'$and': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
-            tree.condition_aggregation(employee_spec))
+            tree.condition_aggregation(employee_spec, employee_id))
 
     def test_search_filter_commas_are_nice(self):
         employee_spec = self.schema.specs['employee']
@@ -845,7 +845,7 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEqual(
             {'$or': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
-            tree.condition_aggregation(employee_spec))
+            tree.condition_aggregation(employee_spec, employee_id))
 
     def test_search_filter_like_string(self):
         employee_spec = self.schema.specs['employee']
@@ -854,7 +854,7 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEqual(
             {'name': {'$options': 'i', '$regex': 'sam'}},
-            tree.condition_aggregation(employee_spec))
+            tree.condition_aggregation(employee_spec, None))
 
     def test_search_filter_like_string_or(self):
         employee_spec = self.schema.specs['employee']
@@ -864,7 +864,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEqual(
             {'$or': [{'name': {'$options': 'i', '$regex': 'sam'}},
                      {'name': {'$options': 'i', '$regex': 'bob'}}]},
-            tree.condition_aggregation(employee_spec))
+            tree.condition_aggregation(employee_spec, None))
 
     def test_search_filter_commas_and_or(self):
         employee_spec = self.schema.specs['employee']
@@ -877,19 +877,19 @@ class LRParseTest(unittest.TestCase):
         self.assertEqual(
             {'$or': [{'$or': [{'age': {'$lte': 40}}, {'name': {'$eq': 'sailor'}}]},
                      {'name': {'$eq': 'weaver'}}]},
-            tree.condition_aggregation(employee_spec))
+            tree.condition_aggregation(employee_spec, employee_id))
 
     def test_search_filter_resource_ref(self):
         employee_spec = self.schema.specs['employee']
 
-        tree = parse_filter("name=self.pseudoname", employee_spec)
+        tree = parse("name=self.pseudoname", employee_spec)
 
         employee_id = self.schema.insert_resource(
             'employee', {'name': 'sailor', 'pseudoname': 'bob'}, 'employees')
 
         self.assertEqual(
             {'name': {'$eq': 'bob'}},
-            tree.condition_aggregation(employee_spec))
+            tree.condition_aggregation(employee_spec, employee_id))
 
     def test_resources_in_different_collections(self):
         tree = parse("employees", self.schema.root)
@@ -986,9 +986,9 @@ class LRParseTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'created': "2021-12-14", "division": division_id_1}, 'employees')
         employee_id_3 = self.schema.insert_resource('employee', {'name': 'bil', 'created': "2021-12-24", "division": division_id_1}, 'employees')
 
-        tree = parse("self.link_employee_division[created=self.cutoff]", division_spec)
+        tree = parse("self.link_employee_division[created>self.cutoff]", division_spec)
 
-        calculated = tree.calculate(employee_id_1)
-        self.assertEqual([employee_id_2, employee_id_3], calculated)
+        calculated = tree.calculate(division_id_1)
+        self.assertEqual(['bob', 'bil'], [e['name'] for e in calculated])
 
 

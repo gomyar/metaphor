@@ -417,7 +417,7 @@ class Api(object):
         spec = self.schema.specs[spec_name]
         if query_str:
             query = parse_filter(query_str, spec)
-            query = query.condition_aggregation(spec)
+            query = query.condition_aggregation(spec, None)
         else:
             query = {}
         pagination = self.create_pagination_aggregations(page, page_size)

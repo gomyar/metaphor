@@ -28,7 +28,7 @@
     </div>
 
     <div class="spec root">
-        <div class="fields" gui-list="schema.root" gui-item="field" gui-key="field_name">
+        <div class="fields" gui-list="schema.root.fields" gui-item="field" gui-key="field_name">
             <div class="field">
                 <div class="name" gui-text="field_name"></div>
                 <div class="type" gui-text="field.type"></div>
@@ -76,8 +76,8 @@
             </div>
         </div>
         <div class="popupbuttons">
-            <div class="button" gui-click='create_spec.create_spec()'>Create</div>
-            <div class="button" gui-click='create_spec.hide_popup()'>Close</div>
+            <button class="button" gui-click='create_spec.create_spec()'>Create</button>
+            <button class="button" gui-click='create_spec.hide_popup()'>Close</button>
         </div>
     </div>
 </div>
@@ -129,8 +129,8 @@
             </div>
         </div>
         <div class="popupbuttons">
-            <div class="button" gui-click='create_field.create_field()'>Create</div>
-            <div class="button" gui-click='create_field.hide_popup()'>Close</div>
+            <button class="button" gui-click='create_field.create_field()'>Create</button>
+            <button class="button" gui-click='create_field.hide_popup()'>Close</button>
         </div>
     </div>
 </div>

@@ -552,7 +552,7 @@ class FilteredResourceRef(ResourceRef):
 
     def aggregation(self, self_id, user=None):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        filter_agg = self.filter_ref.filter_aggregation(spec)
+        filter_agg = self.filter_ref.filter_aggregation(spec, self_id)
         aggregation.append(filter_agg)
         return aggregation, spec, True
 
@@ -689,21 +689,22 @@ class Condition(object):
         if self.field_name not in spec.fields:
             raise SyntaxError("Resource %s has no field %s" % (spec.name, self.field_name))
         field = spec.fields[self.field_name]
-        if not field.check_comparable_type(self.const.const_type):
-            raise SyntaxError("Cannot compare \"%s %s %s\"" % (field.field_type, self.operator, type(self.const.value).__name__))
+        if not field.check_comparable_type(self.const.infer_type().field_type):
+            raise SyntaxError("Cannot compare \"%s %s %s\"" % (field.field_type, self.operator, type(self.const.calculate(None)).__name__))
 
     def __init__(self, tokens, parser):
         self.field_name, self.operator, self.const = tokens
         self._parser = parser
 
-    def condition_aggregation(self, spec):
+    def condition_aggregation(self, spec, resource_id):
         field_spec = spec.build_child_spec(self.field_name)
-        if not field_spec.check_comparable_type(self.const.const_type):
+        # TODO: check removing this in favour of validate_ref()
+        if not field_spec.check_comparable_type(self.const.infer_type().field_type):
             raise Exception("Incorrect type for condition: %s %s %s" %(
-                self.field_name, self.operator, self.const.value))
+                self.field_name, self.operator, self.const.calculate(resource_id)))
         aggregation = {
             self.field_name: {
-                self.OPERATORS[self.operator]: self.const.value}}
+                self.OPERATORS[self.operator]: self.const.calculate(resource_id)}}
         return aggregation
 
     def __repr__(self):
@@ -718,13 +719,13 @@ class LikeCondition(Condition):
         self.field_name, _, self.const = tokens
         self._parser = parser
 
-    def condition_aggregation(self, spec):
+    def condition_aggregation(self, spec, resource_id):
         field_spec = spec.build_child_spec(self.field_name)
-        if type(self.const.value) is not str:
+        if type(self.const.calculate(resource_id)) is not str:
             raise Exception("Incorrect type for condition: %s ~ %s" %(
-                self.field_name, self.const.value))
+                self.field_name, self.const.calculate(resource_id)))
         aggregation = {
-            self.field_name: {'$regex': self.const.value, '$options': 'i'}}
+            self.field_name: {'$regex': self.const.calculate(resource_id), '$options': 'i'}}
         return aggregation
 
     def __repr__(self):
@@ -739,9 +740,9 @@ class AndCondition(Condition):
         self.lhs, _, self.rhs = tokens
         self._parser = parser
 
-    def condition_aggregation(self, spec):
-        return {"$and": [self.lhs.condition_aggregation(spec),
-                         self.rhs.condition_aggregation(spec)]}
+    def condition_aggregation(self, spec, resource_id):
+        return {"$and": [self.lhs.condition_aggregation(spec, resource_id),
+                         self.rhs.condition_aggregation(spec, resource_id)]}
 
     def __repr__(self):
         return "%s & %s" % (self.lhs, self.rhs)
@@ -755,9 +756,9 @@ class OrCondition(Condition):
         self.lhs, _, self.rhs = tokens
         self._parser = parser
 
-    def condition_aggregation(self, spec):
-        return {"$or": [self.lhs.condition_aggregation(spec),
-                         self.rhs.condition_aggregation(spec)]}
+    def condition_aggregation(self, spec, resource_id):
+        return {"$or": [self.lhs.condition_aggregation(spec, resource_id),
+                         self.rhs.condition_aggregation(spec, resource_id)]}
 
     def __repr__(self):
         return "%s & %s" % (self.lhs, self.rhs)
@@ -777,8 +778,8 @@ class Filter(object):
     def __repr__(self):
         return "[%s]" % (self.condition,)
 
-    def filter_aggregation(self, spec):
-        agg = self.condition.condition_aggregation(spec)
+    def filter_aggregation(self, spec, resource_id):
+        agg = self.condition.condition_aggregation(spec, resource_id)
         aggregation = {"$match": agg}
         return aggregation
 
@@ -811,7 +812,7 @@ class ResourceRefTernary(ResourceRef):
 
         aggregation = {
             "$cond": {
-                "if": self.condition.condition_aggregation(self.spec),
+                "if": self.condition.condition_aggregation(self.spec, self_id),
                 "then": then_agg,
                 "else": else_agg
             }
@@ -1058,6 +1059,13 @@ class Parser(object):
             [(NAME, '<', ConstRef) , Condition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+
+            [(NAME, '=', ResourceRef) , Condition],
+            [(NAME, '>', ResourceRef) , Condition],
+            [(NAME, '<', ResourceRef) , Condition],
+            [(NAME, '>=', ResourceRef) , Condition],
+            [(NAME, '<=', ResourceRef) , Condition],
+
             [(Calc, '+', Calc) , Operator],
             [(Calc, '-', Calc) , Operator],
             [(Calc, '*', Calc) , Operator],
@@ -1200,6 +1208,9 @@ class UrlParser(Parser):
             [(NAME, '>', ConstRef) , Condition],
             [(NAME, '<', ConstRef) , Condition],
             [(NAME, '~', ConstRef) , LikeCondition],
+            [(NAME, '>=', ConstRef) , Condition],
+            [(NAME, '<=', ConstRef) , Condition],
+
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
@@ -1239,6 +1250,7 @@ class FilterParser(Parser):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [(Condition, ',', Condition) , OrCondition],
