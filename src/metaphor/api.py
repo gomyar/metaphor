@@ -77,14 +77,16 @@ class Api(object):
                     spec.name,
                     field_name,
                     parent_id,
-                    data)
+                    data,
+                    self.schema.read_root_grants(path))
             else:
                 return self.updater.create_resource(
                     field_spec.target_spec_name,
                     spec.name,
                     field_name,
                     parent_id,
-                    data)
+                    data,
+                    self.schema.read_root_grants(path))
         else:
             if path not in self.schema.root.fields:
                 raise HTTPError('', 404, "Not Found", None, None)

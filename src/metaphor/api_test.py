@@ -65,6 +65,27 @@ class ApiTest(unittest.TestCase):
                         }
                     },
                 },
+                "group" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "grants": {
+                            "type": "collection",
+                            "target_spec_name": "grant"
+                        },
+                    }
+                },
+                "grant" : {
+                    "fields" : {
+                        "type" : {
+                            "type" : "str"
+                        },
+                        "url" : {
+                            "type" : "str"
+                        },
+                    }
+                },
             },
             "root": {
                 "employees": {
@@ -74,7 +95,11 @@ class ApiTest(unittest.TestCase):
                 "divisions": {
                     "type": "collection",
                     "target_spec_name": "division",
-                }
+                },
+                "groups" : {
+                    "type" : "collection",
+                    "target_spec_name" : "group"
+                },
             },
         })
         self.schema.load_schema()
@@ -943,3 +968,37 @@ class ApiTest(unittest.TestCase):
             'sections': '/divisions/%s/sections' % division_id_1,
             'self': '/divisions/%s' % division_id_1,
             'yearly_sales': 100}, self.api.get('/divisions/%s' % division_id_1))
+
+    def test_grants_set_on_nested_resources(self):
+        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
+        grant_id_1 = self.schema.insert_resource('grant', {'type': 'read', 'url': '/'}, 'grants', 'group', group_id_1)
+
+        division_id = self.api.post('/divisions', {'name': 'EU'})
+        section_id = self.api.post('/divisions/%s/sections' % division_id, {'name': 'Sales'})
+        contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id, section_id), {'name': 'Bob'})
+
+        division_data = self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id)})
+        section_data = self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id)})
+        employee_data = self.db['resource_employee'].find_one({'_id': self.schema.decodeid(contractor_id)})
+
+        self.assertEqual([self.schema.decodeid(grant_id_1)], division_data['_grants'])
+        self.assertEqual([self.schema.decodeid(grant_id_1)], section_data['_grants'])
+        self.assertEqual([self.schema.decodeid(grant_id_1)], employee_data['_grants'])
+
+    def test_grants_set_on_nested_resources_2(self):
+        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
+
+        division_id = self.api.post('/divisions', {'name': 'EU'})
+
+        grant_id_1 = self.schema.insert_resource('grant', {'type': 'read', 'url': '/divisions/%s' % division_id}, 'grants', 'group', group_id_1)
+
+        section_id = self.api.post('/divisions/%s/sections' % division_id, {'name': 'Sales'})
+        contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id, section_id), {'name': 'Bob'})
+
+        division_data = self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id)})
+        section_data = self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id)})
+        employee_data = self.db['resource_employee'].find_one({'_id': self.schema.decodeid(contractor_id)})
+
+        self.assertEqual([], division_data['_grants'])
+        self.assertEqual([self.schema.decodeid(grant_id_1)], section_data['_grants'])
+        self.assertEqual([self.schema.decodeid(grant_id_1)], employee_data['_grants'])

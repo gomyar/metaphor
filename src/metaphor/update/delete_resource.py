@@ -31,7 +31,7 @@ class DeleteResourceUpdate:
                                 cursors.append((affected_ids, calc_spec_name, calc_field_name))
 
         # must add _create_updated field to resource instead of creating updater document
-        self.schema.delete_resource(self.spec_name, self.resource_id)
+        original_resource = self.schema.delete_resource(self.spec_name, self.resource_id)
 
         for affected_ids, calc_spec_name, calc_field_name in cursors:
             for affected_id in affected_ids:
@@ -59,6 +59,10 @@ class DeleteResourceUpdate:
                     for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({'%s._id' % field_name: self.schema.decodeid(self.resource_id)}):
                         # call update_resource on resource
                         self.updater.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, self.resource_id)
+
+        # check if resource is read grant
+        if self.spec_name == 'grant':
+            self.updater._remove_grants(self.resource_id, original_resource['url'])
 
         return self.resource_id
 

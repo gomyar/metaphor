@@ -1,4 +1,5 @@
 
+from datetime import timedelta
 import tokenize
 from io import StringIO
 from metaphor.schema import Field
@@ -913,6 +914,10 @@ class FunctionCall(Calc):
             'min': self._min,
             'average': self._average,
             'sum': self._sum,
+            'days': self._days,
+            'hours': self._hours,
+            'minutes': self._minutes,
+            'seconds': self._seconds,
         }
 
     def get_resource_dependencies(self):
@@ -930,6 +935,18 @@ class FunctionCall(Calc):
 
     def calculate(self, self_id):
         return self.functions[self.func_name](self_id, *self.params)
+
+    def _days(self, self_id, days):
+        return timedelta(days=days.value)
+
+    def _hours(self, self_id, hours):
+        return timedelta(hours=hours.value)
+
+    def _minutes(self, self_id, minutes):
+        return timedelta(minutes=minutes.value)
+
+    def _seconds(self, self_id, seconds):
+        return timedelta(seconds=seconds.value)
 
     def _round(self, self_id, aggregate_field, digits=None):
         value = aggregate_field.calculate(self_id)

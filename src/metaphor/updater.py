@@ -96,9 +96,13 @@ class Updater(object):
 
         return resource_id
 
-    def _update_grants(self, grant_id, grant_type, url):
+    def _update_grants(self, grant_id, url):
         for spec_name, spec in self.schema.specs.items():
             self.schema.db['resource_%s' % spec_name].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
+
+    def _remove_grants(self, grant_id, url):
+        for spec_name, spec in self.schema.specs.items():
+            self.schema.db['resource_%s' % spec_name].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$pull": {'_grants': self.schema.decodeid(grant_id)}})
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):

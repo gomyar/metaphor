@@ -22,6 +22,21 @@ class UpdaterTest(unittest.TestCase):
 
         self.schema.create_initial_schema()
 
+
+        self.company_spec = self.schema.add_spec('company')
+        self.employee_spec = self.schema.add_spec('employee')
+        self.division_spec = self.schema.add_spec('division')
+
+        self.schema.add_field(self.company_spec, 'divisions', 'collection', 'division')
+
+        self.schema.add_field(self.employee_spec, 'name', 'str')
+
+        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
+
+        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
+
+
+    def test_delete_group(self):
         self.admin_group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'}, self.schema.read_root_grants('groups'))
 
         self.grant_id = self.updater.create_resource('grant', 'group', 'grants', self.admin_group_id, {'type': 'read', 'url': '/companies'})
@@ -30,10 +45,7 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater.create_linkcollection_entry('user', self.user_id, 'groups', self.admin_group_id)
 
-        self.company_spec = self.schema.add_spec('company')
-        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
 
-    def test_delete_group(self):
         user_db = self.db['resource_user'].find_one()
         self.assertEqual(1, len(user_db['read_grants']))
 
@@ -41,3 +53,63 @@ class UpdaterTest(unittest.TestCase):
 
         user_db = self.db['resource_user'].find_one()
         self.assertEqual(0, len(user_db['read_grants']))
+
+    def test_root_grants(self):
+        group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'readall'}, self.schema.read_root_grants('groups'))
+        grant_id = self.updater.create_resource('grant', 'group', 'grants', group_id, {'type': 'read', 'url': '/'})
+
+        company_id = self.updater.create_resource('company', 'root', 'companies', None, {}, self.schema.read_root_grants('companies'))
+
+        company_data = self.db['resource_company'].find_one({})
+        self.assertEqual([self.schema.decodeid(grant_id)], company_data['_grants'])
+
+    def test_nested_grants(self):
+        group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'readall'}, self.schema.read_root_grants('groups'))
+        grant_id = self.updater.create_resource('grant', 'group', 'grants', group_id, {'type': 'read', 'url': '/'})
+
+        company_id = self.updater.create_resource('company', 'root', 'companies', None, {}, self.schema.read_root_grants('companies'))
+
+        company_path = "companies/%s" % company_id
+        division_id_1 = self.updater.create_resource('division', 'company', 'divisions', company_id, {}, self.schema.read_root_grants(company_path))
+        division_id_2 = self.updater.create_resource('division', 'company', 'divisions', company_id, {}, self.schema.read_root_grants(company_path))
+
+        division_1_path = "companies/%s/divisions/%s" % (company_id, division_id_1)
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {}, self.schema.read_root_grants(division_1_path))
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {}, self.schema.read_root_grants(division_1_path))
+
+        division_2_path = "companies/%s/divisions/%s" % (company_id, division_id_2)
+        employee_id_3 = self.updater.create_resource('employee', 'division', 'employees', division_id_2, {}, self.schema.read_root_grants(division_2_path))
+        employee_id_4 = self.updater.create_resource('employee', 'division', 'employees', division_id_2, {}, self.schema.read_root_grants(division_2_path))
+
+        # check grants
+        company_data = self.db['resource_company'].find_one({})
+        self.assertEqual([self.schema.decodeid(grant_id)], company_data['_grants'])
+
+        division_1_data = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_1)})
+        self.assertEqual([self.schema.decodeid(grant_id)], division_1_data['_grants'])
+
+        division_2_data = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_2)})
+        self.assertEqual([self.schema.decodeid(grant_id)], division_2_data['_grants'])
+
+        employee_1_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        self.assertEqual([self.schema.decodeid(grant_id)], employee_1_data['_grants'])
+
+        employee_2_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_2)})
+        self.assertEqual([self.schema.decodeid(grant_id)], employee_2_data['_grants'])
+
+        employee_3_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_3)})
+        self.assertEqual([self.schema.decodeid(grant_id)], employee_3_data['_grants'])
+
+        employee_4_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_4)})
+        self.assertEqual([self.schema.decodeid(grant_id)], employee_4_data['_grants'])
+
+    def test_deleting_grant_removes_grant_id(self):
+        group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'readall'}, self.schema.read_root_grants('groups'))
+        grant_id = self.updater.create_resource('grant', 'group', 'grants', group_id, {'type': 'read', 'url': '/'})
+
+        company_id = self.updater.create_resource('company', 'root', 'companies', None, {}, self.schema.read_root_grants('companies'))
+
+        self.updater.delete_resource('grant', grant_id, 'group', 'grants')
+
+        company_data = self.db['resource_company'].find_one({})
+        self.assertEqual([], company_data['_grants'])

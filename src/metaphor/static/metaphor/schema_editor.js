@@ -100,7 +100,7 @@ var create_field = {
     field_target: null,
     calc_str: null,
 
-    all_field_types: ['int', 'float', 'str', 'bool', 'datetime', 'collection', 'link', 'linkcollection', 'calc'],
+    all_field_types: ['int', 'float', 'str', 'bool', 'datetime', 'collection', 'link', 'linkcollection', 'orderedcollection', 'calc'],
 
     create_field: function() {
         if (!create_field.field_name) {

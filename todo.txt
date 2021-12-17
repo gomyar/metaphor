@@ -1,5 +1,6 @@
 
 Shortlist:
+ - deleting grant or groups also removes reference from _grants list for all applicble resources
  - pagination - done
  - expand / fields params - done
  - collection functions
@@ -11,6 +12,12 @@ Shortlist:
  - groups to schema, users to runtime
  - datetime
    - now() years() months() dates() hours() minutes() seconds() milliseconds() timedelta functions
+ - integrations - all retrieved data is cached as proper resources
+   - realtime w/ mongo / mysql
+   - background thread/poll
+   - webhooks
+
+ - ok, on second thoughts, maybe the grant "url" field should be a lrparse filter instead (companies.employees.ID123123123)
 
 
 todo:

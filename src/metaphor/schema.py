@@ -269,23 +269,21 @@ class Schema(object):
         if parent_id:
             parent_data = self.load_parent_data(parent_type, parent_id)
             parent_canonical_url = os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
-            grants = parent_data['_grants']
         else:
             # assume grants taken from root
             parent_canonical_url = '/'
-            grants = grants or []
         data['_id'] = new_id
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
         data['_parent_canonical_url'] = parent_canonical_url
         data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
-        data['_grants'] = grants
+        data['_grants'] = grants or []
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
     def delete_resource(self, spec_name, resource_id):
-        self.db['resource_%s' % spec_name].delete_one({'_id': self.decodeid(resource_id)})
+        return self.db['resource_%s' % spec_name].find_one_and_delete({'_id': self.decodeid(resource_id)})
 
     def delete_linkcollection_entry(self, spec_name, parent_id, field_name, resource_id):
         self.db['resource_%s' % spec_name].update({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
@@ -420,5 +418,15 @@ class Schema(object):
         self.load_schema()
 
     def read_root_grants(self, path):
-        return [g['_id'] for g in self.db['resource_grant'].find({'url': '/%s' % path, 'type': 'read'}, {'_id': True})]
-
+        or_clause = [{'url': '/'}]
+        segments = path.split('/')
+        while segments:
+            or_clause.append({'url': '/' + '/'.join(segments)})
+            segments = segments[:-1]
+        query = {
+            "$and": [
+                {"type": "read"},
+                {"$or": or_clause},
+            ]
+        }
+        return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]

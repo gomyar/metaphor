@@ -115,6 +115,12 @@
                         <option gui-val="spec_name" gui-text="spec_name"></option>
                     </select>
                 </div>
+                <div class="formfield" gui-case="'orderedcollection'">
+                    <div class="label">Target Spec:</div>
+                    <select gui-val="create_field.field_target" gui-list="Object.keys(schema.specs)" gui-item="spec_name">
+                        <option gui-val="spec_name" gui-text="spec_name"></option>
+                    </select>
+                </div>
                 <div class="formfield" gui-case="'calc'">
                     <div class="label">Calc:</div>
                     <input type="text" gui-val="create_field.calc_str"></input>

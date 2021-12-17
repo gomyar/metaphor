@@ -1,5 +1,6 @@
 
 import unittest
+from datetime import datetime
 
 from .lrparse import parse, parse_filter
 from pymongo import MongoClient
@@ -24,6 +25,9 @@ class LRParseTest(unittest.TestCase):
                 "employee" : {
                     "fields" : {
                         "name" : {
+                            "type" : "str"
+                        },
+                        "pseudoname" : {
                             "type" : "str"
                         },
                         "age": {
@@ -875,6 +879,18 @@ class LRParseTest(unittest.TestCase):
                      {'name': {'$eq': 'weaver'}}]},
             tree.condition_aggregation(employee_spec))
 
+    def test_search_filter_resource_ref(self):
+        employee_spec = self.schema.specs['employee']
+
+        tree = parse_filter("name=self.pseudoname", employee_spec)
+
+        employee_id = self.schema.insert_resource(
+            'employee', {'name': 'sailor', 'pseudoname': 'bob'}, 'employees')
+
+        self.assertEqual(
+            {'name': {'$eq': 'bob'}},
+            tree.condition_aggregation(employee_spec))
+
     def test_resources_in_different_collections(self):
         tree = parse("employees", self.schema.root)
 
@@ -930,3 +946,49 @@ class LRParseTest(unittest.TestCase):
 
         calculated = tree.calculate(employee_id)
         self.assertEqual(15, calculated)
+
+    def test_calc_datetime(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
+
+        employee_spec.fields["created"] = Field("created", "datetime")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'created': "2021-12-01"}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'created': "2021-12-01"}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'bil', 'created': "2021-12-01"}, 'employees')
+
+        tree = parse("self.created - days(2)", employee_spec)
+
+        calculated = tree.calculate(employee_id_1)
+        self.assertEqual(datetime(2021, 11, 29), calculated)
+
+        tree = parse("self.created - hours(2)", employee_spec)
+
+        calculated = tree.calculate(employee_id_1)
+        self.assertEqual(datetime(2021, 11, 30, 22), calculated)
+
+        tree = parse("self.created - minutes(2)", employee_spec)
+
+        calculated = tree.calculate(employee_id_1)
+        self.assertEqual(datetime(2021, 11, 30, 23, 58), calculated)
+
+
+    def test_calc_datetime_comparison(self):
+        employee_spec = self.schema.specs['employee']
+        division_spec = self.schema.specs['division']
+
+        employee_spec.fields["created"] = Field("created", "datetime")
+        division_spec.fields["cutoff"] = Field("cutoff", "datetime")
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'cutoff': "2021-12-12"}, 'divisions')
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'created': "2021-12-01", "division": division_id_1}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'created': "2021-12-14", "division": division_id_1}, 'employees')
+        employee_id_3 = self.schema.insert_resource('employee', {'name': 'bil', 'created': "2021-12-24", "division": division_id_1}, 'employees')
+
+        tree = parse("self.link_employee_division[created=self.cutoff]", division_spec)
+
+        calculated = tree.calculate(employee_id_1)
+        self.assertEqual([employee_id_2, employee_id_3], calculated)
+
+
