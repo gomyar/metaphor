@@ -23,8 +23,7 @@ def run_init_schema(mongohost, mongodb):
         group_id = updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'}, schema.read_root_grants('groups'))
 
         for grant_type in ['read', 'create', 'update', 'delete']:
-            updater.create_resource('grant', 'group', 'grants', group_id, {'type': grant_type, 'url': '/users'})
-            updater.create_resource('grant', 'group', 'grants', group_id, {'type': grant_type, 'url': '/groups'})
+            updater.create_resource('grant', 'group', 'grants', group_id, {'type': grant_type, 'url': '/'})
 
         print("Schema created in database '%s'" % db.name)
 

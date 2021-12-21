@@ -11,13 +11,14 @@ from .schema import Schema, Spec, Field, CalcField
 
 
 class SchemaSerializer(object):
-    def __init__(self):
+    def __init__(self, include_admindata=False):
         self.serializers = dict(
             Schema=self._serialize_schema,
             Spec=self._serialize_spec,
             Field=self._serialize_field,
             CalcField=self._serialize_calcfield,
         )
+        self.include_admindata = include_admindata
 
     def serialize(self, pyobject):
         encoded_str = json.dumps(pyobject, default=self._encode, indent=4)
@@ -61,6 +62,8 @@ class SchemaSerializer(object):
         calc_type = field.infer_type()
         if not calc_type.is_primitive():
             calc_data['target_spec_name'] = calc_type.name
+        if self.include_admindata:
+            calc_data['calc_str'] = field.calc_str
         return calc_data
 
 
@@ -69,8 +72,8 @@ class AdminApi(object):
         self.schema = schema
         self.updater = Updater(schema)
 
-    def format_schema(self):
-        return SchemaSerializer().serialize(self.schema)
+    def format_schema(self, include_admindata=False):
+        return SchemaSerializer(include_admindata).serialize(self.schema)
 
     def create_spec(self, spec_name):
         self.schema.db['metaphor_schema'].update(
@@ -181,3 +184,15 @@ class AdminApi(object):
             {'_id': self.schema._id},
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
         self.updater.remove_spec_field(spec_name, field_name)
+
+    def list_integrations(self):
+        return self.schema.list_integrations()
+
+    def create_integration(self, integration_data):
+        self.schema.create_integration(integration_data)
+
+    def update_integration(self, integration_data):
+        self.schema.update_integration(integration_data)
+
+    def delete_integration(self, integration_id):
+        self.schema.delete_integration(integration_id)

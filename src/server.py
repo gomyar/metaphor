@@ -2,6 +2,7 @@
 
 import os
 import json
+import atexit
 
 from gevent import monkey
 monkey.patch_all()
@@ -23,20 +24,24 @@ from metaphor.api_bp import search_bp
 from metaphor.login_bp import login_bp
 from metaphor.login_bp import init_login
 from metaphor.client_bp import client_bp
+from metaphor.integrations.runner import IntegrationRunner
 
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
+integration_runner = None
 
 def create_app(db):
     schema = Schema(db)
     schema.load_schema()
 
+    api = Api(schema)
+
     app = Flask(__name__)
     app.secret_key = 'keepitsecretkeepitsafe'
-    app.config['api'] = Api(schema)
+    app.config['api'] = api
     app.config['admin_api'] = AdminApi(schema)
     app.register_blueprint(api_bp)
     app.register_blueprint(client_bp)
@@ -49,6 +54,11 @@ def create_app(db):
     @app.route("/")
     def index():
         return redirect(url_for('client.client_root'))
+
+    integration_runner = IntegrationRunner(api, db)
+    integration_runner.start()
+
+    atexit.register(integration_runner.stop)
 
     return app
 

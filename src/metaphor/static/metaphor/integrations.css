@@ -1,0 +1,29 @@
+
+body {
+    font-family : "Courier New", Courier, monospace;
+}
+
+
+div.integrations {
+    margin : 10px;
+    top : 50px;
+    background-color : white;
+    overflow-y : auto;
+
+}
+
+div.title {
+    margin: 10px;
+    font-size : 16px;
+    font-weight : bold;
+    display : inline-block;
+}
+
+
+span.field_name {
+    display: inline-block;
+    width: 250px;
+}
+
+span.field_value {
+}

@@ -9,6 +9,8 @@ from flask_login import login_required
 
 import flask_login
 
+from bson.objectid import ObjectId
+
 api_bp = Blueprint('api', __name__, template_folder='templates',
                    static_folder='static', url_prefix='/api')
 
@@ -104,7 +106,7 @@ def schema_editor():
 @login_required
 def schema_editor_api():
     admin_api = current_app.config['admin_api']
-    return jsonify(admin_api.format_schema())
+    return jsonify(admin_api.format_schema(flask_login.current_user.is_admin()))
 
 
 @admin_bp.route("/schema_editor/api/specs", methods=['POST'])
@@ -140,4 +142,51 @@ def schema_editor_delete_field(spec_name, field_name):
         return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     admin_api.delete_field(spec_name, field_name)
+    return jsonify({'success': 1})
+
+
+
+@admin_bp.route("/integrations")
+@login_required
+def integrations_view():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
+    return render_template('metaphor/integrations.html')
+
+
+@admin_bp.route("/integrations/api", methods=['GET', 'POST'])
+@login_required
+def all_integrations():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
+    admin_api = current_app.config['admin_api']
+
+    if request.method == 'GET':
+        def serialize_integration(integration):
+            serialize = integration.copy()
+            serialize['id'] = str(serialize.pop('_id'))
+            return serialize
+        integrations = admin_api.list_integrations()
+        serialized = [serialize_integration(s) for s in integrations]
+
+        return jsonify(serialized)
+    else:
+        data = request.json
+        admin_api.create_integration(data)
+        return jsonify({'success': 1})
+
+
+@admin_bp.route("/integrations/api/<integration_id>", methods=['PATCH', 'DELETE'])
+@login_required
+def single_integration(integration_id):
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
+    admin_api = current_app.config['admin_api']
+
+    if request.method == 'PATCH':
+        data = request.json
+        data['_id'] = ObjectId(data.pop('id'))
+        admin_api.update_integration(data)
+    else:
+        admin_api.delete_integration(ObjectId(request.json['id']))
     return jsonify({'success': 1})

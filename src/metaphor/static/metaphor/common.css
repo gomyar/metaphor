@@ -79,7 +79,7 @@ div.popupform div.formfield {
 
 div.popupform div.formfield div {
     display : inline-block;
-    min-width : 100px;
+    min-width : 200px;
 }
 
 div.popupform div.formfield div.label {
