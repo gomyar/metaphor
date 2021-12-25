@@ -213,6 +213,7 @@ class Api(object):
                     },
                     'is_collection': True,
                     'can_create': type(tree) in (CollectionResourceRef,
+                                                 OrderedCollectionResourceRef,
                                                RootResourceRef),
                     'can_link': type(tree) in (LinkCollectionResourceRef,),
                 }

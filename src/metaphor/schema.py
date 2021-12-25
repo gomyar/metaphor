@@ -27,7 +27,7 @@ class Field(object):
         return self.field_type in Field.PRIMITIVES
 
     def is_collection(self):
-        return self.field_type in ['collection', 'linkcollection', 'reverse_link', 'reverse_link_collection']
+        return self.field_type in ['collection', 'linkcollection', 'reverse_link', 'reverse_link_collection', 'orderedcollection']
 
     def is_field(self):
         return True

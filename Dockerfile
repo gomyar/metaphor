@@ -1,13 +1,17 @@
-FROM ubuntu:20.10
+# syntax=docker/dockerfile:1.0.0-experimental
+  
+FROM alpine
 
-RUN apt update -y
-RUN apt install -y \
+RUN apk add --update \
     python3 \
     python3-dev \
-    python3-pip \
-    build-essential \
+    py3-pip \
+    build-base \
     libffi-dev \
-  && pip install virtualenv
+    musl-dev \
+    gcc \
+    libevent-dev \
+  && rm -rf /var/cache/apk/*
 
 COPY ./requirements.txt /requirements.txt
 
@@ -15,8 +19,11 @@ RUN pip install -r /requirements.txt
 
 COPY ./src/metaphor/ /app/metaphor/
 COPY ./src/server.py /app/
+COPY ./bin/metaphor /bin/
 
 WORKDIR /app/
+
+ENV PYTHONPATH=/app/
 
 EXPOSE 8000
 

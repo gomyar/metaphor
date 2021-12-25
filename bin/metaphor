@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
+import os
 from datetime import datetime
 import getpass
 import argparse
@@ -92,6 +93,11 @@ if __name__ == '__main__':
         'create_user': run_create_user,
     }
 
+    default_mongoconnection = "mongodb://%s:%s" % (
+        os.getenv('METAPHOR_MONGO_HOST', 'localhost'),
+        os.getenv('METAPHOR_MONGO_PORT', '27017'))
+    default_mongodb = os.getenv('METAPHOR_DBNAME', 'metaphor')
+
     commands[args.command](
-        args.mongohost or 'mongodb://localhost:27017',
-        args.mongodb or 'metaphor')
+        args.mongohost or default_mongoconnection,
+        args.mongodb or default_mongodb)

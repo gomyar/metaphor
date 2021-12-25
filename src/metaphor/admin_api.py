@@ -136,7 +136,7 @@ class AdminApi(object):
                 self.updater.update_calc(spec_name, field_name, self.schema.encodeid(resource['_id']))
 
     def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
-        if spec_name is not 'root' and field_name not in self.schema.specs[spec_name].fields:
+        if spec_name != 'root' and field_name not in self.schema.specs[spec_name].fields:
             raise HTTPError(None, 400, 'Field does not exist: %s' % field_name, None, None)
         self._update_field(spec_name, field_name, field_type, field_target, calc_str)
 

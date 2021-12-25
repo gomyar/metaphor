@@ -17,6 +17,17 @@ Shortlist:
    - background thread/poll
    - webhooks
 
+ - bug: deleting a spec field doesn't delete associated link_ field
+ - bug: validate types for functions 
+ - edit calc 
+ - edit field
+ - add helper functions
+ - add mechanism for easily adding functions 
+   - as aggregations
+   - as python functions
+ implement switch():
+   - switch(resource_ref, case, case, case, ...)
+
  - ok, on second thoughts, maybe the grant "url" field should be a lrparse filter instead (companies.employees.ID123123123)
 
 
