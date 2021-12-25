@@ -494,6 +494,55 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.salary < 10 -> self.tax: 12", employee_spec)
         self.assertEquals(12, tree.calculate(employee_id_1))
 
+    def test_switch(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary_range"] = Field("salary_range", "str")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary_range': 'upper'}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower'}, 'employees')
+
+        tree = parse("self.salary_range -> ('upper': 20.0, 'lower': 40.0)", employee_spec)
+        self.assertEquals(20.0, tree.calculate(employee_id_1))
+        self.assertEquals(40.0, tree.calculate(employee_id_2))
+
+    def test_switch_basic(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary_range"] = Field("salary_range", "str")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary_range': 'upper'}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower'}, 'employees')
+
+        tree = parse("self.salary_range -> ('upper': 20.0)", employee_spec)
+        self.assertEquals(20.0, tree.calculate(employee_id_1))
+        self.assertEquals(None, tree.calculate(employee_id_2))
+
+    def test_switch_field_refs(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["upper_salary"] = Field("salary", "float")
+        employee_spec.fields["lower_salary"] = Field("salary", "float")
+        employee_spec.fields["salary_range"] = Field("salary_range", "str")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary_range': 'upper', 'upper_salary': 50000, 'lower_salary': 40000}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower', 'upper_salary': 30000, 'lower_salary': 20000}, 'employees')
+
+        tree = parse("self.salary_range -> ('upper': self.upper_salary, 'lower': self.lower_salary)", employee_spec)
+        self.assertEquals(50000, tree.calculate(employee_id_1))
+        self.assertEquals(20000, tree.calculate(employee_id_2))
+
+    def test_switch_calcs(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["upper_salary_level"] = Field("salary", "float")
+        employee_spec.fields["lower_salary_level"] = Field("salary", "float")
+        employee_spec.fields["salary"] = Field("salary", "float")
+        employee_spec.fields["salary_range"] = Field("salary_range", "str")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary_range': 'upper', 'salary': 50000, 'upper_salary_level': 0.4, 'lower_salary_level': 0.2}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower', 'salary': 30000, 'upper_salary_level': 0.5, 'lower_salary_level': 0.3}, 'employees')
+
+        tree = parse("self.salary_range -> ('upper': (self.salary * self.upper_salary_level), 'lower': (self.salary * self.lower_salary_level))", employee_spec)
+        self.assertEquals(20000, tree.calculate(employee_id_1))
+        self.assertEquals(9000, tree.calculate(employee_id_2))
+
     def test_math_functions(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "float")

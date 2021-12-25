@@ -824,6 +824,65 @@ class ResourceRefTernary(ResourceRef):
         return self.condition.resource_ref_fields() + self.then_clause.resource_ref_fields() + self.else_clause.resource_ref_fields()
 
 
+class KeyValue(object):
+    def __init__(self, tokens, parser):
+        self._parser = parser
+        self.key = tokens[0]
+        self.value = tokens[2]
+
+    def __repr__(self):
+        return "%s: %s" % (self.key, self.value)
+
+
+class Map(object):
+    def __init__(self, tokens, parser):
+        self._parser = parser
+        if type(tokens[0]) is Map:
+            self.keyvalues = tokens[0].keyvalues
+            self.keyvalues.append(tokens[2])
+        else:
+            self.keyvalues = [tokens[0], tokens[2]]
+
+    def __repr__(self):
+        return "  %s  " % (self.keyvalues,)
+
+
+
+class SwitchRef(ResourceRef):
+    def __init__(self, tokens, parser, spec):
+        self.resource_ref = tokens[0]
+        self.spec = spec
+        self._parser = parser
+
+        if isinstance(tokens[3], KeyValue):
+            self.cases = [tokens[3]]
+        else:
+            self.cases = [p for p in tokens[3].keyvalues]
+
+    def validate(self):
+        self.resource_ref.validate_ref(self.spec)
+        for key, value in self.cases.items():
+            self.value.validate_ref(self.spec)
+        # TODO: validate all cases return same type
+
+    def __repr__(self):
+        return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
+
+    def calculate(self, self_id):
+        comparable_value = self.resource_ref.calculate(self_id)
+
+        for case in self.cases:
+            if comparable_value == case.key.value:
+                return case.value.calculate(self_id)
+        return None
+
+    def resource_ref_fields(self):
+        ref_fields = self.resource_red.resource_ref_fields()
+        for case in self.cases:
+            ref_fields.union(case.value.resource_ref_fields())
+        return ref_fields
+
+
 class CalcTernary(Calc):
     def __init__(self, tokens, parser, spec):
         self.condition = tokens[0]
@@ -1096,6 +1155,11 @@ class Parser(object):
             [(Operator, '->', ResourceRef, ':', ResourceRef), self._create_ternary],
             [(Operator, '->', ResourceRef, ':', Calc), self._create_ternary],
             [(Operator, '->', Calc, ':', ResourceRef), self._create_ternary],
+
+            [(ConstRef, ':', Calc), KeyValue],
+            [(KeyValue, ',', KeyValue), Map],
+            [(FieldRef, '->', '(', Map, ')'), self._create_switch],
+            [(FieldRef, '->', '(', KeyValue, ')'), self._create_switch],
         ]
 
     def _create_resource_ref(self, tokens, parser):
@@ -1128,6 +1192,9 @@ class Parser(object):
 
     def _create_ternary(self, tokens, parser):
         return ResourceRefTernary(tokens, parser, self.spec)
+
+    def _create_switch(self, tokens, parser):
+        return SwitchRef(tokens, parser, self.spec)
 
     def _create_calc_ternary(self, tokens, parser):
         return CalcTernary(tokens, parser, self.spec)
@@ -1174,6 +1241,7 @@ class Parser(object):
                 pass
 
         if len(self.shifted) > 1:
+            import ipdb; ipdb.set_trace()
             raise Exception("Unexpected '%s'" % (self.shifted[1],))
 
         if self.shifted[0][0] == 'NAME' and self.shifted[0][1] in self.spec.schema.root.fields:
