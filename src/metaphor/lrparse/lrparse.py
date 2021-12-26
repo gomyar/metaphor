@@ -1241,7 +1241,6 @@ class Parser(object):
                 pass
 
         if len(self.shifted) > 1:
-            import ipdb; ipdb.set_trace()
             raise Exception("Unexpected '%s'" % (self.shifted[1],))
 
         if self.shifted[0][0] == 'NAME' and self.shifted[0][1] in self.spec.schema.root.fields:
