@@ -505,6 +505,17 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(20.0, tree.calculate(employee_id_1))
         self.assertEquals(40.0, tree.calculate(employee_id_2))
 
+    def test_switch_longer_list(self):
+        employee_spec = self.schema.specs['employee']
+        employee_spec.fields["salary_range"] = Field("salary_range", "str")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'salary_range': 'upper'}, 'employees')
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower'}, 'employees')
+
+        tree = parse("self.salary_range -> ('upper': 20.0, 'lower': 40.0, 'middling': 30.0)", employee_spec)
+        self.assertEquals(20.0, tree.calculate(employee_id_1))
+        self.assertEquals(40.0, tree.calculate(employee_id_2))
+
     def test_switch_basic(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary_range"] = Field("salary_range", "str")

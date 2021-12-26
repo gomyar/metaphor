@@ -1158,6 +1158,7 @@ class Parser(object):
 
             [(ConstRef, ':', Calc), KeyValue],
             [(KeyValue, ',', KeyValue), Map],
+            [(Map, ',', KeyValue), Map],
             [(FieldRef, '->', '(', Map, ')'), self._create_switch],
             [(FieldRef, '->', '(', KeyValue, ')'), self._create_switch],
         ]
