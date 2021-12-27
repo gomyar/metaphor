@@ -1201,6 +1201,23 @@ class Parser(object):
             [(Calc, '>', Calc) , Operator],
             [(Calc, '<', Calc) , Operator],
             [(Calc, '=', Calc) , Operator],
+
+            [(ResourceRef, '+', Calc) , Operator],
+            [(ResourceRef, '-', Calc) , Operator],
+            [(ResourceRef, '*', Calc) , Operator],
+            [(ResourceRef, '/', Calc) , Operator],
+            [(ResourceRef, '>', Calc) , Operator],
+            [(ResourceRef, '<', Calc) , Operator],
+            [(ResourceRef, '=', Calc) , Operator],
+
+            [(Calc, '+', ResourceRef) , Operator],
+            [(Calc, '-', ResourceRef) , Operator],
+            [(Calc, '*', ResourceRef) , Operator],
+            [(Calc, '/', ResourceRef) , Operator],
+            [(Calc, '>', ResourceRef) , Operator],
+            [(Calc, '<', ResourceRef) , Operator],
+            [(Calc, '=', ResourceRef) , Operator],
+
             [(NAME, '~', ConstRef) , LikeCondition],
             [(Calc, '>=', Calc) , Operator],
             [(Calc, '<=', Calc) , Operator],

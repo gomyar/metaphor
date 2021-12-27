@@ -276,3 +276,20 @@ class AdminApiTest(unittest.TestCase):
         self.api.patch('/employees/%s' % employee_id_1, {'age': 31})
         older_employees = self.api.get('/branches/%s/older_employees' % branch_id_1)
         self.assertEqual(2, older_employees['count'])
+
+    def test_create_switch_field_calc(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 10})
+        self.admin_api.create_field('employee', 'my_age', 'calc', calc_str='self.name -> ("bob": (self.age * 12.0), "fred": 14.0)')
+        employee = self.api.get('/employees/%s' % employee_id_1)
+        self.assertEqual(120, employee['my_age'])
+
+    def test_create_switch_field_calc_resource_ref(self):
+        self.admin_api.create_field('employee', 'type', 'str')
+        self.admin_api.create_field('employee', 'calced_initial', 'int')
+        self.admin_api.create_field('employee', 'calced_value', 'calc', calc_str='self.calced_initial')
+
+        self.admin_api.create_field('employee', 'calc_switch', 'calc', calc_str="self.type -> (  'parttime': (600 * self.calced_value),  'fulltime': self.calced_value)")
+
+        employee_id_1 = self.api.post('/employees', {'type': 'parttime', 'name': 'bob', 'age': 10, 'calced_initial': 10})
+        employee = self.api.get('/employees/%s' % employee_id_1)
+        self.assertEqual(6000, employee['calc_switch'])
