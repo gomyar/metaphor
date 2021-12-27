@@ -800,28 +800,51 @@ class ResourceRefTernary(ResourceRef):
         self.then_clause.validate()
         self.else_clause.validate()
         if not self.then_clause.infer_type().check_comparable_type(self.else_clause.infer_type().field_type):
+            # TODO: check also if both sides are collection / not collection
             raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (self.then_clause.infer_type().field_type, self.else_clause.infer_type().field_type))
+
+    def infer_type(self):
+        return self.then_clause.infer_type()
+
+    def is_collection(self):
+        return self.then_clause.is_collection()
 
     def __repr__(self):
         return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
 
     def aggregation(self, self_id, user=None):
 
-        then_agg, spec, is_aggregate = self.then_clause.aggregation(self_id, user)
-        else_agg, _, _ = self.else_clause.aggregation(self_id, user)
+        if self.condition.calculate(self_id):
+            return self.then_clause.aggregation(self_id, user)
+        else:
+            return self.else_clause.aggregation(self_id, user)
 
-        aggregation = {
-            "$cond": {
-                "if": self.condition.condition_aggregation(self.spec, self_id),
-                "then": then_agg,
-                "else": else_agg
-            }
-        }
+    def calculate(self, self_id):
+        if self.condition.calculate(self_id):
+            return self.then_clause.calculate(self_id)
+        else:
+            return self.else_clause.calculate(self_id)
 
-        return aggregation, spec, True
+    def root_collection(self):
+        return self.then_clause.root_collection()
 
-    def resource_ref_fields(self):
-        return self.condition.resource_ref_fields() + self.then_clause.resource_ref_fields() + self.else_clause.resource_ref_fields()
+    def get_resource_dependencies(self):
+        deps = set()
+        deps = deps.union(self.condition.get_resource_dependencies())
+        deps = deps.union(self.then_clause.get_resource_dependencies())
+        deps = deps.union(self.else_clause.get_resource_dependencies())
+        return deps
+
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        condition_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id)
+        then_aggs = self.then_clause.build_reverse_aggregations(resource_spec, resource_id)
+        else_aggs = self.else_clause.build_reverse_aggregations(resource_spec, resource_id)
+
+#        condition_aggs = condition_aggs[1:] # remove trackers
+#        then_aggs = then_aggs[1:] # remove trackers
+#        else_aggs = else_aggs[1:] # remove trackers
+
+        return [[]] + condition_aggs + then_aggs + else_aggs # add dummy tracker ( as calcs are top level )
 
 
 class KeyValue(object):
@@ -847,7 +870,6 @@ class Map(object):
         return "  %s  " % (self.keyvalues,)
 
 
-
 class SwitchRef(ResourceRef):
     def __init__(self, tokens, parser, spec):
         self.resource_ref = tokens[0]
@@ -863,10 +885,20 @@ class SwitchRef(ResourceRef):
         self.resource_ref.validate_ref(self.spec)
         for key, value in self.cases.items():
             self.value.validate_ref(self.spec)
-        # TODO: validate all cases return same type
+        # validate all cases return same type
+        # TODO: check also if all cases are collection / not collection
+        for previous, case in zip(self.cases, self.cases[1:]):
+            if not previous.infer_type().check_comparable_type(case.infer_type().field_type):
+                raise SyntaxError("All cases in switch statement must be same type (%s != %s)" % (previous.infer_type().field_type, case.infer_type().field_type))
+
+    def infer_type(self):
+        return self.cases[0].value.infer_type()
+
+    def is_collection(self):
+        return self.cases[0].value.is_collection()
 
     def __repr__(self):
-        return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
+        return "%s => %s" % (self.resource_ref, self.cases)
 
     def calculate(self, self_id):
         comparable_value = self.resource_ref.calculate(self_id)
@@ -876,11 +908,36 @@ class SwitchRef(ResourceRef):
                 return case.value.calculate(self_id)
         return None
 
-    def resource_ref_fields(self):
-        ref_fields = self.resource_red.resource_ref_fields()
+    def get_resource_dependencies(self):
+        deps = set()
+        deps = deps.union(self.resource_ref.get_resource_dependencies())
         for case in self.cases:
-            ref_fields.union(case.value.resource_ref_fields())
-        return ref_fields
+            deps = deps.union(case.value.get_resource_dependencies())
+        return deps
+
+    def infer_type(self):
+        return self.cases[0].value.infer_type()
+
+    def build_reverse_aggregations(self, resource_spec, resource_id):
+        # TODO: check "trackers"
+        field_aggs = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+#        field_aggs = field_aggs[1:]
+
+        aggregations = []
+        aggregations.extend(field_aggs)
+        for case in self.cases:
+            case_aggs = case.value.build_reverse_aggregations(resource_spec, resource_id)
+#            case_aggs = case_aggs[1:]
+            aggregations.extend(case_aggs)
+        return aggregations
+
+    def aggregation(self, self_id, user=None):
+        comparable_value = self.resource_ref.calculate(self_id)
+
+        for case in self.cases:
+            if comparable_value == case.key.value:
+                return case.value.aggregation(self_id, user)
+        return [], None, False
 
 
 class CalcTernary(Calc):
@@ -948,14 +1005,26 @@ class Brackets(Calc):
     def calculate(self, self_id):
         return self.calc.calculate(self_id)
 
+    def aggregation(self, self_id, user):
+        return self.calc.aggregation(self_id, user)
+
     def build_reverse_aggregations(self, resource_spec, resource_id):
         return self.calc.build_reverse_aggregations(resource_spec, resource_id)
 
     def __repr__(self):
         return "(" + str(self.calc) + ")"
 
+    def infer_type(self):
+        return self.calc.infer_type()
+
     def get_resource_dependencies(self):
         return self.calc.get_resource_dependencies()
+
+    def is_collection(self):
+        return self.calc.is_collection()
+
+    def root_collection(self):
+        return self.calc.root_collection()
 
 
 class FunctionCall(Calc):
@@ -1141,6 +1210,7 @@ class Parser(object):
             [(Calc, ',', Calc), ParameterList],
             [(ParameterList, ',', Calc), ParameterList],
             [('(', Calc, ')'), Brackets],
+            [('(', ResourceRef, ')'), Brackets],
             [(NAME, Brackets), FunctionCall],
             [(NAME, '(', ParameterList, ')'), FunctionCall],
             [(NAME, '(', NAME, ')'), FunctionCall],
@@ -1157,6 +1227,7 @@ class Parser(object):
             [(Operator, '->', Calc, ':', ResourceRef), self._create_ternary],
 
             [(ConstRef, ':', Calc), KeyValue],
+            [(ConstRef, ':', ResourceRef), KeyValue],
             [(KeyValue, ',', KeyValue), Map],
             [(Map, ',', KeyValue), Map],
             [(FieldRef, '->', '(', Map, ')'), self._create_switch],

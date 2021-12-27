@@ -21,6 +21,10 @@ class Stream:
     def __exit__(self, *args):
         pass
 
+    def __iter__(self):
+        for event in self.events:
+            yield event
+
 
 class MongoTest(unittest.TestCase):
     def setUp(self):

@@ -354,6 +354,36 @@ class UpdaterTest(unittest.TestCase):
             [self.schema.decodeid(division_id_1)],
             list(self.updater.get_affected_ids_for_resource('division', 'all_employees', self.employee_spec, employee_id_1)))
 
+    def test_reverse_aggregation_switch(self):
+        self.schema.add_calc(self.division_spec, 'all_employees', 'self.name -> ("sales": (self.employees[age > 25]), "marketting": self.employees)')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 21})
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'ned', 'age': 31})
+
+        self.assertEquals(
+            {self.schema.decodeid(division_id_1)},  # TODO: too many ids being returned, clean up
+            set(self.updater.get_affected_ids_for_resource('division', 'all_employees', self.employee_spec, employee_id_1)))
+
+    def test_reverse_aggregation_ternary(self):
+        self.schema.add_calc(self.division_spec, 'all_employees', 'self.name = "sales" -> (self.employees[age > 25]) : self.employees')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 21})
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'ned', 'age': 31})
+
+        self.assertEquals(
+            {self.schema.decodeid(employee_id_1), self.schema.decodeid(employee_id_2), self.schema.decodeid(division_id_1)},  # TODO: Fairly certain this is mixing resources
+            set(self.updater.get_affected_ids_for_resource('division', 'all_employees', self.employee_spec, employee_id_1)))
+
     def test_delete_resource_deletes_children(self):
         division_id_1 = self.schema.insert_resource(
             'division', {'name': 'sales'}, 'divisions')

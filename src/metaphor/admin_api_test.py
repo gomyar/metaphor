@@ -242,3 +242,37 @@ class AdminApiTest(unittest.TestCase):
             'my_age': None,
             'name': 'bob',
             'self': '/employees/%s' % employee_id_1}, self.api.get('/employees/%s' % employee_id_1))
+
+    def test_create_ternary(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob'})
+        self.admin_api.create_field('employee', 'my_age', 'calc', calc_str='self.name = "bob" -> 12: 14')
+        employee = self.api.get('/employees/%s' % employee_id_1)
+        self.assertEqual(12, employee['my_age'])
+
+    def test_create_switch(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob'})
+        self.admin_api.create_field('employee', 'my_age', 'calc', calc_str='self.name -> ("bob": 12, "fred": 14)')
+        employee = self.api.get('/employees/%s' % employee_id_1)
+        self.assertEqual(12, employee['my_age'])
+
+    def test_create_switch_with_collections(self):
+        employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 25})
+        employee_id_2 = self.api.post('/employees', {'name': 'ned', 'age': 35})
+
+        branch_id_1 = self.api.post('/branches', {'name': 'sales'})
+        self.api.post('/branches/%s/employees' % branch_id_1, {'id': employee_id_1})
+        self.api.post('/branches/%s/employees' % branch_id_1, {'id': employee_id_2})
+
+        self.admin_api.create_field('branch', 'older_employees', 'calc', calc_str='self.name -> ("sales": (self.employees[age>20]), "marketting": (self.employees[age>30]))')
+        older_employees = self.api.get('/branches/%s/older_employees' % branch_id_1)
+        self.assertEqual(2, older_employees['count'])
+
+        # alter state, check for update
+        self.api.patch('/branches/%s' % branch_id_1, {'name': 'marketting'})
+        older_employees = self.api.get('/branches/%s/older_employees' % branch_id_1)
+        self.assertEqual(1, older_employees['count'])
+
+        # alter age, check for update
+        self.api.patch('/employees/%s' % employee_id_1, {'age': 31})
+        older_employees = self.api.get('/branches/%s/older_employees' % branch_id_1)
+        self.assertEqual(2, older_employees['count'])

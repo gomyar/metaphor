@@ -25,7 +25,7 @@ class CreateOrderedCollectionUpdate:
         for field_name, field_spec in parent_spec.fields.items():
             if field_spec.field_type == 'calc':
                 self.updater.update_calc(self.parent_spec_name, field_name, self.parent_id)
-                self._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.parent_id)
+                self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.parent_id)
 
         return resource_id
 

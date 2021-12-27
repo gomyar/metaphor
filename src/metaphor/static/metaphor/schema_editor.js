@@ -65,6 +65,7 @@ var create_spec = {
     show_popup: function() {
         create_field.field_name = null;
         create_spec.is_shown = true;
+        create_spec.spec_name = null;
         turtlegui.reload();
     },
     hide_popup: function() {
