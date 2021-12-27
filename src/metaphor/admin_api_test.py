@@ -174,6 +174,15 @@ class AdminApiTest(unittest.TestCase):
             self.assertEqual(400, he.code)
             self.assertEqual("employee.my_age has circular dependencies: {'employee.my_age': {'employee.other_field'}, 'employee.other_field': {'employee.my_age'}}", he.reason)
 
+    def test_check_circular_dependency_between_resources(self):
+        self.admin_api.create_field('employee', 'my_age', 'calc', calc_str='self.link_branch_employees.average_age')
+        try:
+            self.admin_api.update_field('branch', 'average_age', 'calc', calc_str='self.employees.my_age')
+            self.fail("Should have thrown")
+        except HTTPError as he:
+            self.assertEqual(400, he.code)
+            self.assertEqual("branch.average_age has circular dependencies: {'employee.my_age': {'branch.average_age'}, 'branch.average_age': {'employee.my_age'}}", he.reason)
+
     def test_reserved_words(self):
         # link_*
         try:

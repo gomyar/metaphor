@@ -5,7 +5,11 @@ from io import StringIO
 from metaphor.schema import Field
 
 
-class Calc(object):
+class Operable(object):
+    pass
+
+
+class Calc(Operable):
     def __init__(self, tokens, parser):
         self.tokens = tokens
         self._parser = parser
@@ -21,7 +25,7 @@ class Calc(object):
 
 
 
-class ResourceRef(object):
+class ResourceRef(Operable):
     def __init__(self, resource_ref, field_name, parser, spec):
         self._parser = parser
         self.resource_ref = resource_ref
@@ -1194,29 +1198,13 @@ class Parser(object):
             [(NAME, '>=', ResourceRef) , Condition],
             [(NAME, '<=', ResourceRef) , Condition],
 
-            [(Calc, '+', Calc) , Operator],
-            [(Calc, '-', Calc) , Operator],
-            [(Calc, '*', Calc) , Operator],
-            [(Calc, '/', Calc) , Operator],
-            [(Calc, '>', Calc) , Operator],
-            [(Calc, '<', Calc) , Operator],
-            [(Calc, '=', Calc) , Operator],
-
-            [(ResourceRef, '+', Calc) , Operator],
-            [(ResourceRef, '-', Calc) , Operator],
-            [(ResourceRef, '*', Calc) , Operator],
-            [(ResourceRef, '/', Calc) , Operator],
-            [(ResourceRef, '>', Calc) , Operator],
-            [(ResourceRef, '<', Calc) , Operator],
-            [(ResourceRef, '=', Calc) , Operator],
-
-            [(Calc, '+', ResourceRef) , Operator],
-            [(Calc, '-', ResourceRef) , Operator],
-            [(Calc, '*', ResourceRef) , Operator],
-            [(Calc, '/', ResourceRef) , Operator],
-            [(Calc, '>', ResourceRef) , Operator],
-            [(Calc, '<', ResourceRef) , Operator],
-            [(Calc, '=', ResourceRef) , Operator],
+            [(Operable, '+', Operable) , Operator],
+            [(Operable, '-', Operable) , Operator],
+            [(Operable, '*', Operable) , Operator],
+            [(Operable, '/', Operable) , Operator],
+            [(Operable, '>', Operable) , Operator],
+            [(Operable, '<', Operable) , Operator],
+            [(Operable, '=', Operable) , Operator],
 
             [(NAME, '~', ConstRef) , LikeCondition],
             [(Calc, '>=', Calc) , Operator],

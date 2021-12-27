@@ -1,5 +1,10 @@
 
 Shortlist:
+ - bug: ordering of calcs within resource not being updated on creation
+ - bug: schema.load_schema() does not enforce ordering of related calcs (and cannot load properly)
+
+ - need to be able to trace / debug calcs as a user
+
  - deleting grant or groups also removes reference from _grants list for all applicble resources
  - pagination - done
  - expand / fields params - done
