@@ -55,6 +55,8 @@ class AdminApiTest(unittest.TestCase):
                 'fields': {
                     'average_age': {
                         'calc_str': 'average(self.employees.age)',
+                        'deps': ['branch.employees',
+                                 'employee.age'],
                         'type': 'calc'
                     },
                     'employees': {

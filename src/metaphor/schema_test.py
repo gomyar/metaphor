@@ -345,14 +345,114 @@ class SchemaTest(unittest.TestCase):
                                 'name': {'type': 'str'}}},
             'user': {'fields': {'admin': {'type': 'bool'},
                                 'create_grants': {'calc_str': "self.groups.grants[type='create'].url",
+                                                'deps': ['grant.type',
+                                                         'grant.url',
+                                                         'group.grants',
+                                                         'user.groups'],
                                                 'type': 'calc'},
                                 'delete_grants': {'calc_str': "self.groups.grants[type='delete'].url",
+                                                'deps': ['grant.type',
+                                                         'grant.url',
+                                                         'group.grants',
+                                                         'user.groups'],
                                                 'type': 'calc'},
                                 'groups': {'target_spec_name': 'group',
                                             'type': 'linkcollection'},
                                 'password': {'type': 'str'},
                                 'read_grants': {'calc_str': "self.groups.grants[type='read'].url",
+                                                'deps': ['grant.type',
+                                                         'grant.url',
+                                                         'group.grants',
+                                                         'user.groups'],
                                                 'type': 'calc'},
                                 'update_grants': {'calc_str': "self.groups.grants[type='update'].url",
+                                                'deps': ['grant.type',
+                                                         'grant.url',
+                                                         'group.grants',
+                                                         'user.groups'],
                                                 'type': 'calc'},
                                 'username': {'type': 'str'}}}}, schema['specs'])
+
+    def test_load_calcs_by_dependency(self):
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+
+        self.schema.create_spec('branch')
+        self.schema.create_field('branch', 'income', 'int')
+        self.schema.create_field('branch', 'employees', 'collection', 'employee')
+
+        self.schema.create_spec('section')
+        self.schema.create_field('section', 'branch', 'link', 'branch')
+
+        self.schema.load_schema()
+
+        self.schema.create_field('employee', 'average_section_income', 'calc', None, 'average(self.parent_branch_employees.income)')
+        self.schema.create_field('branch', 'section', 'calc', None, 'self.link_section_branch')
+        self.schema.create_field('section', 'employees', 'calc', None, 'self.branch.employees')
+
+        expected ={
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "average_section_income": {
+                            "type": "calc",
+                            "calc_str": "average(self.parent_branch_employees.income)",
+                            "deps": ["branch.income"],
+                        },
+                    },
+                },
+                "branch" : {
+                    "fields" : {
+                        "income": {
+                            "type": "int",
+                        },
+                        "employees" : {
+                            "type" : "collection",
+                            "target_spec_name": "employee",
+                        },
+                        "section": {
+                            "type": "calc",
+                            "calc_str": "self.link_section_branch",
+                            "deps": ["section.branch"],
+                        },
+                    },
+                },
+                "section" : {
+                    "fields" : {
+                        "branch" : {
+                            "type" : "link",
+                            "target_spec_name": "branch",
+                        },
+                        "employees": {
+                            "type": "calc",
+                            "calc_str": "self.branch.employees",
+                            "deps": ["branch.employees", "section.branch"],
+                        },
+                    },
+                },
+        }
+
+        self.assertEqual(expected, self.db.metaphor_schema.find_one()['specs'])
+
+        self.schema.load_schema()
+        self.assertEquals(3, len(self.schema.specs))
+
+    def test_load_calcs_by_dependency_almost_circular(self):
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str')
+        self.schema.create_field('primary', 'calced_name', 'calc', calc_str="self.name + 'a'")
+
+        self.schema.create_spec('secondary')
+        self.schema.create_field('secondary', 'name', 'str')
+        self.schema.create_field('secondary', 'calced_name', 'calc', calc_str="self.name + 'b'")
+
+        self.schema.create_field('primary', 'secondary', 'link', 'secondary')
+        self.schema.create_field('secondary', 'primary', 'link', 'primary')
+
+        self.schema.create_field('primary', 'secondary_name', 'calc', calc_str="self.secondary.calced_name")
+        self.schema.create_field('secondary', 'primary_name', 'calc', calc_str="self.primary.calced_name")
+
+        self.schema.load_schema()
+        self.assertEquals(2, len(self.schema.specs))

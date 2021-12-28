@@ -4,6 +4,15 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
 from flask_login import UserMixin
+from toposort import toposort, CircularDependencyError
+
+
+class DependencyException(Exception):
+    pass
+
+
+class MalformedFieldException(Exception):
+    pass
 
 
 class Field(object):
@@ -61,16 +70,6 @@ class CalcField(Field):
         return calc_tree.is_collection()
 
 
-# field types:
-# int str float bool
-# link -> + target_spec_name
-# reverse_link -> implied by link / linkcollection
-# parent -> implied by collection
-# collection -> + target_spec_name
-# linkcollection -> + target_spec_name
-# calc -> + calculated_spec_name + calculated_spec_type (int str float bool link linkcollection)
-
-
 class Spec(object):
     def __init__(self, name, schema):
         self.name = name
@@ -98,19 +97,6 @@ class Spec(object):
             return tree.infer_type()
         else:
             raise SyntaxError('Unrecognised field type')
-
-    def resolve_child(self, child_path):
-        ''' child_path "self.division.name" dot-separated child specs '''
-        children = child_path.split('.')
-        if 'self' == children[0]:
-            child = self
-            children.pop(0)
-        else:
-            child = self.schema.root
-
-        for field_name in children:
-            child = child.build_child_spec(field_name)
-        return child
 
     def is_collection(self):
         # specs map to resources and are not collections
@@ -147,25 +133,47 @@ class Schema(object):
         self._id = None
         self.calc_trees = {}
 
-    def load_schema(self):
-        self.specs = {}
-        self.root = Spec('root', self)
-
-        schema_data = self.db.metaphor_schema.find_one_and_update(
+    def _load_schema_data(self):
+        return self.db.metaphor_schema.find_one_and_update(
             {"_id": {"$exists": True}},
             {
                 "$set": {"loaded": datetime.now()},
                 "$setOnInsert": {"specs": {}, "root": {}, "created": datetime.now()},
             }, upsert=True, return_document=ReturnDocument.AFTER)
+
+    def _build_specs(self, schema_data):
         self._id = schema_data['_id']
         for spec_name, spec_data in schema_data['specs'].items():
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
-                if field_data['type'] == 'calc':
-                    self._add_calc(spec, field_name, field_data['calc_str'])
-                else:
+                if field_data['type'] != 'calc':
                     self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
         self._add_reverse_links()
+
+    def _collect_calcs(self, schema_data):
+        calcs = {}
+        for spec_name, spec_data in schema_data['specs'].items():
+            for field_name, field_data in spec_data['fields'].items():
+                if field_data['type'] == 'calc':
+                    calcs[spec_name + '.' + field_name] = field_data
+        return calcs
+
+    def load_schema(self):
+        self.specs = {}
+        self.root = Spec('root', self)
+
+        schema_data = self._load_schema_data()
+        self._build_specs(schema_data)
+
+        calcs = self._collect_calcs(schema_data)
+        calc_deps = dict((key, calc.get('deps', {})) for key, calc in calcs.items())
+
+        for spec_name, spec_data in schema_data['specs'].items():
+            spec = self.specs[spec_name]
+            for field_name, field_data in spec_data['fields'].items():
+                if field_data['type'] == 'calc':
+                    self._add_calc(spec, field_name, field_data['calc_str'])
+
         for root_name, root_data in schema_data.get('root', {}).items():
             if root_data['type'] == 'calc':
                 self._add_calc(self.root, field_name, root_data['calc_str'])
@@ -183,10 +191,125 @@ class Schema(object):
             if root_data['type'] == 'calc':
                 self.calc_trees[('root', root_name)] = parse(root_data['calc_str'], self.root)
 
+    def create_spec(self, spec_name):
+        self.db['metaphor_schema'].update(
+            {'_id': self._id},
+            {"$set": {'specs.%s' % spec_name: {'fields': {}}}},
+            upsert=True)
+        self.add_spec(spec_name)
+
+    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+        if spec_name != 'root' and field_name in self.specs[spec_name].fields:
+            raise MalformedFieldException('Field already exists: %s' % field_name)
+        self._check_field_name(field_name)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str)
+        if spec_name == 'root':
+            spec = self.root
+        else:
+            spec = self.specs[spec_name]
+        if field_type == 'calc':
+            self.add_calc(spec, field_name, calc_str)
+        else:
+            self.add_field(spec, field_name, field_type, field_target)
+
+    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+        if spec_name != 'root' and field_name not in self.specs[spec_name].fields:
+            raise MalformedFieldException('Field does not exist: %s' % field_name)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str)
+        self.load_schema()
+
+    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str):
+        if calc_str:
+            self._check_calc_syntax(spec_name, calc_str)
+            self._check_circular_dependencies(spec_name, field_name, calc_str)
+
+            from metaphor.lrparse.lrparse import parse
+            parsed = parse(calc_str, self.specs[spec_name])
+            deps = list(parsed.get_resource_dependencies())
+            deps.sort()
+            field_data = {'type': 'calc', 'calc_str': calc_str, 'deps': deps}
+        elif field_type in ('int', 'str', 'float', 'bool'):
+            field_data = {'type': field_type}
+        else:
+            field_data = {'type': field_type, 'target_spec_name': field_target}
+
+        if spec_name == 'root':
+            self.db['metaphor_schema'].update(
+                {'_id': self._id},
+                {"$set": {'root.%s' % (field_name,): field_data}},
+                upsert=True)
+        else:
+            self.db['metaphor_schema'].update(
+                {'_id': self._id},
+                {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}},
+                upsert=True)
+
+    def _check_field_name(self, field_name):
+        if not field_name:
+            raise MalformedFieldException('Field name cannot be blank')
+        for start in ('link_', 'parent_', '_'):
+            if field_name.startswith(start):
+                raise MalformedFieldException('Field name cannot begin with "%s"' % (start,))
+        if field_name in ('self', 'id'):
+            raise MalformedFieldException('Field name cannot be reserverd word "%s"' % (field_name,))
+        if not field_name[0].isalpha():
+            raise MalformedFieldException('First character must be letter')
+
+    def _check_calc_syntax(self, spec_name, calc_str):
+        try:
+            from metaphor.lrparse.lrparse import parse
+            spec = self.specs[spec_name]
+            tree = parse(calc_str, spec)
+        except SyntaxError as se:
+            raise MalformedFieldException('SyntaxError in calc: %s' % str(se))
+
+    def _check_circular_dependencies(self, spec_name, field_name, calc_str):
+        from metaphor.lrparse.lrparse import parse
+        spec = self.specs[spec_name]
+        tree = parse(calc_str, spec)
+        deps = tree.get_resource_dependencies()
+        dep_tree = {}
+        for name, spec in self.specs.items():
+            for fname, field in spec.fields.items():
+                if field.field_type == 'calc':
+                    calc = self.calc_trees[(name, fname)]
+                    dep_tree["%s.%s" % (name, fname)] = calc.get_resource_dependencies()
+        dep_tree["%s.%s" % (spec_name, field_name)] = deps
+        try:
+            list(toposort(dep_tree))
+        except CircularDependencyError as cde:
+            raise MalformedFieldException('%s.%s has circular dependencies: %s' % (spec_name, field_name, cde.data))
+
     def add_spec(self, spec_name):
         spec = Spec(spec_name, self)
         self.specs[spec_name] = spec
         return spec
+
+    def delete_field(self, spec_name, field_name):
+        self._check_field_dependencies(spec_name, field_name)
+
+        spec = self.specs[spec_name]
+        field = spec.fields.pop(field_name)
+        self._remove_reverse_link_for_field(field, spec)
+
+        self.db['metaphor_schema'].update(
+            {'_id': self._id},
+            {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
+
+    def _check_field_dependencies(self, spec_name, field_name):
+        all_deps = self._get_field_dependencies(spec_name, field_name)
+        if all_deps:
+            raise DependencyException('%s.%s referenced by %s' % (spec_name, field_name, all_deps))
+
+    def _get_field_dependencies(self, spec_name, field_name):
+        all_deps = []
+        for name, spec in self.specs.items():
+            for fname, field in spec.fields.items():
+                if field.field_type == 'calc':
+                    calc = self.calc_trees[(name, fname)]
+                    if "%s.%s" % (spec_name, field_name) in calc.get_resource_dependencies():
+                        all_deps.append('%s.%s' % (name, fname))
+        return all_deps
 
     def _add_field(self, spec, field_name, field_type, target_spec_name=None):
         field = Field(field_name, field_type, target_spec_name=target_spec_name)
@@ -217,6 +340,8 @@ class Schema(object):
                 self._add_reverse_link_for_field(field, spec)
 
     def _add_reverse_link_for_field(self, field, spec):
+        if spec.name == 'root':
+            return
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
@@ -226,6 +351,19 @@ class Schema(object):
         if field.field_type == 'linkcollection':
             parent_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "reverse_link_collection", spec.name, field.name)
+
+    def _remove_reverse_link_for_field(self, field, spec):
+        if spec.name == 'root':
+            return
+        if field.field_type == 'link':
+            reverse_field_name = "link_%s_%s" % (spec.name, field.name)
+            self.specs[field.target_spec_name].fields.pop(reverse_field_name)
+        if field.field_type == 'collection':
+            parent_field_name = "parent_%s_%s" % (spec.name, field.name)
+            self.specs[field.target_spec_name].fields.pop(parent_field_name)
+        if field.field_type == 'linkcollection':
+            parent_field_name = "link_%s_%s" % (spec.name, field.name)
+            self.specs[field.target_spec_name].fields.pop(parent_field_name)
 
     def encodeid(self, mongo_id):
         return "ID" + str(mongo_id)
@@ -344,76 +482,28 @@ class Schema(object):
             return None
 
     def create_initial_schema(self):
-        self.db.metaphor_schema.insert_one({
-            "specs": {
-                "user" : {
-                    "fields" : {
-                        "username" : {
-                            "type" : "str"
-                        },
-                        "password" : {
-                            "type" : "str"
-                        },
-                        "groups": {
-                            "type": "linkcollection",
-                            "target_spec_name": "group"
-                        },
-                        "read_grants": {
-                            "type": "calc",
-                            "calc_str": "self.groups.grants[type='read'].url",
-                        },
-                        "create_grants": {
-                            "type": "calc",
-                            "calc_str": "self.groups.grants[type='create'].url",
-                        },
-                        "update_grants": {
-                            "type": "calc",
-                            "calc_str": "self.groups.grants[type='update'].url",
-                        },
-                        "delete_grants": {
-                            "type": "calc",
-                            "calc_str": "self.groups.grants[type='delete'].url",
-                        },
-                        "admin": {
-                            "type": "bool",
-                        },
-                    }
-                },
-                "group" : {
-                    "fields" : {
-                        "name" : {
-                            "type" : "str"
-                        },
-                        "grants": {
-                            "type": "collection",
-                            "target_spec_name": "grant"
-                        },
-                    }
-                },
-                "grant" : {
-                    "fields" : {
-                        "type" : {
-                            "type" : "str"
-                        },
-                        "url" : {
-                            "type" : "str"
-                        },
-                    }
-                },
+        self.create_spec('user')
+        self.create_field('user', 'username', 'str')
+        self.create_field('user', 'password', 'str')
+        self.create_field('user', 'admin', 'bool')
 
-            },
-            "root": {
-                "users" : {
-                    "type" : "collection",
-                    "target_spec_name" : "user"
-                },
-                "groups" : {
-                    "type" : "collection",
-                    "target_spec_name" : "group"
-                },
-            },
-            "created": datetime.now()
-        })
+        self.create_spec('group')
+        self.create_field('group', 'name', 'str')
+
+        self.create_spec('grant')
+        self.create_field('grant', 'type', 'str')
+        self.create_field('grant', 'url', 'str')
+
+        self.create_field('user', 'groups', 'linkcollection', 'group')
+        self.create_field('group', 'grants', 'collection', 'grant')
+
+        self.create_field('user', 'read_grants', 'calc', calc_str="self.groups.grants[type='read'].url")
+        self.create_field('user', 'create_grants', 'calc', calc_str="self.groups.grants[type='create'].url")
+        self.create_field('user', 'update_grants', 'calc', calc_str="self.groups.grants[type='update'].url")
+        self.create_field('user', 'delete_grants', 'calc', calc_str="self.groups.grants[type='delete'].url")
+
+        self.create_field('root', 'users', 'collection', 'user')
+        self.create_field('root', 'groups', 'collection', 'group')
 
         self.load_schema()
 

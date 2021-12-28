@@ -1,7 +1,7 @@
 
 Shortlist:
- - bug: ordering of calcs within resource not being updated on creation
  - bug: schema.load_schema() does not enforce ordering of related calcs (and cannot load properly)
+ - bug: ordering of calcs within resource not being updated on creation
 
  - need to be able to trace / debug calcs as a user
 
