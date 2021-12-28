@@ -138,8 +138,7 @@ class Schema(object):
             {"_id": {"$exists": True}},
             {
                 "$set": {"loaded": datetime.now()},
-                "$setOnInsert": {"specs": {}, "root": {}, "created": datetime.now()},
-            }, upsert=True, return_document=ReturnDocument.AFTER)
+            }, return_document=ReturnDocument.AFTER)
 
     def _build_specs(self, schema_data):
         self._id = schema_data['_id']
@@ -159,6 +158,7 @@ class Schema(object):
         return calcs
 
     def load_schema(self):
+        from metaphor.lrparse.lrparse import parse
         self.specs = {}
         self.root = Spec('root', self)
 
@@ -166,30 +166,22 @@ class Schema(object):
         self._build_specs(schema_data)
 
         calcs = self._collect_calcs(schema_data)
-        calc_deps = dict((key, calc.get('deps', {})) for key, calc in calcs.items())
+        calc_deps = dict((key, set(calc.get('deps', {}))) for key, calc in calcs.items())
 
-        for spec_name, spec_data in schema_data['specs'].items():
-            spec = self.specs[spec_name]
-            for field_name, field_data in spec_data['fields'].items():
+        sorted_calcs = list(toposort(calc_deps))
+
+        for line in sorted_calcs:
+            for field_str in line:
+                spec_name, field_name = field_str.split('.')
+
+                field_data = schema_data['specs'][spec_name]['fields'][field_name]
                 if field_data['type'] == 'calc':
+                    spec = self.specs[spec_name]
                     self._add_calc(spec, field_name, field_data['calc_str'])
-
-        for root_name, root_data in schema_data.get('root', {}).items():
-            if root_data['type'] == 'calc':
-                self._add_calc(self.root, field_name, root_data['calc_str'])
-            else:
-                self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
-
-        # pre-parse calcs
-        from metaphor.lrparse.lrparse import parse
-        for spec_name, spec_data in schema_data['specs'].items():
-            spec = self.specs[spec_name]
-            for field_name, field_data in spec_data['fields'].items():
-                if field_data['type'] == 'calc':
                     self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
+
         for root_name, root_data in schema_data.get('root', {}).items():
-            if root_data['type'] == 'calc':
-                self.calc_trees[('root', root_name)] = parse(root_data['calc_str'], self.root)
+            self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
 
     def create_spec(self, spec_name):
         self.db['metaphor_schema'].update(

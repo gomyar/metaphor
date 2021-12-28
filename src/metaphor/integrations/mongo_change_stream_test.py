@@ -36,7 +36,7 @@ class MongoTest(unittest.TestCase):
         #self.source_db = client.metaphor2_test_db_integration
 
         self.schema = Schema(self.db)
-        self.schema.load_schema()
+        self.schema.create_initial_schema()
 
         self.api = Api(self.schema)
 
