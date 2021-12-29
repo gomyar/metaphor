@@ -1,4 +1,6 @@
 
+from toposort import toposort
+
 
 class CreateResourceUpdate:
     def __init__(self, updater, schema, spec_name, fields, parent_field_name, parent_spec_name,
@@ -34,10 +36,20 @@ class CreateResourceUpdate:
                     self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
 
         # recalc local calcs
+        calc_field_deps = {}
         for field_name, field_spec in self.spec.fields.items():
             if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.spec.name, field_name, resource_id)
-                self.updater._recalc_for_field_update(self.spec, self.spec.name, field_name, resource_id)
+                calc_field_deps[self.spec.name + '.' + field_name] = self.schema.calc_trees[(self.spec.name, field_name)].get_resource_dependencies()
+
+        sorted_field_deps = toposort(calc_field_deps)
+        for layer in sorted_field_deps:
+            for field_str in layer:
+                spec_name, field_name = field_str.split('.')
+                if spec_name == self.spec.name:
+                    field_spec = self.spec.fields[field_name]
+                    if field_spec.field_type == 'calc':
+                        self.updater.update_calc(self.spec.name, field_name, resource_id)
+                        self.updater._recalc_for_field_update(self.spec, self.spec.name, field_name, resource_id)
 
         # check if new resource is read grant
         if self.spec_name == 'grant' and self.fields['type'] == 'read':
