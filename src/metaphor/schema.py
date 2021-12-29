@@ -6,6 +6,9 @@ from pymongo import ReturnDocument
 from flask_login import UserMixin
 from toposort import toposort, CircularDependencyError
 
+import logging
+log = logging.getLogger(__name__)
+
 
 class DependencyException(Exception):
     pass
