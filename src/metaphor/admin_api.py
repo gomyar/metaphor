@@ -51,7 +51,7 @@ class SchemaSerializer(object):
 
     def _serialize_calcfield(self, field):
         calc_data = {
-            'name': field.field_name,
+            'name': field.name,
             'type': field.field_type,
             'is_collection': field.is_collection(),
             'target_spec_name': None,

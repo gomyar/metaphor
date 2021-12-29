@@ -50,23 +50,23 @@ class Field(object):
 
 class CalcField(Field):
     def __init__(self, field_name, calc_str):
-        self.field_name = field_name
+        self.name = field_name
         self.calc_str = calc_str
         self.field_type = 'calc'
         self.spec = None
 
     def __repr__(self):
-        return "<Calc %s = %s>" % (self.field_name, self.calc_str)
+        return "<Calc %s = %s>" % (self.name, self.calc_str)
 
     def infer_type(self):
-        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.field_name]
+        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
         return calc_tree.infer_type()
 
     def is_primitive(self):
         return self.infer_type().is_primitive()
 
     def is_collection(self):
-        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.field_name]
+        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
         return calc_tree.is_collection()
 
 
