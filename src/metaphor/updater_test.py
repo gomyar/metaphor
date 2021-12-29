@@ -366,7 +366,7 @@ class UpdaterTest(unittest.TestCase):
             'name': 'ned', 'age': 31})
 
         self.assertEquals(
-            {self.schema.decodeid(division_id_1)},  # TODO: too many ids being returned, clean up
+            {self.schema.decodeid(division_id_1)},
             set(self.updater.get_affected_ids_for_resource('division', 'all_employees', self.employee_spec, employee_id_1)))
 
     def test_reverse_aggregation_ternary(self):
@@ -381,7 +381,7 @@ class UpdaterTest(unittest.TestCase):
             'name': 'ned', 'age': 31})
 
         self.assertEquals(
-            {self.schema.decodeid(employee_id_1), self.schema.decodeid(employee_id_2), self.schema.decodeid(division_id_1)},  # TODO: Fairly certain this is mixing resources
+            {self.schema.decodeid(division_id_1)},
             set(self.updater.get_affected_ids_for_resource('division', 'all_employees', self.employee_spec, employee_id_1)))
 
     def test_delete_resource_deletes_children(self):

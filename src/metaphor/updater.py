@@ -22,12 +22,11 @@ class Updater(object):
         log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
         affected_ids = []
         for aggregation in self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, resource_spec, resource_id):
-            aggregation.append({"$project": {"_id": True}})
-            cursor = self.schema.db['resource_%s' % resource_spec.name].aggregate(aggregation)
-            for resource in cursor:
-#                yield resource['_id']
-                affected_ids.append(resource['_id'])
-        log.debug("returns: %s", affected_ids)
+            if aggregation:
+                aggregation.append({"$project": {"_id": True}})
+                cursor = self.schema.db['resource_%s' % resource_spec.name].aggregate(aggregation)
+                found = [r['_id'] for r in cursor]
+                affected_ids.extend(found)
         return affected_ids
 
     def build_reverse_aggregations_to_calc(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
