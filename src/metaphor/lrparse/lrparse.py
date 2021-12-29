@@ -1124,7 +1124,7 @@ class FunctionCall(Calc):
 
     def _sum(self, self_id, aggregate_field):
         aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
-        aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + spec.name}}})
+        aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + aggregate_field.field_name}}})
         # run mongo query from from root_resource collection
         try:
             spec = self._parser.spec
