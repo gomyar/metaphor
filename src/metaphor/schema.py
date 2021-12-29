@@ -143,9 +143,11 @@ class Schema(object):
     def _build_specs(self, schema_data):
         self._id = schema_data['_id']
         for spec_name, spec_data in schema_data['specs'].items():
+            log.debug("Spec create: %s", spec_name)
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
                 if field_data['type'] != 'calc':
+                    log.debug("Field create: %s.%s", spec_name, field_name)
                     self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
         self._add_reverse_links()
 
@@ -177,6 +179,7 @@ class Schema(object):
                 field_data = schema_data['specs'][spec_name]['fields'][field_name]
                 if field_data['type'] == 'calc':
                     spec = self.specs[spec_name]
+                    log.debug("Calc create: %s.%s", spec_name, field_name)
                     self._add_calc(spec, field_name, field_data['calc_str'])
                     self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
 
