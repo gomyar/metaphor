@@ -16,18 +16,19 @@ class UpdaterTest(unittest.TestCase):
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = Schema(self.db)
+        self.schema.create_initial_schema()
 
         self.updater = Updater(self.schema)
 
-        self.employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(self.employee_spec, 'name', 'str')
-        self.schema.add_field(self.employee_spec, 'age', 'int')
+        self.employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'age', 'int')
 
-        self.division_spec = self.schema.add_spec('division')
-        self.schema.add_field(self.division_spec, 'name', 'str')
-        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
+        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_field('division', 'name', 'str')
+        self.schema.create_field('division', 'employees', 'collection', 'employee')
 
-        self.schema.add_field(self.schema.root, 'divisions', 'collection', 'division')
+        self.schema.create_field('root', 'divisions', 'collection', 'division')
 
     def test_updater(self):
         self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
@@ -427,3 +428,34 @@ class UpdaterTest(unittest.TestCase):
             'employees': [],
             'manager': None,
             'name': 'sales'}, self.db['resource_division'].find_one())
+
+    def test_updates_calc_linked_to_calc(self):
+        self.schema.create_field('root', 'parttimers', 'collection', 'employee')
+
+        self.schema.create_field('employee', 'income', 'int')
+        self.schema.create_field('employee', 'vat', 'int')
+        self.schema.create_field('employee', 'income_after_vat', 'calc', calc_str='self.income - self.vat')
+        self.schema.create_field('division', 'parttimers', 'linkcollection', 'employee')
+        self.schema.create_field('division', 'employee_total', 'calc', calc_str="sum(self.employees.income_after_vat)")
+        self.schema.create_field('division', 'parttime_total', 'calc', calc_str="sum(self.parttimers.income_after_vat)")
+
+        division_id_1 = self.updater.create_resource(
+            'division', 'root', 'divisions', None, {'name': 'sales'})
+        employee_id_1 = self.updater.create_resource(
+            'employee', 'division', 'employees', division_id_1, {'name': 'Fred', 'income': 10000, 'vat': 2000})
+        employee_id_2 = self.updater.create_resource(
+            'employee', 'division', 'employees', division_id_1, {'name': 'Ned', 'income': 20000, 'vat': 4000})
+
+        employee_id_3 = self.updater.create_resource(
+            'employee', 'root', 'parttimers', None, {'name': 'Bob', 'income': 40000, 'vat': 8000})
+
+        self.updater.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_3)
+
+        self.assertEqual(24000, self.db['resource_division'].find_one()['employee_total'])
+        self.assertEqual(32000, self.db['resource_division'].find_one()['parttime_total'])
+
+        # assert calc change propagates
+        self.updater.update_fields('employee', employee_id_3, {'vat': 9000})
+
+        self.assertEqual(24000, self.db['resource_division'].find_one()['employee_total'])
+        self.assertEqual(31000, self.db['resource_division'].find_one()['parttime_total'])

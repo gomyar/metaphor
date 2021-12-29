@@ -17,7 +17,7 @@ span.breadcrumbs {
 
 div.resource_view {
     position : absolute;
-    margin : 40px 20px 20px 20px;
+    margin : 40px 0px 0px 20px;
     overflow-y: scroll;
 }
 
@@ -106,6 +106,13 @@ span.expand_button:hover {
     border : 1px solid grey;
 }
 
+a.resource_link {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+}
 
 div.field div.field_value a {
     font-weight: normal;

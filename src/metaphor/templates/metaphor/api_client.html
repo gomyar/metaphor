@@ -52,7 +52,7 @@
                                 <span class="expand_button" gui-show="api.is_expanded(resource, 'ego')" gui-click="api.collapse_link(this.parentElement, resource, 'ego', Schema.specs.user)">-</span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a gui-attrs="href='/client/ego'">/ego</a>
+                                    <a class="resource_link" gui-attrs="href='/client/ego'">/ego</a>
                                 </span>
                                 <div class="expanded_link" gui-show="api.is_expanded(resource, 'ego')" gui-node="resource._expanded.ego" gui-node-params="parent_resource=resource"></div>
                             </div>
@@ -68,7 +68,7 @@
                             <div class="field_name">self</div>
                             <div class="field_value">
                                 <div class="link_url">
-                                    <a gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
+                                    <a class="resource_link" gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
                                 </div>
                             </div>
                         </div>
@@ -81,7 +81,7 @@
                                 <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
                                 <!-- possible expansion to collection -->
                                 <span class="collection_url">
-                                    <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
 
 
@@ -95,7 +95,7 @@
                                 <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
 
                                 <span class="control create_button" gui-click="search.show_link_field_search_and_save(resource, field)" gui-text="'>> link ' + field.target_spec_name"></span>
@@ -109,7 +109,7 @@
                                 <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
                                 </span>
 
 

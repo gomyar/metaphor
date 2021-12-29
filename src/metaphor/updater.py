@@ -76,7 +76,7 @@ class Updater(object):
         for affected_id in affected_ids:
             affected_id = self.schema.encodeid(affected_id)
             self.update_calc(calc_spec_name, calc_field_name, affected_id)
-            self._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
+            self._recalc_for_field_update(self.schema.specs[calc_spec_name], calc_spec_name, calc_field_name, affected_id)
 
     def _recalc_for_field_update(self, spec, field_spec_name, field_name, resource_id):
         # find foreign dependencies

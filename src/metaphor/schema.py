@@ -188,7 +188,7 @@ class Schema(object):
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}},
             upsert=True)
-        self.add_spec(spec_name)
+        return self.add_spec(spec_name)
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:

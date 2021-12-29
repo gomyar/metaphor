@@ -407,7 +407,7 @@ class Api(object):
                 elif tree.is_collection():
                     encoded[field_name] = os.path.join(self_url, field_name)
                 else:
-                    encoded[field_name] = resource_data['_canonical_url_%s' % field.field_name] if calc_result else None
+                    encoded[field_name] = resource_data['_canonical_url_%s' % field.name] if calc_result else None
             elif spec.name == 'user' and field_name == 'password':
                 encoded[field_name] = '<password>'
             else:

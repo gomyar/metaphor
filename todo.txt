@@ -1,5 +1,6 @@
 
 Shortlist:
+ - bug: deleting intermediate collections does not propagate to calcs
  - bug: schema.load_schema() does not enforce ordering of related calcs (and cannot load properly)
  - bug: ordering of calcs within resource not being updated on creation
 
