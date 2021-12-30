@@ -53,6 +53,7 @@ class Field(object):
 
 class CalcField(Field):
     def __init__(self, field_name, calc_str):
+        super().__init__(field_name, 'calc')
         self.name = field_name
         self.calc_str = calc_str
         self.field_type = 'calc'
@@ -64,6 +65,9 @@ class CalcField(Field):
     def infer_type(self):
         calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
         return calc_tree.infer_type()
+
+    def check_comparable_type(self, ctype):
+        return ctype in self._comparable_types.get(self.infer_type().field_type, [])
 
     def is_primitive(self):
         return self.infer_type().is_primitive()

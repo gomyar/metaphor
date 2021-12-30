@@ -1002,3 +1002,27 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([], division_data['_grants'])
         self.assertEqual([self.schema.decodeid(grant_id_1)], section_data['_grants'])
         self.assertEqual([self.schema.decodeid(grant_id_1)], employee_data['_grants'])
+
+    def test_filter(self):
+        self.schema.add_calc(self.schema.specs['employee'], 'retirement_age', 'self.age + 20')
+
+        employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
+        employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
+        employee_id_3 = self.api.post('employees', {'name': 'fred', 'age': 21})
+
+        employees_by_name = self.api.get('employees[name~"ed"]')
+        self.assertEqual(2, employees_by_name['count'])
+        self.assertEqual('ned', employees_by_name['results'][0]['name'])
+        self.assertEqual('fred', employees_by_name['results'][1]['name'])
+
+        employees_by_age = self.api.get('employees[age>30]')
+        self.assertEqual(2, employees_by_age['count'])
+
+        self.assertEqual('ned', employees_by_age['results'][0]['name'])
+        self.assertEqual('bob', employees_by_age['results'][1]['name'])
+
+        employees_by_retirement_age = self.api.get('employees[retirement_age>50]')
+        self.assertEqual(2, employees_by_retirement_age['count'])
+
+        self.assertEqual('ned', employees_by_retirement_age['results'][0]['name'])
+        self.assertEqual('bob', employees_by_retirement_age['results'][1]['name'])
