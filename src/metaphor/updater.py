@@ -79,10 +79,9 @@ class Updater(object):
             self._recalc_for_field_update(self.schema.specs[calc_spec_name], calc_spec_name, calc_field_name, affected_id)
 
     def _recalc_for_field_update(self, spec, field_spec_name, field_name, resource_id):
+        field_dep = "%s.%s" % (field_spec_name, field_name)
         # find foreign dependencies
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for fields
-            field_dep = "%s.%s" % (field_spec_name, field_name)
             if field_dep in calc_tree.get_resource_dependencies():
                 self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
             elif spec.fields.get(field_name) and spec.fields[field_name].field_type == 'link':
@@ -92,6 +91,12 @@ class Updater(object):
                 if not spec.fields[field_name].infer_type().is_primitive():
                     if spec.name in calc_tree.get_resource_dependencies():
                         self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
+
+        # find local dependencies (other calcs in same resource)
+        for field_name, field in spec.fields.items():
+            if field.field_type == 'calc' and field_dep in field.get_resource_dependencies():
+                self.update_calc(spec.name, field_name, resource_id)
+                self._recalc_for_field_update(spec, spec.name, field_name, resource_id)
 
         return resource_id
 

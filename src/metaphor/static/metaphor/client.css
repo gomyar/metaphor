@@ -101,6 +101,7 @@ span.expand_button {
     border : 1px solid #bcbcbc;
     cursor : pointer;
     font-weight: normal;
+    vertical-align: top;
 }
 
 span.expand_button:hover {

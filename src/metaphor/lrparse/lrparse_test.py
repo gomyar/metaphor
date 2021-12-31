@@ -1051,4 +1051,7 @@ class LRParseTest(unittest.TestCase):
         calculated = tree.calculate(division_id_1)
         self.assertEqual(['bob', 'bil'], [e['name'] for e in calculated])
 
+    def test_add_reverse_links(self):
+        section_spec = self.schema.specs['section']
 
+        tree = parse('self.name + (self.parent_division_sections.name)', section_spec)

@@ -459,3 +459,18 @@ class UpdaterTest(unittest.TestCase):
 
         self.assertEqual(24000, self.db['resource_division'].find_one()['employee_total'])
         self.assertEqual(31000, self.db['resource_division'].find_one()['parttime_total'])
+
+    def test_update_adjacent_calc_after_update(self):
+        self.schema.create_field('employee', 'division_name', 'calc', calc_str='self.parent_division_employees.name')
+        self.schema.create_field('employee', 'both_names', 'calc', calc_str='self.name + self.division_name')
+
+        division_id_1 = self.updater.create_resource(
+            'division', 'root', 'divisions', None, {'name': 'sales'})
+        employee_id_1 = self.updater.create_resource(
+            'employee', 'division', 'employees', division_id_1, {'name': 'Fred'})
+
+        self.assertEqual('Fredsales', self.db['resource_employee'].find_one()['both_names'])
+
+        self.updater.update_fields('division', division_id_1, {'name': 'marketting'})
+
+        self.assertEqual('Fredmarketting', self.db['resource_employee'].find_one()['both_names'])

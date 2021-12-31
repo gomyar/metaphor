@@ -33,6 +33,10 @@ class ApiTest(unittest.TestCase):
                             "type": "calc",
                             "calc_str": "self.division",
                         },
+                        "parttime_division_name": {
+                            "type": "calc",
+                            "calc_str": "self.name + (self.parent_section_parttimers.parent_division_sections.name)",
+                        },
                     },
                 },
                 "division": {
@@ -44,7 +48,7 @@ class ApiTest(unittest.TestCase):
                             "type": "int",
                         },
                         "sections": {
-                            "type": "collection",
+                            "type": "orderedcollection",
                             "target_spec_name": "section",
                         },
                         "primary_sections": {
@@ -80,6 +84,10 @@ class ApiTest(unittest.TestCase):
                         "distance_from_average": {
                             "type": "calc",
                             "calc_str": "self.section_total - average(self.parent_division_sections.sections.section_total)",
+                        },
+                        "parttimers": {
+                            "type": "orderedcollection",
+                            "target_spec_name": "employee",
                         },
                     },
                 },
@@ -150,5 +158,16 @@ class ApiTest(unittest.TestCase):
             'division_link': '/divisions/%s' % division_id_1,
             'id': employee_id_1,
             'name': 'ned',
+            'parent_section_parttimers': None,
+            'parttime_division_name': None,
             'self': '/employees/%s' % employee_id_1}
             , self.api.get('/employees/%s' % employee_id_1))
+
+    def test_calc_parent_links(self):
+        division_id_1 = self.api.post('divisions', {'name': 'sales', 'yearly_sales': 100})
+        section_1 = self.api.post('/divisions/%s/sections' % (division_id_1,), {'name': 'hr'})
+        parttimer_1 = self.api.post('/divisions/%s/sections/%s/parttimers' % (division_id_1, section_1), {'name': 'bob'})
+
+        parttimer = self.api.get('/divisions/%s/sections/%s/parttimers/%s' % (division_id_1, section_1, parttimer_1))
+
+        self.assertEqual('bobsales', parttimer['parttime_division_name'])

@@ -66,6 +66,10 @@ class CalcField(Field):
         calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
         return calc_tree.infer_type()
 
+    def get_resource_dependencies(self):
+        calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
+        return calc_tree.get_resource_dependencies()
+
     def check_comparable_type(self, ctype):
         return ctype in self._comparable_types.get(self.infer_type().field_type, [])
 
@@ -355,7 +359,7 @@ class Schema(object):
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
-        if field.field_type == 'collection':
+        if field.field_type in ['collection', 'orderedcollection']:
             parent_field_name = "parent_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name, field.name)
         if field.field_type == 'linkcollection':
@@ -368,7 +372,7 @@ class Schema(object):
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields.pop(reverse_field_name)
-        if field.field_type == 'collection':
+        if field.field_type in ['collection', 'orderedcollection']:
             parent_field_name = "parent_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields.pop(parent_field_name)
         if field.field_type == 'linkcollection':

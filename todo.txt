@@ -5,6 +5,9 @@ Shortlist:
  - bug: ordering of calcs within resource not being updated on creation
 
  - need to be able to trace / debug calcs as a user
+ - language processing needs work
+   - brackets are required to enforce precedence - should be implied - i.e. 'self.name + (self.link_something_field.name)'
+   - implement railway shunt algorithm for proper operator precedence
 
  - deleting grant or groups also removes reference from _grants list for all applicble resources
  - pagination - done
