@@ -79,6 +79,7 @@ div.field div.field_name {
     width: 160px;
     font-weight: normal;
     overflow: hidden;
+    margin-left: 10px;
 }
 div.field div.field_name:after {
     content: ':';
@@ -112,6 +113,7 @@ a.resource_link {
     text-overflow: ellipsis;
     white-space: nowrap;
     display: inline-block;
+    vertical-align: center;
 }
 
 div.field div.field_value a {

@@ -121,3 +121,11 @@ class AdminApi(object):
 
     def delete_integration(self, integration_id):
         self.schema.delete_integration(integration_id)
+
+    def export_schema(self):
+        schema = self.schema.db['metaphor_schema'].find_one()
+        schema.pop('_id')
+        return schema
+
+    def import_schema(self, schema_data):
+        self.schema.save_imported_schema_data(schema_data)

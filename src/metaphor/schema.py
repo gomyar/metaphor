@@ -166,6 +166,14 @@ class Schema(object):
                     calcs[spec_name + '.' + field_name] = field_data
         return calcs
 
+    def save_imported_schema_data(self, schema_data):
+        self.db.metaphor_schema.find_one_and_update(
+            {"_id": {"$exists": True}},
+            {
+                "$set": schema_data,
+            }, upsert=True, return_document=ReturnDocument.AFTER)
+        self.load_schema()
+
     def load_schema(self):
         from metaphor.lrparse.lrparse import parse
         self.specs = {}

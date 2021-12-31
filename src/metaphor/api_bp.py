@@ -145,6 +145,23 @@ def schema_editor_delete_field(spec_name, field_name):
     return jsonify({'success': 1})
 
 
+@admin_bp.route("/schema_editor/api/export", methods=['GET'])
+@login_required
+def schema_export():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
+    admin_api = current_app.config['admin_api']
+    return jsonify(admin_api.export_schema())
+
+
+@admin_bp.route("/schema_editor/api/import", methods=['POST'])
+@login_required
+def schema_import():
+    if not flask_login.current_user.is_admin():
+        return "Unauthorized", 403
+    admin_api = current_app.config['admin_api']
+    return jsonify(admin_api.import_schema(request.json))
+
 
 @admin_bp.route("/integrations")
 @login_required

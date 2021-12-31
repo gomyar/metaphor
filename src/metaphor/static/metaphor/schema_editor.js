@@ -142,6 +142,36 @@ var create_field = {
     }
 };
 
+var schema_import = {
+    
+    import_schema: (file_element) => {
+        var file = file_element.files[0];
+
+        var reader = new FileReader();
+        reader.readAsText(file, 'UTF-8');
+
+        reader.onload = readerEvent => {
+            var content = JSON.parse(readerEvent.target.result);
+            if (confirm("Import Schema?")) {
+                turtlegui.ajax.post(
+                    '/admin/schema_editor/api/import',
+                    content,
+                    function(data) {
+                        create_field.hide_popup();
+                        schema.load_specs();
+                    },
+                    function(data) {
+                        loading.dec_loading();
+                        alert("Error creating spec: " + data.error);
+                    }
+                );
+                        
+            }
+        }
+    },
+
+}
+
 
 document.addEventListener("DOMContentLoaded", function(){
     // call turtlegui.reload() when the page loads
