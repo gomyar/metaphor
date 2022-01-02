@@ -245,6 +245,10 @@ class ApiClient {
             'float': parseFloat,
             'datetime': parseDate
         }
+
+        this.show_reverse_links = false;
+        this.show_parents = false;
+        this.show_self_links = false;
     }
 
     full_path() {
@@ -292,8 +296,12 @@ class ApiClient {
         return !resource._meta.is_collection;
     }
 
-    is_field_collection(field) {
+    is_field_array(field) {
         return field.is_collection;
+    }
+
+    is_field_collection(field) {
+        return field.type=='collection' || field.type=='orderedcollection' || field.type=='linkcollection';
     }
 
     is_field_link(field) {
@@ -302,6 +310,10 @@ class ApiClient {
 
     is_field_parent_collection(field) {
         return field.type=='parent_collection';
+    }
+
+    is_field_reverse_link_collection(field) {
+        return field.type=='reverse_link_collection';
     }
 
     is_linkcollection(resource, field_name) {
@@ -528,6 +540,21 @@ class ApiClient {
                     alert("Error deleting" + resource.self);
                 });
         }
+    }
+
+    toggle_show_parents() {
+        this.show_parents = !this.show_parents;
+        turtlegui.reload();
+    }
+
+    toggle_show_reverse_links() {
+        this.show_reverse_links = !this.show_reverse_links;
+        turtlegui.reload();
+    }
+
+    toggle_show_self_links() {
+        this.show_self_links = !this.show_self_links;
+        turtlegui.reload();
     }
 
 

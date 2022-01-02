@@ -12,12 +12,18 @@ div.topbar {
     margin : 10px 20px 0px 20px;
 }
 
-span.breadcrumbs {
+div.breadcrumbs {
+}
+
+div.viewcontrols {
+    width : 100%;
+    text-align: right;
+    font-size: 12px;
 }
 
 div.resource_view {
     position : absolute;
-    margin : 40px 0px 0px 20px;
+    margin : 60px 0px 0px 20px;
     overflow-y: scroll;
 }
 
@@ -83,6 +89,11 @@ div.field div.field_name {
 }
 div.field div.field_name:after {
     content: ':';
+}
+
+div.field div.marginfiller{
+    display: inline-block;
+    width: 160px;
 }
 
 div.field div.field_value {

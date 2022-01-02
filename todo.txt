@@ -9,6 +9,8 @@ Shortlist:
    - brackets are required to enforce precedence - should be implied - i.e. 'self.name + (self.link_something_field.name)'
    - implement railway shunt algorithm for proper operator precedence
 
+ - store calculated resource lists as link collections (instead of full resources in nested list)
+
  - deleting grant or groups also removes reference from _grants list for all applicble resources
  - pagination - done
  - expand / fields params - done
