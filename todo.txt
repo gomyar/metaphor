@@ -1,8 +1,8 @@
 
 Shortlist:
- - bug: deleting intermediate collections does not propagate to calcs
- - bug: schema.load_schema() does not enforce ordering of related calcs (and cannot load properly)
- - bug: ordering of calcs within resource not being updated on creation
+ - bug: deleting intermediate collections does not propagate to calcs - done
+ - bug: schema.load_schema() does not enforce ordering of related calcs (and cannot load properly) - done
+ - bug: ordering of calcs within resource not being updated on creation - done
 
  - need to be able to trace / debug calcs as a user
  - language processing needs work
@@ -14,9 +14,10 @@ Shortlist:
  - deleting grant or groups also removes reference from _grants list for all applicble resources
  - pagination - done
  - expand / fields params - done
+ - expand multiple levels
  - collection functions
  - updates as idempotent commands
- - schema import / export
+ - schema import / export - done
  - schema mutations
  - schema multiple versions, mutations in between
  - estimate effects of a given change (POST/PATCH/DELETE or schema change)
@@ -28,7 +29,7 @@ Shortlist:
    - background thread/poll
    - webhooks
 
- - bug: deleting a spec field doesn't delete associated link_ field
+ - bug: deleting a spec field doesn't delete associated link_ field - done
  - bug: validate types for functions 
  - edit calc 
  - edit field
@@ -36,10 +37,15 @@ Shortlist:
  - add mechanism for easily adding functions 
    - as aggregations
    - as python functions
- implement switch():
-   - switch(resource_ref, case, case, case, ...)
+ implement switch():  - done
+   - switch(resource_ref, case, case, case, ...) - done
 
  - ok, on second thoughts, maybe the grant "url" field should be a lrparse filter instead (companies.employees.ID123123123)
+ - might need to allow grants for linked resources, i.e. /ego/company/employees
+ - thoughts on grants:
+   - need to set up implied read relationship for /ego links - might work for other links as well (dot notation grants might work for this)
+   - possibly only need to match for _grants in aggregations for links / linkcollections etc and not collections
+   - could alter the "ego" RootResource to not match _grants
 
 
 todo:
@@ -59,14 +65,14 @@ todo:
  - restrict allowed field names - done
  - proper http error codes (400 404 etc) - done
  - delete spec field, update all resources
-  - throw error if field used in calc
+  - throw error if field used in calc - done
  - rename field - maybe - would also have to update any calcs using the field
 
  - update entry in resource (updateid, timestamp etc)
    - sync updates across cluster using redis
 
  - adding invalid calc field raises exception - done
- - adding calc field with cyclic dependency raises error
+ - adding calc field with cyclic dependency raises error - done
 
  - cascading delete - done
 
@@ -121,8 +127,7 @@ Add "plot access" graph:
 /api/[root collection(s)]
 
 
-Pagination
- - do this
+Pagination - done
 
 
 Expand by get param:
@@ -176,11 +181,7 @@ Small todos:
      - an edited schema could be called a "patch" on a given schema "version" 
        - could highlight mutators required to apply patch
 
- - calcs
-   - add 
-
- - add orderedlist type (possibly ordered link list)
-   - complicated, may involve linked list impl with $graphLookup aggregation
+ - add orderedlist type (possibly ordered link list) - done
    - pay attention to atomic changes to items in the list, whether adding / deleting / reordering
      - maybe "PATCH" with _order field? for reordering call
 

@@ -1055,3 +1055,8 @@ class LRParseTest(unittest.TestCase):
         section_spec = self.schema.specs['section']
 
         tree = parse('self.name + (self.parent_division_sections.name)', section_spec)
+
+    def test_replace_whitespace_with_spaces(self):
+        section_spec = self.schema.specs['section']
+
+        tree = parse('self.name + \t(\nself.parent_division_sections.name\n)', section_spec)

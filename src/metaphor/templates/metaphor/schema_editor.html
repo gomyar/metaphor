@@ -58,7 +58,10 @@
                         <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
                         <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
                     </div>
-                    <button class="button delete_field" gui-click="schema.delete_field(spec_name, field_name)">Delete</button>
+                    <div class="field_controls">
+                        <button class="button edit_field" gui-click="create_field.show_edit(spec_name, field_name)">Edit</button>
+                        <button class="button delete_field" gui-click="schema.delete_field(spec_name, field_name)">Delete</button>
+                    </div>
                 </div>
             </div>
             <button class="button" gui-click="create_field.show_create(spec_name)">Add Field</button> 
@@ -87,10 +90,13 @@
 <div id="popup_field" class="popupwrapper" gui-show="create_field.show_popup">
     <div class="popup">
         <div class="title">
-            Create Field:
+            <span gu-show="!create_field.is_editing">Create Field:</span>
+            <span gu-show="create_field.is_editing">Edit Field:</span>
         </div>
         <div class="popupform">
-            <div class="formfield"><div class="label">Name:</div><input type="text" gui-val="create_field.field_name"></input>
+            <div class="formfield"><div class="label">Name:</div>
+                <input type="text" gui-show="!create_field.is_editing" gui-val="create_field.field_name"></input>
+                <span gui-text="create_field.field_name"></span>
                 <div class="spec_type">
                     <select gui-val="create_field.field_type" gui-list="create_field.all_field_types" gui-item="spec_type" gui-change="turtlegui.reload()">
                         <option gui-text="spec_type" gui-val="spec_type"></option>
@@ -124,13 +130,14 @@
                 </div>
                 <div class="formfield" gui-case="'calc'">
                     <div class="label">Calc:</div>
-                    <input type="text" gui-val="create_field.calc_str"></input>
+                    <textarea class="calc_text" gui-val="create_field.calc_str" rows=4></textarea>
                 </div>
 
             </div>
         </div>
         <div class="popupbuttons">
-            <button class="button" gui-click='create_field.create_field()'>Create</button>
+            <button class="button" gui-show="!create_field.is_editing" gui-click='create_field.create_field()'>Create</button>
+            <button class="button" gui-show="create_field.is_editing" gui-click='create_field.update_field()'>Update</button>
             <button class="button" gui-click='create_field.hide_popup()'>Close</button>
         </div>
     </div>

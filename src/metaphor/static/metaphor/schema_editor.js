@@ -101,6 +101,8 @@ var create_field = {
     field_target: null,
     calc_str: null,
 
+    is_editing: false,
+
     all_field_types: ['int', 'float', 'str', 'bool', 'datetime', 'collection', 'link', 'linkcollection', 'orderedcollection', 'calc'],
 
     create_field: function() {
@@ -126,6 +128,25 @@ var create_field = {
         );
     },
 
+    update_field: function() {
+        turtlegui.ajax.patch(
+            '/admin/schema_editor/api/specs/' + create_field.spec_name + '/fields/' + create_field.field_name,
+            {'field_type': create_field.field_type,
+             'field_target': create_field.field_target,
+             'calc_str': create_field.calc_str
+            },
+            function(data) {
+                create_field.hide_popup();
+                schema.load_specs();
+            },
+            function(data) {
+                loading.dec_loading();
+                alert("Error creating spec: " + data.error);
+            }
+        );
+    },
+
+
     show_create: function(spec_name) {
         create_field.spec_name = spec_name;
         create_field.show_popup = true;
@@ -133,6 +154,19 @@ var create_field = {
         create_field.field_type = 'int';
         create_field.field_target = null;
         create_field.calc_str = null;
+        create_field.is_editing = false;
+        turtlegui.reload();
+    },
+
+    show_edit: function(spec_name, field_name) {
+        var field = schema.specs[spec_name].fields[field_name];
+        create_field.spec_name = spec_name;
+        create_field.show_popup = true;
+        create_field.field_name = field_name;
+        create_field.field_type = field.type;
+        create_field.field_target = field.target_spec_name;
+        create_field.calc_str = field.calc_str;
+        create_field.is_editing = true;
         turtlegui.reload();
     },
 

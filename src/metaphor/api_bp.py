@@ -135,13 +135,20 @@ def schema_editor_create_field(spec_name):
     return jsonify({'success': 1})
 
 
-@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields/<field_name>", methods=['DELETE'])
+@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
 @login_required
 def schema_editor_delete_field(spec_name, field_name):
     if not flask_login.current_user.is_admin():
         return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
-    admin_api.delete_field(spec_name, field_name)
+    if request.method == 'DELETE':
+        admin_api.delete_field(spec_name, field_name)
+    else:
+        field_type = request.json['field_type']
+        field_target = request.json['field_target']
+        calc_str = request.json['calc_str']
+
+        admin_api.update_field(spec_name, field_name, field_type, field_target, calc_str)
     return jsonify({'success': 1})
 
 

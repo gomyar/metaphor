@@ -64,6 +64,10 @@ div.specs div.spec div.button {
     margin-left : 50px;
 }
 
+div.specs div.spec div.field {
+    width: 100%;
+}
+
 div.specs div.spec div.field div.field_options {
     width : 350px;
     display: inline-block;
@@ -87,7 +91,7 @@ div.specs div.spec div.field div.name{
 
 div.specs div.spec div.field div.type{
     font-size : 12px;
-    min-width : 100px;
+    width : 150px;
     margin-left : 20px;
     display : inline-block;
 }
@@ -104,5 +108,20 @@ div.specs div.spec div.field div.calc_str {
     min-width : 50px;
     margin-left : 20px;
     display : inline-block;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    white-space: pre;
+    width: 320px;
+    background-color: #eeeeee;
 }
 
+div.specs div.spec div.field div.field_controls {
+    display : inline-block;
+}
+
+div.calc_text {
+    width: 200px;
+    max-height: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

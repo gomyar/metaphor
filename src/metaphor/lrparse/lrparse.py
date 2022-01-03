@@ -1405,20 +1405,24 @@ class FilterParser(Parser):
 
 
 def parse(line, spec):
+    line = line.replace('\n', ' ').replace('\t', ' ')
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return Parser(lex(tokens), spec).parse()
 
 
 def parse_url(line, spec):
+    line = line.replace('\n', ' ').replace('\t', ' ')
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return UrlParser(lex(tokens), spec).parse()
 
 
 def parse_canonical_url(line, spec):
+    line = line.replace('\n', ' ').replace('\t', ' ')
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return CanonicalUrlParser(lex(tokens), spec).parse()
 
 
 def parse_filter(line, spec):
+    line = line.replace('\n', ' ').replace('\t', ' ')
     tokens = tokenize.generate_tokens(StringIO(line).read)
     return FilterParser(lex(tokens), spec).parse()
