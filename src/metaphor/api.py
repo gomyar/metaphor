@@ -36,14 +36,14 @@ class Api(object):
         except SyntaxError as te:
             raise HTTPError('', 404, "Not Found", None, None)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
         cursor = tree.root_collection().aggregate(aggregate_query)
 
         resource = next(cursor)
 
         if user:
-            self._check_grants(path, user.update_grants)
+            self._check_grants(resource['_canonical_url'], user.update_grants)
 
         if spec.name == 'user' and data.get('password'):
             data['password'] = generate_password_hash(data['password'])
@@ -63,17 +63,18 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 404, "Not Found", None, None)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
-
-            # check permissions
-            if user:
-                self._check_grants(path, user.create_grants)
+            aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
             field_spec = spec.fields[field_name]
 
             # if we're using a simplified parser we can probably just pull the id off the path
             cursor = tree.root_collection().aggregate(aggregate_query)
             parent_resource = next(cursor)
+
+            # check permissions
+            if user:
+                self._check_grants(parent_resource['_canonical_url'], user.create_grants)
+
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
             if field_spec.field_type == 'linkcollection':
@@ -138,16 +139,16 @@ class Api(object):
             parent_path = '/'.join(parent_field_path.split('/')[:-1])
             field_name = parent_field_path.split('/')[-1]
 
-            if user:
-                self._check_grants(path, user.delete_grants)
-
             if type(parent_field_tree) == LinkCollectionResourceRef:
                 parent_tree = parse_canonical_url(parent_path, self.schema.root)
-                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None, user)
+                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
+
+                if user:
+                    self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
 
                 return self.updater.delete_linkcollection_entry(
                     spec.name,
@@ -156,11 +157,14 @@ class Api(object):
                     resource_id)
             elif type(parent_field_tree) == OrderedCollectionResourceRef:
                 parent_tree = parse_canonical_url(parent_path, self.schema.root)
-                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None, user)
+                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
+
+                if user:
+                    self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
 
                 return self.updater.delete_orderedcollection_entry(
                     spec.name,
@@ -168,7 +172,13 @@ class Api(object):
                     field_name,
                     resource_id)
             else:
-                aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None, user)
+                aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None)
+
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                if user:
+                    self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
 
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
