@@ -220,3 +220,34 @@ class ServerTest(TestCase):
         self.api.patch('/users/%s' % self.user_id, {'password': 'secret'})
         user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
         self.assertTrue(check_password_hash(user['password'], 'secret'))
+
+    def test_patch_to_collection_returns_400(self):
+        no_response = self.client.patch('/api/users', data=json.dumps({'name': 'fred'}), content_type='application/json')
+        self.assertEqual(400, no_response.status_code)
+
+    def test_grant_ego_permissions(self):
+        employee_spec = self.schema.add_spec('employee')
+        self.schema.add_field(employee_spec, 'name', 'str')
+
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
+
+        # add employee link to user
+        user_spec = self.schema.specs['user']
+        self.schema.add_field(user_spec, 'employee', 'link', 'employee')
+
+        # link user to employee
+        self.api.patch('/users/%s' % self.user_id, {'employee': employee_id_1})
+
+        import ipdb; ipdb.set_trace()
+        no_response = self.client.patch('/api/ego/employee', data=json.dumps({'name': 'bob'}), content_type='application/json')
+        self.assertEqual(403, no_response.status_code)
+
+        # add grant for /ego/employee
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/employee', 'type': 'update'})
+
+        no_response = self.client.patch('/api/ego/employee', data=json.dumps({'name': 'bob'}), content_type='application/json')
+        self.assertEqual(200, no_response.status_code)
+
+        self.assertEqual('bob', self.api.get('/employees/%s' % employee_id_1)['name'])

@@ -70,14 +70,11 @@ def api(path):
     api = current_app.config['api']
     user = flask_login.current_user
     if request.method == 'POST':
-        # check permissions
-        if not any(('/'+path).startswith(grant_url['url']) for grant_url in flask_login.current_user.create_grants):
-            return "Not Allowed", 403
+        user.grants = [g['_id'] for g in user.create_grants]
 
-        return jsonify(api.post(path, request.json)), 201
+        return jsonify(api.post(path, request.json, user)), 201
     if request.method == 'PATCH':
-        if not any(('/'+path).startswith(grant_url['url']) for grant_url in flask_login.current_user.update_grants):
-            return "Not Allowed", 403
+        user.grants = [g['_id'] for g in user.update_grants]
 
         return jsonify(api.patch(path, request.json, user))
     if request.method == 'GET':
@@ -88,8 +85,7 @@ def api(path):
         else:
             return "Not Found", 404
     if request.method == 'DELETE':
-        if not any(('/'+path).startswith(grant_url['url']) for grant_url in flask_login.current_user.delete_grants):
-            return "Not Allowed", 403
+        user.grants = [g['_id'] for g in user.delete_grants]
 
         return jsonify(api.delete(path, user))
 

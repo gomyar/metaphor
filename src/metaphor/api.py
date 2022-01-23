@@ -25,6 +25,10 @@ class Api(object):
         self.schema = schema
         self.updater = Updater(schema)
 
+    def _check_grants(self, path, grants):
+        if not any(('/'+path).startswith(grant_url['url']) for grant_url in grants):
+            raise HTTPError('', 403, "Not Allowed", None, None)
+
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
         try:
@@ -32,11 +36,14 @@ class Api(object):
         except SyntaxError as te:
             raise HTTPError('', 404, "Not Found", None, None)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 
         cursor = tree.root_collection().aggregate(aggregate_query)
 
         resource = next(cursor)
+
+        if user:
+            self._check_grants(path, user.update_grants)
 
         if spec.name == 'user' and data.get('password'):
             data['password'] = generate_password_hash(data['password'])
@@ -56,7 +63,11 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 404, "Not Found", None, None)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+            aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
+
+            # check permissions
+            if user:
+                self._check_grants(path, user.create_grants)
 
             field_spec = spec.fields[field_name]
 
@@ -94,6 +105,10 @@ class Api(object):
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
+            # check permissions
+            if user:
+                self._check_grants(path, user.create_grants)
+
             if root_field_spec.target_spec_name == 'user':
                 data['password'] = generate_password_hash(data['password'])
 
@@ -123,9 +138,12 @@ class Api(object):
             parent_path = '/'.join(parent_field_path.split('/')[:-1])
             field_name = parent_field_path.split('/')[-1]
 
+            if user:
+                self._check_grants(path, user.delete_grants)
+
             if type(parent_field_tree) == LinkCollectionResourceRef:
                 parent_tree = parse_canonical_url(parent_path, self.schema.root)
-                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
+                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None, user)
 
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
@@ -138,7 +156,7 @@ class Api(object):
                     resource_id)
             elif type(parent_field_tree) == OrderedCollectionResourceRef:
                 parent_tree = parse_canonical_url(parent_path, self.schema.root)
-                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
+                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None, user)
 
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
@@ -150,7 +168,7 @@ class Api(object):
                     field_name,
                     resource_id)
             else:
-                aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None)
+                aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None, user)
 
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
@@ -335,6 +353,17 @@ class Api(object):
                             "from": "resource_%s" % field.target_spec_name,
                             "localField": "_id",
                             "foreignField": "_parent_id",
+                            "as": "_expanded_%s" % field_name,
+                    }})
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
+            elif field.field_type == 'parent_collection':
+                aggregate_query.append(
+                    {"$lookup": {
+                            "from": "resource_%s" % spec.name,
+                            "localField": "_parent_id",
+                            "foreignField": "_id",
                             "as": "_expanded_%s" % field_name,
                     }})
                 aggregate_query.append(

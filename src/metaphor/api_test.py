@@ -839,6 +839,20 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}
             , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'contractors'}))
 
+
+    def test_expand_parent(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        section_id_1 = self.schema.insert_resource('section', {'name': 'engineering'}, 'sections', 'division', division_id_1)
+
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'section'}},
+            'contractors': '/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1),
+            'id': section_id_1,
+            'name': 'engineering',
+            'parent_division_sections': '/divisions/%s' % division_id_1,
+            'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}
+            , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'parent_division_sections'}))
+
     def test_root(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
 
