@@ -16,93 +16,28 @@ class ApiTest(unittest.TestCase):
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = Schema(self.db)
+        self.schema.create_initial_schema()
 
-        self.db.metaphor_schema.insert_one({
-            "specs" : {
-                "employee" : {
-                    "fields" : {
-                        "name" : {
-                            "type" : "str"
-                        },
-                        "age": {
-                            "type": "int"
-                        },
-                        "created": {
-                            "type": "datetime"
-                        },
-                        "division": {
-                            "type": "link",
-                            "target_spec_name": "division",
-                        },
-                    },
-                },
-                "division": {
-                    "fields": {
-                        "name": {
-                            "type": "str",
-                        },
-                        "yearly_sales": {
-                            "type": "int",
-                        },
-                        "sections": {
-                            "type": "collection",
-                            "target_spec_name": "section",
-                        },
-                        "parttimers": {
-                            "type": "linkcollection",
-                            "target_spec_name": "employee",
-                        },
-                    },
-                },
-                "section": {
-                    "fields": {
-                        "name": {
-                            "type": "str",
-                        },
-                        "contractors": {
-                            "type": "orderedcollection",
-                            "target_spec_name": "employee",
-                        }
-                    },
-                },
-                "group" : {
-                    "fields" : {
-                        "name" : {
-                            "type" : "str"
-                        },
-                        "grants": {
-                            "type": "collection",
-                            "target_spec_name": "grant"
-                        },
-                    }
-                },
-                "grant" : {
-                    "fields" : {
-                        "type" : {
-                            "type" : "str"
-                        },
-                        "url" : {
-                            "type" : "str"
-                        },
-                    }
-                },
-            },
-            "root": {
-                "employees": {
-                    "type": "collection",
-                    "target_spec_name": "employee",
-                },
-                "divisions": {
-                    "type": "collection",
-                    "target_spec_name": "division",
-                },
-                "groups" : {
-                    "type" : "collection",
-                    "target_spec_name" : "group"
-                },
-            },
-        })
-        self.schema.load_schema()
+        self.employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'age', 'int')
+        self.schema.create_field('employee', 'created', 'datetime')
+
+        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_field('division', 'name', 'str')
+        self.schema.create_field('division', 'yearly_sales', 'int')
+        self.schema.create_field('division', 'parttimers', 'linkcollection', 'employee')
+
+        self.schema.create_field('employee', 'division', 'link', 'division')
+
+        self.section_spec = self.schema.create_spec('section')
+        self.schema.create_field('section', 'name', 'str')
+        self.schema.create_field('section', 'contractors', 'orderedcollection', 'employee')
+
+        self.schema.create_field('division', 'sections', 'collection', 'section')
+
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'divisions', 'collection', 'division')
 
         self.api = Api(self.schema)
 
@@ -1058,3 +993,70 @@ class ApiTest(unittest.TestCase):
 
         self.assertEqual('ned', employees_by_retirement_age['results'][0]['name'])
         self.assertEqual('bob', employees_by_retirement_age['results'][1]['name'])
+
+    def test_grants_set_on_post_path(self):
+        self.schema.add_field(self.schema.specs['user'], 'references', 'collection', 'employee')
+
+        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+
+        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
+        self.schema.insert_resource('grant', {'type': 'read', 'url': '/users/%s/references' % user_id}, 'grants', 'group', group_id_1)
+        self.schema.insert_resource('grant', {'type': 'create', 'url': '/users/%s/references' % user_id}, 'grants', 'group', group_id_1)
+
+        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+
+        user = self.schema.load_user('bob')
+        user.grants = [g['_id'] for g in user.create_grants]
+
+        # post with grants
+        self.api.post('/users/%s/references' % user_id, {'name': 'fred'}, user=user)
+
+        user.grants = [g['_id'] for g in user.read_grants]
+
+        employees = self.api.get('/users/%s/references' % user_id, user=user)
+        self.assertEqual('fred', employees['results'][0]['name'])
+
+    def test_grants_set_on_patch_path(self):
+        self.schema.add_field(self.schema.specs['user'], 'reference', 'link', 'employee')
+
+        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+
+        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
+        self.schema.insert_resource('grant', {'type': 'read', 'url': '/users/%s' % user_id}, 'grants', 'group', group_id_1)
+        self.schema.insert_resource('grant', {'type': 'update', 'url': '/users/%s' % user_id}, 'grants', 'group', group_id_1)
+
+        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+
+        user = self.schema.load_user('bob')
+        user.grants = [g['_id'] for g in user.update_grants]
+
+        # patch with grants
+        employee_id = self.api.post('/employees', {'name': 'fred'})
+
+        # actually should have given a 403 as no read access to /employees/
+        self.api.patch('/users/%s' % user_id, {'reference': employee_id}, user=user)
+
+        user.grants = [g['_id'] for g in user.read_grants]
+
+        get_user = self.api.get('/users/%s' % user_id, user=user)
+        self.assertEqual('bob', get_user['username'])
+
+    def test_grants_set_on_ego(self):
+        self.schema.add_field(self.schema.specs['user'], 'references', 'collection', 'employee')
+
+        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
+        self.schema.insert_resource('grant', {'type': 'read', 'url': '/ego/references'}, 'grants', 'group', group_id_1)
+        self.schema.insert_resource('grant', {'type': 'create', 'url': '/ego/references'}, 'grants', 'group', group_id_1)
+
+        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+
+        user = self.schema.load_user('bob')
+        user.grants = [g['_id'] for g in user.create_grants]
+
+        self.api.post('/ego/references', {'name': 'fred'}, user=user)
+
+        user.grants = [g['_id'] for g in user.read_grants]
+
+        employees = self.api.get('/ego/references', user=user)
+        self.assertEqual('fred', employees['results'][0]['name'])

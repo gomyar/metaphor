@@ -26,6 +26,7 @@ class Api(object):
         self.updater = Updater(schema)
 
     def _check_grants(self, path, grants):
+        path = path.strip('/')
         if not any(('/'+path).startswith(grant_url['url']) for grant_url in grants):
             raise HTTPError('', 403, "Not Allowed", None, None)
 
@@ -43,7 +44,10 @@ class Api(object):
         resource = next(cursor)
 
         if user:
-            self._check_grants(resource['_canonical_url'], user.update_grants)
+            # TODO: also need to check read access to target if link
+            # checking for /ego paths first, then all other paths
+            if '/'+path not in [g['url'] for g in user.update_grants]:
+                self._check_grants(resource['_canonical_url'], user.update_grants)
 
         if spec.name == 'user' and data.get('password'):
             data['password'] = generate_password_hash(data['password'])
@@ -63,7 +67,7 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 404, "Not Found", None, None)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+            aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 
             field_spec = spec.fields[field_name]
 
@@ -73,7 +77,10 @@ class Api(object):
 
             # check permissions
             if user:
-                self._check_grants(parent_resource['_canonical_url'], user.create_grants)
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                if '/'+path not in [g['url'] for g in user.create_grants]:
+                    self._check_grants(os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
 
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
