@@ -19,7 +19,7 @@ class Updater(object):
         self.schema = schema
 
     def get_affected_ids_for_resource(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
-        log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
+#        log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
         affected_ids = []
         for aggregation in self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, resource_spec, resource_id):
             if aggregation:
@@ -35,7 +35,7 @@ class Updater(object):
         return aggregations
 
     def update_calc(self, resource_name, calc_field_name, resource_id):
-        log.debug("Updating calc: %s %s %s", resource_name, calc_field_name, resource_id)
+#        log.debug("Updating calc: %s %s %s", resource_name, calc_field_name, resource_id)
         calc_tree = self.schema.calc_trees[resource_name, calc_field_name]
 
         update_result = {}
@@ -53,7 +53,7 @@ class Updater(object):
                 update_result['_canonical_url_%s' % calc_field_name] = self.schema.load_canonical_parent_url(calc_tree.infer_type().name, self.schema.encodeid(result))
             else:
                 update_result['_canonical_url_%s' % calc_field_name] = None
-        log.debug("Writing : %s", result)
+#        log.debug("Writing : %s", result)
         self.schema.db['resource_%s' % resource_name].update({'_id': self.schema.decodeid(resource_id)}, {"$set": update_result})
 
     def _calculate_resource(self, calc_tree, resource_id):

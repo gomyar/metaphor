@@ -25,4 +25,3 @@ class CreateLinkCollectionUpdate:
                 self.updater.update_calc(self.parent_spec_name, field_name, self.parent_id)
                 self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.parent_id)
 
-

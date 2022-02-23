@@ -142,23 +142,24 @@ class RootResourceRef(ResourceRef):
         return self.spec
 
     def aggregation(self, self_id, user=None):
-        if user:
+        if self.resource_name == 'self':
             aggregation = [
                 {"$match": {"_grants": {"$in": user.grants}}}
-            ]
-        else:
-            aggregation = []
-        if self.resource_name == 'self':
+            ] if user else []
             aggregation.extend([
                 {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
             ])
             return aggregation, self.spec, False
         elif self.resource_name == 'ego':
             aggregation = [
-                {"$match": {"username": user.username}}
+            # using ego as dummy 
+#                {"$match": {"username": user.username}}
             ]
             return aggregation, self.spec, False
         else:
+            aggregation = [
+                {"$match": {"_grants": {"$in": user.grants}}}
+            ] if user else []
             aggregation.extend([
                 {"$match": {"$and": [
                     {"_parent_field_name": self.resource_name},

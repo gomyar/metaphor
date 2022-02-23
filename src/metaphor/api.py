@@ -37,7 +37,7 @@ class Api(object):
         except SyntaxError as te:
             raise HTTPError('', 404, "Not Found", None, None)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+        aggregate_query, spec, _ = tree.aggregation(None)
 
         cursor = tree.root_collection().aggregate(aggregate_query)
 
@@ -67,7 +67,7 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 404, "Not Found", None, None)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
+            aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
             field_spec = spec.fields[field_name]
 
@@ -213,12 +213,57 @@ class Api(object):
         if not path:
             return self._get_root()
 
-        try:
-            tree = parse_url(path, self.schema.root)
-        except SyntaxError as te:
-            return None
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
+        if path.split('/')[0] == 'ego':
+
+            matching_grant_urls = [g['url'] for g in user.read_grants if ('/' + path).startswith(g['url'])]
+            if not matching_grant_urls:
+                raise HTTPError('', 403, "Not Allowed", None, None)
+            authorized_url = max(matching_grant_urls)  # longest wins
+            authorized_url.strip('/')
+
+            remainder_url = path[len(authorized_url):]
+            remainder_url.strip('/')
+
+            authorized_url = authorized_url.lstrip('/')
+
+            # parse authorized part first
+            if authorized_url:
+                try:
+                    authorized_tree = parse_canonical_url(authorized_url, self.schema.specs['user'])
+                except SyntaxError as te:
+                    raise HTTPError('', 404, "Not Found", None, None)
+
+                authorized_aggregate_query, authorized_spec, authorized_is_aggregate = authorized_tree.aggregation(None)
+            else:
+                authorized_aggregate_query, authorized_spec, authorized_is_aggregate = [], self.schema.specs['user'], False
+
+
+            # parse remainder
+            if remainder_url:
+                try:
+                    tree = parse_canonical_url(remainder_url, authorized_spec)
+                except SyntaxError as te:
+                    raise HTTPError('', 404, "Not Found", None, None)
+
+                aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
+            else:
+                aggregate_query, spec, is_aggregate = authorized_aggregate_query, authorized_spec, authorized_is_aggregate
+                tree = authorized_tree
+
+            aggregate_query = [
+                {"$match": {"username": user.username}}
+            ] + aggregate_query
+
+        else:
+
+
+            try:
+                tree = parse_url(path, self.schema.root)
+            except SyntaxError as te:
+                return None
+
+            aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 
         if is_aggregate:
 
