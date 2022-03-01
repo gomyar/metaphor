@@ -39,6 +39,11 @@ class Api(object):
 
         aggregate_query, spec, _ = tree.aggregation(None)
 
+        if path.split('/')[0] == 'ego':
+            aggregate_query = [
+                {"$match": {"username": user.username}}
+            ] + aggregate_query
+
         cursor = tree.root_collection().aggregate(aggregate_query)
 
         resource = next(cursor)
@@ -70,6 +75,11 @@ class Api(object):
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
             field_spec = spec.fields[field_name]
+
+            if path.split('/')[0] == 'ego':
+                aggregate_query = [
+                    {"$match": {"username": user.username}}
+                ] + aggregate_query
 
             # if we're using a simplified parser we can probably just pull the id off the path
             cursor = tree.root_collection().aggregate(aggregate_query)
@@ -150,12 +160,19 @@ class Api(object):
                 parent_tree = parse_canonical_url(parent_path, self.schema.root)
                 aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
+                if path.split('/')[0] == 'ego':
+                    aggregate_query = [
+                        {"$match": {"username": user.username}}
+                    ] + aggregate_query
+
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
 
                 if user:
-                    self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
+                    # checking for /ego paths first, then all other paths
+                    if '/'+parent_field_path not in [g['url'] for g in user.delete_grants]:
+                        self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
 
                 return self.updater.delete_linkcollection_entry(
                     spec.name,
@@ -166,12 +183,18 @@ class Api(object):
                 parent_tree = parse_canonical_url(parent_path, self.schema.root)
                 aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
+                if path.split('/')[0] == 'ego':
+                    aggregate_query = [
+                        {"$match": {"username": user.username}}
+                    ] + aggregate_query
+
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
 
                 if user:
-                    self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
+                    if '/'+parent_field_path not in [g['url'] for g in user.delete_grants]:
+                        self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
 
                 return self.updater.delete_orderedcollection_entry(
                     spec.name,
@@ -181,11 +204,17 @@ class Api(object):
             else:
                 aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None)
 
+                if path.split('/')[0] == 'ego':
+                    aggregate_query = [
+                        {"$match": {"username": user.username}}
+                    ] + aggregate_query
+
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
 
                 if user:
-                    self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
+                    if '/'+parent_field_path not in [g['url'] for g in user.delete_grants]:
+                        self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
 
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
@@ -220,10 +249,10 @@ class Api(object):
             if not matching_grant_urls:
                 raise HTTPError('', 403, "Not Allowed", None, None)
             authorized_url = max(matching_grant_urls)  # longest wins
-            authorized_url.strip('/')
+            authorized_url = authorized_url.strip('/')
 
             remainder_url = path[len(authorized_url):]
-            remainder_url.strip('/')
+            remainder_url = remainder_url.strip('/')
 
             authorized_url = authorized_url.lstrip('/')
 
