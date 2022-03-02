@@ -6,6 +6,8 @@ var Schema = {
 };
 
 
+var ego_path = null;
+
 
 class ResourceSearch {
     constructor(target_spec_name, selected_callback) {
@@ -277,6 +279,9 @@ class ApiClient {
                 } else {
                     this.root_resource = new Collection(resource_data, this.full_path());
                 }
+                if (api.path.startsWith('/ego')) {
+                    ego_path = api.path;
+                }
                 turtlegui.reload();
             },
             (error) => {
@@ -322,9 +327,9 @@ class ApiClient {
         }
     }
 
-    expand_collection(element, resource, field_name, field) {
+    expand_collection(element, resource, field_name, field, ego_path) {
         turtlegui.ajax.get(
-            this.api_root + resource[field_name],
+            this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : resource[field_name]),
             (success) => {
                 resource._expanded[field_name] = new Collection(JSON.parse(success), this.api_root + resource[field_name]);
                 turtlegui.reload(element);
@@ -334,10 +339,10 @@ class ApiClient {
             });
     }
 
-    expand_link(element, resource, field_name, field) {
-        console.log('Expanding', resource, field_name);
+    expand_link(element, resource, field_name, field, ego_path) {
+        console.log('Expanding', resource, field_name, ego_path);
         turtlegui.ajax.get(
-            this.api_root + resource[field_name],
+            this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : resource[field_name]),
             (success) => {
                 resource._expanded[field_name] = new Resource(JSON.parse(success));
                 turtlegui.reload(element);
@@ -528,7 +533,8 @@ class ApiClient {
         }
     }
 
-    perform_delete_resource(resource, parent_resource) {
+    perform_delete_resource(resource, parent_resource, ego_path) {
+        alert("Ego path: " + ego_path);
         if (confirm("Delete resource at: " + resource.self + "?")) {
             turtlegui.ajax.delete(
                 this.api_root + resource.self,
