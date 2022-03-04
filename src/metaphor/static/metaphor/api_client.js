@@ -516,13 +516,10 @@ class ApiClient {
         }
     }
 
-    unlink_from_collection(resource, parent_resource, field_name) {
-        console.log('Unlinking', resource);
-        console.log('from', parent_resource);
-        console.log('field_name', field_name);
+    unlink_from_collection(resource, parent_resource, field_name, ego_path) {
         if (confirm("Unlink resource: " + resource.self + "?")) {
             turtlegui.ajax.delete(
-                parent_resource._collection_url + "/" + resource.id,
+                this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : parent_resource._collection_url + "/" + resource.id),
                 (success) => {
                     parent_resource._fetch()
                 },
@@ -534,10 +531,9 @@ class ApiClient {
     }
 
     perform_delete_resource(resource, parent_resource, ego_path) {
-        alert("Ego path: " + ego_path);
         if (confirm("Delete resource at: " + resource.self + "?")) {
             turtlegui.ajax.delete(
-                this.api_root + resource.self,
+                this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : resource.self),
                 (success) => {
                     parent_resource._fetch();
                 },
