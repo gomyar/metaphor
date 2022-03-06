@@ -1,4 +1,6 @@
 
+from werkzeug.security import generate_password_hash
+
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
 
 from metaphor.update.create_resource import CreateResourceUpdate
@@ -133,3 +135,7 @@ class Updater(object):
 
     def remove_spec_field(self, spec_name, field_name):
         self.schema.remove_spec_field(spec_name, field_name)
+
+    def create_user(self, username, password):
+        pw_hash = generate_password_hash(password)
+        return self.create_resource('user', 'root', 'users', None, {'username': username, 'password': pw_hash, 'admin': True}, self.schema.read_root_grants('users'))

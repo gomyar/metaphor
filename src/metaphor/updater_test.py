@@ -474,3 +474,4 @@ class UpdaterTest(unittest.TestCase):
         self.updater.update_fields('division', division_id_1, {'name': 'marketting'})
 
         self.assertEqual('Fredmarketting', self.db['resource_employee'].find_one()['both_names'])
+

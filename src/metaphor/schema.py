@@ -532,7 +532,6 @@ class Schema(object):
             segments = segments[:-1]
         query = {
             "$and": [
-                {"type": "read"},
                 {"$or": or_clause},
             ]
         }

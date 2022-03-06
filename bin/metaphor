@@ -43,8 +43,7 @@ def run_create_superuser(mongohost, mongodb):
 
             updater = Updater(schema)
 
-            pw_hash = generate_password_hash(password)
-            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'password': pw_hash, 'admin': True}, schema.read_root_grants('users'))
+            user_id = updater.create_user(username, password)
 
             admin_group = db.resource_group.find_one({'name': 'admin'})
             updater.create_linkcollection_entry('user', user_id, 'groups', schema.encodeid(admin_group['_id']))

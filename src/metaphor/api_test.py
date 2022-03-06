@@ -1090,3 +1090,37 @@ class ApiTest(unittest.TestCase):
 
         employee = self.api.get('/ego/reference', user=user)
         self.assertEqual('Fred', employee['name'])
+
+    def test_grants(self):
+        # url path and resource path starts with grant url
+        self.assertTrue(Api._has_grants('/something/me', '/something/me', [{'url': '/something'}]))
+        # url path and resource path doesn't start with grant url
+        self.assertFalse(Api._has_grants('/something/me', '/something/me', [{'url': '/something/me/you'}]))
+        # canonical url doesn't start with grant url
+        self.assertFalse(Api._has_grants('/else/me', '/else/me', [{'url': '/something/me'}]))
+        # canonical url starts with grant url
+        self.assertTrue(Api._has_grants('/else/me', '/something/me', [{'url': '/something/me'}]))
+
+        # wildcards in url
+        self.assertTrue(Api._has_grants('/else/me', '/something/ID12345/me', [{'url': '/something/*/me'}]))
+        self.assertTrue(Api._has_grants('/else/me', '/something/ID12345', [{'url': '/something/*'}]))
+
+        # filters in url (still only uses the canonical url)
+        self.assertTrue(Api._has_grants('/else[name="bob"]/me', '/something/ID12345/me', [{'url': '/something/*/me'}]))
+        self.assertTrue(Api._has_grants('/else[name="bob"&&age<24]/me', '/something/ID12345', [{'url': '/something/*'}]))
+
+        # combination (still only uses the canonical url)
+        self.assertTrue(Api._has_grants('/else[name="bob"]/me/ID12345', '/something/ID12345/me/ID98765', [{'url': '/something/*/me/*'}]))
+
+
+        # path url starts with ego and starts with grant url (canonical url different)
+        self.assertTrue(Api._has_grants('/ego/me', '/something/me', [{'url': '/ego/me'}]))
+
+        self.assertTrue(Api._has_grants('/ego/me/ID12345/inner', '/something/inner/ID98765', [{'url': '/ego/me/*/inner'}]))
+
+        # filters in ego url
+        self.assertTrue(Api._has_grants('/ego/me[age=12&&name="sales"]/inner', '/something/inners/ID98765', [{'url': '/ego/me/inner'}]))
+
+        # can mix and match ids and wildcards
+        self.assertTrue(Api._has_grants('/something/ID12345/me/ID98765/inner', '/something/ID12345/me/ID98765/inner', [{'url': '/something/ID12345/me/*/inner'}]))
+        self.assertTrue(Api._has_grants('/ego/somethings/ID12345/me/ID98765/inner', '/something/ID12345/me/ID98765/inner', [{'url': '/ego/somethings/ID12345/me/*/inner'}]))

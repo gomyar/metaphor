@@ -1,5 +1,6 @@
 
 import os
+import re
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlparse, parse_qs
 
@@ -25,9 +26,23 @@ class Api(object):
         self.schema = schema
         self.updater = Updater(schema)
 
-    def _check_grants(self, path, grants):
-        path = path.strip('/')
-        if not any(('/'+path).startswith(grant_url['url']) for grant_url in grants):
+    @staticmethod
+    def _has_grants(url_path, canonical_url, grants):
+        url_path = re.sub(r'\[.*]', '', url_path.strip('/'))
+        canonical_url = canonical_url.strip('/')
+        def match_grant(url, grant_url, recurse=False):
+            match_re = grant_url.replace('/*', '\/ID[0-9a-f]*')
+            if recurse:
+                match_re = match_re + "(\/.*)?$"
+            return re.match(match_re, url)
+
+        if url_path.split('/')[0] == 'ego':
+            return any(match_grant('/'+url_path, grant_url['url']) for grant_url in grants)
+        else:
+            return any(match_grant('/'+canonical_url, grant_url['url'], True) for grant_url in grants)
+
+    def _check_grants(self, path, canonical_path, grants):
+        if not Api._has_grants(path, canonical_path, grants):
             raise HTTPError('', 403, "Not Allowed", None, None)
 
     def patch(self, path, data, user=None):
@@ -51,8 +66,7 @@ class Api(object):
         if user:
             # TODO: also need to check read access to target if link
             # checking for /ego paths first, then all other paths
-            if '/'+path not in [g['url'] for g in user.update_grants]:
-                self._check_grants(resource['_canonical_url'], user.update_grants)
+            self._check_grants(path, resource['_canonical_url'], user.update_grants)
 
         if spec.name == 'user' and data.get('password'):
             data['password'] = generate_password_hash(data['password'])
@@ -89,8 +103,7 @@ class Api(object):
             if user:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                if '/'+path not in [g['url'] for g in user.create_grants]:
-                    self._check_grants(os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
 
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
@@ -125,7 +138,7 @@ class Api(object):
 
             # check permissions
             if user:
-                self._check_grants(path, user.create_grants)
+                self._check_grants(path, path, user.create_grants)
 
             if root_field_spec.target_spec_name == 'user':
                 data['password'] = generate_password_hash(data['password'])
@@ -171,8 +184,7 @@ class Api(object):
 
                 if user:
                     # checking for /ego paths first, then all other paths
-                    if '/'+parent_field_path not in [g['url'] for g in user.delete_grants]:
-                        self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
+                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
 
                 return self.updater.delete_linkcollection_entry(
                     spec.name,
@@ -193,8 +205,7 @@ class Api(object):
                 parent_resource = next(cursor)
 
                 if user:
-                    if '/'+parent_field_path not in [g['url'] for g in user.delete_grants]:
-                        self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
+                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
 
                 return self.updater.delete_orderedcollection_entry(
                     spec.name,
@@ -213,8 +224,7 @@ class Api(object):
                 parent_resource = next(cursor)
 
                 if user:
-                    if '/'+parent_field_path not in [g['url'] for g in user.delete_grants]:
-                        self._check_grants(parent_resource['_canonical_url'], user.delete_grants)
+                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
 
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
@@ -243,63 +253,26 @@ class Api(object):
             return self._get_root()
 
 
+        try:
+            tree = parse_url(path, self.schema.root)
+        except SyntaxError as te:
+            return None
+
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
         if path.split('/')[0] == 'ego':
-
-            matching_grant_urls = [g['url'] for g in user.read_grants if ('/' + path).startswith(g['url'])]
-            if not matching_grant_urls:
-                raise HTTPError('', 403, "Not Allowed", None, None)
-            authorized_url = max(matching_grant_urls)  # longest wins
-            authorized_url = authorized_url.strip('/')
-
-            remainder_url = path[len(authorized_url):]
-            remainder_url = remainder_url.strip('/')
-
-            authorized_url = authorized_url.lstrip('/')
-
-            # parse authorized part first
-            if authorized_url:
-                try:
-                    authorized_tree = parse_canonical_url(authorized_url, self.schema.specs['user'])
-                except SyntaxError as te:
-                    raise HTTPError('', 404, "Not Found", None, None)
-
-                authorized_aggregate_query, authorized_spec, authorized_is_aggregate = authorized_tree.aggregation(None)
-            else:
-                authorized_aggregate_query, authorized_spec, authorized_is_aggregate = [], self.schema.specs['user'], False
-
-
-            # parse remainder
-            if remainder_url:
-                try:
-                    tree = parse_canonical_url(remainder_url, authorized_spec)
-                except SyntaxError as te:
-                    raise HTTPError('', 404, "Not Found", None, None)
-
-                aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
-            else:
-                aggregate_query, spec, is_aggregate = authorized_aggregate_query, authorized_spec, authorized_is_aggregate
-                tree = authorized_tree
 
             aggregate_query = [
                 {"$match": {"username": user.username}}
             ] + aggregate_query
 
-        else:
-
-
-            try:
-                tree = parse_url(path, self.schema.root)
-            except SyntaxError as te:
-                return None
-
-            aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
 
         if is_aggregate:
 
             page_agg = self.create_pagination_aggregations(page, page_size)
 
             if expand:
-                page_agg['$facet']["results"].extend(self.create_field_expansion_aggregations(spec, expand))
+                page_agg['$facet']["results"].extend(self.create_field_expansion_aggregations(spec, expand, user))
 
             aggregate_query.append(page_agg)
 
@@ -310,6 +283,11 @@ class Api(object):
 
             results = list(page_results['results'])
             count = page_results['count'][0]['total'] if page_results['count'] else 0
+
+            if user and count:
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                self._check_grants(path, results[0]['_canonical_url'], user.read_grants)
 
             return {
                 "results": [self.encode_resource(spec, row, expand) for row in results],
@@ -330,7 +308,7 @@ class Api(object):
 
         else:
             if expand:
-                aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand))
+                aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand, user))
 
             # run mongo query from from root_resource collection
             cursor = tree.root_collection().aggregate(aggregate_query)
@@ -391,7 +369,7 @@ class Api(object):
             }
         }
 
-    def create_field_expansion_aggregations(self, spec, expand_str):
+    def create_field_expansion_aggregations(self, spec, expand_str, user=None):
         aggregate_query = []
         for field_name in expand_str.split(','):
             if field_name not in spec.fields:
@@ -462,6 +440,10 @@ class Api(object):
                 )
             else:
                 raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
+        if user:
+            aggregation_query.append(
+                {"$match": {"_grants": {"$in": user.grants}}}
+            )
         return aggregate_query
 
     def _create_expand_dict(self, expand):
