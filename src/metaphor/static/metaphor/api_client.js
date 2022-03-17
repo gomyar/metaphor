@@ -531,7 +531,7 @@ class ApiClient {
     }
 
     perform_delete_resource(resource, parent_resource, ego_path) {
-        if (confirm("Delete resource at: " + resource.self + "?")) {
+        if (confirm("Delete resource at: " + resource.self + "?" + " - " + ego_path)) {
             turtlegui.ajax.delete(
                 this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : resource.self),
                 (success) => {

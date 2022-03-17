@@ -3,6 +3,7 @@ import os
 import re
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlparse, parse_qs
+from datetime import datetime
 
 from flask import request
 
@@ -32,8 +33,8 @@ class Api(object):
         canonical_url = canonical_url.strip('/')
         def match_grant(url, grant_url, recurse=False):
             match_re = grant_url.replace('/*', '\/ID[0-9a-f]*')
-            if recurse:
-                match_re = match_re + "(\/.*)?$"
+            if recurse and match_re != '/': # allow for root (admin) grant
+                match_re = match_re + r'(/.*)?$'
             return re.match(match_re, url)
 
         if url_path.split('/')[0] == 'ego':
@@ -252,7 +253,6 @@ class Api(object):
         if not path:
             return self._get_root()
 
-
         try:
             tree = parse_url(path, self.schema.root)
         except SyntaxError as te:
@@ -441,7 +441,7 @@ class Api(object):
             else:
                 raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
         if user:
-            aggregation_query.append(
+            aggregate_query.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
         return aggregate_query

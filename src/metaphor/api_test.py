@@ -1124,3 +1124,8 @@ class ApiTest(unittest.TestCase):
         # can mix and match ids and wildcards
         self.assertTrue(Api._has_grants('/something/ID12345/me/ID98765/inner', '/something/ID12345/me/ID98765/inner', [{'url': '/something/ID12345/me/*/inner'}]))
         self.assertTrue(Api._has_grants('/ego/somethings/ID12345/me/ID98765/inner', '/something/ID12345/me/ID98765/inner', [{'url': '/ego/somethings/ID12345/me/*/inner'}]))
+
+        # nested ids
+        self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/groups'}]))
+        self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/groups/*/grants'}]))
+        self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/'}]))
