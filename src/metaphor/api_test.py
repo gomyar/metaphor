@@ -1115,6 +1115,7 @@ class ApiTest(unittest.TestCase):
 
         # path url starts with ego and starts with grant url (canonical url different)
         self.assertTrue(Api._has_grants('/ego/me', '/something/me', [{'url': '/ego/me'}]))
+        self.assertFalse(Api._has_grants('/ego/me', '/ego', [{'url': '/ego'}]))
 
         self.assertTrue(Api._has_grants('/ego/me/ID12345/inner', '/something/inner/ID98765', [{'url': '/ego/me/*/inner'}]))
 

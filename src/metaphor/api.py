@@ -35,6 +35,8 @@ class Api(object):
             match_re = grant_url.replace('/*', '\/ID[0-9a-f]*')
             if recurse and match_re != '/': # allow for root (admin) grant
                 match_re = match_re + r'(/.*)?$'
+            if not recurse:
+                match_re = match_re + r'$'
             return re.match(match_re, url)
 
         if url_path.split('/')[0] == 'ego':
@@ -313,6 +315,11 @@ class Api(object):
             # run mongo query from from root_resource collection
             cursor = tree.root_collection().aggregate(aggregate_query)
             result = next(cursor, None)
+
+            if user and result:
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                self._check_grants(path, result['_canonical_url'], user.read_grants)
 
             if result:
                 return self.encode_resource(spec, result, expand)
