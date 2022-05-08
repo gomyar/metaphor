@@ -59,7 +59,7 @@ def login():
 
             return flask.redirect(next_url or flask.url_for('index'))
     return flask.render_template('login.html',
-                                 next_url=request.args.get('next'))
+                                 next_url=request.args.get('next') or '')
 
 
 @login_bp.route("/logout")

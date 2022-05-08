@@ -65,6 +65,14 @@ class Api(object):
         if not Api._has_grants(path, canonical_path, grants):
             raise HTTPError('', 403, "Not Allowed", None, None)
 
+    def _check_expand_ego_grants(self, path, expand_dict, grants):
+        if expand_dict:
+            for field_name, nested in expand_dict.items():
+                nested_url = os.path.join(path, field_name)
+                if Api._has_grants(nested_url, '', grants) or self._check_expand_ego_grants(nested_url, expand_dict[field_name], grants):
+                    return True
+        return False
+
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
         try:
@@ -296,7 +304,11 @@ class Api(object):
             page_agg = self.create_pagination_aggregations(page, page_size)
 
             if expand:
-                page_agg['$facet']["results"].extend(self.create_field_expansion_aggregations(spec, expand_dict, user))
+                if user and self._check_expand_ego_grants(path, expand_dict, user.read_grants):
+                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict)
+                else:
+                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict, user)
+                page_agg['$facet']["results"].extend(expand_agg)
 
             aggregate_query.append(page_agg)
 
@@ -332,7 +344,11 @@ class Api(object):
 
         else:
             if expand:
-                aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand_dict, user))
+                if user and self._check_expand_ego_grants(path, expand_dict, user.read_grants):
+                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict)
+                else:
+                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict, user)
+                aggregate_query.extend(expand_agg)
 
             # run mongo query from from root_resource collection
             cursor = tree.root_collection().aggregate(aggregate_query)

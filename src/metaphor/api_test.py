@@ -1177,6 +1177,7 @@ class ApiTest(unittest.TestCase):
         self.assertFalse(Api._has_grants('/ego/me', '/ego', [{'url': '/ego'}]))
 
         self.assertTrue(Api._has_grants('/ego/me/ID12345/inner', '/something/inner/ID98765', [{'url': '/ego/me/*/inner'}]))
+        self.assertTrue(Api._has_grants('/ego/me/inner', '/something/inner/ID98765', [{'url': '/ego/me/inner'}]))
 
         # filters in ego url
         self.assertTrue(Api._has_grants('/ego/me[age=12&&name="sales"]/inner', '/something/inners/ID98765', [{'url': '/ego/me/inner'}]))
@@ -1205,3 +1206,16 @@ class ApiTest(unittest.TestCase):
                 'c': {},
             },
         }, create_expand_dict('a.b,a.c,a'))
+
+    def test_nested_ego_expand_with_canonical_resources(self):
+        # given schema:
+        #  /divisions/
+        #  /divisions/sections/
+        #  /divisions/parttimers/ -> employee
+
+        #  /employees/
+        #  /employees/division -> division
+
+        # add ego
+
+        pass
