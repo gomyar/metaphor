@@ -42,19 +42,19 @@ class ServerTest(TestCase):
         self.assertEqual('bob', response.json['username'])
 
     def test_group_access(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        client_spec = self.schema.add_spec('client')
+        self.schema.add_field(client_spec, 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.add_field(self.schema.root, 'clients', 'collection', 'client')
 
-        employee_id_1 = self.schema.insert_resource('employee', {'name': 'fred'}, 'employees')
+        client_id_1 = self.schema.insert_resource('client', {'name': 'fred'}, 'clients')
 
-        response = self.client.get('/api/employees/%s' % employee_id_1)
-        self.assertEqual(404, response.status_code)
+        response = self.client.get('/api/clients/%s' % client_id_1)
+        self.assertEqual(403, response.status_code)
 
-        grant_id = self.api.post('/groups/%s/grants' % self.group_id, {'url': '/employees', 'type': 'read'})
+        grant_id = self.api.post('/groups/%s/grants' % self.group_id, {'url': '/clients', 'type': 'read'})
 
-        response = self.client.get('/api/employees/%s' % employee_id_1)
+        response = self.client.get('/api/clients/%s' % client_id_1)
         self.assertEqual(200, response.status_code)
         self.assertEqual('fred', response.json['name'])
 
@@ -222,6 +222,8 @@ class ServerTest(TestCase):
         self.assertTrue(check_password_hash(user['password'], 'secret'))
 
     def test_patch_to_collection_returns_400(self):
+        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': '/'})
+
         no_response = self.client.patch('/api/users', data=json.dumps({'name': 'fred'}), content_type='application/json')
         self.assertEqual(400, no_response.status_code)
 
@@ -240,7 +242,6 @@ class ServerTest(TestCase):
         # link user to employee
         self.api.patch('/users/%s' % self.user_id, {'employee': employee_id_1})
 
-        import ipdb; ipdb.set_trace()
         no_response = self.client.patch('/api/ego/employee', data=json.dumps({'name': 'bob'}), content_type='application/json')
         self.assertEqual(403, no_response.status_code)
 
@@ -251,3 +252,68 @@ class ServerTest(TestCase):
         self.assertEqual(200, no_response.status_code)
 
         self.assertEqual('bob', self.api.get('/employees/%s' % employee_id_1)['name'])
+
+    def test_indirect_link_access(self):
+        employee_spec = self.schema.add_spec('employee')
+        contract_spec = self.schema.add_spec('contract')
+
+        self.schema.add_field(employee_spec, 'name', 'str')
+        self.schema.add_field(employee_spec, 'contracts', 'linkcollection')
+
+        self.schema.add_field(contract_spec, 'name', 'str')
+        self.schema.add_field(contract_spec, 'price', 'int')
+
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.add_field(self.schema.root, 'contracts', 'collection', 'contract')
+
+        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
+        contract_id_1 = self.api.post('/contracts', {'name': 'IBM', 'price': 100})
+
+        # add linkcollection / link to other root collection with grant
+        self.api.post('/employees/%s/contracts' % employee_id_1, {'id': contract_id_1})
+
+        # assert user can access through link
+        response = self.api.get('/employees/%s/contracts' % employee_id_1)
+        self.assertEqual({}, response)
+
+        # assert expand also
+
+    def test_grant_ego_permissions_expand(self):
+        organization_spec = self.schema.add_spec('organization')
+        section_spec = self.schema.add_spec('section')
+        employee_spec = self.schema.add_spec('employee')
+
+        self.schema.add_field(organization_spec, 'name', 'str')
+        self.schema.add_field(organization_spec, 'sections', 'linkcollection', 'section')
+        self.schema.add_field(section_spec, 'name', 'str')
+        self.schema.add_field(section_spec, 'employees', 'linkcollection', 'employee')
+        self.schema.add_field(employee_spec, 'name', 'str')
+
+        self.schema.add_field(self.schema.root, 'organizations', 'collection', 'organization')
+        self.schema.add_field(self.schema.root, 'sections', 'collection', 'section')
+        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        organization_id_1 = self.api.post('/organizations', {'name': 'fred'})
+        section_id_1 = self.api.post('/sections', {'name': 'fred'})
+        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
+
+        self.api.post('/organizations/%s/sections' % organization_id_1, {"id": section_id_1})
+        self.api.post('/sections/%s/employees' % section_id_1, {"id": employee_id_1})
+
+        # add employee link to user
+        user_spec = self.schema.specs['user']
+        self.schema.add_field(user_spec, 'organization', 'link', 'organization')
+
+        # link user to employee
+        self.api.patch('/users/%s' % self.user_id, {'organization': organization_id_1})
+
+        # add grant for /ego/employee
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/organization', 'type': 'get'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/organization/*/sections', 'type': 'get'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/organization/*/sections/*/employees', 'type': 'get'})
+
+        # request expand
+        response = self.client.get('/api/ego/organization?expand=sections.employees')
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual({}, response.json)

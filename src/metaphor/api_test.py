@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 from pymongo import MongoClient
 
 from metaphor.schema import Schema
-from metaphor.api import Api
+from metaphor.api import Api, create_expand_dict
 
 
 class ApiTest(unittest.TestCase):
@@ -643,6 +643,7 @@ class ApiTest(unittest.TestCase):
     def test_expand(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+        section_id_1 = self.schema.insert_resource('section', {'name': 'engineering'}, 'sections', 'division', division_id_1)
 
         self.assertEquals([{
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
@@ -683,6 +684,32 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s' % division_id_1,
             'yearly_sales': 100}
             , self.api.get('/divisions/%s' % division_id_1, args={"expand": 'link_employee_division'}))
+
+        # nested expansion through link
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'age': 41,
+            'created': None,
+            'division': {'_meta': {'is_collection': False, 'spec': {'name': 'division'}},
+                        'id': division_id_1,
+                        'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+                        'name': 'sales',
+                        'parttimers': '/divisions/%s/parttimers' % division_id_1,
+                        'sections': [{'_meta': {'is_collection': False,
+                                                'spec': {'name': 'section'}},
+                                        'contractors': '/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1),
+                                        'id': section_id_1,
+                                        'name': 'engineering',
+                                        'parent_division_sections': '/divisions/%s' % division_id_1,
+                                        'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}],
+                        'self': '/divisions/%s' % division_id_1,
+                        'yearly_sales': 100},
+            'id': employee_id_1,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+            'name': 'ned',
+            'parent_section_contractors': None,
+            'self': '/employees/%s' % employee_id_1}
+            , self.api.get('/employees/%s' % employee_id_1, args={"expand": 'division.sections'}))
 
     def test_expand_linkcollection(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -774,6 +801,31 @@ class ApiTest(unittest.TestCase):
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}
             , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'contractors'}))
 
+        # nested expansion
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
+            'id': division_id_1,
+            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+            'name': 'sales',
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
+            'sections': [{'_meta': {'is_collection': False, 'spec': {'name': 'section'}},
+                          'contractors': [{'_meta': {'is_collection': False,
+                                                     'spec': {'name': 'employee'}},
+                                           'age': None,
+                                           'created': None,
+                                           'division': None,
+                                           'id': contractor_id_1,
+                                           'link_division_parttimers': '/divisions/%s/sections/%s/contractors/%s/link_division_parttimers' % (division_id_1, section_id_1, contractor_id_1),
+                                           'name': 'bob',
+                                           'parent_section_contractors': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
+                                           'self': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id_1)}],
+                          'id': section_id_1,
+                          'name': 'engineering',
+                          'parent_division_sections': '/divisions/%s' % division_id_1,
+                          'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}],
+            'self': '/divisions/%s' % division_id_1,
+            'yearly_sales': 100},
+            self.api.get('/divisions/%s' % (division_id_1, ), args={"expand": 'sections.contractors'}))
 
     def test_expand_parent(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -1130,3 +1182,19 @@ class ApiTest(unittest.TestCase):
         self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/groups'}]))
         self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/groups/*/grants'}]))
         self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/'}]))
+
+    def test_expand_further(self):
+        self.assertEqual({
+            'a': {
+                'b': {},
+                'c': {},
+            },
+            'c': {}
+        }, create_expand_dict('a.b,c,a.c'))
+
+        self.assertEqual({
+            'a': {
+                'b': {},
+                'c': {},
+            },
+        }, create_expand_dict('a.b,a.c,a'))

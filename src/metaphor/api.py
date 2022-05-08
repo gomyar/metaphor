@@ -22,6 +22,23 @@ from bson.errors import InvalidId
 from werkzeug.security import generate_password_hash
 
 
+def create_expand_dict(expand_str):
+    expand = {}
+    if expand_str:
+        for expand_dot in expand_str.strip().split(','):
+            if '.' in expand_dot:
+                field_name, expand_further = expand_dot.strip().split('.', 1)
+                if field_name in expand:
+                    expand[field_name].update(create_expand_dict(expand_further))
+                else:
+                    expand[field_name] = create_expand_dict(expand_further)
+            elif expand_dot:
+                field_name = expand_dot.strip()
+                if field_name not in expand:
+                    expand[field_name] = {}
+    return expand
+
+
 class Api(object):
     def __init__(self, schema):
         self.schema = schema
@@ -55,7 +72,10 @@ class Api(object):
         except SyntaxError as te:
             raise HTTPError('', 404, "Not Found", None, None)
 
-        aggregate_query, spec, _ = tree.aggregation(None)
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+        if is_aggregate:
+            raise HTTPError('', 400, 'PATCH not supported on collections', None, None)
 
         if path.split('/')[0] == 'ego':
             aggregate_query = [
@@ -251,6 +271,8 @@ class Api(object):
         page = int(args.get('page', 0))
         page_size = int(args.get('page_size', 10))
 
+        expand_dict = create_expand_dict(expand)
+
         path = path.strip().strip('/')
         if not path:
             return self._get_root()
@@ -274,7 +296,7 @@ class Api(object):
             page_agg = self.create_pagination_aggregations(page, page_size)
 
             if expand:
-                page_agg['$facet']["results"].extend(self.create_field_expansion_aggregations(spec, expand, user))
+                page_agg['$facet']["results"].extend(self.create_field_expansion_aggregations(spec, expand_dict, user))
 
             aggregate_query.append(page_agg)
 
@@ -292,7 +314,7 @@ class Api(object):
                 self._check_grants(path, results[0]['_canonical_url'], user.read_grants)
 
             return {
-                "results": [self.encode_resource(spec, row, expand) for row in results],
+                "results": [self.encode_resource(spec, row, expand_dict) for row in results],
                 "count": count,
                 "next": self._next_link(path, args, count, page, page_size),
                 "previous": self._previous_link(path, args, count, page, page_size),
@@ -310,7 +332,7 @@ class Api(object):
 
         else:
             if expand:
-                aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand, user))
+                aggregate_query.extend(self.create_field_expansion_aggregations(spec, expand_dict, user))
 
             # run mongo query from from root_resource collection
             cursor = tree.root_collection().aggregate(aggregate_query)
@@ -322,7 +344,7 @@ class Api(object):
                 self._check_grants(path, result['_canonical_url'], user.read_grants)
 
             if result:
-                return self.encode_resource(spec, result, expand)
+                return self.encode_resource(spec, result, expand_dict)
             else:
                 return None
 
@@ -376,9 +398,49 @@ class Api(object):
             }
         }
 
-    def create_field_expansion_aggregations(self, spec, expand_str, user=None):
+    def create_field_expansion_aggregations(self, spec, expand_dict, user=None):
+
+        def lookup_agg(from_field, local_field, foreign_field, as_field, expand_further):
+            agg = {"$lookup": {
+                "from": from_field,
+                "as": as_field,
+                "let": {
+                    "v_id": "$%s" % local_field,
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$eq": ["$$v_id", "$%s" % foreign_field]
+                            }
+                        }
+                    }
+                ]
+            }}
+            for inner_field_name in expand_further:
+                inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+            return agg
+        def lookup_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
+            return {"$lookup": {
+                "from": from_field,
+                "as": as_field,
+                "let": {
+                    "v_id": "$%s" % local_field,
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$in": ["$%s" % foreign_field, "$$v_id"]
+                            }
+                        }
+                    }
+                ]
+            }}
+
         aggregate_query = []
-        for field_name in expand_str.split(','):
+        for field_name in expand_dict:
             if field_name not in spec.fields:
                 raise HTTPError('', 400, '%s not a field of %s' % (field_name, spec.name), None, None)
             field = spec.fields[field_name]
@@ -386,12 +448,12 @@ class Api(object):
             if field.field_type == 'link':
                 # add check for ' if in "expand" parameter'
                 aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % field.target_spec_name,
-                            "localField": field_name,
-                            "foreignField": "_id",
-                            "as": "_expanded_%s" % field_name,
-                    }})
+                    lookup_agg(
+                        "resource_%s" % field.target_spec_name,
+                        field_name,
+                        "_id",
+                        "_expanded_%s" % field_name,
+                        expand_dict))
                 aggregate_query.append(
                     {"$unwind": "$_expanded_%s" % field_name}
                 )
@@ -400,12 +462,13 @@ class Api(object):
                 )
             elif field.field_type == 'reverse_link':
                 aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % field.target_spec_name,
-                            "localField": "_id",
-                            "foreignField": field.reverse_link_field,
-                            "as": "_expanded_%s" % field_name,
-                    }})
+                    lookup_agg(
+                            "resource_%s" % field.target_spec_name,
+                            "_id",
+                            field.reverse_link_field,
+                            "_expanded_%s" % field_name,
+                            expand_dict
+                    ))
                 aggregate_query.append(
                     {"$unwind": "$_expanded_%s" % field_name}
                 )
@@ -414,34 +477,37 @@ class Api(object):
                 )
             elif field.field_type in ('linkcollection', 'orderedcollection'):
                 aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % field.target_spec_name,
-                            "localField": "%s._id" % field.name,
-                            "foreignField": "_id",
-                            "as": "_expanded_%s" % field_name,
-                    }})
+                    lookup_collection_agg(
+                            "resource_%s" % field.target_spec_name,
+                            "%s._id" % field.name,
+                            "_id",
+                            "_expanded_%s" % field_name,
+                            expand_dict
+                    ))
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
             elif field.field_type == 'collection':
                 aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % field.target_spec_name,
-                            "localField": "_id",
-                            "foreignField": "_parent_id",
-                            "as": "_expanded_%s" % field_name,
-                    }})
+                    lookup_agg(
+                            "resource_%s" % field.target_spec_name,
+                            "_id",
+                            "_parent_id",
+                            "_expanded_%s" % field_name,
+                            expand_dict
+                    ))
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
             elif field.field_type == 'parent_collection':
                 aggregate_query.append(
-                    {"$lookup": {
-                            "from": "resource_%s" % spec.name,
-                            "localField": "_parent_id",
-                            "foreignField": "_id",
-                            "as": "_expanded_%s" % field_name,
-                    }})
+                    lookup_agg(
+                            "resource_%s" % spec.name,
+                            "_parent_id",
+                            "_id",
+                            "_expanded_%s" % field_name,
+                            expand_dict
+                    ))
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
@@ -453,19 +519,7 @@ class Api(object):
             )
         return aggregate_query
 
-    def _create_expand_dict(self, expand):
-        expand_dict = {}
-        expand = expand or ''
-        for expansion in expand.split(','):
-            if '.' in expansion:
-                name, value = expansion.split('.', 1)
-                expand_dict[name] = value
-            else:
-                expand_dict[expansion] = ''
-        return expand_dict
-
-    def encode_resource(self, spec, resource_data, expand=None):
-        expand_dict = self._create_expand_dict(expand)
+    def encode_resource(self, spec, resource_data, expand_dict):
 
         self_url = os.path.join(
             resource_data['_parent_canonical_url'],
@@ -543,7 +597,7 @@ class Api(object):
         count = page_results['count'][0]['total'] if page_results['count'] else 0
 
         return {
-            "results": [self.encode_resource(spec, row) for row in results],
+            "results": [self.encode_resource(spec, row, {}) for row in results],
             "count": count,
             "next": self._next_link(None, {}, count, page, page_size),
             "previous": self._previous_link(None, {}, count, page, page_size),
