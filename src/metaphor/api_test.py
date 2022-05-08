@@ -750,6 +750,13 @@ class ApiTest(unittest.TestCase):
             'yearly_sales': 100}
             , self.api.get('/divisions/%s' % division_id_1, args={"expand": 'parttimers'}))
 
+        # expand from linkcollection
+        expanded = self.api.get('/divisions/%s' % division_id_1, args={"expand": 'parttimers.division'})
+        self.assertEqual('ned', expanded['parttimers'][0]['name'])
+        self.assertEqual('sales', expanded['parttimers'][0]['division']['name'])
+        self.assertEqual('bob', expanded['parttimers'][1]['name'])
+        self.assertEqual('sales', expanded['parttimers'][1]['division']['name'])
+
     def test_expand_collection(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         section_id_1 = self.schema.insert_resource('section', {'name': 'engineering'}, 'sections', 'division', division_id_1)

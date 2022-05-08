@@ -421,8 +421,9 @@ class Api(object):
                 inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
                 agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
             return agg
+
         def lookup_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
-            return {"$lookup": {
+            agg = {"$lookup": {
                 "from": from_field,
                 "as": as_field,
                 "let": {
@@ -438,6 +439,10 @@ class Api(object):
                     }
                 ]
             }}
+            for inner_field_name in expand_further:
+                inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+            return agg
 
         aggregate_query = []
         for field_name in expand_dict:
