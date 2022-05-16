@@ -518,6 +518,7 @@ class Schema(object):
         self.create_field('user', 'create_grants', 'calc', calc_str="self.groups.grants[type='create'].url")
         self.create_field('user', 'update_grants', 'calc', calc_str="self.groups.grants[type='update'].url")
         self.create_field('user', 'delete_grants', 'calc', calc_str="self.groups.grants[type='delete'].url")
+        self.create_field('user', 'put_grants', 'calc', calc_str="self.groups.grants[type='put'].url")
 
         self.create_field('root', 'users', 'collection', 'user')
         self.create_field('root', 'groups', 'collection', 'group')

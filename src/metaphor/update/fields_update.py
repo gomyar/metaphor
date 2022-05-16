@@ -34,6 +34,3 @@ class FieldsUpdate:
                 field_dep = "%s.%s" % (self.spec_name, field_name)
                 if field_dep in calc_tree.get_resource_dependencies():
                     self.updater._perform_updates_for_affected_calcs(spec, self.resource_id, calc_spec_name, calc_field_name)
-
-
-

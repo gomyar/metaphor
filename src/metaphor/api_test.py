@@ -1207,15 +1207,3 @@ class ApiTest(unittest.TestCase):
             },
         }, create_expand_dict('a.b,a.c,a'))
 
-    def test_nested_ego_expand_with_canonical_resources(self):
-        # given schema:
-        #  /divisions/
-        #  /divisions/sections/
-        #  /divisions/parttimers/ -> employee
-
-        #  /employees/
-        #  /employees/division -> division
-
-        # add ego
-
-        pass

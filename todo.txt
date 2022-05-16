@@ -17,7 +17,7 @@ Shortlist:
  - deleting grant or groups also removes reference from _grants list for all applicble resources
  - pagination - done
  - expand / fields params - done
- - expand multiple levels
+ - expand multiple levels - done
  - collection functions
  - updates as idempotent commands
  - schema import / export - done

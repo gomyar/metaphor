@@ -107,6 +107,75 @@ class Api(object):
             self.schema.encodeid(resource['_id']),
             data)
 
+    def put(self, path, data, user=None):
+        path = path.strip().strip('/')
+        from_path = data['_from'].strip('/') if data.get('_from') else None
+        at_index = data.get('_at')
+
+        if '/' in path:
+            parent_path, field_name = path.rsplit('/', 1)
+            try:
+                tree = parse_canonical_url(parent_path, self.schema.root)
+            except SyntaxError as te:
+                raise HTTPError('', 404, "Not Found", None, None)
+
+            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+            field_spec = spec.fields[field_name]
+
+            if path.split('/')[0] == 'ego':
+                aggregate_query = [
+                    {"$match": {"username": user.username}}
+                ] + aggregate_query
+
+            # if we're using a simplified parser we can probably just pull the id off the path
+            cursor = tree.root_collection().aggregate(aggregate_query)
+            parent_resource = next(cursor)
+
+            # check permissions
+            if user:
+                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.put_grants)
+                self._check_grants(from_path, from_path, user.read_grants)
+                self._check_grants(from_path, from_path, user.delete_grants)
+
+            # do put update
+            try:
+                parse_url(from_path, self.schema.root)
+            except SyntaxError as te:
+                raise HTTPError('', 400, from_path, None, None)
+
+            if field_spec.field_type == 'linkcollection':
+                return self.updater.relink_resource(path, field_name, from_path, at_index)
+            elif field_spec.field_type == 'collection':
+                return self.updater.move_resource(parent_resource['_id'], path, from_path, at_index)
+            else:
+                raise HTTPError('', 400, from_path, None, None)
+
+        else:
+            if path not in self.schema.root.fields:
+                raise HTTPError('', 404, "Not Found", None, None)
+
+            root_field_spec = self.schema.root.fields[path]
+            root_spec = self.schema.specs[root_field_spec.target_spec_name]
+
+            # check permissions
+            if user:
+                self._check_grants(path, path, user.put_grants)
+                self._check_grants(from_path, from_path, user.read_grants)
+                self._check_grants(from_path, from_path, user.delete_grants)
+
+            if root_field_spec.target_spec_name == 'user':
+                data['password'] = generate_password_hash(data['password'])
+
+            # do put update
+            try:
+                if from_path:
+                    parse_url(from_path, self.schema.root)
+            except SyntaxError as te:
+                raise HTTPError('', 400, from_path, None, None)
+
+            return self.updater.move_resource(None, path, from_path, at_index)
+
     def post(self, path, data, user=None):
         path = path.strip().strip('/')
 

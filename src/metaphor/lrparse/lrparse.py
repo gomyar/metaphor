@@ -1095,8 +1095,7 @@ class FunctionCall(Calc):
         aggregate_query.append({'$group': {'_id': None, '_max': {'$max': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            spec = self._parser.spec
-            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
+            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
             return cursor.next()['_max']
         except StopIteration:
             return None
@@ -1106,8 +1105,7 @@ class FunctionCall(Calc):
         aggregate_query.append({'$group': {'_id': None, '_min': {'$min': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            spec = self._parser.spec
-            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
+            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
             return cursor.next()['_min']
         except StopIteration:
             return None
@@ -1117,8 +1115,7 @@ class FunctionCall(Calc):
         aggregate_query.append({'$group': {'_id': None, '_average': {'$avg': '$' + spec.name}}})
         # run mongo query from from root_resource collection
         try:
-            spec = self._parser.spec
-            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
+            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
             return cursor.next()['_average']
         except StopIteration:
             return None
@@ -1128,8 +1125,7 @@ class FunctionCall(Calc):
         aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + aggregate_field.field_name}}})
         # run mongo query from from root_resource collection
         try:
-            spec = self._parser.spec
-            cursor = spec.schema.db["resource_%s" % spec.name].aggregate(aggregate_query)
+            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
             return cursor.next()['_sum']
         except StopIteration:
             return None

@@ -10,6 +10,8 @@ from metaphor.update.delete_linkcollection import DeleteLinkCollectionUpdate
 from metaphor.update.delete_orderedcollection import DeleteOrderedCollectionUpdate
 from metaphor.update.create_linkcollection import CreateLinkCollectionUpdate
 from metaphor.update.create_orderedcollection import CreateOrderedCollectionUpdate
+from metaphor.update.move_resource import MoveResourceUpdate
+from metaphor.update.move_link import MoveLinkUpdate
 
 import logging
 
@@ -132,6 +134,12 @@ class Updater(object):
 
     def update_fields(self, spec_name, resource_id, fields):
         return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()
+
+    def move_resource(self, parent_path, field_name, from_path=None, at_index=None):
+        return MoveResourceUpdate(self, self.schema, parent_path, field_name, from_path, at_index).execute()
+
+    def relink_resource(self, parent_path, field_name, from_path=None, at_index=None):
+        return MoveLinkUpdate(self, self.schema, parent_path, field_name, from_path, at_index).execute()
 
     def remove_spec_field(self, spec_name, field_name):
         self.schema.remove_spec_field(spec_name, field_name)

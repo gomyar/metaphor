@@ -65,5 +65,3 @@ class DeleteResourceUpdate:
             self.updater._remove_grants(self.resource_id, original_resource['url'])
 
         return self.resource_id
-
-
