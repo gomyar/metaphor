@@ -1,5 +1,14 @@
 
+Todo:
+ - take resource_id out of reverse aggregator, collect in updaters instead
+ - rewrite calc resources to use aggregations instead of calculate()
+ - add update collection to track updates (retry on fail etc)
+ - merge affected_ids to update collection for move / delete updates
+
 Shortlist:
+
+ - allow changelist for resources if specified by schema admin, use custom header to retrieve older versions
+   - investigate cost of also caching calcs from linked resources
 
  - bug: parent_collection not in expand agg list - done
 
@@ -31,6 +40,8 @@ Shortlist:
    - realtime w/ mongo / mysql
    - background thread/poll
    - webhooks
+
+ - add updated() function which takes either a resource or field reference and sets itself to the current datetime when that reference changes
 
  - bug: deleting a spec field doesn't delete associated link_ field - done
  - bug: validate types for functions 

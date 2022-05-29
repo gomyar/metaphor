@@ -46,7 +46,7 @@ class Api(object):
 
     @staticmethod
     def _has_grants(url_path, canonical_url, grants):
-        url_path = re.sub(r'\[.*]', '', url_path.strip('/'))
+        url_path = re.sub(r'\[.*?]', '', url_path.strip('/'))
         canonical_url = canonical_url.strip('/')
         def match_grant(url, grant_url, recurse=False):
             match_re = grant_url.replace('/*', '\/ID[0-9a-f]*')
@@ -144,10 +144,8 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 400, from_path, None, None)
 
-            if field_spec.field_type == 'linkcollection':
-                return self.updater.relink_resource(path, field_name, from_path, at_index)
-            elif field_spec.field_type == 'collection':
-                return self.updater.move_resource(parent_resource['_id'], path, from_path, at_index)
+            if field_spec.field_type == 'collection':
+                return self.updater.move_resource(parent_resource['_id'], spec.name, field_name, path, from_path)
             else:
                 raise HTTPError('', 400, from_path, None, None)
 
@@ -174,7 +172,7 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 400, from_path, None, None)
 
-            return self.updater.move_resource(None, path, from_path, at_index)
+            return self.updater.move_resource(None, 'root', path, path, from_path)
 
     def post(self, path, data, user=None):
         path = path.strip().strip('/')

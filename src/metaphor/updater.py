@@ -35,7 +35,12 @@ class Updater(object):
 
     def build_reverse_aggregations_to_calc(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
         calc_tree = self.schema.calc_trees[calc_spec_name, calc_field_name]
-        aggregations = ReverseAggregator(self.schema).get_for_resource(calc_tree, resource_spec.name, self.schema.decodeid(resource_id))
+        aggregations = ReverseAggregator(self.schema).get_for_resource(
+            calc_tree,
+            resource_spec.name,
+            self.schema.decodeid(resource_id),
+            calc_spec_name,
+            calc_field_name)
         return aggregations
 
     def update_calc(self, resource_name, calc_field_name, resource_id):
@@ -135,11 +140,8 @@ class Updater(object):
     def update_fields(self, spec_name, resource_id, fields):
         return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()
 
-    def move_resource(self, parent_path, field_name, from_path=None, at_index=None):
-        return MoveResourceUpdate(self, self.schema, parent_path, field_name, from_path, at_index).execute()
-
-    def relink_resource(self, parent_path, field_name, from_path=None, at_index=None):
-        return MoveLinkUpdate(self, self.schema, parent_path, field_name, from_path, at_index).execute()
+    def move_resource(self, parent_path, parent_spec_name, field_name, to_path, from_path=None):
+        return MoveResourceUpdate(self, self.schema, parent_path, parent_spec_name, field_name, to_path, from_path).execute()
 
     def remove_spec_field(self, spec_name, field_name):
         self.schema.remove_spec_field(spec_name, field_name)

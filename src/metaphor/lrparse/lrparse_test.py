@@ -775,7 +775,7 @@ class LRParseTest(unittest.TestCase):
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}}
             ],
-        ], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2))
+        ], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2, 'division', 'parttimers_age'))
 
     def test_dependencies(self):
         employee_spec = self.schema.specs['employee']

@@ -42,7 +42,7 @@ class AggregatorTest(unittest.TestCase):
         tree = parse('self.employees.age', self.schema.specs['division'])
 
         employee_id = ObjectId()
-        aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id)
+        aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id, 'division', 'all_employees_age')
 
         self.assertEqual([[
             {'$match': {'_id': employee_id}},
@@ -58,7 +58,7 @@ class AggregatorTest(unittest.TestCase):
         tree = parse('divisions.sections.members.age', self.schema.specs['division'])
 
         section_id = ObjectId()
-        aggregations = self.aggregator.get_for_resource(tree, 'section', section_id)
+        aggregations = self.aggregator.get_for_resource(tree, 'section', section_id, 'division', 'all_ages')
 
         self.assertEqual([[
             {'$match': {'_id': section_id}},
@@ -68,8 +68,13 @@ class AggregatorTest(unittest.TestCase):
              'localField': '_parent_id'}},
             {'$group': {'_id': '$_field_sections'}},
             {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+           [{'$lookup': {'as': '_field_all_ages',
+                            'from': 'resource_division',
+                            'pipeline': []}},
+            {'$group': {'_id': '$_field_all_ages'}},
+            {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
-
 
     def test_double(self):
         tree = parse('self.employees.parent_division_employees.sections.members.age', self.schema.specs['division'])
@@ -130,7 +135,7 @@ class AggregatorTest(unittest.TestCase):
         tree = parse('max(self.employees.age) + min(divisions.employees.age) + 10', self.schema.specs['division'])
 
         employee_id = ObjectId()
-        aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id)
+        aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id, 'section', 'age_calc')
 
         self.assertEqual([
             [
@@ -143,7 +148,6 @@ class AggregatorTest(unittest.TestCase):
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}},
 
-                # does self need a division _id match ?
             ],
             # TODO: if two of the aggregations are the same, remove the second one:
             [
@@ -157,10 +161,15 @@ class AggregatorTest(unittest.TestCase):
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}},
 
-                # does this need a _parent_id = null ?
-
+            ],
+            [
+                {'$lookup': {'as': '_field_age_calc',
+                             'from': 'resource_section',
+                             'pipeline': []}},
+                {'$group': {'_id': '$_field_age_calc'}},
+                {'$unwind': '$_id'},
+                {'$replaceRoot': {'newRoot': '$_id'}},
             ]
-
         ], aggregations)
 
     def test_double_aggregate(self):
@@ -212,3 +221,19 @@ class AggregatorTest(unittest.TestCase):
             '_parent_id': None,
             '_parent_type': 'root',
             'name': 'Sales'}, next(result))
+
+    def test_simple_root(self):
+        # uncertain what case this is testing exactly - section has no link to division
+        division_id_1 = self.schema.insert_resource('division', {'name': 'Sales'}, 'divisions')
+
+        tree = parse('max(divisions.name)', self.schema.root)
+
+        aggregations = self.aggregator.get_for_resource(tree, 'division', self.schema.decodeid(division_id_1), 'division', 'max_divisions_name')
+
+        self.assertEqual([[{'$lookup': {'as': '_field_max_divisions_name',
+                        'from': 'resource_division',
+                        'pipeline': []}},
+            {'$group': {'_id': '$_field_max_divisions_name'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
+

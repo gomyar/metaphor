@@ -62,12 +62,12 @@ class ResourceRef(Operable):
         child_spec = spec.build_child_spec(self.field_name)
         return aggregation, child_spec, is_aggregate
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         # create own agg
-        agg = self.create_reverse()
+        agg = self.create_reverse(calc_spec_name, calc_field_name)
 
         # get all subsequent aggs
-        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+        aggregations = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
         # prepend own agg to initial (ignored) agg chain
         aggregations[0] = agg + aggregations[0]
@@ -76,7 +76,8 @@ class ResourceRef(Operable):
         if self.spec == resource_spec:
             # duplicate initial agg chain, add match, and return
             aggregations.insert(0, list(aggregations[0]))
-            aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
+            if resource_id:
+                aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
         return aggregations
 
     def __repr__(self):
@@ -102,8 +103,8 @@ class FieldRef(ResourceRef, Calc):
     def get_resource_dependencies(self):
         return self.resource_ref.get_resource_dependencies() | {'%s.%s' % (self.spec.spec.name, self.field_name)}
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
 
 class RootResourceRef(ResourceRef):
@@ -118,8 +119,24 @@ class RootResourceRef(ResourceRef):
         else:
             self.spec = self.root_spec(spec.schema)
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        return [[]]
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        if self.resource_name in ["self", "ego"]:
+            return [[]]
+        else:
+            # assuming root / collection
+            return [[], self.create_reverse(calc_spec_name, calc_field_name)]
+
+    def create_reverse(self, calc_spec_name, calc_field_name):
+        return [
+            {"$lookup": {
+                "from": "resource_%s" % (calc_spec_name,),
+                "as": "_field_%s" % (calc_field_name,),
+                "pipeline": [],
+            }},
+            {'$group': {'_id': '$_field_%s' % (calc_field_name,)}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
+        ]
 
     def validate(self):
         if self.resource_name != "self" and self.resource_name not in self.spec.schema.root.fields:
@@ -204,8 +221,8 @@ class IDResourceRef(ResourceRef):
     def __repr__(self):
         return "I[%s.%s]" % (self.resource_ref, self.resource_id,)
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
 
 class CollectionResourceRef(ResourceRef):
@@ -241,7 +258,7 @@ class CollectionResourceRef(ResourceRef):
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                 "from": "resource_%s" % (self.parent_spec.name,),
@@ -282,7 +299,7 @@ class LinkCollectionResourceRef(ResourceRef):
             )
         return aggregation, child_spec, True
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -334,7 +351,7 @@ class LinkResourceRef(ResourceRef):
             )
         return aggregation, child_spec, is_aggregate
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -388,7 +405,7 @@ class CalcResourceRef(ResourceRef):
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -435,7 +452,7 @@ class ReverseLinkResourceRef(ResourceRef):
         _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
         return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -478,7 +495,7 @@ class ParentCollectionResourceRef(ResourceRef):
     def is_collection(self):
         return False
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -527,7 +544,7 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
         _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
         return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
-    def create_reverse(self):
+    def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
@@ -575,8 +592,8 @@ class FilteredResourceRef(ResourceRef):
             deps.add("%s.%s" % (self.spec.name, field_name))
         return deps
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        return self.resource_ref.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
     def __repr__(self):
         return "F[%s %s]" % (self.resource_ref, self.filter_ref)
@@ -613,7 +630,7 @@ class ConstRef(Calc):
     def calculate(self, self_id):
         return self.value
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         return []
 
     def __repr__(self):
@@ -667,9 +684,9 @@ class Operator(Calc):
         except AttributeError as te:
             return None
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        lhs_aggs = self.lhs.build_reverse_aggregations(resource_spec, resource_id)
-        rhs_aggs = self.rhs.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        lhs_aggs = self.lhs.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
+        rhs_aggs = self.rhs.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
         lhs_aggs = lhs_aggs[1:] # remove trackers
         rhs_aggs = rhs_aggs[1:] # remove trackers
         return [[]] + lhs_aggs + rhs_aggs # add dummy tracker ( as calcs are top level )
@@ -840,10 +857,10 @@ class ResourceRefTernary(ResourceRef):
         deps = deps.union(self.else_clause.get_resource_dependencies())
         return deps
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        condition_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id)
-        then_aggs = self.then_clause.build_reverse_aggregations(resource_spec, resource_id)
-        else_aggs = self.else_clause.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        condition_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
+        then_aggs = self.then_clause.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
+        else_aggs = self.else_clause.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
 #        condition_aggs = condition_aggs[1:] # remove trackers
 #        then_aggs = then_aggs[1:] # remove trackers
@@ -923,15 +940,15 @@ class SwitchRef(ResourceRef):
     def infer_type(self):
         return self.cases[0].value.infer_type()
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         # TODO: check "trackers"
-        field_aggs = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id)
+        field_aggs = self.resource_ref.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 #        field_aggs = field_aggs[1:]
 
         aggregations = []
         aggregations.extend(field_aggs)
         for case in self.cases:
-            case_aggs = case.value.build_reverse_aggregations(resource_spec, resource_id)
+            case_aggs = case.value.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 #            case_aggs = case_aggs[1:]
             aggregations.extend(case_aggs)
         return aggregations
@@ -976,10 +993,10 @@ class CalcTernary(Calc):
         else:
             return self.else_clause.calculate(self_id)
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        cond_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id)
-        then_aggs = self.then_clause.build_reverse_aggregations(resource_spec, resource_id)
-        else_aggs = self.else_clause.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        cond_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
+        then_aggs = self.then_clause.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
+        else_aggs = self.else_clause.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
         cond_aggs = cond_aggs[1:] # remove trackers
         then_aggs = then_aggs[1:] # remove trackers
         else_aggs = else_aggs[1:] # remove trackers
@@ -1013,8 +1030,8 @@ class Brackets(Calc):
     def aggregation(self, self_id, user):
         return self.calc.aggregation(self_id, user)
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
-        return self.calc.build_reverse_aggregations(resource_spec, resource_id)
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
+        return self.calc.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
     def __repr__(self):
         return "(" + str(self.calc) + ")"
@@ -1130,9 +1147,9 @@ class FunctionCall(Calc):
         except StopIteration:
             return None
 
-    def build_reverse_aggregations(self, resource_spec, resource_id):
+    def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         # take into account different functions and params
-        return self.params[0].build_reverse_aggregations(resource_spec, resource_id)
+        return self.params[0].build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
 
     def __repr__(self):
         return "%s(%s)" % (self.func_name, [str(s) for s in self.params])
