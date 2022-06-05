@@ -121,12 +121,13 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants, admin=False):
+    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants, put_grants, admin=False):
         self.username = username
         self.read_grants = read_grants
         self.create_grants = create_grants
         self.update_grants = update_grants
         self.delete_grants = delete_grants
+        self.put_grants = put_grants
         self.admin = admin
 
     def get_id(self):
@@ -491,6 +492,7 @@ class Schema(object):
                         user_data['create_grants'],
                         user_data['update_grants'],
                         user_data['delete_grants'],
+                        user_data['put_grants'],
                         user_data.get('admin'))
             if load_hash:
                 user.password = user_data['password']

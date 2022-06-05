@@ -80,6 +80,16 @@ class Updater(object):
             result = results[0] if results else None
         return result
 
+    def _calculate_resource(self, calc_tree, resource_id, user=None):
+        agg = calc_tree.create_aggregation(user)
+        agg = [
+            {"$match": {"_id": self.schema.decodeid(resource_id)}},
+            {"$project": {"_val": "$$ROOT"}},
+        ] + agg
+        cursor = calc_tree.root_collection().aggregate(agg)
+        results = list(cursor)
+        return results[0]['_val'] if results else None
+
     def _perform_updates_for_affected_calcs(self, spec, resource_id, calc_spec_name, calc_field_name):
         affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
         for affected_id in affected_ids:

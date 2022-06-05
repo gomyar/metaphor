@@ -475,3 +475,47 @@ class UpdaterTest(unittest.TestCase):
 
         self.assertEqual('Fredmarketting', self.db['resource_employee'].find_one()['both_names'])
 
+    def test_aggregate_for_sum(self):
+        self.schema.create_field('employee', 'val1', 'int')
+        self.schema.create_field('employee', 'val2', 'int')
+        calc = self.schema.add_calc(self.employee_spec, 'total', 'self.val1 + self.val2')
+        tree = self.schema.calc_trees[('employee', 'total')]
+
+        aggregation = tree.aggregation(None)
+        self.assertEqual([], aggregation)
+
+        employee_id_1 = self.updater.create_resource(
+            'employee', 'root', 'employees', None, {'name': 'ned', 'val1': 1, 'val2': 1})
+        employee_id_2 = self.updater.create_resource(
+            'employee', 'root', 'employees', None, {'name': 'bob', 'val1': 2, 'val2': 2})
+        employee_id_3 = self.updater.create_resource(
+            'employee', 'root', 'employees', None, {'name': 'fred', 'val1': 3, 'val2': 3})
+
+        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(employee_id_2)})
+        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(employee_id_3)})
+
+        self.assertEqual(2, employee_1['total'])
+        self.assertEqual(4, employee_2['total'])
+        self.assertEqual(6, employee_3['total'])
+
+    def test_aggregate_for_calc(self):
+        self.schema.create_field('employee', 'val1', 'int')
+        self.schema.create_field('employee', 'val2', 'int')
+        calc = self.schema.add_calc(self.employee_spec, 'total', 'self.val1 + (self.val2 / self.val1)')
+        tree = self.schema.calc_trees[('employee', 'total')]
+
+        employee_id_1 = self.updater.create_resource(
+            'employee', 'root', 'employees', None, {'name': 'ned', 'val1': 10, 'val2': 1})
+        employee_id_2 = self.updater.create_resource(
+            'employee', 'root', 'employees', None, {'name': 'bob', 'val1': 10, 'val2': 2})
+        employee_id_3 = self.updater.create_resource(
+            'employee', 'root', 'employees', None, {'name': 'fred', 'val1': 9, 'val2': 3})
+
+        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(employee_id_2)})
+        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(employee_id_3)})
+
+        self.assertEqual(10.1, employee_1['total'])
+        self.assertEqual(15, employee_2['total'])
+        self.assertEqual(12, employee_3['total'])

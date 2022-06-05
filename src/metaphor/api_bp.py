@@ -91,6 +91,10 @@ def api(path):
             user.grants = [g['_id'] for g in user.delete_grants]
 
             return jsonify(api.delete(path, user))
+        if request.method == 'PUT':
+            user.grants = [g['_id'] for g in user.put_grants]
+
+            return jsonify(api.put(path, request.json, user)), 201
     except HTTPError as he:
         return jsonify({"error": he.reason}), he.getcode()
 

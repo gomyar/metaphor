@@ -1032,7 +1032,6 @@ class LRParseTest(unittest.TestCase):
         calculated = tree.calculate(employee_id_1)
         self.assertEqual(datetime(2021, 11, 30, 23, 58), calculated)
 
-
     def test_calc_datetime_comparison(self):
         employee_spec = self.schema.specs['employee']
         division_spec = self.schema.specs['division']
@@ -1060,3 +1059,4 @@ class LRParseTest(unittest.TestCase):
         section_spec = self.schema.specs['section']
 
         tree = parse('self.name + \t(\nself.parent_division_sections.name\n)', section_spec)
+
