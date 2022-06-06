@@ -1060,3 +1060,7 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse('self.name + \t(\nself.parent_division_sections.name\n)', section_spec)
 
+
+    def test_ternary_within_calc(self):
+        # 1 + (self.a == 2 -> 'a': 'b')
+        pass

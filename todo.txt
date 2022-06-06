@@ -100,6 +100,7 @@ Extra calcs:
  - first(collection)
  - last(collection)
  - now()
+ - updated(resource / field) - updates to current datetime when resource / field is changed
 
 Extra fields:
  - idstring: a string field that can be used as an id - lower case letters and underscores only

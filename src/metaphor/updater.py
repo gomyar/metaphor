@@ -80,7 +80,7 @@ class Updater(object):
             result = results[0] if results else None
         return result
 
-    def _calculate_resource(self, calc_tree, resource_id, user=None):
+    def _calculate_aggregated_resource(self, calc_tree, resource_id, user=None):
         agg = calc_tree.create_aggregation(user)
         agg = [
             {"$match": {"_id": self.schema.decodeid(resource_id)}},
