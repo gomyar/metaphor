@@ -126,7 +126,7 @@ class FieldRef(ResourceRef, Calc):
 
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
-            {"$addFields": {"_val": "$_val.%s" % self.field_name}},
+            {"$addFields": {"_val": "$%s" % self.field_name}},
         ]
 
 
@@ -250,6 +250,9 @@ class RootResourceRef(ResourceRef):
                         }}
                     ]
                 }},
+                {'$group': {'_id': '$_val'}},
+                {"$unwind": "$_id"},
+                {"$replaceRoot": {"newRoot": "$_id"}},
             ]
 
 
@@ -337,7 +340,7 @@ class CollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
+                    "from": "resource_%s" % self.spec.name,
                     "localField": "_id",
                     "foreignField": "_parent_id",
                     "as": "_val",
@@ -400,7 +403,7 @@ class LinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
+                    "from": "resource_%s" % self.spec.name,
                     "localField": "%s._id" % self.field_name,
                     "foreignField": "_id",
                     "as": "_val",
@@ -465,12 +468,13 @@ class LinkResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                "from": 'resource_employee',
+                "from": 'resource_%s' % self.spec.name,
                 "as": '_val',
                 "localField": self.field_name,
                 "foreignField": "_id",
             }},
-            {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
+            {"$unwind": "$_val"},
+            {"$replaceRoot": {"newRoot": "$_val"}},
         ]
 
 
@@ -820,8 +824,20 @@ class ConstRef(Calc):
     def get_resource_dependencies(self):
         return set()
 
+    def resource_ref_snippet(self):
+        return str(hash(str(self.value))).replace('-', '_')
+
+    def is_primitive(self):
+        return True
+
     def _create_calc_agg_tree(self):
-        return {"_v_%s" % self.resource_ref_snippet(): self.value}
+        return {"_v_%s" % self.resource_ref_snippet(): self}
+
+    def _is_lookup(self):
+        return False
+
+    def _create_calc_expr(self):
+        return self.value
 
     def create_aggregation(self, user=None):
         return [
@@ -927,12 +943,12 @@ class Operator(Calc):
                 agg_tree[key] = [
                     {"$lookup": {
                         # forced lookup to enable separate pipeline
-                        "from": "resource_employee",
+                        "from": res.root_collection().name,
                         "as": "_lookup_val",
                         "let": {"id": "$_id"},
                         "pipeline": [
                             # match self
-                            {"$match": {"_id": "$$id"}},
+                            {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                         ] + res.create_aggregation(user)
                     }},
                     {"$set": {key: {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
@@ -967,11 +983,20 @@ class Operator(Calc):
             ops[self.op]: [lhs, rhs]
         }
 
+    def _is_lookup(self):
+        return self.lhs._is_lookup() or self.rhs._is_lookup()
+
     def create_aggregation(self, user=None):
         resource_tree = self._create_calc_agg_tree()
-
         agg_tree = self._create_agg_tree(resource_tree, user)
-        return list(agg_tree.values())
+
+        aggregation = []
+        for key, agg in agg_tree.items():
+            aggregation.extend(agg)
+        aggregation.append(
+            {"$addFields": {"_val": self._create_calc_expr()}}
+        )
+        return aggregation
 
 
 class Condition(object):
@@ -1345,22 +1370,28 @@ class CalcTernary(Calc):
     def __repr__(self):
         return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)
 
+    def is_primitive(self):
+        return self.then_clause.is_primitive()
+
     def _create_calc_agg_tree(self):
         return {"_v_%s" % self.resource_ref_snippet(): self}
+
+    def _is_lookup(self):
+        return True
 
     def create_aggregation(self, user=None):
         return [
             {"$facet": {
                 "_then": [
-                    {"$match": self.condition.create_condition_aggregation()},
+                    {"$match": self.condition.create_aggregation(user)},
                 ] + self.then_clause.create_aggregation(user),
                 "_else": [
-                    {"$match": {"$not": self.condition.create_condition_aggregation()}},
+                    {"$match": {"$not": self.condition.create_aggregation(user)}},
                 ] + self.else_clause.create_aggregation(user),
             }},
             {"$project": {"_val": {
                 "$cond": {
-                    "if": self.condition.create_condition_aggregation(),
+                    "if": self.condition.create_aggregation(user),
                     "then": "$_then",
                     "else": "$_else",
                 }
@@ -1415,6 +1446,9 @@ class Brackets(Calc):
 
     def _create_calc_expr(self):
         return self.calc._create_calc_expr()
+
+    def _is_lookup(self):
+        return self.calc._is_lookup()
 
     def create_aggregation(self, user=None):
         return self.calc.create_aggregation(user)

@@ -80,15 +80,63 @@ class Updater(object):
             result = results[0] if results else None
         return result
 
-    def _calculate_aggregated_resource(self, calc_tree, resource_id, user=None):
-        agg = calc_tree.create_aggregation(user)
-        agg = [
-            {"$match": {"_id": self.schema.decodeid(resource_id)}},
-            {"$project": {"_val": "$$ROOT"}},
-        ] + agg
-        cursor = calc_tree.root_collection().aggregate(agg)
-        results = list(cursor)
-        return results[0]['_val'] if results else None
+    def _calculate_aggregated_resource(self, resource_name, field_name, calc_tree, resource_id, user=None):
+        if calc_tree._is_lookup():
+            calc_agg = calc_tree.create_aggregation(user)
+            if calc_tree.is_collection():
+                calc_agg += [
+                    {"$project": {"_id": 1}},
+                ]
+            agg = [
+                {"$match": {"_id": self.schema.decodeid(resource_id)}},
+                {"$lookup": {
+                    "from": "resource_%s" % resource_name,
+                    "as": field_name,
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
+                    ] + calc_agg
+                }},
+            ]
+            if calc_tree.is_collection():
+                # for collections / linkcollections / orderedcollections
+                agg.extend([
+                    {"$project": {
+                        field_name: 1,
+                    }},
+                ])
+            else:
+                # for links
+                agg.extend([
+                    {"$project": {
+                        field_name: {"$arrayElemAt": ["$%s" % field_name, 0]},
+                    }}])
+                if calc_tree.is_primitive():
+                    agg.extend([
+                        {"$addFields": {
+                            field_name: "$%s._val" % field_name,
+                        }}
+                    ])
+                else:
+                    agg.extend([
+                        {"$addFields": {
+                            field_name: "$%s._id" % field_name,
+                        }}
+                    ])
+        else:
+            calc_agg = calc_tree.create_aggregation(user)
+            agg = calc_agg + [
+                {"$addFields": {field_name: "$_val"}},
+            ]
+
+        agg.extend([
+            {"$merge": {
+                "into": "resource_%s" % resource_name,
+                "on": "_id",
+            }}
+        ])
+
+        self.schema.db['resource_%s' % resource_name].aggregate(agg)
 
     def _perform_updates_for_affected_calcs(self, spec, resource_id, calc_spec_name, calc_field_name):
         affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
