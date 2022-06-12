@@ -140,6 +140,12 @@ class LRParseTest(unittest.TestCase):
     def test_ternary(self):
         tree = parse("self.name == 'Bob' -> 12 : 14", self.employee_spec)
 
+        resource_tree = tree._create_calc_agg_tree()
+        agg_tree = tree._create_agg_tree(resource_tree, user)
+
+
+        self.assertEqual({}, resource_tree)
+        self.assertEqual({}, agg_tree)
         expected = []
         self.assertEqual(expected, tree.create_aggregation(None))
 

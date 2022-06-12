@@ -129,43 +129,75 @@ class LRParseTest(unittest.TestCase):
 
         self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
         employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(12, employee_1)
+        self.assertEqual(12, employee_1["bobswitch"])
 
-        self.updater._calculate_aggregated_resource(tree, self.employee_id_2)
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
         employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(14, employee_2)
+        self.assertEqual(14, employee_2["bobswitch"])
 
-        self.updater._calculate_aggregated_resource(tree, self.employee_id_3)
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
         employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(14, employee_3)
+        self.assertEqual(14, employee_3["bobswitch"])
 
     def test_ternary_calcs(self):
         tree = parse("self.boss.name = 'Bob' -> (self.boss.duration) : 99", self.employee_spec)
 
-        self.assertEqual(99, self.updater._calculate_aggregated_resource(tree, self.employee_id_1))
-        self.assertEqual(12, self.updater._calculate_aggregated_resource(tree, self.employee_id_2))
-        self.assertEqual(12, self.updater._calculate_aggregated_resource(tree, self.employee_id_3))
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
+        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
+        self.assertEqual(99, employee_1["bobswitch"])
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
+        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
+        self.assertEqual(12, employee_2["bobswitch"])
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
+        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
+        self.assertEqual(12, employee_3["bobswitch"])
 
     def test_switch(self):
         tree = parse("self.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
 
-        self.assertEqual(22, self.updater._calculate_aggregated_resource(tree, self.employee_id_1))
-        self.assertEqual(11, self.updater._calculate_aggregated_resource(tree, self.employee_id_2))
-        self.assertEqual(None, self.updater._calculate_aggregated_resource(tree, self.employee_id_3))
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
+        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
+        self.assertEqual(22, employee_1["bobswitch"])
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
+        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
+        self.assertEqual(11, employee_2["bobswitch"])
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
+        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
+        self.assertEqual(None, employee_3["bobswitch"])
 
     def test_switch_calc(self):
         tree = parse("self.boss.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
 
-        self.assertEqual(None, self.updater._calculate_aggregated_resource(tree, self.employee_id_1))
-        self.assertEqual(22, self.updater._calculate_aggregated_resource(tree, self.employee_id_2))
-        self.assertEqual(22, self.updater._calculate_aggregated_resource(tree, self.employee_id_3))
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
+        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
+        self.assertEqual(None, employee_1.get("bobswitch"))
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
+        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
+        self.assertEqual(22, employee_2["bobswitch"])
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
+        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
+        self.assertEqual(22, employee_3["bobswitch"])
 
     def test_switch_calc_fields(self):
         tree = parse("self.boss.name -> ('Bob': (self.boss.duration), 'Ned': (self.duration), 'Ted': (self.age))", self.employee_spec)
 
-        self.assertEqual(12, self.updater._calculate_aggregated_resource(tree, self.employee_id_1))
-        self.assertEqual(8, self.updater._calculate_aggregated_resource(tree, self.employee_id_2))
-        self.assertEqual(24, self.updater._calculate_aggregated_resource(tree, self.employee_id_3))
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
+        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
+        self.assertEqual(None, employee_1.get("bobswitch"))
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
+        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
+        self.assertEqual(12, employee_2["bobswitch"])
+
+        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
+        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
+        self.assertEqual(12, employee_3["bobswitch"])
 
     def _test_function_first(self):
         tree = parse("first(employees)", self.employee_spec)
