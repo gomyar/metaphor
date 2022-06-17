@@ -52,7 +52,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
-            'older_employees': [ObjectId(employee_id_1[2:])],
+            'older_employees': [{"_id": ObjectId(employee_id_1[2:])}],
         }, division_data)
 
         self.updater.update_fields('employee', employee_id_1, {"age": 20})
@@ -106,7 +106,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
-            'older_employees': [ObjectId(employee_id_1[2:])],
+            'older_employees': [{"_id": ObjectId(employee_id_1[2:])}],
         }, division_data)
 
         employee_data = self.db.resource_employee.find_one()

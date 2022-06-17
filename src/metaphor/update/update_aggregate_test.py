@@ -64,15 +64,19 @@ class LRParseTest(unittest.TestCase):
     def test_field(self):
         tree = parse("self.name", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "my_name", tree, self.employee_id_1)
-        employee = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
+        self.updater._calculate_aggregated_resource("employee", "my_name", tree,
+            self.employee_id_1)
+        employee = self.db.resource_employee.find_one(
+            {"_id": self.schema.decodeid(self.employee_id_1)})
         self.assertEqual('Bob', employee['my_name'])
 
     def test_calc(self):
         tree = parse("self.age + self.duration", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "age_and_duration", tree, self.employee_id_1)
-        employee = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
+        self.updater._calculate_aggregated_resource("employee", "age_and_duration",
+            tree, self.employee_id_1)
+        employee = self.db.resource_employee.find_one(
+            {"_id": self.schema.decodeid(self.employee_id_1)})
         self.assertEqual(56, employee['age_and_duration'])
 
         self.updater._calculate_aggregated_resource("employee", "age_and_duration", tree, self.employee_id_2)
@@ -199,8 +203,18 @@ class LRParseTest(unittest.TestCase):
         employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
         self.assertEqual(12, employee_3["bobswitch"])
 
-    def _test_function_first(self):
+    def test_function_first(self):
         tree = parse("first(employees)", self.employee_spec)
 
-        first = self.updater._calculate_aggregated_resource(tree, self.employee_id_1)
+        self.updater._calculate_aggregated_resource(tree, self.employee_id_1)
+        first = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
         self.assertEqual('Bob', first['name'])
+
+    def test_function_sum(self):
+        tree = parse("sum(employees.age)", self.employee_spec)
+
+        self.updater._calculate_aggregated_resource(
+            "employee", "sum_employee_age", tree, self.employee_id_1)
+        employee_1 = self.db.resource_employee.find_one(
+            {"_id": self.schema.decodeid(self.employee_id_1)})
+        self.assertEqual(102, employee_1['sum_employee_age'])

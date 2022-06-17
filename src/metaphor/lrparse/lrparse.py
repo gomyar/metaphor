@@ -473,12 +473,13 @@ class LinkResourceRef(ResourceRef):
                 "localField": self.field_name,
                 "foreignField": "_id",
             }},
-            {"$unwind": "$_val"},
-            {"$replaceRoot": {"newRoot": "$_val"}},
+            {'$group': {'_id': '$_val'}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
         ]
 
 
-class CalcResourceRef(ResourceRef):
+class CalcResourceRef(ResourceRef, Calc):
     def aggregation(self, self_id, user=None):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         calc_tree = spec.schema.calc_trees[spec.name, self.field_name]
@@ -492,7 +493,7 @@ class CalcResourceRef(ResourceRef):
             aggregation.append(
                 {"$lookup": {
                         "from": "resource_%s" % (calc_spec.name,),
-                        "localField": self.field_name,
+                        "localField": "%s._id" % self.field_name,
                         "foreignField": "_id",
                         "as": "_field_%s" % (self.field_name,),
                 }})
@@ -528,11 +529,17 @@ class CalcResourceRef(ResourceRef):
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
 
+    def _create_calc_agg_tree(self):
+        return {"_v_%s" % self.field_name: self}
+
+    def _create_calc_expr(self):
+        return "$%s" % self.field_name
+
     def create_aggregation(self, user=None):
         agg = self.resource_ref.create_aggregation(user)
-        calc_tree = spec.schema.calc_trees[self.resource_ref.spec.name, self.field_name]
+        calc_tree = self.resource_ref.spec.schema.calc_trees[self.resource_ref.spec.name, self.field_name]
         calc_spec = calc_tree.infer_type()
-        if spec.fields[self.field_name].is_primitive():
+        if calc_tree.is_primitive():
             return agg + [
                 {"$addFields": {"_val": "$%s" % self.field_name}},
             ]
@@ -540,7 +547,7 @@ class CalcResourceRef(ResourceRef):
             return agg + [
                 {"$lookup": {
                         "from": "resource_%s" % (calc_spec.name,),
-                        "localField": self.field_name,
+                        "localField": "%s._id" % self.field_name,
                         "foreignField": "_id",
                         "as": "_val",
                 }},
@@ -602,9 +609,9 @@ class ReverseLinkResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
+                    "from": "resource_%s" % (self.spec.name,),
                     "localField": "_id",
-                    "foreignField": spec.fields[self.field_name].reverse_link_field,
+                    "foreignField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
                     "as": "_val",
             }},
             {'$group': {'_id': '$_val'}},
@@ -661,7 +668,7 @@ class ParentCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
+                    "from": "resource_%s" % (self.spec.name,),
                     "localField": "_parent_id",
                     "foreignField": "_id",
                     "as": "_val",
@@ -726,9 +733,9 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
+                    "from": "resource_%s" % (self.spec.name,),
                     "localField": '_id',
-                    "foreignField": spec.fields[self.field_name].reverse_link_field + "._id",
+                    "foreignField": self.spec.fields[self.field_name].reverse_link_field + "._id",
                     "as": "_val",
             }},
             {'$group': {'_id': '$_val'}},
@@ -958,9 +965,11 @@ class Operator(Calc):
         return agg_tree
 
     def _create_calc_expr(self):
-        ops = {
+        nullable_ops = {
             "+": "$add",
             "-": "$subtract",
+        }
+        ops = {
             "*": "$multiply",
             "/": "$divide",
             ">": "$gt",
@@ -979,9 +988,14 @@ class Operator(Calc):
         else:
             rhs = self.rhs
 
-        return {
-            ops[self.op]: [lhs, rhs]
-        }
+        if self.op in ops:
+            return {
+                ops[self.op]: [lhs, rhs]
+            }
+        else:
+            return {
+                nullable_ops[self.op]: [{"$ifNull": [lhs, 0]}, {"$ifNull": [rhs, 0]}]
+            }
 
     def _is_lookup(self):
         return self.lhs._is_lookup() or self.rhs._is_lookup()
@@ -1336,14 +1350,17 @@ class SwitchRef(ResourceRef):
                 {"$lookup": {
                     # forced lookup to enable separate pipeline
                     "from": self.resource_ref.root_collection().name,
-                    "as": "_lookup_val",
+                    "as": "_switch_lookup_val",
                     "let": {"id": "$_id"},
                     "pipeline": [
                         # match self
                         {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                     ] + self.resource_ref.create_aggregation(user)
                 }},
-                {"$addFields": {"_switch_val": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
+            ]
+            # switch val must always be primitive
+            aggregation += [
+                {"$addFields": {"_switch_val": {"$arrayElemAt": ["$_switch_lookup_val._val", 0]}}},
             ]
         else:
             aggregation += self.resource_ref.create_aggregation(user)
@@ -1358,15 +1375,32 @@ class SwitchRef(ResourceRef):
                     {"$lookup": {
                         # forced lookup to enable separate pipeline
                         "from": case.value.root_collection().name,
-                        "as": "_lookup_val",
+                        "as": "_case_lookup_val",
                         "let": {"id": "$_id"},
                         "pipeline": [
                             # match self
                             {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                         ] + case.value.create_aggregation(user)
                     }},
-                    {"$addFields": {"_case_%s" % index: {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
                 ]
+                if case.value.is_collection():
+                    if case.value.is_primitive():
+                        agg+= [
+                            {"$addFields": {"_case_%s" % index: "$_case_lookup_val._val"}},
+                        ]
+                    else:
+                        agg+= [
+                            {"$addFields": {"_case_%s" % index: "$_case_lookup_val"}},
+                        ]
+                else:
+                    if case.value.is_primitive():
+                        agg+= [
+                            {"$addFields": {"_case_%s" % index: {"$arrayElemAt": ["$_case_lookup_val._val", 0]}}},
+                        ]
+                    else:
+                        agg+= [
+                            {"$addFields": {"_case_%s" % index: {"$arrayElemAt": ["$_case_lookup_val", 0]}}},
+                        ]
             else:
                 agg += case.value.create_aggregation(user)
                 agg.append({"$addFields": {"_case_%s" % index: "$_val"}})
@@ -1413,7 +1447,7 @@ class CalcTernary(Calc):
         self.then_clause.validate()
         self.else_clause.validate()
         if not self.then_clause.infer_type().check_comparable_type(self.else_clause.infer_type().field_type):
-            raise SyntaxError("Both sides of ternary must return same type")
+            raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (self.then_clause.infer_type().field_type, self.else_clause.infer_type().field_type))
 
     def infer_type(self):
         return self.then_clause.infer_type()
@@ -1664,6 +1698,12 @@ class FunctionCall(Calc):
     def _create_calc_agg_tree(self):
         return {"_v_%s" % self.resource_ref_snippet(): self}
 
+    def _is_lookup(self):
+        return self.params[0]._is_lookup()
+
+    def is_primitive(self):
+        return self.params[0].is_primitive()
+
     def create_aggregation(self, user=None):
         functions = {
             'round': self._agg_round,
@@ -1696,13 +1736,13 @@ class FunctionCall(Calc):
         ]
 
     def _agg_average(self, user, agg_field):
-        return collection.create_aggregation(user) + [
-            {'$group': {'_id': None, '_val': {'$avg': '$' + collection.field_name}}}
+        return agg_field.create_aggregation(user) + [
+            {'$group': {'_id': None, '_val': {'$avg': '$' + agg_field.field_name}}}
         ]
 
     def _agg_sum(self, user, agg_field):
-        return collection.create_aggregation(user) + [
-            {'$group': {'_id': None, '_val': {'$sum': '$' + collection.field_name}}}
+        return agg_field.create_aggregation(user) + [
+            {'$group': {'_id': None, '_val': {'$sum': '$' + agg_field.field_name}}}
         ]
 
     def _agg_days(self, user, field):
@@ -1817,9 +1857,9 @@ class Parser(object):
             [(NAME, '.', NAME), self._create_resource_ref],
 
             [(Operator, '->', Calc, ':', Calc), self._create_calc_ternary],
-            [(Operator, '->', ResourceRef, ':', ResourceRef), self._create_ternary],
-            [(Operator, '->', ResourceRef, ':', Calc), self._create_ternary],
-            [(Operator, '->', Calc, ':', ResourceRef), self._create_ternary],
+            [(Operator, '->', ResourceRef, ':', ResourceRef), self._create_calc_ternary],
+            [(Operator, '->', ResourceRef, ':', Calc), self._create_calc_ternary],
+            [(Operator, '->', Calc, ':', ResourceRef), self._create_calc_ternary],
 
             [(ConstRef, ':', Calc), KeyValue],
             [(ConstRef, ':', ResourceRef), KeyValue],
