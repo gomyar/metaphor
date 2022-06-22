@@ -57,9 +57,9 @@ class Api(object):
             return re.match(match_re, url)
 
         if url_path.split('/')[0] == 'ego':
-            return any(match_grant('/'+url_path, grant_url['url']) for grant_url in grants)
+            return any(match_grant('/'+url_path, grant_url) for grant_url in grants)
         else:
-            return any(match_grant('/'+canonical_url, grant_url['url'], True) for grant_url in grants)
+            return any(match_grant('/'+canonical_url, grant_url, True) for grant_url in grants)
 
     def _check_grants(self, path, canonical_path, grants):
         if not Api._has_grants(path, canonical_path, grants):
@@ -650,9 +650,10 @@ class Api(object):
                 tree = parse(field.calc_str, spec)
                 res_type = tree.infer_type()
                 calc_result = resource_data.get(field_name)
+                # TODO: Change this to url if collection always, else primitive
                 if res_type.is_primitive():
                     if tree.is_collection() and calc_result is not None:
-                        encoded[field_name] = [res[res_type.name] for res in calc_result]
+                        encoded[field_name] = calc_result
                     else:
                         encoded[field_name] = calc_result
                 elif tree.is_collection():

@@ -12,7 +12,7 @@ from metaphor.update.create_linkcollection import CreateLinkCollectionUpdate
 from metaphor.update.create_orderedcollection import CreateOrderedCollectionUpdate
 from metaphor.update.move_resource import MoveResourceUpdate
 from metaphor.update.move_link import MoveLinkUpdate
-from metaphor.update_aggreation import create_update_aggregation
+from metaphor.update_aggregation import create_update_aggregation
 
 import logging
 

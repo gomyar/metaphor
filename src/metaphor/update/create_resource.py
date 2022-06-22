@@ -27,13 +27,15 @@ class CreateResourceUpdate:
             # update for resources
             # unsure if this is necessary
             if "%s.%s" % (self.parent_spec_name, self.parent_field_name) in calc_tree.get_resource_dependencies():
-                self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
+                self.updater.update_calc(calc_spec_name, calc_field_name, resource_id)
+#                self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
 
             # update for fields
             for field_name in self.fields:
                 field_dep = "%s.%s" % (self.spec_name, field_name)
                 if field_dep in calc_tree.get_resource_dependencies():
-                    self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
+                    self.updater.update_calc(calc_spec_name, calc_field_name, resource_id)
+#                    self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
 
         # recalc local calcs
         calc_field_deps = {}

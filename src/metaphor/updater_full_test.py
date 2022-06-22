@@ -164,9 +164,9 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals(sorted([
             self.schema.decodeid(employee_id_1),
             self.schema.decodeid(employee_id_2),
-        ]), sorted(division_data['older_managers']))
+        ]), sorted([m['_id'] for m in division_data['older_managers']]))
         self.assertEquals([
-            self.schema.decodeid(employee_id_1)],
+            {"_id": self.schema.decodeid(employee_id_1)}],
             division_data['older_non_retired_managers'])
         self.assertEquals({
             "_id" : self.schema.decodeid(division_id_1),
@@ -189,11 +189,11 @@ class UpdaterTest(unittest.TestCase):
                     }
             ],
             "older_managers" : [
-                    self.schema.decodeid(employee_id_1),
-                    self.schema.decodeid(employee_id_2),
+                    {"_id": self.schema.decodeid(employee_id_1)},
+                    {"_id": self.schema.decodeid(employee_id_2)},
             ],
             "older_non_retired_managers" : [
-                    self.schema.decodeid(employee_id_1),
+                    {"_id": self.schema.decodeid(employee_id_1)},
             ]
         }, division_data)
 

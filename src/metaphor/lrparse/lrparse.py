@@ -104,7 +104,7 @@ class FieldRef(ResourceRef, Calc):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
         child_spec = spec.build_child_spec(self.field_name)
         aggregation.append(
-            {"$project": {
+            {"$addFields": {
                 self.field_name: True,
             }})
         return aggregation, child_spec, is_aggregate
@@ -733,9 +733,9 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (self.spec.name,),
+                    "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "localField": '_id',
-                    "foreignField": self.spec.fields[self.field_name].reverse_link_field + "._id",
+                    "foreignField": self.resource_ref.spec.fields[self.field_name].reverse_link_field + "._id",
                     "as": "_val",
             }},
             {'$group': {'_id': '$_val'}},
@@ -770,7 +770,7 @@ class FilteredResourceRef(ResourceRef):
     def resource_ref_snippet(self):
         field_snippets = self.filter_ref.resource_ref_fields()
         resource_ref_snippet = self.resource_ref.resource_ref_snippet()
-        return {"%s_%s" % (resource_ref_snippet, field) for field in field_snippets}
+        return "%s_%s" % (resource_ref_snippet, "_".join(field for field in field_snippets))
 
     def get_resource_dependencies(self):
         deps = super(FilteredResourceRef, self).get_resource_dependencies()
@@ -935,11 +935,11 @@ class Operator(Calc):
         if isinstance(self.lhs, Calc):
             res_tree.update(self.lhs._create_calc_agg_tree())
         else:
-            res_tree['_v_%s' % self.lhs.resource_ref_snippet()] = self.lhs
+            res_tree['_lhs_%s' % self.lhs.resource_ref_snippet()] = self.lhs
         if isinstance(self.rhs, Calc):
             res_tree.update(self.rhs._create_calc_agg_tree())
         else:
-            res_tree['_v_%s' % self.rhs.resource_ref_snippet()] = self.rhs
+            res_tree['_rhs_%s' % self.rhs.resource_ref_snippet()] = self.rhs
         return res_tree
 
     def _create_agg_tree(self, res_tree, user=None):
@@ -980,22 +980,27 @@ class Operator(Calc):
         }
 
         if isinstance(self.lhs, Calc):
-            lhs = self.lhs._create_calc_expr()
+            lhs_expr = self.lhs._create_calc_expr()
         else:
-            lhs = self.lhs
+            lhs_expr = "$_lhs_%s" % self.lhs.resource_ref_snippet()
         if isinstance(self.rhs, Calc):
-            rhs = self.rhs._create_calc_expr()
+            rhs_expr = self.rhs._create_calc_expr()
         else:
-            rhs = self.rhs
+            rhs_expr = "$_rhs_%s" % self.rhs.resource_ref_snippet()
 
         if self.op in ops:
             return {
-                ops[self.op]: [lhs, rhs]
+                ops[self.op]: [lhs_expr, rhs_expr]
             }
         else:
-            return {
-                nullable_ops[self.op]: [{"$ifNull": [lhs, 0]}, {"$ifNull": [rhs, 0]}]
-            }
+            if self.op == "+" and self.lhs.infer_type().field_type == 'str':
+                return {
+                    "$concat": [{"$ifNull": [lhs_expr, '']}, {"$ifNull": [rhs_expr, '']}]
+                }
+            else:
+                return {
+                    nullable_ops[self.op]: [{"$ifNull": [lhs_expr, 0]}, {"$ifNull": [rhs_expr, 0]}]
+                }
 
     def _is_lookup(self):
         return self.lhs._is_lookup() or self.rhs._is_lookup()
@@ -1161,7 +1166,9 @@ class ResourceRefTernary(ResourceRef):
         self.else_clause.validate()
         if not self.then_clause.infer_type().check_comparable_type(self.else_clause.infer_type().field_type):
             # TODO: check also if both sides are collection / not collection
-            raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (self.then_clause.infer_type().field_type, self.else_clause.infer_type().field_type))
+            raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (
+                self.then_clause.infer_type().field_type,
+                self.else_clause.infer_type().field_type))
 
     def infer_type(self):
         return self.then_clause.infer_type()
@@ -1216,7 +1223,7 @@ class ResourceRefTernary(ResourceRef):
                     {"$match": {"$not": self.condition.create_condition_aggregation()}},
                 ] + self.else_clause.create_aggregation(user),
             }},
-            {"$project": {"_val": {
+            {"$addFields": {"_val": {
                 "$cond": {
                     "if": self.condition.create_condition_aggregation(),
                     "then": "$_then",
@@ -1322,26 +1329,6 @@ class SwitchRef(ResourceRef):
         return [], None, False
 
     def create_aggregation(self, user=None):
-        facets = {}
-        branches = []
-        for index, case in enumerate(self.cases):
-            facets["_case_%s" % index] = case.value.create_aggregation(user)
-            branches.append({
-                "case": {"$match": {case.key.value: "$_val"}},
-                "then": "$_case_%s" % index,
-            })
-
-        return [
-
-            {"$facet": facets},
-
-            {"$project": {"_val": {
-                "$switch": {
-                    "branches": branches
-            }}}},
-        ]
-
-    def create_aggregation(self, user=None):
         branches = []
         aggregation = []
 
@@ -1423,10 +1410,6 @@ class SwitchRef(ResourceRef):
         return aggregation
 
 
-
-
-
-
 class CalcTernary(Calc):
     def __init__(self, tokens, parser, spec):
         self.condition = tokens[0]
@@ -1447,7 +1430,9 @@ class CalcTernary(Calc):
         self.then_clause.validate()
         self.else_clause.validate()
         if not self.then_clause.infer_type().check_comparable_type(self.else_clause.infer_type().field_type):
-            raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (self.then_clause.infer_type().field_type, self.else_clause.infer_type().field_type))
+            raise SyntaxError("Both sides of ternary must return same type (%s != %s)" % (
+                self.then_clause.infer_type().field_type,
+                self.else_clause.infer_type().field_type))
 
     def infer_type(self):
         return self.then_clause.infer_type()
@@ -1590,7 +1575,7 @@ class Brackets(Calc):
         return self.calc.create_aggregation(user)
 
 
-class FunctionCall(Calc):
+class FunctionCall(ResourceRef):
     def __init__(self, tokens, parser):
         self.func_name = tokens[0]
         self._parser = parser
@@ -1702,7 +1687,22 @@ class FunctionCall(Calc):
         return self.params[0]._is_lookup()
 
     def is_primitive(self):
-        return self.params[0].is_primitive()
+        functions = {
+            'round': True,
+            'max': True,
+            'min': True,
+            'average': True,
+            'sum': True,
+            'days': True,
+            'hours': True,
+            'minutes': True,
+            'seconds': True,
+            'first': False,
+        }
+        return functions[self.func_name]
+
+    def is_collection(self):
+        return False
 
     def create_aggregation(self, user=None):
         functions = {
@@ -1719,10 +1719,15 @@ class FunctionCall(Calc):
         }
         return functions[self.func_name](user, *self.params)
 
+    def root_collection(self):
+        return self.params[0].root_collection()
+
     def _agg_round(self, user, field, digits=None):
-        round_agg = ["$_val"] + [digits] if digits is not None else []
+        # validate for constant for digits
+        digits = digits.value if digits else 0
+        round_agg = ["$_val"] + [digits]
         return field.create_aggregation(user) + [
-            {"$project": {"_val": {"$round": round_agg}}}
+            {"$addFields": {"_val": {"$round": round_agg}}}
         ]
 
     def _agg_max(self, user, collection):
@@ -1747,22 +1752,22 @@ class FunctionCall(Calc):
 
     def _agg_days(self, user, field):
         return field.create_aggregation(user) + [
-            {"$project": {"_val": {"$multiply": ["$_val", 1000, 60, 60, 24]}}}
+            {"$addFields": {"_val": {"$multiply": ["$_val", 1000, 60, 60, 24]}}}
         ]
 
     def _agg_hours(self, user, field):
         return field.create_aggregation(user) + [
-            {"$project": {"_val": {"$multiply": ["$_val", 1000, 60, 60]}}}
+            {"$addFields": {"_val": {"$multiply": ["$_val", 1000, 60, 60]}}}
         ]
 
     def _agg_minutes(self, user, field):
         return field.create_aggregation(user) + [
-            {"$project": {"_val": {"$multiply": ["$_val", 1000, 60]}}}
+            {"$addFields": {"_val": {"$multiply": ["$_val", 1000, 60]}}}
         ]
 
     def _agg_seconds(self, user, field):
         return field.create_aggregation(user) + [
-            {"$project": {"_val": {"$multiply": ["$_val", 1000]}}}
+            {"$addFields": {"_val": {"$multiply": ["$_val", 1000]}}}
         ]
 
     def _agg_first(self, user, collection):
@@ -1843,7 +1848,11 @@ class Parser(object):
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
             [(Calc, ',', Calc), ParameterList],
+            [(Calc, ',', ResourceRef), ParameterList],
+            [(ResourceRef, ',', ResourceRef), ParameterList],
+            [(ResourceRef, ',', Calc), ParameterList],
             [(ParameterList, ',', Calc), ParameterList],
+            [(ParameterList, ',', ResourceRef), ParameterList],
             [('(', Calc, ')'), Brackets],
             [('(', ResourceRef, ')'), Brackets],
             [(NAME, Brackets), FunctionCall],
