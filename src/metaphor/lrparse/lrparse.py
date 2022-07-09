@@ -166,12 +166,14 @@ class RootResourceRef(ResourceRef):
             aggregation.extend([
                 {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
             ])
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             return aggregation, self.spec, False
         elif self.resource_name == 'ego':
             aggregation = [
             # using ego as dummy 
 #                {"$match": {"username": user.username}}
             ]
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             return aggregation, self.spec, False
         else:
             aggregation = [
@@ -183,6 +185,7 @@ class RootResourceRef(ResourceRef):
                     {"_parent_canonical_url": '/'},
                 ]}}
             ])
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             return aggregation, self.spec, True
 
     def is_collection(self):
@@ -213,6 +216,7 @@ class IDResourceRef(ResourceRef):
         aggregation.append(
             {"$match": {"_id": self.spec.schema.decodeid(self.resource_id)}}
         )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, spec, False
 
     def is_collection(self):
@@ -250,6 +254,7 @@ class CollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def is_collection(self):
@@ -297,6 +302,7 @@ class LinkCollectionResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def create_reverse(self, calc_spec_name, calc_field_name):
@@ -349,6 +355,7 @@ class LinkResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, is_aggregate
 
     def create_reverse(self, calc_spec_name, calc_field_name):
@@ -399,6 +406,7 @@ class CalcResourceRef(ResourceRef):
                 aggregation.append(
                     {"$match": {"_grants": {"$in": user.grants}}}
                 )
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             is_aggregate = is_aggregate or calc_tree.is_collection()
         return aggregation, calc_spec, is_aggregate
 
@@ -443,6 +451,7 @@ class ReverseLinkResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def is_collection(self):
@@ -490,6 +499,7 @@ class ParentCollectionResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, False
 
     def is_collection(self):
@@ -535,6 +545,7 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def is_collection(self):

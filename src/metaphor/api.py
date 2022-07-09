@@ -21,6 +21,12 @@ from bson.errors import InvalidId
 
 from werkzeug.security import generate_password_hash
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+log = logging.getLogger()
+
 
 def create_expand_dict(expand_str):
     expand = {}
@@ -212,6 +218,8 @@ class Api(object):
                     field_name,
                     data['id'])
             elif field_spec.field_type == 'orderedcollection':
+                if field_spec.target_spec_name == 'user':
+                    data['password'] = generate_password_hash(data['password'])
                 return self.updater.create_orderedcollection_entry(
                     field_spec.target_spec_name,
                     spec.name,
@@ -220,6 +228,8 @@ class Api(object):
                     data,
                     self.schema.read_root_grants(path))
             else:
+                if field_spec.target_spec_name == 'user':
+                    data['password'] = generate_password_hash(data['password'])
                 return self.updater.create_resource(
                     field_spec.target_spec_name,
                     spec.name,
@@ -696,3 +706,110 @@ class Api(object):
                 'is_collection': True,
             }
         }
+
+    def watch(self, url, user=None):
+        # resolve resource
+        path = url.strip().strip('/')
+        try:
+            tree = parse_canonical_url(path, self.schema.root)
+        except SyntaxError as te:
+            raise HTTPError('', 404, "Not Found", None, None)
+
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+        if path.split('/')[0] == 'ego':
+            aggregate_query = [
+                {"$match": {"username": user.username}}
+            ] + aggregate_query
+
+        # establish watch
+        # if single resource
+        if not is_aggregate:
+            cursor = tree.root_collection().aggregate(aggregate_query)
+
+            resource = next(cursor)
+
+            if user:
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                self._check_grants(path, resource['_canonical_url'], user.read_grants)
+
+            watch_agg = [
+                {"$match": {"documentKey._id": resource['_id']}},
+            ]
+
+        # if collection
+        elif isinstance(tree, CollectionResourceRef) or isinstance(tree, RootResourceRef):
+            if '/' in path:
+                parent_path, field_name = path.rsplit('/', 1)
+                try:
+                    tree = parse_canonical_url(parent_path, self.schema.root)
+                except SyntaxError as te:
+                    raise HTTPError('', 404, "Not Found", None, None)
+
+                aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+                field_spec = spec.fields[field_name]
+
+                if path.split('/')[0] == 'ego':
+                    aggregate_query = [
+                        {"$match": {"username": user.username}}
+                    ] + aggregate_query
+
+                # if we're using a simplified parser we can probably just pull the id off the path
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                # check permissions
+                if user:
+                    # TODO: also need to check read access to target if link
+                    # checking for /ego paths first, then all other paths
+                    self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+
+                parent_id = self.schema.encodeid(parent_resource['_id'])
+
+                watch_agg = [
+                    {"$match": {"_parent_id": parent_id}},
+                ]
+            else:
+                log.debug("Collection watch")
+                watch_agg = [
+                    {"$match": {"fullDocument._parent_id": None,
+                                "fullDocument._parent_field_name": path}},
+#                    {"$project": {"fullDocument": 1, "operationType": 1}},
+                ]
+
+        # if link collection
+        elif isinstance(tree, LinkCollectionResourceRef):
+            parent_path, field_name = path.rsplit('/', 1)
+            try:
+                tree = parse_canonical_url(parent_path, self.schema.root)
+            except SyntaxError as te:
+                raise HTTPError('', 404, "Not Found", None, None)
+
+            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+            field_spec = spec.fields[field_name]
+
+            if path.split('/')[0] == 'ego':
+                aggregate_query = [
+                    {"$match": {"username": user.username}}
+                ] + aggregate_query
+
+            # if we're using a simplified parser we can probably just pull the id off the path
+            cursor = tree.root_collection().aggregate(aggregate_query)
+            parent_resource = next(cursor)
+
+            # check permissions
+            if user:
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+
+            parent_id = self.schema.encodeid(parent_resource['_id'])
+
+            watch_agg = [
+                {"$match": {"documentKey._id": parent_id}},
+            ]
+
+        return self.schema.db['resource_%s' % spec.name].watch(watch_agg, full_document='updateLookup')

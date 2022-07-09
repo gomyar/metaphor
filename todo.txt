@@ -1,9 +1,13 @@
 
 Todo:
+ - CORS
+ - CSRF
  - take resource_id out of reverse aggregator, collect in updaters instead
  - rewrite calc resources to use aggregations instead of calculate()
  - add update collection to track updates (retry on fail etc)
  - merge affected_ids to update collection for move / delete updates
+
+ - add POST (_copy_from) similar to move, but creates new copies
 
 Shortlist:
 

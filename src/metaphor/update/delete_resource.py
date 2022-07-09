@@ -1,4 +1,8 @@
 
+import time
+import gevent
+
+
 class DeleteResourceUpdate:
     def __init__(self, updater, schema, spec_name, resource_id, parent_spec_name, parent_field_name):
         self.updater = updater
@@ -31,7 +35,8 @@ class DeleteResourceUpdate:
                                 cursors.append((affected_ids, calc_spec_name, calc_field_name))
 
         # must add _create_updated field to resource instead of creating updater document
-        original_resource = self.schema.delete_resource(self.spec_name, self.resource_id)
+        # mark as deleted
+        original_resource = self.schema.mark_deleted(self.spec_name, self.resource_id)
 
         for affected_ids, calc_spec_name, calc_field_name in cursors:
             for affected_id in affected_ids:
@@ -60,8 +65,14 @@ class DeleteResourceUpdate:
                         # call update_resource on resource
                         self.updater.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, self.resource_id)
 
+        # delete resource
+        gevent.spawn_later(3, self._hard_delete, self.spec_name, self.resource_id)
+
         # check if resource is read grant
         if self.spec_name == 'grant':
             self.updater._remove_grants(self.resource_id, original_resource['url'])
 
         return self.resource_id
+
+    def _hard_delete(self, spec_name, resource_id):
+        self.schema.delete_resource(spec_name, resource_id)

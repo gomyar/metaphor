@@ -213,6 +213,7 @@ class Schema(object):
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}},
             upsert=True)
+        # TODO: set up indexes
         return self.add_spec(spec_name)
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
@@ -436,6 +437,9 @@ class Schema(object):
         data['_grants'] = grants or []
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
+
+    def mark_deleted(self, spec_name, resource_id):
+        return self.db['resource_%s' % spec_name].find_one_and_update({'_id': self.decodeid(resource_id)}, {"$set": {"_deleted": datetime.now()}})
 
     def delete_resource(self, spec_name, resource_id):
         return self.db['resource_%s' % spec_name].find_one_and_delete({'_id': self.decodeid(resource_id)})

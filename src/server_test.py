@@ -143,14 +143,13 @@ class ServerTest(TestCase):
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
         employee = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
-        self.assertEqual([self.schema.decodeid(self.grant_id_1)], employee['_grants'])
+        self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], employee['_grants'])
 
         skill_id_1 = self.api.post('/employees/%s/skills' % employee_id_1, {'name': 'basket'})
 
         skill = self.db['resource_skill'].find_one({"_id": self.schema.decodeid(skill_id_1)})
         # note: only read grants are cached in the resource
-        self.assertEqual([self.schema.decodeid(self.grant_id_1)], skill['_grants'])
-
+        self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], skill['_grants'])
 
     def test_delete_grant_updates_user_grants(self):
         company_spec = self.schema.add_spec('company')
