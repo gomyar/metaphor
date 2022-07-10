@@ -9,6 +9,25 @@ Todo:
 
  - add POST (_copy_from) similar to move, but creates new copies
 
+ - search bug - if one str field exists and is blank search finds nothing
+
+Ideal websockets:
+ - client may listen for :
+   - resource: specify fields
+   - collection: items added / removed
+     - filter by pagination? by filter
+     - individual items updated?
+   - link collection: items added / removed / re-ordered
+     - filter by pagination? by filter
+     - individual items updated?
+
+ listen('/employees/ABCDEF', ['name', 'address'])  - notified when specific field in resource changed
+ listen('/employees/ABCDEF', [*])  - notified when any field in resource changed
+ listen('/employees') - notified is collection items added / removed
+ listen('/employees', ['name', 'address']) - notified is collection items added / removed or specific fields updated
+ listen('/employees[name~"Bob"]', ['name', 'address']) - notified when filtered collection changed
+
+
 Shortlist:
 
  - allow changelist for resources if specified by schema admin, use custom header to retrieve older versions

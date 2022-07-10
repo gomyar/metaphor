@@ -140,6 +140,10 @@ class Resource {
                 alert("Error getting resource at " + this.self + ": " + error.status); 
             });
     }
+
+    _watch() {
+        listen_client.add_resource(this.self, this);
+    }
 }
 
 class Collection {
@@ -352,6 +356,7 @@ class ApiClient {
             this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : resource[field_name]),
             (success) => {
                 resource._expanded[field_name] = new Resource(JSON.parse(success));
+                resource._expanded[field_name]._watch();
                 turtlegui.reload(element);
             },
             (error) => {
@@ -526,7 +531,7 @@ class ApiClient {
     unlink_from_collection(resource, parent_resource, field_name, ego_path) {
         if (confirm("Unlink resource: " + resource.self + "?")) {
             turtlegui.ajax.delete(
-                this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : (parent_resource._api_root + parent_resource._collection_url) + "/" + resource.id),
+                (ego_path ? this.api_root + ego_path.replaceAll('.', '/') : (parent_resource._api_root + parent_resource._collection_url) + "/" + resource.id),
                 (success) => {
                     parent_resource._fetch()
                 },
@@ -587,6 +592,7 @@ class ListenClient {
 
     resource_updated(msg) {
         console.log('Resource updated', msg);
+        console.log('type', msg.change.type);
         if (this.resources[msg['url']]) {
             this.resources[msg['url']]._fetch();
         }

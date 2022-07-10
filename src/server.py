@@ -136,7 +136,7 @@ def remove_resource(event):
 @login_required
 @socketio.on_error()        # Handles the default namespace
 def error_handler(e):
-    log.error("ERROR", e)
+    log.error("ERROR: %s", e)
 
 
 if __name__ == '__main__':

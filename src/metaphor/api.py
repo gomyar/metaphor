@@ -81,10 +81,7 @@ class Api(object):
 
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
-        try:
-            tree = parse_canonical_url(path, self.schema.root)
-        except SyntaxError as te:
-            raise HTTPError('', 404, "Not Found", None, None)
+        tree = self._parse_canonical_url(path)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -120,10 +117,7 @@ class Api(object):
 
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
-            try:
-                tree = parse_canonical_url(parent_path, self.schema.root)
-            except SyntaxError as te:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(parent_path)
 
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -185,10 +179,7 @@ class Api(object):
 
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
-            try:
-                tree = parse_canonical_url(parent_path, self.schema.root)
-            except SyntaxError as te:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(parent_path)
 
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -267,18 +258,15 @@ class Api(object):
             parent_field_path = '/'.join(path.split('/')[:-1])
             resource_id = path.split('/')[-1]
 
-            try:
-                tree = parse_canonical_url(path, self.schema.root)
-            except ValueError as ve:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(path)
 
-            parent_field_tree = parse_canonical_url(parent_field_path, self.schema.root)
+            parent_field_tree = self._parse_canonical_url(parent_field_path)
 
             parent_path = '/'.join(parent_field_path.split('/')[:-1])
             field_name = parent_field_path.split('/')[-1]
 
             if type(parent_field_tree) == LinkCollectionResourceRef:
-                parent_tree = parse_canonical_url(parent_path, self.schema.root)
+                parent_tree = self._parse_canonical_url(parent_path)
                 aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
                 if path.split('/')[0] == 'ego':
@@ -300,7 +288,7 @@ class Api(object):
                     field_name,
                     resource_id)
             elif type(parent_field_tree) == OrderedCollectionResourceRef:
-                parent_tree = parse_canonical_url(parent_path, self.schema.root)
+                parent_tree = self._parse_canonical_url(parent_path)
                 aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
                 if path.split('/')[0] == 'ego':
@@ -710,10 +698,7 @@ class Api(object):
     def watch(self, url, user=None):
         # resolve resource
         path = url.strip().strip('/')
-        try:
-            tree = parse_canonical_url(path, self.schema.root)
-        except SyntaxError as te:
-            raise HTTPError('', 404, "Not Found", None, None)
+        tree = self._parse_canonical_url(path)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -725,6 +710,7 @@ class Api(object):
         # establish watch
         # if single resource
         if not is_aggregate:
+            log.debug("Watching resource")
             cursor = tree.root_collection().aggregate(aggregate_query)
 
             resource = next(cursor)
@@ -736,16 +722,18 @@ class Api(object):
 
             watch_agg = [
                 {"$match": {"documentKey._id": resource['_id']}},
+                {"$project": {
+                    "document": "$fullDocument",
+                    "type": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}},
+                }}
             ]
 
         # if collection
         elif isinstance(tree, CollectionResourceRef) or isinstance(tree, RootResourceRef):
+            log.debug("Watching collection (root)")
             if '/' in path:
                 parent_path, field_name = path.rsplit('/', 1)
-                try:
-                    tree = parse_canonical_url(parent_path, self.schema.root)
-                except SyntaxError as te:
-                    raise HTTPError('', 404, "Not Found", None, None)
+                tree = self._parse_canonical_url(parent_path)
 
                 aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -776,16 +764,23 @@ class Api(object):
                 watch_agg = [
                     {"$match": {"fullDocument._parent_id": None,
                                 "fullDocument._parent_field_name": path}},
-#                    {"$project": {"fullDocument": 1, "operationType": 1}},
+                    {"$project": {
+                        "document": "$fullDocument",
+                        "type": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}},
+                        "diff": "$updateDescription.updatedFields",
+                        "operationType": 1,
+                    }},
+                    {"$set": {
+                        "type": {"$cond": {"if": {"$eq": ["$operationType", "insert"]}, "then": "created", "else": "$type"}},
+                    }},
+
                 ]
 
         # if link collection
         elif isinstance(tree, LinkCollectionResourceRef):
+            log.debug("Watching link collection")
             parent_path, field_name = path.rsplit('/', 1)
-            try:
-                tree = parse_canonical_url(parent_path, self.schema.root)
-            except SyntaxError as te:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(parent_path)
 
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -810,6 +805,18 @@ class Api(object):
 
             watch_agg = [
                 {"$match": {"documentKey._id": parent_id}},
+                {"$project": {
+                    "document": "$fullDocument",
+                    "type": "updated",
+                    "diff": "$updateDescription.updatedFields",
+                }},
+
             ]
 
         return self.schema.db['resource_%s' % spec.name].watch(watch_agg, full_document='updateLookup')
+
+    def _parse_canonical_url(self, path):
+        try:
+            return parse_canonical_url(path, self.schema.root)
+        except SyntaxError as te:
+            raise HTTPError('', 404, "Not Found", None, None)
