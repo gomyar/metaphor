@@ -10,6 +10,10 @@ Todo:
  - add POST (_copy_from) similar to move, but creates new copies
 
  - search bug - if one str field exists and is blank search finds nothing
+ - add type info to _meta structure for all resources ('resource', 'link', 'linkcollection', 'collection')
+   - remove delete button for links
+ - possibly add permission info to _meta for current user for each resource (read/write/update)
+ - OR just line up with known Schema
 
 Ideal websockets:
  - client may listen for :

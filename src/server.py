@@ -130,7 +130,7 @@ def remove_resource(event):
     log.debug("remove resource %s %s", flask_login.current_user.username, event)
     mapped_socket = socket_map[request.sid].pop(event['url'])
     mapped_socket['watch'].close()
-    mapped_socket['gevent'].join()
+    mapped_socket['gthread'].join()
 
 
 @login_required

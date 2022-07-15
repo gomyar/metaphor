@@ -673,6 +673,7 @@ class Api(object):
         pagination = self.create_pagination_aggregations(page, page_size)
         aggregation = [
             {"$match": query},
+            {"$match": {"_deleted": {"$exists": False}}},
             pagination,
         ]
 

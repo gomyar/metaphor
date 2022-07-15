@@ -70,6 +70,11 @@ div.pagination span.control.enabled {
     cursor : pointer;
 }
 
+div.pagination span.control.listening {
+    width: 140px;
+    color: black;
+}
+
 div.pagination span.control.enabled:hover {
     border : 1px solid grey;
 }
@@ -172,6 +177,30 @@ span.create_button {
 
 span.create_button:hover {
     border: 1px solid grey;
+}
+
+
+span.listen_button {
+    display: inline-block;
+    text-align: center;
+    color: lightgrey;
+    border: 1px solid lightgrey;
+    cursor: pointer;
+    font-weight: normal;
+    font-size: 14px;
+    margin-left: 20px;
+
+}
+
+span.listen_button:hover {
+    border: 1px solid grey;
+    color: grey;
+}
+
+span.listen_button.listening {
+    border: 1px solid grey;
+    background-color: lightgreen;
+    color: black;
 }
 
 span.control.create_button{

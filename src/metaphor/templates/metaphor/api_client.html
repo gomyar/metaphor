@@ -2,11 +2,11 @@
 
 <head>
 
-    <link rel="stylesheet" type="text/css" href="https://rawgit.com/gomyar/turtlegui/v5.17/turtlegui.css"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.css"/>
     <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
     <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/client.css"/>
 
-    <script src="https://rawgit.com/gomyar/turtlegui/v5.17/turtlegui.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js" integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ==" crossorigin="anonymous"></script>
     <script src="/admin/static/metaphor/api_client.js"></script>
 
@@ -30,7 +30,6 @@
             <span class="viewcontrol"></span><input type=checkbox gui-val="api.show_self_links" gui-click="api.toggle_show_self_links()">Show self urls</input></span>
         </div>
 
-
     </div>
 
     <div class="fullscreen resource_view">
@@ -46,6 +45,9 @@
                         <span class="control" gui-click="resource._next()" gui-class="resource.next && 'enabled'" title="Next">&#8250;</span>&nbsp;
                         <span class="control" gui-click="resource._last()" gui-class="resource.next && 'enabled'" title="Last Page">&#187;</span>
                         <span class="control enabled" gui-click="resource._fetch()" title="reload">&#x21bb;</span>
+
+                            <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
+                            <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
                     </div>
                     <div class="collection_results" gui-list="resource.results" gui-item="item">
                         <div gui-node="item" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name+'.'+item.id)"></div>
@@ -53,6 +55,8 @@
                 </div>
                 <div class="resource" gui-show="api.is_resource(resource)">
 
+                    <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
+                    <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
                     <div class="fields">
                         <div class="field" gui-show="resource._meta.spec.name == 'root'">
                             <div class="field_name">ego</div>
@@ -68,11 +72,11 @@
 
                         </div>
                         <div class="field" gui-show="resource._meta.spec.name != 'root'">
-                            <div class="field_name">ID <span gui-show="ego_path" gui-text="ego_path">(ego)</span></div>
+                            <div class="field_name">ID</div>
                             <div class="field_value id">
                                 <a class="resource_link" gui-attrs="href='/client'+resource.self" gui-text="resource.id"></a>
                             </div>
-                            <span class="control create_button" gui-show="!api.is_linkcollection(parent_resource, parent_field_name)" gui-click="api.perform_delete_resource(resource, parent_resource, ego_path&&(ego_path))" gui-text="'>> delete ' + resource._meta.spec.name"></span>
+                            <span class="control create_button" gui-show="api.is_parent_collection(parent_resource, parent_field_name)" gui-click="api.perform_delete_resource(resource, parent_resource, ego_path&&(ego_path))" gui-text="'>> delete ' + resource._meta.spec.name"></span>
                             <span class="control create_button" gui-show="api.is_linkcollection(parent_resource, parent_field_name)"  gui-click="api.unlink_from_collection(resource, parent_resource, parent_field_name, ego_path&&(ego_path+'.'+parent_field_name))" gui-text="'>> unlink ' + resource._meta.spec.name"></span>
                         </div>
                         <div class="field" gui-show="(resource._meta.spec.name != 'root') && api.show_self_links">
@@ -179,6 +183,36 @@
                             <div class="field_value simple">
                                 <span gui-text="resource[field_name]"></span>
                             </div>
+                        </div>
+                        <div class="field" gui-show="(field.type=='calc') && (field.target_spec_name!=null) && field.is_collection">
+
+                            <div class="field_name" gui-text="field_name"></div>
+                            <div class="field_value">
+                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
+                                <!-- possible expansion to collection -->
+                                <span class="collection_url">
+                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                </span>
+
+                                <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                            </div>
+
+                        </div>
+                        <div class="field" gui-show="(field.type=='calc') && (field.target_spec_name!=null) && (!field.is_collection)">
+                            <div class="field_name" gui-text="field_name"></div>
+
+                            <div class="field_value">
+                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field, ego_path&&(ego_path+'.'+field_name))">+</span>
+                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
+                                <!-- possible expansion to resource -->
+                                <span class="link_url">
+                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                </span>
+
+                                <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                            </div>
+ 
                         </div>
 
                         <div class="field" gui-show="field.type=='bool'">
