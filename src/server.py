@@ -94,6 +94,10 @@ def on_connect():
 @socketio.on('disconnect')
 def on_disconnect():
     log.debug('Client disconnected %s', flask_login.current_user.username)
+    sockets = socket_map.pop(request.sid)
+    for url in sockets:
+        log.debug("Cleaning listen for: %s", url)
+        sockets[url]['watch'].close()
 
 
 def watch_resource(watch, sid, url):
@@ -104,15 +108,20 @@ def watch_resource(watch, sid, url):
             socketio.emit("resource_update", {"url": url, "change": json.loads(dumps(change))}, room=sid)
     except pymongo.errors.OperationFailure as of:
         log.debug("Change stream closed for %s: %s", sid, url)
-    if url in socket_map[sid]:
+    if url in socket_map.get(sid, {}):
         log.debug("Removing stream for %s: %s", sid, url)
         mapped_socket = socket_map[sid].pop(url)
+        socketio.emit("lost_stream", {"url": url}, room=sid)
 
 
 @login_required
 @socketio.on('add_resource')
 def add_resource(event):
     log.debug("add resource %s %s", flask_login.current_user.username, event)
+
+    if event['url'] in socket_map[request.sid]:
+        log.debug("Add resource already added: %s", event['url'])
+        return
 
     # establish watch
     api = current_app.config['api']
@@ -136,7 +145,7 @@ def remove_resource(event):
 @login_required
 @socketio.on_error()        # Handles the default namespace
 def error_handler(e):
-    log.error("ERROR: %s", e)
+    log.error("ERROR: %s: %s", type(e), e)
 
 
 if __name__ == '__main__':

@@ -588,14 +588,27 @@ class ListenClient {
     init() {
         this.socket = io(location.host, {transports: ["websocket", "polling"]});
         this.socket.on('resource_update', (msg) => {this.resource_updated(msg)});
+        this.socket.on('lost_stream', (msg) => {this.lost_stream(msg)});
 
-        this.socket.on('connect', function() {
+        this.socket.on('connect', () => {
             console.log('Connected');
+            for (var url in this.resources) {
+                console.log('Listening to ' + url);
+                this.socket.emit('add_resource', {'url': url});
+            }
         });
-        this.socket.on('disconnect', function() {
+        this.socket.on('disconnect', () => {
             console.log('Disconnected');
         });
 
+    }
+
+    lost_stream(msg) {
+        console.log('Lost stream:' + msg['url']);
+        if (msg['url'] in this.resources) {
+            console.log('Reestablishing: ' + msg['url']);
+            this.socket.emit('add_resource', {'url': url});
+        }
     }
 
     resource_updated(msg) {
@@ -607,11 +620,14 @@ class ListenClient {
     }
 
     add_resource(resource) {
+        // If empty, establish socket connection
+        if (Object.keys(this.resources).length === 0) {
+            listen_client.init();
+        }
         var url = resource._url();
         if (!(this.resources[url])) {
             console.log('Add resource', resource);
             this.resources[url] = resource;
-            this.socket.emit('add_resource', {'url': url});
         }
         resource._fetch();
     }
@@ -622,6 +638,10 @@ class ListenClient {
             console.log('Remove resource', resource);
             delete this.resources[url];
             this.socket.emit('remove_resource', {'url': url});
+        }
+        // If empty, disconnect socket connection
+        if (Object.keys(this.resources).length === 0) {
+            listen_client.socket.disconnect();
         }
         turtlegui.reload();
     }
@@ -639,7 +659,6 @@ document.addEventListener("DOMContentLoaded", function(){
     turtlegui.ajax.get('/admin/schema_editor/api', function(response) {
         Schema = JSON.parse(response);
         api.load();
-        listen_client.init();
     });
 });
 
