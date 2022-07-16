@@ -32,15 +32,12 @@ from metaphor.api_bp import search_bp
 from metaphor.login_bp import login_bp
 from metaphor.login_bp import init_login
 from metaphor.client_bp import client_bp
-from metaphor.integrations.runner import IntegrationRunner
 
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log = logging.getLogger()
-
-integration_runner = None
 
 def create_app(db):
     schema = Schema(db)
@@ -63,11 +60,6 @@ def create_app(db):
     @app.route("/")
     def index():
         return redirect(url_for('client.client_root'))
-
-    integration_runner = IntegrationRunner(api, db)
-    integration_runner.start()
-
-    atexit.register(integration_runner.stop)
 
     return app
 

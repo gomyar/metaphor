@@ -541,15 +541,3 @@ class Schema(object):
             ]
         }
         return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
-
-    def list_integrations(self):
-        return self.db['metaphor_integrations'].find({})
-
-    def create_integration(self, integration_data):
-        self.db['metaphor_integrations'].insert(integration_data)
-
-    def update_integration(self, integration_data):
-        self.db['metaphor_integrations'].update_one({'_id': integration_data['_id']}, {"$set": integration_data})
-
-    def delete_integration(self, integration_id):
-        self.db['metaphor_integrations'].remove_one({'_id': integration_data['_id']})
