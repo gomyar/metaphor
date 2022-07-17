@@ -721,12 +721,14 @@ class Api(object):
                 # checking for /ego paths first, then all other paths
                 self._check_grants(path, resource['_canonical_url'], user.read_grants)
 
+            spec_fields = spec.fields.keys()
+            project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
+            project_fields['document.self'] = '$fullDocument._canonical_url'
+            project_fields['type'] = {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}}
+            project_fields['diff'] = "$updateDescription.updatedFields"
             watch_agg = [
                 {"$match": {"documentKey._id": resource['_id']}},
-                {"$project": {
-                    "document": "$fullDocument",
-                    "type": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}},
-                }}
+                {"$project": project_fields},
             ]
 
         # if collection
@@ -769,16 +771,22 @@ class Api(object):
                                 "fullDocument._parent_field_name": path}}
                 ]
             # send back type of change (update / delete / create) and details of change + diff
+            spec_fields = spec.fields.keys()
+            project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
+            project_fields['document.self'] = '$fullDocument._canonical_url'
+            project_fields['type'] = {
+                "$cond": {
+                    "if": {
+                        "$eq": ["$operationType", "insert"]
+                    },
+                    "then": "created",
+                    "else": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}}
+                }
+            }
+            project_fields['diff'] = "$updateDescription.updatedFields"
+
             watch_agg.extend([
-                {"$project": {
-                    "document": "$fullDocument",
-                    "type": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}},
-                    "diff": "$updateDescription.updatedFields",
-                    "operationType": 1,
-                }},
-                {"$set": {
-                    "type": {"$cond": {"if": {"$eq": ["$operationType", "insert"]}, "then": "created", "else": "$type"}},
-                }},
+                {"$project": project_fields},
             ])
 
         # if link collection
@@ -809,7 +817,8 @@ class Api(object):
             # only sending back updated signal, no way to get more details yet, client must reload collection
             watch_agg = [
                 {"$match": {"documentKey._id": parent_resource['_id'],
-                            "updateDescription.updatedFields.%s" % field_name: {"$exists": True}}},
+                            "updateDescription.updatedFields.%s" % field_name: {"$exists": True},
+                }},
                 {"$project": {
                     "type": "updated",
                 }},

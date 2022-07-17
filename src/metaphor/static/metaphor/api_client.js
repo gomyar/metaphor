@@ -607,7 +607,7 @@ class ListenClient {
         console.log('Lost stream:' + msg['url']);
         if (msg['url'] in this.resources) {
             console.log('Reestablishing: ' + msg['url']);
-            this.socket.emit('add_resource', {'url': url});
+            this.socket.emit('add_resource', {'url': msg['url']});
         }
     }
 

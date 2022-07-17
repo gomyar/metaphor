@@ -28,6 +28,7 @@ div.viewcontrols span.viewcontrol {
 div.viewcontrols span.viewcontrol span.listencontrol {
     border: 1px solid grey;
     padding : 2px;
+    cursor: pointer;
 }
 
 div.viewcontrols span.viewcontrol span.listencontrol.is_listening {
