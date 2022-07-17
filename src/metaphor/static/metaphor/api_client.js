@@ -654,6 +654,15 @@ class ListenClient {
 var api = new ApiClient();
 var listen_client = new ListenClient();
 
+var listen_dropdown = {
+    is_open: false,
+
+    toggle: function() {
+        this.is_open = !this.is_open;
+        turtlegui.reload();
+    }
+}
+
 
 document.addEventListener("DOMContentLoaded", function(){
     turtlegui.ajax.get('/admin/schema_editor/api', function(response) {

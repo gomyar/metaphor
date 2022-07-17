@@ -757,25 +757,29 @@ class Api(object):
 
                 parent_id = self.schema.encodeid(parent_resource['_id'])
 
+                # listen for changes to children of given parent
                 watch_agg = [
                     {"$match": {"_parent_id": parent_id}},
                 ]
             else:
                 log.debug("Collection watch")
+                # listen for changes to children of root
                 watch_agg = [
                     {"$match": {"fullDocument._parent_id": None,
-                                "fullDocument._parent_field_name": path}},
-                    {"$project": {
-                        "document": "$fullDocument",
-                        "type": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}},
-                        "diff": "$updateDescription.updatedFields",
-                        "operationType": 1,
-                    }},
-                    {"$set": {
-                        "type": {"$cond": {"if": {"$eq": ["$operationType", "insert"]}, "then": "created", "else": "$type"}},
-                    }},
-
+                                "fullDocument._parent_field_name": path}}
                 ]
+            # send back type of change (update / delete / create) and details of change + diff
+            watch_agg.extend([
+                {"$project": {
+                    "document": "$fullDocument",
+                    "type": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}},
+                    "diff": "$updateDescription.updatedFields",
+                    "operationType": 1,
+                }},
+                {"$set": {
+                    "type": {"$cond": {"if": {"$eq": ["$operationType", "insert"]}, "then": "created", "else": "$type"}},
+                }},
+            ])
 
         # if link collection
         elif isinstance(tree, LinkCollectionResourceRef):
@@ -802,16 +806,13 @@ class Api(object):
                 # checking for /ego paths first, then all other paths
                 self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
 
-            parent_id = self.schema.encodeid(parent_resource['_id'])
-
+            # only sending back updated signal, no way to get more details yet, client must reload collection
             watch_agg = [
-                {"$match": {"documentKey._id": parent_id}},
+                {"$match": {"documentKey._id": parent_resource['_id'],
+                            "updateDescription.updatedFields.%s" % field_name: {"$exists": True}}},
                 {"$project": {
-                    "document": "$fullDocument",
                     "type": "updated",
-                    "diff": "$updateDescription.updatedFields",
                 }},
-
             ]
 
         return self.schema.db['resource_%s' % spec.name].watch(watch_agg, full_document='updateLookup')

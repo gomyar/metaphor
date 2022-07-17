@@ -25,9 +25,12 @@
         <span class="control create_button" gui-click="search.show_create_linkcollection_search(api.root_resource)" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
 
         <div class="viewcontrols">
-            <span class="viewcontrol"></span><input type=checkbox gui-val="api.show_reverse_links" gui-click="api.toggle_show_reverse_links()">Show reverse links</input></span>
-            <span class="viewcontrol"></span><input type=checkbox gui-val="api.show_parents" gui-click="api.toggle_show_parents()">Show parents</input></span>
-            <span class="viewcontrol"></span><input type=checkbox gui-val="api.show_self_links" gui-click="api.toggle_show_self_links()">Show self urls</input></span>
+            <span class="viewcontrol"><input type=checkbox gui-val="api.show_reverse_links" gui-click="api.toggle_show_reverse_links()">Show reverse links</input></span>
+            <span class="viewcontrol"><input type=checkbox gui-val="api.show_parents" gui-click="api.toggle_show_parents()">Show parents</input></span>
+            <span class="viewcontrol"><input type=checkbox gui-val="api.show_self_links" gui-click="api.toggle_show_self_links()">Show self urls</input></span>
+            <span class="viewcontrol">
+                <span class="listencontrol" gui-class="Object.keys(listen_client.resources).length && 'is_listening'" gui-click="listen_dropdown.toggle()"><span>listening (<span gui-text="Object.keys(listen_client.resources).length"></span>):</span><span gui-show="!listen_dropdown.is_open">&#x3e;</span><span gui-show="listen_dropdown.is_open">&#8964;</span></div>
+            </span>
         </div>
 
     </div>
@@ -72,7 +75,7 @@
 
                         </div>
                         <div class="field" gui-show="resource._meta.spec.name != 'root'">
-                            <div class="field_name">ID</div>
+                            <div class="field_name">id</div>
                             <div class="field_value id">
                                 <a class="resource_link" gui-attrs="href='/client'+resource.self" gui-text="resource.id"></a>
                             </div>
@@ -373,6 +376,15 @@
             </div>
 
         </div>
+    </div>
+
+
+    <div class="fullscreen listen_popup" gui-show="listen_dropdown.is_open" gui-click="listen_dropdown.toggle()">
+        <span class="listening_resources"  gui-list="listen_client.resources" gui-item="resource" gui-key="url">
+            <div>
+                <a class="listen_link" gui-attrs="href='/client'+resource.self" gui-text="url"></a>
+            <span gui-click="listen_client.remove_resource(resource)" class="listen_button listening">stop</span></div>
+        </span>
     </div>
 
 </body>
