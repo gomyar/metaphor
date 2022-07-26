@@ -148,4 +148,14 @@ class Updater(object):
 
     def create_user(self, username, password):
         pw_hash = generate_password_hash(password)
-        return self.create_resource('user', 'root', 'users', None, {'username': username, 'password': pw_hash, 'admin': True}, self.schema.read_root_grants('users'))
+        return self.create_resource(
+            'user',
+            'root',
+            'users',
+            None,
+            {'username': username, 'password': pw_hash, 'admin': True},
+            self.schema.read_root_grants('users'))
+
+    def delete_user(self, username):
+        user = self.schema.db['resource_user'].find_one({'username': username})
+        self.delete_resource('user', self.schema.encodeid(user['_id']), user['_parent_type'], user['_parent_field_name'])

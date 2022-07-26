@@ -29,9 +29,9 @@ login_bp = Blueprint('login', __name__,
 
 
 @login_manager.user_loader
-def load_user(username):
+def load_user(password_hash):
     api = current_app.config['api']
-    return api.schema.load_user(username)
+    return api.schema.load_user_by_password_hash(password_hash)
 
 
 def is_safe_url(target):
@@ -46,7 +46,7 @@ def is_safe_url(target):
 def login():
     api = current_app.config['api']
     if request.method == 'POST':
-        user = api.schema.load_user(request.form['username'], True)
+        user = api.schema.load_user_by_username(request.form['username'])
         if user and check_password_hash(user.password, \
                                         request.form['password']):
             login_user(user)

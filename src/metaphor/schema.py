@@ -1,5 +1,6 @@
 
 import os
+from uuid import uuid4
 from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
@@ -121,8 +122,9 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants, admin=False):
+    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, admin):
         self.username = username
+        self.password = password
         self.read_grants = read_grants
         self.create_grants = create_grants
         self.update_grants = update_grants
@@ -130,7 +132,7 @@ class User(UserMixin):
         self.admin = admin
 
     def get_id(self):
-        return self.username
+        return self.password
 
     def is_admin(self):
         return self.admin
@@ -487,20 +489,34 @@ class Schema(object):
     def remove_spec_field(self, spec_name, field_name):
         self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
 
-    def load_user(self, username, load_hash=False):
+    def load_user_by_username(self, username):
         user_data = self.db['resource_user'].find_one({'username': username})
         if user_data:
             user = User(username,
+                        user_data['password'],
                         user_data['read_grants'],
                         user_data['create_grants'],
                         user_data['update_grants'],
                         user_data['delete_grants'],
-                        user_data.get('admin'))
-            if load_hash:
-                user.password = user_data['password']
+                        user_data.get('admin') or False)
             return user
         else:
             return None
+
+    def load_user_by_password_hash(self, password_hash):
+        user_data = self.db['resource_user'].find_one({'password': password_hash})
+        if user_data:
+            user = User(user_data['username'],
+                        user_data['password'],
+                        user_data['read_grants'],
+                        user_data['create_grants'],
+                        user_data['update_grants'],
+                        user_data['delete_grants'],
+                        user_data.get('admin') or False)
+            return user
+        else:
+            return None
+
 
     def create_initial_schema(self):
         self.create_spec('user')

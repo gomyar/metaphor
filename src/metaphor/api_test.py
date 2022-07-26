@@ -1072,7 +1072,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
-        user = self.schema.load_user('bob')
+        user = self.schema.load_user_by_username('bob')
         user.grants = [g['_id'] for g in user.create_grants]
 
         # post with grants
@@ -1094,7 +1094,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
-        user = self.schema.load_user('bob')
+        user = self.schema.load_user_by_username('bob')
         user.grants = [g['_id'] for g in user.update_grants]
 
         # patch with grants
@@ -1118,7 +1118,7 @@ class ApiTest(unittest.TestCase):
         user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
-        user = self.schema.load_user('bob')
+        user = self.schema.load_user_by_username('bob')
         user.grants = [g['_id'] for g in user.create_grants]
 
         self.api.post('/ego/references', {'name': 'fred'}, user=user)
@@ -1140,7 +1140,7 @@ class ApiTest(unittest.TestCase):
 
         employee_id = self.api.post('/employees', {'name': 'Fred'})
 
-        user = self.schema.load_user('bob')
+        user = self.schema.load_user_by_username('bob')
         user.grants = [g['_id'] for g in user.update_grants]
 
         self.api.patch('/ego', {'reference': employee_id}, user=user)
