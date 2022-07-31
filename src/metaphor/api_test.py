@@ -582,7 +582,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.delete('/employees/%s' % employee_id_2)
 
-        new_employees = list(self.db['resource_employee'].find())
+        new_employees = list(self.db['resource_employee'].find({"_deleted": {"$exists": False}}))
 
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
@@ -711,6 +711,21 @@ class ApiTest(unittest.TestCase):
             'parent_section_contractors': None,
             'self': '/employees/%s' % employee_id_1}
             , self.api.get('/employees/%s' % employee_id_1, args={"expand": 'division.sections'}))
+
+    def test_expand_null_link(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41,}, 'employees')
+
+        self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'id': employee_id_1,
+            'age': 41,
+            'created': None,
+            'division': None,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+            'name': 'ned',
+            'parent_section_contractors': None,
+            'self': '/employees/%s' % employee_id_1}]
+            , self.api.get('/employees', args={"expand": 'division'})['results'])
 
     def test_expand_linkcollection(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
