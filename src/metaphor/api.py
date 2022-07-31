@@ -508,7 +508,7 @@ class Api(object):
                 "from": from_field,
                 "as": as_field,
                 "let": {
-                    "v_id": "$%s" % local_field,
+                    "v_id": {"$ifNull": ["$%s" % local_field, []]},
                 },
                 "pipeline": [
                     {

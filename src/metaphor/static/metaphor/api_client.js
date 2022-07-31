@@ -384,7 +384,7 @@ class ApiClient {
         return resource._expanded[field_name] != null;
     }
 
-    show_create_resource(parent_resource, target_spec_name, parent_canonical_url) {
+    show_create_resource(parent_resource, target_spec_name, parent_canonical_url, collection) {
         var spec = Schema.specs[target_spec_name];
         this.creating_resource = {
             "_meta": {
@@ -393,6 +393,7 @@ class ApiClient {
         }
         this.creating_parent_resource = parent_resource;
         this.creating_resource_url = parent_canonical_url;
+        this.creating_collection = collection;
         turtlegui.reload();
     }
 
@@ -444,7 +445,7 @@ class ApiClient {
             (success) => {
                 console.log('Created');
                 api.creating_resource = null;
-                api.creating_parent_resource._fetch();
+                api.creating_collection._fetch();
             },
             (error) => {
                 console.log('Error creating ', error);

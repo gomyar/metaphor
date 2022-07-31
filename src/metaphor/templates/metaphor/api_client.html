@@ -103,7 +103,7 @@
                                 </span>
 
 
-                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name])" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name], resource._expanded[field_name])" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
                                 <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
 
                                 <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path"></div>
@@ -121,7 +121,7 @@
                                 </span>
 
 
-                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name])" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name], resource._expanded[field_name])" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
                                 <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
 
                                 <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>

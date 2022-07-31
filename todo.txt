@@ -1,7 +1,19 @@
 
 Todo:
+ - Bug: cannot link to read-able /ego/whatever resource (client tries to use canonical url)
+ - Bug: Refresh buton under /ego resources doesn't work (client tries to use canonical url)
+ - Bug: Empty lists do not report 403
+
  - CORS
  - CSRF
+
+ - logout on password change
+ - logout on source address change?
+
+ - oauth token based api access
+
+ - login through api
+
  - take resource_id out of reverse aggregator, collect in updaters instead
  - rewrite calc resources to use aggregations instead of calculate()
  - add update collection to track updates (retry on fail etc)
