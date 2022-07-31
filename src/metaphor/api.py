@@ -525,6 +525,29 @@ class Api(object):
                 agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
             return agg
 
+        def lookup_reverse_link_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
+            agg = {"$lookup": {
+                "from": from_field,
+                "as": as_field,
+                "let": {
+                    "v_id": {"$ifNull": ["$%s" % local_field, []]},
+                },
+                "pipeline": [
+                    {"$match": {foreign_field: {"$exists": True}}},
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$in": ["$$v_id", "$%s" % foreign_field]
+                            }
+                        }
+                    }
+                ]
+            }}
+            for inner_field_name in expand_further:
+                inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+            return agg
+
         aggregate_query = []
         for field_name in expand_dict:
             if field_name not in spec.fields:
@@ -591,6 +614,18 @@ class Api(object):
                             "resource_%s" % spec.name,
                             "_parent_id",
                             "_id",
+                            "_expanded_%s" % field_name,
+                            expand_dict
+                    ))
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
+            elif field.field_type == 'reverse_link_collection':
+                aggregate_query.append(
+                    lookup_reverse_link_collection_agg(
+                            "resource_%s" % field.target_spec_name,
+                            "_id",
+                            "%s._id" % field.reverse_link_field,
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
