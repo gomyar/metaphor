@@ -886,7 +886,16 @@ class ApiTest(unittest.TestCase):
             'contractors': '/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1),
             'id': section_id_1,
             'name': 'engineering',
-            'parent_division_sections': '/divisions/%s' % division_id_1,
+            'parent_division_sections': {
+                '_meta': {'is_collection': False,
+                'spec': {'name': 'division'}},
+                'id': division_id_1,
+                'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+                'name': 'sales',
+                'parttimers': '/divisions/%s/parttimers' % division_id_1,
+                'sections': '/divisions/%s/sections' % division_id_1,
+                'self': '/divisions/%s' % division_id_1,
+                'yearly_sales': 100},
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}
             , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'parent_division_sections'}))
 

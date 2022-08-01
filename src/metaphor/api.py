@@ -611,12 +611,15 @@ class Api(object):
             elif field.field_type == 'parent_collection':
                 aggregate_query.append(
                     lookup_agg(
-                            "resource_%s" % spec.name,
+                            "resource_%s" % spec.fields[field_name].target_spec_name,
                             "_parent_id",
                             "_id",
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
+                aggregate_query.append(
+                    {"$unwind": {"path": "$_expanded_%s" % field_name, "preserveNullAndEmptyArrays": True}}
+                )
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
@@ -667,7 +670,10 @@ class Api(object):
                 else:
                     encoded[field_name] = None
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
-                encoded[field_name] = resource_data['_parent_canonical_url']
+                if field_name in expand_dict:
+                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                else:
+                    encoded[field_name] = resource_data['_parent_canonical_url']
             elif field.field_type in ('reverse_link',):
                 if field_name in expand_dict:
                     encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
