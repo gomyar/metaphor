@@ -578,9 +578,9 @@ class Api(object):
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
-                aggregate_query.append(
-                    {"$unwind": {"path": "$_expanded_%s" % field_name, "preserveNullAndEmptyArrays": True}}
-                )
+                #aggregate_query.append(
+                #    {"$unwind": {"path": "$_expanded_%s" % field_name, "preserveNullAndEmptyArrays": True}}
+                #)
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
@@ -676,7 +676,7 @@ class Api(object):
                     encoded[field_name] = resource_data['_parent_canonical_url']
             elif field.field_type in ('reverse_link',):
                 if field_name in expand_dict:
-                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
                 else:
                     # TODO: A canonical link would be better
                     encoded[field_name] = os.path.join(self_url, field_name)
