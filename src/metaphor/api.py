@@ -578,9 +578,6 @@ class Api(object):
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
-                #aggregate_query.append(
-                #    {"$unwind": {"path": "$_expanded_%s" % field_name, "preserveNullAndEmptyArrays": True}}
-                #)
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )

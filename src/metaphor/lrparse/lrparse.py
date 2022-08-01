@@ -690,6 +690,8 @@ class Operator(Calc):
                 return lhs >= rhs
             elif op == '<=':
                 return lhs <= rhs
+            elif op == '!=':
+                return lhs != rhs
         except TypeError as te:
             return None
         except AttributeError as te:
@@ -1216,12 +1218,14 @@ class Parser(object):
             [(NAME, '<', ConstRef) , Condition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+            [(NAME, '!=', ConstRef) , Condition],
 
             [(NAME, '=', ResourceRef) , Condition],
             [(NAME, '>', ResourceRef) , Condition],
             [(NAME, '<', ResourceRef) , Condition],
             [(NAME, '>=', ResourceRef) , Condition],
             [(NAME, '<=', ResourceRef) , Condition],
+            [(NAME, '!=', ResourceRef) , Condition],
 
             [(Operable, '+', Operable) , Operator],
             [(Operable, '-', Operable) , Operator],
@@ -1234,6 +1238,7 @@ class Parser(object):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(Calc, '>=', Calc) , Operator],
             [(Calc, '<=', Calc) , Operator],
+            [(Calc, '!=', Calc) , Operator],
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
@@ -1379,6 +1384,7 @@ class UrlParser(Parser):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+            [(NAME, '!=', ConstRef) , Condition],
 
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
@@ -1419,6 +1425,7 @@ class FilterParser(Parser):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+            [(NAME, '!=', ConstRef) , Condition],
 
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],

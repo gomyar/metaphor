@@ -382,6 +382,10 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.salary >= self.tax", employee_spec)
         self.assertTrue(True is tree.calculate(employee_id_1))
 
+        tree = parse("self.salary != self.tax", employee_spec)
+        self.assertTrue(True is tree.calculate(employee_id_1))
+
+
     def test_calc_nones(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "int")
