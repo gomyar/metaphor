@@ -716,6 +716,7 @@ class Operator(Calc):
 class Condition(object):
     OPERATORS = {
         '=': '$eq',
+        '!=': '$ne',
         '>': '$gt',
         '<': '$lt',
         '>=': '$gte',

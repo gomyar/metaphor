@@ -28,10 +28,10 @@ class Field(object):
         self.target_spec_name = target_spec_name
         self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
-            'str': ['str'],
-            'int': ['float', 'int'],
-            'float': ['float', 'int'],
-            'bool': ['bool'],
+            'str': ['str', 'NoneType'],
+            'int': ['float', 'int', 'NoneType'],
+            'float': ['float', 'int', 'NoneType'],
+            'bool': ['bool', 'NoneType'],
             'datetime': ['datetime'],
         }
         self.spec = None

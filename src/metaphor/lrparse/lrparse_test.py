@@ -608,6 +608,9 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(50.69, tree.calculate(employee_id_1))
 
         # filter nones
+        self.schema.insert_resource('employee', {'name': 'sam'}, 'employees')
+        tree = parse("employees[salary!=20.1234]", employee_spec)
+
         # filter generic aggregates (filter(aggregate, name='paul', age>20))
         # space out range
         # cap (ceil, floor) aggregates
