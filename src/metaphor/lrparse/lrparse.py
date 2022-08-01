@@ -458,7 +458,9 @@ class ReverseLinkResourceRef(ResourceRef):
         return True
 
     def get_resource_dependencies(self):
-        _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
+        #_, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
+        reverse_spec = self.spec.name
+        reverse_field = self.resource_ref.spec.name
         return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
     def create_reverse(self, calc_spec_name, calc_field_name):

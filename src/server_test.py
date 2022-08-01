@@ -208,6 +208,7 @@ class ServerTest(TestCase):
             'read_grants': ['/employees'],
             'self': '/users/%s' % self.user_id,
             'update_grants': [],
+            'put_grants': [],
             'username': 'bob'}, user)
 
     def test_create_password(self):

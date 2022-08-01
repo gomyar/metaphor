@@ -58,6 +58,7 @@ class MoveResourceTest(unittest.TestCase):
                     {'_parent_canonical_url': '/'}
                 ]
             }},
+            {'$match': {'_deleted': {'$exists': False}}},
         ], from_path_agg)
         self.assertEqual(self.schema.specs['employee'], from_path_spec)
         self.assertTrue(from_path_is_coll)
@@ -116,6 +117,7 @@ class MoveResourceTest(unittest.TestCase):
                     {'_parent_canonical_url': '/'}
                 ]
             }},
+            {'$match': {'_deleted': {'$exists': False}}}
         ], from_path_agg)
         self.assertEqual(self.schema.specs['employee'], from_path_spec)
         self.assertTrue(from_path_is_coll)
@@ -217,14 +219,18 @@ class MoveResourceTest(unittest.TestCase):
         self.assertEqual([
             {'$match': {'$and': [{'_parent_field_name': 'divisions'},
                                  {'_parent_canonical_url': '/'}]}},
+            {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'_id': self.schema.decodeid(division_id_1)}},
+            {'$match': {'_deleted': {'$exists': False}}},
             {'$lookup': {'as': '_field_employees',
                         'foreignField': '_parent_id',
                         'from': 'resource_employee',
                         'localField': '_id'}},
             {'$group': {'_id': '$_field_employees'}},
             {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}], from_path_agg)
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$match': {'_deleted': {'$exists': False}}},
+            ], from_path_agg)
         self.assertEqual(self.schema.specs['employee'], from_path_spec)
         self.assertTrue(from_path_is_coll)
 
