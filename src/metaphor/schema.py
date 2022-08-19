@@ -122,7 +122,7 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, admin):
+    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, admin, user_hash):
         self.username = username
         self.password = password
         self.read_grants = read_grants
@@ -130,9 +130,10 @@ class User(UserMixin):
         self.update_grants = update_grants
         self.delete_grants = delete_grants
         self.admin = admin
+        self.user_hash = user_hash
 
     def get_id(self):
-        return self.password
+        return self.user_hash
 
     def is_admin(self):
         return self.admin
@@ -437,6 +438,10 @@ class Schema(object):
         data['_parent_canonical_url'] = parent_canonical_url
         data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
         data['_grants'] = grants or []
+
+        if spec_name == 'user':
+            data['_user_hash'] = str(uuid4())
+
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
@@ -451,6 +456,10 @@ class Schema(object):
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         save_data = self._parse_fields(spec_name, field_data)
+
+        if spec_name == 'user' and field_data.get('password'):
+            save_data['_user_hash'] = str(uuid4())
+
         new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},
@@ -498,13 +507,14 @@ class Schema(object):
                         user_data['create_grants'],
                         user_data['update_grants'],
                         user_data['delete_grants'],
-                        user_data.get('admin') or False)
+                        user_data.get('admin') or False,
+                        user_data['_user_hash'])
             return user
         else:
             return None
 
-    def load_user_by_password_hash(self, password_hash):
-        user_data = self.db['resource_user'].find_one({'password': password_hash})
+    def load_user_by_user_hash(self, user_hash):
+        user_data = self.db['resource_user'].find_one({'_user_hash': user_hash})
         if user_data:
             user = User(user_data['username'],
                         user_data['password'],
@@ -512,7 +522,8 @@ class Schema(object):
                         user_data['create_grants'],
                         user_data['update_grants'],
                         user_data['delete_grants'],
-                        user_data.get('admin') or False)
+                        user_data.get('admin') or False,
+                        user_data['_user_hash'])
             return user
         else:
             return None

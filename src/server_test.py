@@ -25,6 +25,7 @@ class ServerTest(TestCase):
         self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
+        self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         self.client.post('/login', data={
@@ -120,12 +121,12 @@ class ServerTest(TestCase):
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
-        no_response = self.client.patch('/api/employees', data=json.dumps({'name': 'wontblend'}), content_type='application/json')
+        no_response = self.client.patch('/api/employees/%s' % employee_id_1, data=json.dumps({'name': 'wontblend'}), content_type='application/json')
         self.assertEqual(403, no_response.status_code)
 
-        grant_id_2 = self.api.patch('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': '/employees'})
+        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': '/employees'})
 
-        yes_response = self.client.patch('/api/employees', data=json.dumps({'name': 'willblend'}), content_type='application/json')
+        yes_response = self.client.patch('/api/employees/%s' % employee_id_1, data=json.dumps({'name': 'willblend'}), content_type='application/json')
         self.assertEqual(200, yes_response.status_code)
 
     def test_create_subresource_inherits_grants(self):
@@ -205,7 +206,7 @@ class ServerTest(TestCase):
             'groups': '/users/%s/groups' % self.user_id,
             'id': self.user_id,
             'password': '<password>',
-            'read_grants': ['/employees'],
+            'read_grants': ['/employees', '/ego'],
             'self': '/users/%s' % self.user_id,
             'update_grants': [],
             'put_grants': [],
@@ -258,7 +259,7 @@ class ServerTest(TestCase):
         contract_spec = self.schema.add_spec('contract')
 
         self.schema.add_field(employee_spec, 'name', 'str')
-        self.schema.add_field(employee_spec, 'contracts', 'linkcollection')
+        self.schema.add_field(employee_spec, 'contracts', 'linkcollection', 'employee')
 
         self.schema.add_field(contract_spec, 'name', 'str')
         self.schema.add_field(contract_spec, 'price', 'int')
@@ -274,7 +275,15 @@ class ServerTest(TestCase):
 
         # assert user can access through link
         response = self.api.get('/employees/%s/contracts' % employee_id_1)
-        self.assertEqual({}, response)
+        self.assertEqual({
+            '_meta': {'can_create': False,
+            'can_link': True,
+            'is_collection': True,
+            'spec': {'name': 'employee'}},
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'results': []}, response)
 
         # assert expand also
 
@@ -292,6 +301,10 @@ class ServerTest(TestCase):
         self.schema.add_field(self.schema.root, 'organizations', 'collection', 'organization')
         self.schema.add_field(self.schema.root, 'sections', 'collection', 'section')
         self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization/sections'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization/sections/employees'})
 
         organization_id_1 = self.api.post('/organizations', {'name': 'fred'})
         section_id_1 = self.api.post('/sections', {'name': 'fred'})
@@ -316,4 +329,24 @@ class ServerTest(TestCase):
         response = self.client.get('/api/ego/organization?expand=sections.employees')
         self.assertEqual(200, response.status_code)
 
-        self.assertEqual({}, response.json)
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'organization'}},
+            'id': organization_id_1,
+            'link_user_organization': '/organizations/%s/link_user_organization' % organization_id_1,
+            'name': 'fred',
+            'sections': [
+                {'_meta': {'is_collection': False, 'spec': {'name': 'section'}},
+                 'employees': [
+                    {'_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+                     'id': employee_id_1,
+                     'link_section_employees': '/employees/%s/link_section_employees' % employee_id_1,
+                     'name': 'fred',
+                     'self': '/employees/%s' % employee_id_1}
+                ],
+                'id': section_id_1,
+                'link_organization_sections': '/sections/%s/link_organization_sections' % section_id_1,
+                'name': 'fred',
+                'self': '/sections/%s' % section_id_1}
+            ],
+            'self': '/organizations/%s' % organization_id_1}
+        , response.json)
