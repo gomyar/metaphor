@@ -5,7 +5,8 @@ from flask import render_template
 from flask import current_app
 from flask import request
 from flask import jsonify
-from flask_login import login_required
+from metaphor.login import login_required
+from metaphor.login import admin_required
 
 from urllib.error import HTTPError
 
@@ -100,10 +101,8 @@ def api(path):
 
 
 @admin_bp.route("/schema_editor")
-@login_required
+@admin_required
 def schema_editor():
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     return render_template('metaphor/schema_editor.html')
 
 
@@ -115,20 +114,16 @@ def schema_editor_api():
 
 
 @admin_bp.route("/schema_editor/api/specs", methods=['POST'])
-@login_required
+@admin_required
 def schema_editor_create_spec():
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     admin_api.create_spec(request.json['spec_name'])
     return jsonify({'success': 1})
 
 
 @admin_bp.route("/schema_editor/api/specs/<spec_name>/fields", methods=['POST'])
-@login_required
+@admin_required
 def schema_editor_create_field(spec_name):
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
 
     field_name = request.json['field_name']
@@ -141,10 +136,8 @@ def schema_editor_create_field(spec_name):
 
 
 @admin_bp.route("/schema_editor/api/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
-@login_required
+@admin_required
 def schema_editor_delete_field(spec_name, field_name):
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     if request.method == 'DELETE':
         admin_api.delete_field(spec_name, field_name)
@@ -158,19 +151,14 @@ def schema_editor_delete_field(spec_name, field_name):
 
 
 @admin_bp.route("/schema_editor/api/export", methods=['GET'])
-@login_required
+@admin_required
 def schema_export():
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     return jsonify(admin_api.export_schema())
 
 
 @admin_bp.route("/schema_editor/api/import", methods=['POST'])
-@login_required
+@admin_required
 def schema_import():
-    if not flask_login.current_user.is_admin():
-        return "Unauthorized", 403
     admin_api = current_app.config['admin_api']
     return jsonify(admin_api.import_schema(request.json))
-

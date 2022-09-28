@@ -4,6 +4,12 @@ Todo:
  - Bug: Refresh buton under /ego resources doesn't work (client tries to use canonical url)
  - Bug: Empty lists do not report 403
 
+ - oauth2 login (google)
+   - GOOGLE_CLIENT_ID
+   - GOOGLE_CLIENT_SECRET
+
+ - restrict allowed user accounts by domain ("*.stackturtle.com")
+
  - CORS
  - CSRF
 

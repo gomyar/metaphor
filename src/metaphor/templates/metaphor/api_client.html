@@ -387,6 +387,33 @@
         </span>
     </div>
 
+
+    <div id="login" class="popupwrapper" gui-show="login.is_shown">
+        <div class="popup">
+            <div class="title">Login</div>
+
+            <div>
+                <div class="error" gui-show="login.error" gui-text="login.error"></div>
+                <div class="field">
+                    <div class="field_name">Username:</div>
+                    <input gui-val="login.username"></input>
+                </div>
+                <div class="field">
+                    <div class="field_name">Password:</div>
+                    <input gui-val="login.password"></input>
+                </div>
+            </div>
+
+            <div class="popupbuttons">
+                <button class="button" gui-click='login.attempt_login()'>Login</button>
+                <button class="button" gui-click='login.cancel_login()'>Close</button>
+            </div>
+
+        </div>
+
+    </div>
+
+
 </body>
 
 </html>
