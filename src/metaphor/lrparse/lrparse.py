@@ -79,8 +79,8 @@ class ResourceRef(Operable):
         if self.spec == resource_spec:
             # duplicate initial agg chain, add match, and return
             aggregations.insert(0, list(aggregations[0]))
-            if resource_id:
-                aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
+#            if resource_id:
+#                aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
         return aggregations
 
     def __repr__(self):
@@ -733,7 +733,8 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
+                    #"from": "resource_%s" % (self.resource_ref.spec.name,),
+                    "from": "resource_%s" % (self.resource_ref.spec.fields[self.field_name].target_spec_name,),
                     "localField": '_id',
                     "foreignField": self.resource_ref.spec.fields[self.field_name].reverse_link_field + "._id",
                     "as": "_val",

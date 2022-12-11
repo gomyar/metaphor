@@ -18,43 +18,38 @@ class CreateResourceUpdate:
         self.grants = grants
 
     def execute(self):
-        # must add _create_updated field to resource instead of creating updater document
+        update_id = str(self.schema.create_update())
+
+        dependent_fields = self.schema._fields_with_dependant_calcs(self.spec_name)
+        extra_fields = None
+        if dependent_fields:
+            extra_fields = {'_dirty': {
+                update_id: dependent_fields
+            }}
+
+        # create resource
         resource_id = self.schema.insert_resource(
             self.spec_name, self.fields, self.parent_field_name, self.parent_spec_name,
-            self.parent_id, self.grants)
+            self.parent_id, self.grants, extra_fields)
 
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            # unsure if this is necessary
-            if "%s.%s" % (self.parent_spec_name, self.parent_field_name) in calc_tree.get_resource_dependencies():
-                self.updater.update_calc(calc_spec_name, calc_field_name, resource_id)
-#                self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
+        # find and update dependent calcs
+        start_agg = [
+            {"$match": {"_id": self.schema.decodeid(resource_id)}}
+        ]
 
-            # update for fields
-            for field_name in self.fields:
-                field_dep = "%s.%s" % (self.spec_name, field_name)
-                if field_dep in calc_tree.get_resource_dependencies():
-                    self.updater.update_calc(calc_spec_name, calc_field_name, resource_id)
-#                    self.updater._perform_updates_for_affected_calcs(self.spec, resource_id, calc_spec_name, calc_field_name)
+        # TODO: collate all affected calcs together
+        # update local resource calcs
+        for field_name, field in self.spec.fields.items():
+            if field.field_type == 'calc':
+                self.updater.perform_single_update_aggregation(self.spec_name, self.spec_name, field_name, self.schema.calc_trees[self.spec_name, field_name], start_agg, [], update_id)
 
-        # recalc local calcs
-        calc_field_deps = {}
-        for field_name, field_spec in self.spec.fields.items():
-            if field_spec.field_type == 'calc':
-                calc_field_deps[self.spec.name + '.' + field_name] = self.schema.calc_trees[(self.spec.name, field_name)].get_resource_dependencies()
-
-        sorted_field_deps = toposort(calc_field_deps)
-        for layer in sorted_field_deps:
-            for field_str in layer:
-                spec_name, field_name = field_str.split('.')
-                if spec_name == self.spec.name:
-                    field_spec = self.spec.fields[field_name]
-                    if field_spec.field_type == 'calc':
-                        self.updater.update_calc(self.spec.name, field_name, resource_id)
-                        self.updater._recalc_for_field_update(self.spec, self.spec.name, field_name, resource_id)
+        self.updater.update_for(self.spec_name, dependent_fields, update_id, start_agg)
 
         # check if new resource is read grant
         if self.spec_name == 'grant' and self.fields['type'] == 'read':
             self.updater._update_grants(resource_id, self.fields['url'])
+
+        # cleanup update
+        self.schema.cleanup_update(update_id)
 
         return resource_id

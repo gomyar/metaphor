@@ -57,9 +57,9 @@ class Api(object):
             return re.match(match_re, url)
 
         if url_path.split('/')[0] == 'ego':
-            return any(match_grant('/'+url_path, grant_url) for grant_url in grants)
+            return any(match_grant('/'+url_path, grant['url']) for grant in grants)
         else:
-            return any(match_grant('/'+canonical_url, grant_url, True) for grant_url in grants)
+            return any(match_grant('/'+canonical_url, grant['url'], True) for grant in grants)
 
     def _check_grants(self, path, canonical_path, grants):
         if not Api._has_grants(path, canonical_path, grants):

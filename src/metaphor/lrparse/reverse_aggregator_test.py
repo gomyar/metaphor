@@ -45,7 +45,6 @@ class AggregatorTest(unittest.TestCase):
         aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id, 'division', 'all_employees_age')
 
         self.assertEqual([[
-            {'$match': {'_id': employee_id}},
             {'$lookup': {'as': '_field_employees',
              'foreignField': '_id',
              'from': 'resource_division',
@@ -61,7 +60,6 @@ class AggregatorTest(unittest.TestCase):
         aggregations = self.aggregator.get_for_resource(tree, 'section', section_id, 'division', 'all_ages')
 
         self.assertEqual([[
-            {'$match': {'_id': section_id}},
             {'$lookup': {'as': '_field_sections',
              'foreignField': '_id',
              'from': 'resource_division',
@@ -84,7 +82,6 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([
             [
-                {'$match': {'_id': employee_id}},
 
                 {'$lookup': {'as': '_field_members',
                 'foreignField': 'members._id',
@@ -119,7 +116,6 @@ class AggregatorTest(unittest.TestCase):
                 {'$replaceRoot': {'newRoot': '$_id'}},
             ],
             [
-                {'$match': {'_id': employee_id}},
 
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
@@ -139,7 +135,6 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([
             [
-                {'$match': {'_id': employee_id}},
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
                 'from': 'resource_division',
@@ -151,8 +146,6 @@ class AggregatorTest(unittest.TestCase):
             ],
             # TODO: if two of the aggregations are the same, remove the second one:
             [
-                {'$match': {'_id': employee_id}},
-
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
                 'from': 'resource_division',

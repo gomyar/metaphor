@@ -27,7 +27,7 @@ class UpdaterTest(unittest.TestCase):
         self.division_spec = self.schema.add_spec('division')
         self.schema.add_field(self.division_spec, 'name', 'str')
         self.schema.add_field(self.division_spec, 'employees', 'linkcollection', 'employee')
-        self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
+        self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>9]')
 
         self.schema.add_field(self.schema.root, 'divisions', 'collection', 'division')
         self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
@@ -39,12 +39,15 @@ class UpdaterTest(unittest.TestCase):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales'}, 'divisions')
         division_id_2 = self.schema.insert_resource('division', {'name': 'marketting'}, 'divisions')
 
-        self.schema.create_linkcollection_entry('division', division_id_1, 'employees', employee_id_1)
-        self.schema.create_linkcollection_entry('division', division_id_2, 'employees', employee_id_1)
-        self.schema.create_linkcollection_entry('division', division_id_2, 'employees', employee_id_2)
+        self.updater.create_linkcollection_entry('division', division_id_1, 'employees', employee_id_1)
+        self.updater.create_linkcollection_entry('division', division_id_2, 'employees', employee_id_1)
+        self.updater.create_linkcollection_entry('division', division_id_2, 'employees', employee_id_2)
 
-        self.assertEqual([
-            self.schema.decodeid(division_id_1),
-            self.schema.decodeid(division_id_2)], self.updater.get_affected_ids_for_resource('division', 'older_employees', self.employee_spec, employee_id_1))
-        self.assertEqual([
-            self.schema.decodeid(division_id_2)], self.updater.get_affected_ids_for_resource('division', 'older_employees', self.employee_spec, employee_id_2))
+        employee_1 = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee_2 = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_2)})
+
+        division_1 = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_1)})
+        division_2 = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_2)})
+
+        self.assertEqual([{"_id": self.schema.decodeid(employee_id_1)}], division_1['older_employees'])
+        self.assertEqual([{"_id": self.schema.decodeid(employee_id_1)}, {"_id": self.schema.decodeid(employee_id_2)}], division_2['older_employees'])

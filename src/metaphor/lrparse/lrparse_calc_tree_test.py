@@ -43,72 +43,49 @@ class LRParseTest(unittest.TestCase):
         res_tree = tree._create_calc_agg_tree()
         calc_tree = tree._create_agg_tree(res_tree)
 
-        self.assertEqual({
-            "_v_self_age": [
-                {"$addFields": {"_val": "$_val.age"}},
-                {"$addFields": {"_v_self_age": "$_val"}},
-            ],
-            "_v_self_boss_duration": [
-                {"$lookup": {
-                    # forced lookup to enable separate pipeline
-                    "from": "resource_employee",
-                    "as": "_lookup_val",
-                    "let": {"id": "$_id"},
-                    "pipeline": [
-                        # match self
-                        {"$match": {"_id": "$$id"}},
-
-                        # lookup link
-                        {"$lookup": {
-                            "from": "resource_employee",
-                            "localField": "boss",
-                            "foreignField": "_id",
-                            "as": "_val",
-                        }},
-                        {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
-
-                        # field lookup
-                        {"$addFields": {"_val": "$_val.duration"}},
-                    ]
-                }},
-                {"$set": {"_v_self_boss_duration": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
-            ],
-            "_v_self_boss_age": [
-                {"$lookup": {
-                    # forced lookup to enable separate pipeline
-                    "from": "resource_employee",
-                    "as": "_lookup_val",
-                    "let": {"id": "$_id"},
-                    "pipeline": [
-                        # match self
-                        {"$match": {"_id": "$$id"}},
-
-                        # lookup link
-                        {"$lookup": {
-                            "from": "resource_employee",
-                            "localField": "boss",
-                            "foreignField": "_id",
-                            "as": "_val",
-                        }},
-                        {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
-
-                        # field lookup
-                        {"$addFields": {"_val": "$_val.age"}},
-                    ]
-                }},
-                {"$set": {"_v_self_boss_age": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
-            ],
-            # no repeat for self.boss.duration
-        }, calc_tree)
+        self.assertEqual({'_v_self_age': [{'$addFields': {'_val': '$age'}},
+                 {'$addFields': {'_v_self_age': '$_val'}}],
+ '_v_self_boss_age': [{'$lookup': {'as': '_lookup_val',
+                                   'from': 'resource_employee',
+                                   'let': {'id': '$_id'},
+                                   'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                              '$$id']}}},
+                                                {'$lookup': {'as': '_val',
+                                                             'foreignField': '_id',
+                                                             'from': 'resource_employee',
+                                                             'localField': 'boss'}},
+                                                {'$group': {'_id': '$_val'}},
+                                                {'$unwind': '$_id'},
+                                                {'$replaceRoot': {'newRoot': '$_id'}},
+                                                {'$addFields': {'_val': '$age'}}]}},
+                      {'$set': {'_v_self_boss_age': {'$arrayElemAt': ['$_lookup_val._val',
+                                                                      0]}}}],
+ '_v_self_boss_duration': [{'$lookup': {'as': '_lookup_val',
+                                        'from': 'resource_employee',
+                                        'let': {'id': '$_id'},
+                                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                   '$$id']}}},
+                                                     {'$lookup': {'as': '_val',
+                                                                  'foreignField': '_id',
+                                                                  'from': 'resource_employee',
+                                                                  'localField': 'boss'}},
+                                                     {'$group': {'_id': '$_val'}},
+                                                     {'$unwind': '$_id'},
+                                                     {'$replaceRoot': {'newRoot': '$_id'}},
+                                                     {'$addFields': {'_val': '$duration'}}]}},
+                           {'$set': {'_v_self_boss_duration': {'$arrayElemAt': ['$_lookup_val._val',
+                                                                                0]}}}]}, calc_tree)
 
         calc_expr = tree._create_calc_expr()
 
-        self.assertEqual({
-            "$subtract": [
-                {"$add": ["$_v_self_age", "$_v_self_boss_duration"]},
-                {"$add": ["$_v_self_boss_age", "$_v_self_boss_duration"]}
-            ]
-        }, calc_expr)
+        self.assertEqual({'$subtract': [{'$ifNull': [{'$add': [{'$ifNull': ['$_v_self_age', 0]},
+                                      {'$ifNull': ['$_v_self_boss_duration',
+                                                   0]}]},
+                            0]},
+               {'$ifNull': [{'$add': [{'$ifNull': ['$_v_self_boss_age', 0]},
+                                      {'$ifNull': ['$_v_self_boss_duration',
+                                                   0]}]},
+                            0]}]}, calc_expr)
 
     def test_two_levels(self):
         tree = parse("(self.age + (self.boss.duration)) - (self.boss.age + (self.duration - (self.boss.duration)))", self.employee_spec)
@@ -116,45 +93,51 @@ class LRParseTest(unittest.TestCase):
         res_tree = tree._create_calc_agg_tree()
         calc_tree = tree._create_agg_tree(res_tree)
 
-        self.assertEqual({
-            '_v_self_age': [{'$addFields': {'_val': '$_val.age'}},
-                            {'$addFields': {'_v_self_age': '$_val'}}],
+        self.assertEqual({'_v_self_age': [{'$addFields': {'_val': '$age'}},
+                {'$addFields': {'_v_self_age': '$_val'}}],
             '_v_self_boss_age': [{'$lookup': {'as': '_lookup_val',
-                                                'from': 'resource_employee',
-                                                'let': {'id': '$_id'},
-                                                'pipeline': [{'$match': {'_id': '$$id'}},
+                                            'from': 'resource_employee',
+                                            'let': {'id': '$_id'},
+                                            'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                        '$$id']}}},
                                                             {'$lookup': {'as': '_val',
                                                                         'foreignField': '_id',
                                                                         'from': 'resource_employee',
                                                                         'localField': 'boss'}},
-                                                            {'$set': {'_val': {'$arrayElemAt': ['$_val',
-                                                                                                0]}}},
-                                                            {'$addFields': {'_val': '$_val.age'}}]}},
+                                                            {'$group': {'_id': '$_val'}},
+                                                            {'$unwind': '$_id'},
+                                                            {'$replaceRoot': {'newRoot': '$_id'}},
+                                                            {'$addFields': {'_val': '$age'}}]}},
                                 {'$set': {'_v_self_boss_age': {'$arrayElemAt': ['$_lookup_val._val',
                                                                                 0]}}}],
             '_v_self_boss_duration': [{'$lookup': {'as': '_lookup_val',
                                                     'from': 'resource_employee',
                                                     'let': {'id': '$_id'},
-                                                    'pipeline': [{'$match': {'_id': '$$id'}},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$id']}}},
                                                                 {'$lookup': {'as': '_val',
                                                                             'foreignField': '_id',
                                                                             'from': 'resource_employee',
                                                                             'localField': 'boss'}},
-                                                                {'$set': {'_val': {'$arrayElemAt': ['$_val',
-                                                                                                    0]}}},
-                                                                {'$addFields': {'_val': '$_val.duration'}}]}},
-                                        {'$set': {'_v_self_boss_duration': {'$arrayElemAt': ['$_lookup_val._val',
+                                                                {'$group': {'_id': '$_val'}},
+                                                                {'$unwind': '$_id'},
+                                                                {'$replaceRoot': {'newRoot': '$_id'}},
+                                                                {'$addFields': {'_val': '$duration'}}]}},
+                                    {'$set': {'_v_self_boss_duration': {'$arrayElemAt': ['$_lookup_val._val',
                                                                                             0]}}}],
-            '_v_self_duration': [{'$addFields': {'_val': '$_val.duration'}},
+            '_v_self_duration': [{'$addFields': {'_val': '$duration'}},
                                 {'$addFields': {'_v_self_duration': '$_val'}}]}, calc_tree)
-
         calc_expr = tree._create_calc_expr()
 
-        self.assertEqual({
-            "$subtract": [
-                {"$add": ["$_v_self_age", "$_v_self_boss_duration"]},
-                {"$add": ["$_v_self_boss_age", {"$subtract": [
-                    "$_v_self_duration", "$_v_self_boss_duration",
-                ]}]}
-            ]
-        }, calc_expr)
+        self.assertEqual({'$subtract': [{'$ifNull': [{'$add': [{'$ifNull': ['$_v_self_age', 0]},
+                                      {'$ifNull': ['$_v_self_boss_duration',
+                                                   0]}]},
+                            0]},
+               {'$ifNull': [{'$add': [{'$ifNull': ['$_v_self_boss_age', 0]},
+                                      {'$ifNull': [{'$subtract': [{'$ifNull': ['$_v_self_duration',
+                                                                               0]},
+                                                                  {'$ifNull': ['$_v_self_boss_duration',
+                                                                               0]}]},
+                                                   0]}]},
+                            0]}]}, calc_expr)
+

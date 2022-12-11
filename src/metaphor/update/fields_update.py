@@ -10,27 +10,17 @@ class FieldsUpdate:
         self.fields = fields
 
     def execute(self):
+        update_id = str(self.schema.create_update())
+
         spec = self.schema.specs[self.spec_name]
         self.schema.update_resource_fields(self.spec_name, self.resource_id, self.fields)
 
-        # update local resource calcs
-        #   update dependent field calcs (involving fields)
-        # update foreign resource calcs (involving fields)
+        # find and update dependent calcs
+        start_agg = [
+            {"$match": {"_id": self.schema.decodeid(self.resource_id)}}
+        ]
 
-        # recalc local calcs
-        # moved this ahead of the code to recalc foreign calcs
-        # there may be an opportunity to check whether the change only affects the current resource
-        # (if there are only "self." references in the calc)
-        # this will stop the reverse aggregation, which finds itself only and becomes a no-op
-        # careful with multi layered calcs within the same resource
-        for field_name, field_spec in spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(spec.name, field_name, self.resource_id)
-                self.updater._recalc_for_field_update(spec, spec.name, field_name, self.resource_id)
+        for field_name in self.fields:
+            self.updater.update_for_field(self.spec_name, field_name, update_id, start_agg)
 
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for fields
-            for field_name in self.fields:
-                field_dep = "%s.%s" % (self.spec_name, field_name)
-                if field_dep in calc_tree.get_resource_dependencies():
-                    self.updater._perform_updates_for_affected_calcs(spec, self.resource_id, calc_spec_name, calc_field_name)
+        self.schema.cleanup_update(update_id)

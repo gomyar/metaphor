@@ -119,52 +119,179 @@ class LRParseTest(unittest.TestCase):
     def test_root_collection_filtered(self):
         tree = parse("employees[age>4]", self.employee_spec)
 
-        expected = [
-            {"$lookup": {
-                "from": 'resource_employee',
-                "as": '_val',
-                "pipeline":[
-                    {"$match": {
-                        "_parent_field_name": "employees",
-                        "_parent_canonical_url": "/",
-                    }},
-                ]
-            }},
-
-            {"$match": {
-                "_val.age": {"$gt": 4},
-            }},
-        ]
+        expected = [{'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
+                        'pipeline': [{'$match': {'_parent_canonical_url': '/',
+                                                '_parent_field_name': 'employees'}}]}},
+            {'$match': {'_val.age': {'$gt': 4}}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_ternary(self):
         tree = parse("self.name = 'Bob' -> 12 : 14", self.employee_spec)
 
-        expected = []
+        expected = [
+            {'$addFields': {'_val': '$name'}},
+            {'$addFields': {'_v_self_name': '$_val'}},
+            {'$addFields': {'_val': 'Bob'}},
+            {'$addFields': {'_v_8659372647791006834': '$_val'}},
+            {'$addFields': {'_val': {'$eq': ['$_v_self_name', 'Bob']}}},
+            {'$addFields': {'_if': '$_val'}},
+            {'$addFields': {'_val': 12}},
+            {'$addFields': {'_then': '$_val'}},
+            {'$addFields': {'_val': 14}},
+            {'$addFields': {'_else': '$_val'}},
+            {'$addFields': {'_val': {'$cond': {'else': '$_else',
+                                                'if': '$_if',
+                                                'then': '$_then'}}}}]
+
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_ternary_calcs(self):
         tree = parse("self.boss.name = 'Bob' -> (self.boss.duration) : 99", self.employee_spec)
 
-        expected = []
+        expected = [{'$lookup': {'as': '_lookup_val',
+                        'from': 'resource_employee',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
+                                    {'$lookup': {'as': '_val',
+                                                    'foreignField': '_id',
+                                                    'from': 'resource_employee',
+                                                    'localField': 'boss'}},
+                                    {'$group': {'_id': '$_val'}},
+                                    {'$unwind': '$_id'},
+                                    {'$replaceRoot': {'newRoot': '$_id'}},
+                                    {'$addFields': {'_val': '$name'}}]}},
+            {'$set': {'_v_self_boss_name': {'$arrayElemAt': ['$_lookup_val._val', 0]}}},
+            {'$addFields': {'_val': 'Bob'}},
+            {'$addFields': {'_v_8659372647791006834': '$_val'}},
+            {'$addFields': {'_val': {'$eq': ['$_v_self_boss_name', 'Bob']}}},
+            {'$addFields': {'_if': '$_val'}},
+            {'$lookup': {'as': '_lookup_val',
+                        'from': 'resource_employee',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
+                                    {'$lookup': {'as': '_val',
+                                                    'foreignField': '_id',
+                                                    'from': 'resource_employee',
+                                                    'localField': 'boss'}},
+                                    {'$group': {'_id': '$_val'}},
+                                    {'$unwind': '$_id'},
+                                    {'$replaceRoot': {'newRoot': '$_id'}},
+                                    {'$addFields': {'_val': '$duration'}}]}},
+            {'$set': {'_then': {'$arrayElemAt': ['$_lookup_val._val', 0]}}},
+            {'$addFields': {'_val': 99}},
+            {'$addFields': {'_else': '$_val'}},
+            {'$addFields': {'_val': {'$cond': {'else': '$_else',
+                                                'if': '$_if',
+                                                'then': '$_then'}}}}]
+
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch(self):
         tree = parse("self.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
 
-        expected = []
+        expected = [{'$addFields': {'_val': '$name'}},
+            {'$addFields': {'_switch_val': '$_val'}},
+            {'$addFields': {'_val': 22}},
+            {'$addFields': {'_case_0': '$_val'}},
+            {'$addFields': {'_val': 11}},
+            {'$addFields': {'_case_1': '$_val'}},
+            {'$addFields': {'_val': 4}},
+            {'$addFields': {'_case_2': '$_val'}},
+            {'$addFields': {'_val': {'$switch': {'branches': [{'case': {'$eq': ['Bob',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_0'},
+                                                            {'case': {'$eq': ['Ned',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_1'},
+                                                            {'case': {'$eq': ['Fred',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_2'}],
+                                                'default': None}}}}]
+
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch_calc(self):
         tree = parse("self.boss.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
 
-        expected = []
+        expected = [{'$lookup': {'as': '_switch_lookup_val',
+                        'from': 'resource_employee',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
+                                    {'$lookup': {'as': '_val',
+                                                    'foreignField': '_id',
+                                                    'from': 'resource_employee',
+                                                    'localField': 'boss'}},
+                                    {'$group': {'_id': '$_val'}},
+                                    {'$unwind': '$_id'},
+                                    {'$replaceRoot': {'newRoot': '$_id'}},
+                                    {'$addFields': {'_val': '$name'}}]}},
+            {'$addFields': {'_switch_val': {'$arrayElemAt': ['$_switch_lookup_val._val',
+                                                            0]}}},
+            {'$addFields': {'_val': 22}},
+            {'$addFields': {'_case_0': '$_val'}},
+            {'$addFields': {'_val': 11}},
+            {'$addFields': {'_case_1': '$_val'}},
+            {'$addFields': {'_val': 4}},
+            {'$addFields': {'_case_2': '$_val'}},
+            {'$addFields': {'_val': {'$switch': {'branches': [{'case': {'$eq': ['Bob',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_0'},
+                                                            {'case': {'$eq': ['Ned',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_1'},
+                                                            {'case': {'$eq': ['Fred',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_2'}],
+                                                'default': None}}}}]
+
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch_calc_fields(self):
         tree = parse("self.boss.name -> ('Bob': (self.boss.duration), 'Ned': (self.duration), 'Ted': (self.age))", self.employee_spec)
 
-        expected = []
+        expected = [{'$lookup': {'as': '_switch_lookup_val',
+                        'from': 'resource_employee',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
+                                    {'$lookup': {'as': '_val',
+                                                    'foreignField': '_id',
+                                                    'from': 'resource_employee',
+                                                    'localField': 'boss'}},
+                                    {'$group': {'_id': '$_val'}},
+                                    {'$unwind': '$_id'},
+                                    {'$replaceRoot': {'newRoot': '$_id'}},
+                                    {'$addFields': {'_val': '$name'}}]}},
+            {'$addFields': {'_switch_val': {'$arrayElemAt': ['$_switch_lookup_val._val',
+                                                            0]}}},
+            {'$lookup': {'as': '_case_lookup_val',
+                        'from': 'resource_employee',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
+                                    {'$lookup': {'as': '_val',
+                                                    'foreignField': '_id',
+                                                    'from': 'resource_employee',
+                                                    'localField': 'boss'}},
+                                    {'$group': {'_id': '$_val'}},
+                                    {'$unwind': '$_id'},
+                                    {'$replaceRoot': {'newRoot': '$_id'}},
+                                    {'$addFields': {'_val': '$duration'}}]}},
+            {'$addFields': {'_case_0': {'$arrayElemAt': ['$_case_lookup_val._val', 0]}}},
+            {'$addFields': {'_val': '$duration'}},
+            {'$addFields': {'_case_1': '$_val'}},
+            {'$addFields': {'_val': '$age'}},
+            {'$addFields': {'_case_2': '$_val'}},
+            {'$addFields': {'_val': {'$switch': {'branches': [{'case': {'$eq': ['Bob',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_0'},
+                                                            {'case': {'$eq': ['Ned',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_1'},
+                                                            {'case': {'$eq': ['Ted',
+                                                                                '$_switch_val']},
+                                                                'then': '$_case_2'}],
+                                                'default': None}}}}]
+
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_function(self):

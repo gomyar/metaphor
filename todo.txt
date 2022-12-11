@@ -5,6 +5,22 @@ Todo:
  - add update collection to track updates (retry on fail etc)
  - merge affected_ids to update collection for move / delete updates
 
+Updates based on aggs:
+
+ - create update id
+ - update (create / delete / patch / etc)
+   - mark affected resource as dirty if referred to by a calc
+     - _dirty: {
+        update_id: field_name(s)
+       }
+ - aggregate:
+   - agg affected resources base on dirty
+   - agg update based on calc
+     - include marked dirty
+   - agg merge
+ - remove dirty flag
+ - remove update_id
+
 Shortlist:
 
  - allow changelist for resources if specified by schema admin, use custom header to retrieve older versions

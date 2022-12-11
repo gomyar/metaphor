@@ -82,6 +82,7 @@ class AdminApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/employees/%s' % employee_id,
             '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
@@ -90,6 +91,7 @@ class AdminApiTest(unittest.TestCase):
             'age': 21},
             {'_id': self.schema.decodeid(employee_id_2),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/employees/%s' % employee_id_2,
             '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',

@@ -418,7 +418,54 @@ class Schema(object):
                 parsed_data[field_name] = field_value
         return parsed_data
 
-    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None):
+    def _fields_with_dependant_calcs(self, spec_name):
+        fields = set()
+        spec_fields = set([
+            '%s.%s' % (spec_name, field_name)
+            for field_name in self.specs[spec_name].fields])
+        for (spec_name, field_name), calc in self.calc_trees.items():
+            deps = calc.get_resource_dependencies()
+            fields = fields.union(spec_fields.intersection(deps))
+        return [dep.split('.')[1] for dep in fields]
+
+    def all_dependent_calcs_for(self, spec_name, field_names):
+        calcs = self._dependent_calcs_for_resource(spec_name)
+        for field_name in field_names:
+            calcs.update(self._dependent_calcs_for_field(spec_name, field_name))
+        return calcs
+
+    def _dependent_calcs_for_field(self, spec_name, field_name):
+        calcs = {}
+        for (calc_spec_name, calc_field_name), calc in self.calc_trees.items():
+            if "%s.%s" % (spec_name, field_name) in calc.get_resource_dependencies():
+                calcs[(calc_spec_name, calc_field_name)] = calc
+        return calcs
+
+    def _dependent_calcs_for_resource(self, spec_name):
+        calcs = {}
+        for (calc_spec_name, calc_field_name), calc in self.calc_trees.items():
+            for dep in calc.get_resource_dependencies():
+                sname, fname = dep.split('.')
+                if sname == 'root':
+                    if self.root.fields[fname].target_spec_name == spec_name:
+                        calcs[(calc_spec_name, calc_field_name)] = calc
+                elif self.specs[sname].fields[fname].target_spec_name == spec_name:
+                    calcs[(calc_spec_name, calc_field_name)] = calc
+        return calcs
+
+    def create_update(self):
+        return self.db['metaphor_updates'].insert({})
+
+    def cleanup_update(self, update_id):
+        # remove dirty flags
+        for spec_name in self.specs:
+            self.db["resource_%s" % spec_name].update_many(
+                {"_dirty.%s" % update_id: {"$exists": True}},
+                {"$unset": {"_dirty.%s" % update_id: ""}}
+            )
+        return self.db['metaphor_updates'].remove({"_id": ObjectId(update_id)})
+
+    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None, extra_fields=None):
         data = self._parse_fields(spec_name, data)
 
         new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
@@ -435,6 +482,10 @@ class Schema(object):
         data['_parent_canonical_url'] = parent_canonical_url
         data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
         data['_grants'] = grants or []
+
+        if extra_fields:
+            data.update(extra_fields)
+
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
@@ -455,8 +506,8 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
 
-    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
-        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, grants)
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None, extra_fields=None):
+        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, grants, extra_fields)
         self.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, resource_id)
         return resource_id
 

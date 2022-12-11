@@ -43,5 +43,3 @@ class DeleteLinkCollectionUpdate:
 
         # run update
         return self.link_id
-
-

@@ -10,18 +10,19 @@ class CreateLinkCollectionUpdate:
         self.link_id = link_id
 
     def execute(self):
+        update_id = str(self.schema.create_update())
+
         self.schema.create_linkcollection_entry(self.parent_spec_name, self.parent_id, self.parent_field, self.link_id)
-        parent_spec = self.schema.specs[self.parent_spec_name]
-        spec = parent_spec.build_child_spec(self.parent_field)
 
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            # update for resources
-            if "%s.%s" % (self.parent_spec_name, self.parent_field) in calc_tree.get_resource_dependencies():
-                self.updater._perform_updates_for_affected_calcs(spec, self.link_id, calc_spec_name, calc_field_name)
+        start_agg = [
+            {"$match": {"_id": self.schema.decodeid(self.parent_id)}}
+        ]
 
-        # recalc local calcs
-        for field_name, field_spec in parent_spec.fields.items():
-            if field_spec.field_type == 'calc':
-                self.updater.update_calc(self.parent_spec_name, field_name, self.parent_id)
-                self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.parent_id)
+        # update local resource calcs
+#        parent_spec = self.schema.specs[self.parent_spec_name]
+#        for field_name, field in parent_spec.fields.items():
+#            if field.field_type == 'calc':
+#                self.updater.perform_single_update_aggregation(self.parent_spec_name, self.parent_spec_name, field_name, self.schema.calc_trees[self.parent_spec_name, field_name], start_agg, [], update_id)
 
+        self.updater.update_for_field(self.parent_spec_name, self.parent_field, update_id, start_agg)
+        self.schema.cleanup_update(update_id)

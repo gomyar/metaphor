@@ -706,7 +706,6 @@ class LRParseTest(unittest.TestCase):
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}}],
             [
-                {'$match': {'_id': self.schema.decodeid(employee_id_2)}},
                 {'$lookup': {'as': '_field_parttimers',
                                 'foreignField': 'parttimers._id',
                                 'from': 'resource_division',

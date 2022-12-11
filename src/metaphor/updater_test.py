@@ -38,7 +38,7 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource(
             'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
 
-        self.updater.update_calc('division', 'older_employees', division_id_1)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', employee_id_1)
 
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
@@ -57,7 +57,8 @@ class UpdaterTest(unittest.TestCase):
             'employee', {'name': 'Ned', 'age': 41}, 'employees', 'division', division_id_1)
 
         # check again
-        self.updater.update_calc('division', 'older_employees', division_id_1)
+        #self.updater.update_calc('division', 'older_employees', division_id_1)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', employee_id_2)
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
@@ -75,19 +76,8 @@ class UpdaterTest(unittest.TestCase):
         self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
         self.schema.add_calc(self.division_spec, 'average_age', 'average(self.employees.age)')
 
-        division_id_1 = self.schema.insert_resource(
-            'division', {'name': 'sales'}, 'divisions')
-        employee_id_1 = self.schema.insert_resource(
-            'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
-
-        division_id_2 = self.schema.insert_resource(
-            'division', {'name': 'sales'}, 'divisions')
-        employee_id_2 = self.schema.insert_resource(
-            'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_2)
-
-        average_agg = self.updater.build_reverse_aggregations_to_calc('division', 'average_age', self.employee_spec, employee_id_1)
+        average_agg = self.updater.build_reverse_aggregations_to_calc('division', 'average_age', self.employee_spec, None)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(employee_id_1)}},
             {"$lookup": {
                 "from": "resource_division",
                 "localField": "_parent_id",
@@ -99,20 +89,9 @@ class UpdaterTest(unittest.TestCase):
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]], average_agg)
 
-        affected_ids = self.updater.get_affected_ids_for_resource('division', 'average_age', self.employee_spec, employee_id_1)
-        self.assertEquals([self.schema.decodeid(division_id_1)], list(affected_ids))
-
-        # check another collection
-        employee_id_3 = self.schema.insert_resource(
-            'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_2)
-
-        affected_ids = self.updater.get_affected_ids_for_resource('division', 'average_age', self.employee_spec, employee_id_3)
-        self.assertEquals([self.schema.decodeid(division_id_2)], list(affected_ids))
-
         # different calc
-        older_agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees', self.employee_spec, employee_id_1)
+        older_agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees', self.employee_spec, None)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(employee_id_1)}},
             {"$lookup": {
                 "from": "resource_division",
                 "localField": "_parent_id",
@@ -137,7 +116,6 @@ class UpdaterTest(unittest.TestCase):
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'manager_age', self.employee_spec, employee_id_1)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(employee_id_1)}},
             {"$lookup": {
                 "from": "resource_division",
                 "localField": "_id",
@@ -174,7 +152,6 @@ class UpdaterTest(unittest.TestCase):
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'average_manager_age', self.employee_spec, employee_id_1)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(employee_id_1)}},
             {"$lookup": {
                 "from": "resource_division",
                 "foreignField": "managers._id",
@@ -218,14 +195,13 @@ class UpdaterTest(unittest.TestCase):
         employee_id_5 = self.schema.insert_resource(
             'employee', {'name': 'ned', 'age': 35}, 'employees', 'division', division_id_2)
 
-        self.updater.update_calc('division', 'older_employees', division_id_1)
-        self.updater.update_calc('division', 'older_employees_called_ned', division_id_1)
-        self.updater.update_calc('division', 'older_employees', division_id_2)
-        self.updater.update_calc('division', 'older_employees_called_ned', division_id_2)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'division', division_id_1)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', division_id_1)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'division', division_id_2)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', division_id_2)
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees_called_ned', self.employee_spec, employee_id_2)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(employee_id_2)}},
             {"$lookup": {
                 "from": "resource_division",
                 "foreignField": "older_employees",
@@ -250,11 +226,8 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource(
             'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
 
-        self.updater.update_calc('employee', 'division_name', employee_id_1)
-
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'division_name', self.division_spec, division_id_1)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(division_id_1)}},
             {"$lookup": {
                 "from": "resource_employee",
                 "foreignField": "_parent_id",
@@ -285,11 +258,8 @@ class UpdaterTest(unittest.TestCase):
         self.schema.update_resource_fields('division', division_id_1, {'manager': employee_id_1})
         self.schema.update_resource_fields('division', division_id_2, {'manager': employee_id_1})
 
-        self.updater.update_calc('employee', 'divisions_i_manage', employee_id_1)
-
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'divisions_i_manage', self.division_spec, division_id_1)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(division_id_1)}},
             {"$lookup": {
                 "from": "resource_employee",
                 "foreignField": "_id",
@@ -331,7 +301,6 @@ class UpdaterTest(unittest.TestCase):
         # a little unsure of this
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'all_my_subordinates', self.division_spec, division_id_1)
         self.assertEquals([[
-            {"$match": {"_id": self.schema.decodeid(division_id_1)}},
             {'$lookup': {'as': '_field_link_division_managers',
                             'foreignField': '_id',
                             'from': 'resource_employee',
@@ -520,3 +489,41 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual(20, employee_1['total'])
         self.assertEqual(15, employee_2['total'])
         self.assertEqual(12, employee_3['total'])
+
+    def test_update_create_update_calc(self):
+        self.schema.add_calc(self.division_spec, 'age_total', 'sum(self.employees.age)')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 21})
+
+        division = self.schema.db['resource_division'].find_one()
+        self.assertEqual(21, division['age_total'])
+
+    def test_update_create_update_calc_same_resource(self):
+        self.schema.add_calc(self.employee_spec, 'my_next_age', 'self.age + 10')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 21})
+
+        employee = self.schema.db['resource_employee'].find_one()
+        self.assertEqual(31, employee['my_next_age'])
+
+    def test_update_create_update_subsequent_calc(self):
+        self.schema.add_calc(self.division_spec, 'age_total', 'sum(self.employees.age)')
+        self.schema.add_calc(self.division_spec, 'age_total_plus', 'self.age_total + 1')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 21})
+
+        division = self.schema.db['resource_division'].find_one()
+        self.assertEqual(21, division['age_total'])
+        self.assertEqual(22, division['age_total_plus'])

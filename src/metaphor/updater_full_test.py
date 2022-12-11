@@ -37,15 +37,16 @@ class UpdaterTest(unittest.TestCase):
 
         division_id_1 = self.schema.insert_resource(
             'division', {'name': 'sales'}, 'divisions')
-        employee_id_1 = self.schema.insert_resource(
-            'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
-
-        self.updater.update_calc('division', 'older_employees', division_id_1)
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob',
+            'age': 31,
+        })
 
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             '_grants': [],
+            '_dirty': {},
             'name': 'sales',
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_canonical_url': '/',
@@ -61,6 +62,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             '_grants': [],
+            '_dirty': {},
             'name': 'sales',
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_canonical_url': '/',
@@ -73,15 +75,14 @@ class UpdaterTest(unittest.TestCase):
     def test_update_containing_collection(self):
         self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
 
-        division_id_1 = self.schema.insert_resource(
-            'division', {'name': 'sales'}, 'divisions')
-
-        self.updater.update_calc('division', 'older_employees', division_id_1)
+        division_id_1 = self.updater.create_resource(
+            'division', None, 'divisions', None, {'name': 'sales'})
 
         division_data = self.db.resource_division.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
@@ -100,6 +101,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
@@ -113,6 +115,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id_1),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/divisions/%s/employees/%s' % (division_id_1, employee_id_1),
             'name': 'Bob',
             'age': 41,
@@ -171,6 +174,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             "_id" : self.schema.decodeid(division_id_1),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/divisions/%s' % division_id_1,
             "_parent_field_name" : "divisions",
             "_parent_id" : None,
@@ -222,6 +226,7 @@ class UpdaterTest(unittest.TestCase):
         self.assertEquals({
             "_id" : self.schema.decodeid(employee_id_1),
             '_grants': [],
+            '_dirty': {},
             '_canonical_url': '/divisions/%s/employees/%s' % (division_id_1, employee_id_1),
             "_parent_field_name" : "employees",
             "_parent_id" : self.schema.decodeid(division_id_1),
@@ -230,10 +235,10 @@ class UpdaterTest(unittest.TestCase):
             "name" : "bob",
             "age": 21,
             "all_my_subordinates" : [
-                self.schema.decodeid(employee_id_1),
-                self.schema.decodeid(employee_id_2),
-                self.schema.decodeid(employee_id_3),
-                self.schema.decodeid(employee_id_4),
+                {"_id": self.schema.decodeid(employee_id_1)},
+                {"_id": self.schema.decodeid(employee_id_2)},
+                {"_id": self.schema.decodeid(employee_id_3)},
+                {"_id": self.schema.decodeid(employee_id_4)},
             ]}, employee_data)
 
     def test_resource_deps_for_field(self):
