@@ -89,8 +89,10 @@ class MoveResourceUpdate:
         affected_ids = self.affected_ids()
 
         # perform update
+        # TODO: add _dirty flag to all moved resources, for all calc-dependent fields
         self.perform_move()
 
+        # TODO: descend tree, perform aggregate merge recalc for each child resource
         affected_ids_to_path = self.affected_ids_to_path()
         affected_ids.update(affected_ids_to_path)
 

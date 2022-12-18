@@ -9,6 +9,46 @@ class DeleteResourceUpdate:
         self.parent_field_name = parent_field_name
 
     def execute(self):
+        update_id = str(self.schema.create_update())
+
+        # mark resource as _deleted
+        original_resource = self.schema.mark_resource_deleted(self.spec_name, self.resource_id)
+
+        # perform updates
+        # find and update dependent calcs
+        start_agg = [
+            {"$match": {"_id": self.schema.decodeid(self.resource_id)}}
+        ]
+
+        dependent_fields = self.schema._fields_with_dependant_calcs(self.spec_name)
+        self.updater.update_for(self.spec_name, dependent_fields, update_id, start_agg)
+
+        # delete resource
+        self.schema.delete_resource(self.spec_name, self.resource_id)
+
+        # delete any links to resource
+        for linked_spec_name, spec in self.schema.specs.items():
+            for field_name, field in spec.fields.items():
+                if field.field_type == 'link' and field.target_spec_name == self.spec_name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({field_name: self.schema.decodeid(self.resource_id)}):
+                        # call update_resource on resource
+                        self.updater.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
+
+                if field.field_type == 'linkcollection' and field.target_spec_name == self.spec_name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['resource_%s' % linked_spec_name].find({'%s._id' % field_name: self.schema.decodeid(self.resource_id)}):
+                        # call update_resource on resource
+                        self.updater.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, self.resource_id)
+
+        # check if resource is read grant
+        if self.spec_name == 'grant':
+            self.updater._remove_grants(self.resource_id, original_resource['url'])
+
+        # cleanup update
+        self.schema.cleanup_update(update_id)
+
+    def _execute(self):
         spec = self.schema.specs[self.spec_name]
 
         cursors = []

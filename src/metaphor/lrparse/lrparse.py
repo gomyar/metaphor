@@ -247,6 +247,8 @@ class RootResourceRef(ResourceRef):
                         {"$match": {
                             "_parent_field_name": self.resource_name,
                             "_parent_canonical_url": '/',
+                            # TODO: _deleted: false
+                            "_deleted": {"$exists": False},
                         }}
                     ]
                 }},
@@ -284,7 +286,10 @@ class IDResourceRef(ResourceRef):
 
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
-            {"$match": {"_id": self.spec.schema.decodeid(self.resource_id)}}
+            {"$match": {
+                "_id": self.spec.schema.decodeid(self.resource_id),
+                "_deleted": {"$exists": False},
+            }}
         ]
 
 
@@ -341,9 +346,18 @@ class CollectionResourceRef(ResourceRef):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
                     "from": "resource_%s" % self.spec.name,
-                    "localField": "_id",
-                    "foreignField": "_parent_id",
                     "as": "_val",
+                    "let": {"s_id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$eq": ["$_parent_id", "$$s_id"],
+                            }
+                        }},
+                        {"$match": {
+                            "_deleted": {"$exists": False},
+                        }},
+                    ]
             }},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
@@ -404,9 +418,15 @@ class LinkCollectionResourceRef(ResourceRef):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
                     "from": "resource_%s" % self.spec.name,
-                    "localField": "%s._id" % self.field_name,
-                    "foreignField": "_id",
                     "as": "_val",
+                    "let": {"s_id": {"$ifNull": ["$%s" % self.field_name, []]}},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$in": [{"_id": "$_id"}, "$$s_id"],
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
@@ -470,8 +490,17 @@ class LinkResourceRef(ResourceRef):
             {"$lookup": {
                 "from": 'resource_%s' % self.spec.name,
                 "as": '_val',
-                "localField": self.field_name,
-                "foreignField": "_id",
+                "let": {"s_id": "$%s" % self.field_name},
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$eq": ["$_id", "$$s_id"],
+                        }
+                    }},
+                    {"$match": {
+                        "_deleted": {"$exists": False},
+                    }},
+                ]
             }},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
@@ -617,6 +646,7 @@ class ReverseLinkResourceRef(ResourceRef):
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
+            # TODO: match _deleted: false ??
         ]
 
 
@@ -676,6 +706,7 @@ class ParentCollectionResourceRef(ResourceRef):
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
+            # TODO: match _deleted: false ??
         ]
 
 
@@ -742,6 +773,7 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
+            # TODO: match _deleted: false ??
         ]
 
 

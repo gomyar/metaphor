@@ -40,80 +40,65 @@ class LRParseTest(unittest.TestCase):
     def test_field(self):
         tree = parse("self.name", self.employee_spec)
 
-        self.assertEqual([{"$project": {"_val": "$name"}}], tree.create_aggregation(None))
+        self.assertEqual([{'$addFields': {'_val': '$name'}}], tree.create_aggregation(None))
 
     def test_calc(self):
         tree = parse("self.age + self.duration", self.employee_spec)
 
-        expected = [
-            {"$addFields": {"_val": "$age"}},
-            {"$addFields": {"_lhs": "$_val"}},
-
-            {"$addFields": {"_val": "$age"}},
-            {"$addFields": {"_rhs": "$_val"}},
-
-            {"$project": {"_val": {"$add": ["$_lhs", "$_rhs"]}}},
-        ]
+        expected = [{'$addFields': {'_val': '$age'}},
+            {'$addFields': {'_v_self_age': '$_val'}},
+            {'$addFields': {'_val': '$duration'}},
+            {'$addFields': {'_v_self_duration': '$_val'}},
+            {'$addFields': {'_val': {'$add': [{'$ifNull': ['$_v_self_age', 0]},
+                                            {'$ifNull': ['$_v_self_duration', 0]}]}}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_linked_resource(self):
         tree = parse("self.boss", self.employee_spec)
 
-        expected = [
-            {"$lookup": {
-                "from": 'resource_employee',
-                "as": '_val',
-                "let": {"v_boss": "$boss"},
-                "pipeline":[
-                    {"$match": {"$expr": {"$eq": ["$_id", "$$v_boss"]}}}
-                ]
-            }},
-            {"$set": {"_val": {"$arrayElemAt": ["$_val.age", 0]}}},
-        ]
+        expected = [{'$lookup': {'as': '_val',
+                        'foreignField': '_id',
+                        'from': 'resource_employee',
+                        'localField': 'boss'}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_linked_calc(self):
         tree = parse("self.age + (self.boss.duration)", self.employee_spec)
 
-        expected = [
-            {"$addFields": {"_val": "$age"}},
-            {"$addFields": {"_lhs": "$_val"}},
-
-            {"$lookup": {
-                "from": 'resource_employee',
-                "as": '_val',
-                "let": {"v_boss": "$boss"},
-                "pipeline":[
-                    {"$match": {"$expr": {"$eq": ["$_id", "$$v_boss"]}}}
-                ]
-            }},
-            {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
-
-            {"$addFields": {"_val": "$duration"}},
-            {"$addFields": {"_rhs": "$_val"}},
-
-            {"$project": {"_val": {"$add": ["$_lhs", "$_rhs"]}}},
-        ]
+        expected = [{'$addFields': {'_val': '$age'}},
+            {'$addFields': {'_v_self_age': '$_val'}},
+            {'$lookup': {'as': '_lookup_val',
+                        'from': 'resource_employee',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
+                                    {'$lookup': {'as': '_val',
+                                                    'foreignField': '_id',
+                                                    'from': 'resource_employee',
+                                                    'localField': 'boss'}},
+                                    {'$group': {'_id': '$_val'}},
+                                    {'$unwind': '$_id'},
+                                    {'$replaceRoot': {'newRoot': '$_id'}},
+                                    {'$addFields': {'_val': '$duration'}}]}},
+            {'$set': {'_v_self_boss_duration': {'$arrayElemAt': ['$_lookup_val._val',
+                                                                0]}}},
+            {'$addFields': {'_val': {'$add': [{'$ifNull': ['$_v_self_age', 0]},
+                                            {'$ifNull': ['$_v_self_boss_duration',
+                                                            0]}]}}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_root_collection(self):
         tree = parse("employees", self.employee_spec)
 
-        expected = [
-            {"$lookup": {
-                "from": 'resource_employee',
-                "as": '_val',
-                "pipeline":[
-                    {"$match": {
-                        "_parent_field_name": "employees",
-                        "_parent_canonical_url": "/",
-                    }}
-                ]
-            }},
-#            {"$group": {"_id": "$_val"}},
-#            {"$unwind": "$_id"},
-#            {"$replaceRoot": {"newRoot": "$_id"}},
-        ]
+        expected = [{'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
+                        'pipeline': [{'$match': {'_parent_canonical_url': '/',
+                                                '_parent_field_name': 'employees'}}]}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_root_collection_filtered(self):
@@ -123,7 +108,10 @@ class LRParseTest(unittest.TestCase):
                         'from': 'resource_employee',
                         'pipeline': [{'$match': {'_parent_canonical_url': '/',
                                                 '_parent_field_name': 'employees'}}]}},
-            {'$match': {'_val.age': {'$gt': 4}}}]
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$match': {'age': {'$gt': 4}}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_ternary(self):
@@ -313,7 +301,7 @@ class LRParseTest(unittest.TestCase):
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
 
-            {"$project": {"_val": "$name"}},
+            {'$addFields': {'_val': '$age'}},
 
             {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
         ]

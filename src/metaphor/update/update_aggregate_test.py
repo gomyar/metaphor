@@ -61,160 +61,117 @@ class LRParseTest(unittest.TestCase):
         self.schema.create_linkcollection_entry('section', self.section_id_2, 'employees', self.employee_id_2)
         self.schema.create_linkcollection_entry('section', self.section_id_2, 'employees', self.employee_id_3)
 
+    def perform_simple_calc(self, collection, resource_id, calc):
+        val = collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation())
+        return list(val)[0]['_val']
+
+    def perform_resource_calc(self, collection, resource_id, calc):
+        val = collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation())
+        return list(val)
+
     def test_field(self):
         tree = parse("self.name", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "my_name", tree,
-            self.employee_id_1)
-        employee = self.db.resource_employee.find_one(
-            {"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual('Bob', employee['my_name'])
+        self.assertEqual('Bob', self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))
 
     def test_calc(self):
         tree = parse("self.age + self.duration", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "age_and_duration",
-            tree, self.employee_id_1)
-        employee = self.db.resource_employee.find_one(
-            {"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(56, employee['age_and_duration'])
-
-        self.updater._calculate_aggregated_resource("employee", "age_and_duration", tree, self.employee_id_2)
-        employee = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(42, employee['age_and_duration'])
+        self.assertEqual(56, self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))
+        self.assertEqual(42, self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree))
 
     def test_linked_resource(self):
         tree = parse("self.boss", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "my_boss", tree, self.employee_id_2)
-        employee = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(self.schema.decodeid(self.employee_id_1), employee['my_boss'])
+        val = self.perform_resource_calc(self.db.resource_employee, self.employee_id_2, tree)
+        self.assertEqual(val[0]['_id'], self.schema.decodeid(self.employee_id_1))
 
     def test_linked_calc(self):
         tree = parse("self.age + (self.boss.duration)", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "my_calc", tree, self.employee_id_2)
-        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(46, employee_2['my_calc'])
-        self.updater._calculate_aggregated_resource("employee", "my_calc", tree, self.employee_id_3)
-        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(36, employee_3['my_calc'])
+        self.assertEqual(46, self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree))
+        self.assertEqual(36, self.perform_simple_calc(self.db.resource_employee, self.employee_id_3, tree))
 
     def test_root_collection(self):
         tree = parse("employees", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "all_employees", tree, self.employee_id_1)
-        employees = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(3, len(employees['all_employees']))
+        val = self.perform_resource_calc(self.db.resource_employee, self.employee_id_1, tree)
+        self.assertEqual(3, len(val))
 
     def test_root_collection_filtered(self):
         tree = parse("employees[age>30]", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "all_employees", tree, self.employee_id_1)
-        employees = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(2, len(employees['all_employees']))
+        val = self.perform_resource_calc(self.db.resource_employee, self.employee_id_1, tree)
+        self.assertEqual(2, len(val))
 
     def test_multi_collection_filtered(self):
         tree = parse("divisions.sections.employees[age>30]", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "all_employees", tree, self.employee_id_1)
-        employees = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(2, len(employees['all_employees']))
+        val = self.perform_resource_calc(self.db.resource_employee, self.employee_id_1, tree)
+        self.assertEqual(2, len(val))
 
     def test_multi_collection_filtered_at_sections(self):
         tree = parse("divisions.sections[name='alpha'].employees", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "all_employees", tree, self.employee_id_1)
-        employees = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(1, len(employees['all_employees']))
+        val = self.perform_resource_calc(self.db.resource_employee, self.employee_id_1, tree)
+        self.assertEqual(1, len(val))
+        self.assertEqual('Bob', val[0]['name'])
 
     def test_ternary(self):
         tree = parse("self.name = 'Bob' -> 12 : 14", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
-        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(12, employee_1["bobswitch"])
+        self.assertEqual(12, self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
-        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(14, employee_2["bobswitch"])
+        self.assertEqual(14, self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
-        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(14, employee_3["bobswitch"])
+        self.assertEqual(14, self.perform_simple_calc(self.db.resource_employee, self.employee_id_3, tree))
 
     def test_ternary_calcs(self):
         tree = parse("self.boss.name = 'Bob' -> (self.boss.duration) : 99", self.employee_spec)
+        val = self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree)
+        self.assertEqual(99, val)
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
-        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(99, employee_1["bobswitch"])
+        val = self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree)
+        self.assertEqual(12, val)
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
-        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(12, employee_2["bobswitch"])
-
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
-        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(12, employee_3["bobswitch"])
+        val = self.perform_simple_calc(self.db.resource_employee, self.employee_id_3, tree)
+        self.assertEqual(12, val)
 
     def test_switch(self):
         tree = parse("self.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
-        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(22, employee_1["bobswitch"])
+        self.assertEqual(22, self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
-        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(11, employee_2["bobswitch"])
+        self.assertEqual(11, self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
-        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(None, employee_3["bobswitch"])
+        self.assertEqual(None, self.perform_simple_calc(self.db.resource_employee, self.employee_id_3, tree))
 
     def test_switch_calc(self):
         tree = parse("self.boss.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
-        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(None, employee_1.get("bobswitch"))
+        self.assertEqual(None, self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
-        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(22, employee_2["bobswitch"])
+        self.assertEqual(22, self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
-        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(22, employee_3["bobswitch"])
+        self.assertEqual(22, self.perform_simple_calc(self.db.resource_employee, self.employee_id_3, tree))
 
     def test_switch_calc_fields(self):
         tree = parse("self.boss.name -> ('Bob': (self.boss.duration), 'Ned': (self.duration), 'Ted': (self.age))", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_1)
-        employee_1 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(None, employee_1.get("bobswitch"))
+        self.assertEqual(None, self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_2)
-        employee_2 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_2)})
-        self.assertEqual(12, employee_2["bobswitch"])
+        self.assertEqual(12, self.perform_simple_calc(self.db.resource_employee, self.employee_id_2, tree))
 
-        self.updater._calculate_aggregated_resource("employee", "bobswitch", tree, self.employee_id_3)
-        employee_3 = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_3)})
-        self.assertEqual(12, employee_3["bobswitch"])
+        self.assertEqual(12, self.perform_simple_calc(self.db.resource_employee, self.employee_id_3, tree))
 
     def test_function_first(self):
         tree = parse("first(employees)", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource(tree, self.employee_id_1)
-        first = self.db.resource_employee.find_one({"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual('Bob', first['name'])
+        val = self.perform_resource_calc(self.db.resource_employee, self.employee_id_1, tree)
+        self.assertEqual(1, len(val))
+        self.assertEqual('Bob', val[0]['name'])
 
     def test_function_sum(self):
         tree = parse("sum(employees.age)", self.employee_spec)
 
-        self.updater._calculate_aggregated_resource(
-            "employee", "sum_employee_age", tree, self.employee_id_1)
-        employee_1 = self.db.resource_employee.find_one(
-            {"_id": self.schema.decodeid(self.employee_id_1)})
-        self.assertEqual(102, employee_1['sum_employee_age'])
+        self.assertEqual(102, self.perform_simple_calc(self.db.resource_employee, self.employee_id_1, tree))

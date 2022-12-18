@@ -89,7 +89,9 @@ class AdminApi(object):
     def _update_for_calc_field(self, spec_name, field_name, field_type):
         if field_type == 'calc':
             for resource in self.schema.db['resource_%s' % spec_name].find({}, {'_id': 1}):
-                self.updater.update_calc(spec_name, field_name, self.schema.encodeid(resource['_id']))
+                update_id = str(self.schema.create_update())
+                self.updater.perform_single_update_aggregation(spec_name, spec_name, field_name, self.schema.calc_trees[(spec_name, field_name)], [], [], update_id)
+                self.schema.cleanup_update(update_id)
 
     def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
         try:

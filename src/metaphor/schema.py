@@ -489,8 +489,19 @@ class Schema(object):
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
+    def mark_resource_deleted(self, spec_name, resource_id):
+        return self.db['resource_%s' % spec_name].find_one_and_update({'_id': self.decodeid(resource_id)}, {"$set": {"_deleted": True}})
+
     def delete_resource(self, spec_name, resource_id):
         return self.db['resource_%s' % spec_name].find_one_and_delete({'_id': self.decodeid(resource_id)})
+
+    def mark_link_collection_item_deleted(self, spec_name, parent_id, field_name, resource_id):
+        self.db['resource_%s' % spec_name].update({
+            "_id": parent_id,
+            field_name: {"$elemMatch": {"_id": self.decodeid(resource_id)}},
+        }, {
+            "$set": {"%s.$._deleted" % field_name: True
+        }})
 
     def delete_linkcollection_entry(self, spec_name, parent_id, field_name, resource_id):
         self.db['resource_%s' % spec_name].update({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
