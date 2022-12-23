@@ -179,6 +179,22 @@
                                 <span gui-text="resource[field_name]"></span>
                             </div>
                         </div>
+                        <div class="field" gui-show="(field.type=='calc') && (field.target_spec_name!=null)">
+                            <div class="field_name" gui-text="field_name"></div>
+
+                            <div class="field_value">
+                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
+                                <!-- possible expansion to collection -->
+                                <span class="collection_url">
+                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                </span>
+
+                                <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                            </div>
+
+                        </div>
+
 
                         <div class="field" gui-show="field.type=='bool'">
                             <div class="field_name" gui-text="field_name"></div>
