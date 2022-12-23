@@ -142,7 +142,7 @@ class MoveResourceTest(unittest.TestCase):
         ]), self.move_resource.affected_ids())
 
         # need to perform the move before the after ids will show up
-        self.move_resource.perform_move()
+        self.move_resource.perform_move('111')
 
         # check affected ids for to path
         self.assertEqual(set([

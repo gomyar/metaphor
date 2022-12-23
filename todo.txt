@@ -3,6 +3,13 @@ Todo:
  - Bug: cannot link to read-able /ego/whatever resource (client tries to use canonical url)
  - Bug: Refresh buton under /ego resources doesn't work (client tries to use canonical url)
  - Bug: Empty lists do not report 403
+ - Bug: calculated resource collections are not covered by authentication check
+
+ - oauth2 login (google)
+   - GOOGLE_CLIENT_ID
+   - GOOGLE_CLIENT_SECRET
+
+ - restrict allowed user accounts by domain ("*.stackturtle.com")
 
  - CORS
  - CSRF
@@ -18,6 +25,8 @@ Todo:
  - rewrite calc resources to use aggregations instead of calculate()
  - add update collection to track updates (retry on fail etc)
  - merge affected_ids to update collection for move / delete updates
+
+ - reverse aggregations are run against the altered resource, but may not be applicable to it. return the resource type for each reverse aggregation in the list.
 
 Updates based on aggs:
 

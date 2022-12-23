@@ -38,7 +38,7 @@ class ServerTest(TestCase):
             self.api.post('/employees', {'name': 'fred %s' % i})
 
         # login
-        self.client.post('/login', data={
+        self.client.post('/login', json={
             "username": "bob",
             "password": "password",
         }, follow_redirects=True)

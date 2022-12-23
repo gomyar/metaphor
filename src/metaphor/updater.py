@@ -58,7 +58,6 @@ class Updater(object):
             for reverse_agg in dependent_aggs:
                 self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
 
-
     def perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
         # run reverse_agg + update_agg + calc_field_dirty_agg
             # run update for altered calc
@@ -106,9 +105,10 @@ class Updater(object):
             }},
         ]
         if not calc.is_collection():
-            nested_agg.append(
-                {"$unwind": "$_update"},
-            )
+            nested_agg.extend([
+                {"$unwind": {"path": "$_update", "preserveNullAndEmptyArrays": True}},
+                {"$addFields": {"_update": {"$ifNull": ["$_update", {"_val": None}]}}},
+            ])
         self.schema.db["resource_%s" % spec_name].aggregate(start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
 
         # update for subsequent calcs, if any

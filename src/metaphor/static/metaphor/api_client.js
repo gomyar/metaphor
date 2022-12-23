@@ -8,6 +8,14 @@ var Schema = {
 
 var ego_path = null;
 
+function handle_http_error(error, msg) {
+    if (error.status == 401) {
+        login.show_login();
+    } else {
+        alert(error.status + ": " + msg);    
+    }
+}
+
 
 class ResourceSearch {
     constructor(target_spec_name, selected_callback) {
@@ -33,7 +41,7 @@ class ResourceSearch {
             this.result_page = new Collection(JSON.parse(response), '/search/', search_query);
             turtlegui.reload();
         }, function(error) {
-            alert(error.statusText);
+            handle_http_error(error, error.statusText);
         });
     }
 
@@ -137,7 +145,7 @@ class Resource {
                 turtlegui.reload();
             },
             (error) => {
-                alert("Error getting resource at " + this.self + ": " + error.status); 
+                handle_http_error(error, "Error getting resource at " + this.self + ": " + error.status); 
             });
     }
 
@@ -220,7 +228,7 @@ class Collection {
                 turtlegui.reload();
             },
             (error) => {
-                alert("Error getting api " + this._url()+ ": " + error.status); 
+                handle_http_error(error, "Error getting api " + this._url()+ ": " + error.status); 
             });
     }
 }
@@ -294,7 +302,7 @@ class ApiClient {
                 turtlegui.reload();
             },
             (error) => {
-                alert("Error getting api " + this.full_path() + ": " + error.status); 
+                handle_http_error(error, "Error getting api " + this.full_path() + ": " + error.status); 
             });
     }
 
@@ -352,7 +360,7 @@ class ApiClient {
                 turtlegui.reload(element);
             },
             (error) => {
-                alert("Error loading " + field_name);
+                handle_http_error(error, "Error loading " + field_name);
             });
     }
 
@@ -365,8 +373,7 @@ class ApiClient {
                 turtlegui.reload(element);
             },
             (error) => {
-                console.log('Error loading', error);
-                alert("Error loading " + field_name);
+                handle_http_error(error, 'Error loading', error);
             });
     }
 
@@ -448,8 +455,7 @@ class ApiClient {
                 api.creating_collection._fetch();
             },
             (error) => {
-                console.log('Error creating ', error);
-                alert("Error creating " + api.creating_resource);
+                handle_http_error(error, 'Error creating ', error);
             });
         
     }
@@ -464,8 +470,7 @@ class ApiClient {
                 resource._fetch();
             },
             (error) => {
-                console.log('Error updating', error);
-                alert("Error updating " + resource.self);
+                handle_http_error(error, 'Error updating' + resource.self);
             });
     }
 
@@ -477,8 +482,7 @@ class ApiClient {
                 collection._fetch();
             },
             (error) => {
-                console.log('Error updating', error);
-                alert("Error updating " + resource.self);
+                handle_http_error(error, "Error updating " + resource.self);
             });
     }
 
@@ -489,8 +493,7 @@ class ApiClient {
             (success) => {
             },
             (error) => {
-                console.log('Error updating', error);
-                alert("Error updating " + resource.self);
+                handle_http_error(error, "Error updating " + resource.self);
             });
     }
 
@@ -542,8 +545,7 @@ class ApiClient {
                     parent_resource._fetch()
                 },
                 (error) => {
-                    console.log('Error deleting', error);
-                    alert("Error deleting" + parent_resource._url()+ "/" + resource.id);
+                    handle_http_error(error, "Error deleting" + parent_resource._url()+ "/" + resource.id);
                 });
         }
     }
@@ -556,8 +558,7 @@ class ApiClient {
                     parent_resource._fetch();
                 },
                 (error) => {
-                    console.log('Error deleting', error);
-                    alert("Error deleting" + resource.self);
+                    handle_http_error(error, "Error deleting" + resource.self);
                 });
         }
     }
@@ -652,8 +653,48 @@ class ListenClient {
     }
 }
 
+class Login {
+    constructor() {
+        this.username = null;
+        this.password = null;
+        this.is_shown = false;
+        this.error = null;
+    }
+
+    show_login() {
+        this.username = null;
+        this.password = null;
+        this.is_shown = true;
+        this.error = null;
+        turtlegui.reload();
+    }
+
+    attempt_login() {
+        turtlegui.ajax.post(
+            '/login',
+            {"username": this.username, "password": this.password},
+            (response) => {
+                this.cancel_login();
+                load_initial_api();                
+            },
+            (err) => {
+                this.error = err;
+                turtlegui.reload();
+            });
+    }
+
+    cancel_login() {
+        this.username = null;
+        this.password = null;
+        this.is_shown = false;
+        this.error = null;
+        turtlegui.reload();
+    }
+}
+
 var api = new ApiClient();
 var listen_client = new ListenClient();
+var login = new Login();
 
 var listen_dropdown = {
     is_open: false,
@@ -665,10 +706,17 @@ var listen_dropdown = {
 }
 
 
-document.addEventListener("DOMContentLoaded", function(){
+function load_initial_api() {
     turtlegui.ajax.get('/admin/schema_editor/api', function(response) {
         Schema = JSON.parse(response);
         api.load();
+    }, (error) => {
+        handle_http_error(error, "Cannot load schema");
     });
+}
+
+
+document.addEventListener("DOMContentLoaded", function(){
+    load_initial_api();
 });
 

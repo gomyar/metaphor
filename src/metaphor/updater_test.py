@@ -87,7 +87,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_employees'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], average_agg)
+        ], []], average_agg)
 
         # different calc
         older_agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees', self.employee_spec, None)
@@ -101,7 +101,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_employees'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], average_agg)
+        ], []], average_agg)
 
     def test_reverse_aggregation_link(self):
         self.schema.add_field(self.division_spec, 'manager', 'link', 'employee')
@@ -125,7 +125,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_manager'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], agg)
+        ], []], agg)
 
         # check affected ids
         affected_ids = self.updater.get_affected_ids_for_resource('division', 'manager_age', self.employee_spec, employee_id_1)
@@ -161,7 +161,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_managers'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], agg)
+        ], []], agg)
 
         # check affected ids
         affected_ids = self.updater.get_affected_ids_for_resource('division', 'average_manager_age', self.employee_spec, employee_id_1)
@@ -211,7 +211,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_older_employees'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], agg)
+        ], []], agg)
 
         # check affected ids
         affected_ids = self.updater.get_affected_ids_for_resource('division', 'older_employees_called_ned', self.employee_spec, employee_id_2)
@@ -237,7 +237,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_parent_division_employees'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], agg)
+        ], []], agg)
 
         # check affected ids
         affected_ids = self.updater.get_affected_ids_for_resource('employee', 'division_name', self.division_spec, division_id_1)
@@ -269,7 +269,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_link_division_manager'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], agg)
+        ], []], agg)
 
         division_id_2 = self.schema.insert_resource(
             'division', {'name': 'marketting'}, 'divisions')
@@ -308,7 +308,7 @@ class UpdaterTest(unittest.TestCase):
             {'$group': {'_id': '$_field_link_division_managers'}},
             {'$unwind': '$_id'},
             {"$replaceRoot": {"newRoot": "$_id"}},
-        ]], agg)
+        ], []], agg)
 
     def test_reverse_aggregation_simple_collection(self):
         self.schema.add_calc(self.division_spec, 'all_employees', 'self.employees')
@@ -369,8 +369,8 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater.delete_resource('division', division_id_1, None, 'divisions')
 
-        self.assertEqual(1, self.db['resource_division'].count())
-        self.assertEqual(2, self.db['resource_employee'].count())
+        self.assertEqual(0, self.db['resource_division'].count())
+        self.assertEqual(0, self.db['resource_employee'].count())
 
         self.assertEqual(0, self.db['resource_division'].count({"_deleted": {"$exists": False}}))
         self.assertEqual(0, self.db['resource_employee'].count({"_deleted": {"$exists": False}}))

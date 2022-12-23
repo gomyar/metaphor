@@ -122,7 +122,7 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, put_grants, admin=False):
+    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, put_grants, user_hash, admin=False):
         self.username = username
         self.password = password
         self.read_grants = read_grants
@@ -131,9 +131,10 @@ class User(UserMixin):
         self.delete_grants = delete_grants
         self.put_grants = put_grants
         self.admin = admin
+        self.user_hash = user_hash
 
     def get_id(self):
-        return self.password
+        return self.user_hash
 
     def is_admin(self):
         return self.admin
@@ -489,6 +490,9 @@ class Schema(object):
         if extra_fields:
             data.update(extra_fields)
 
+        if spec_name == 'user':
+            data['_user_hash'] = str(uuid4())
+
         new_resource_id = self.db['resource_%s' % spec_name].insert(data)
         return self.encodeid(new_resource_id)
 
@@ -511,6 +515,10 @@ class Schema(object):
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         save_data = self._parse_fields(spec_name, field_data)
+
+        if spec_name == 'user' and field_data.get('password'):
+            save_data['_user_hash'] = str(uuid4())
+
         new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},
@@ -549,11 +557,15 @@ class Schema(object):
     def remove_spec_field(self, spec_name, field_name):
         self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
 
-    def load_user(self, username, load_hash=False):
+    def load_user_by_username(self, username, load_hash=False):
+        return self._load_user_with_aggregate({'username': username}, load_hash)
+
+    def load_user_by_user_hash(self, user_hash):
+        return self._load_user_with_aggregate({'_user_hash': user_hash})
+
+    def _load_user_with_aggregate(self, match, load_hash=False):
         user_data = self.db['resource_user'].aggregate([
-            {"$match": {
-                'username': username,
-            }},
+            {"$match": match},
             {"$lookup": {
                 'from': "resource_grant",
                 'as': 'read_grants',
@@ -591,40 +603,27 @@ class Schema(object):
                 'delete_grants.url': 1,
                 'put_grants._id': 1,
                 'put_grants.url': 1,
+                '_user_hash': 1,
                 'admin': 1,
             }},
         ])
         user_data = list(user_data)
         if user_data:
             user_data = user_data[0]
-            user = User(username,
-                        user_data['password'],
-                        user_data['read_grants'],
-                        user_data['create_grants'],
-                        user_data['update_grants'],
-                        user_data['delete_grants'],
-                        user_data['put_grants'],
-                        user_data.get('admin'))
-            if load_hash:
-                user.password = user_data['password']
-            return user
-        else:
-            return None
-
-    def load_user_by_password_hash(self, password_hash):
-        user_data = self.db['resource_user'].find_one({'password': password_hash})
-        if user_data:
             user = User(user_data['username'],
                         user_data['password'],
                         user_data['read_grants'],
                         user_data['create_grants'],
                         user_data['update_grants'],
                         user_data['delete_grants'],
-                        user_data.get('admin') or False)
+                        user_data['put_grants'],
+                        user_data['_user_hash'],
+                        user_data.get('admin'))
+            if load_hash:
+                user.password = user_data['password']
             return user
         else:
             return None
-
 
     def create_initial_schema(self):
         self.create_spec('user')

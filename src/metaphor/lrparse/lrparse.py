@@ -250,7 +250,6 @@ class RootResourceRef(ResourceRef):
                         {"$match": {
                             "_parent_field_name": self.resource_name,
                             "_parent_canonical_url": '/',
-                            # TODO: _deleted: false
                             "_deleted": {"$exists": False},
                         }}
                     ]
@@ -1023,6 +1022,7 @@ class Operator(Calc):
             ">": "$gt",
             "<": "$lt",
             "=": "$eq",
+            "!=": "$ne",
             ">=": "$gte",
             "<=": "$lte",
         }
@@ -1800,7 +1800,7 @@ class FunctionCall(ResourceRef):
 
     def _agg_sum(self, user, agg_field):
         return agg_field.create_aggregation(user) + [
-            {'$group': {'_id': None, '_val': {'$sum': '$' + agg_field.field_name}}}
+            {'$group': {'_id': None, '_val': {'$sum': '$' + agg_field.field_name}}},
         ]
 
     def _agg_days(self, user, field):

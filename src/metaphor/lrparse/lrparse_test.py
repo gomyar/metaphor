@@ -203,7 +203,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals([
             {'$match': {'_id': self.schema.decodeid(employee_id)}},
             {'$match': {'_deleted': {'$exists': False}}},
-            {'$project': {'name': True}}
+            {'$addFields': {'name': True}}
         ], aggregation)
 
     def test_nonexistant_field_in_calc(self):
@@ -342,7 +342,7 @@ class LRParseTest(unittest.TestCase):
             {'$replaceRoot': {'newRoot': '$_id'}},
             {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'name': {'$eq': 'sales'}}},
-            {'$project': {'yearly_sales': True}}], aggregation)
+            {'$addFields': {'yearly_sales': True}}], aggregation)
         self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
                           spec)
 
@@ -386,7 +386,7 @@ class LRParseTest(unittest.TestCase):
         self.assertTrue(True is self._calculate('employee', tree, employee_id_1))
 
         tree = parse("self.salary != self.tax", employee_spec)
-        self.assertTrue(True is tree.calculate(employee_id_1))
+        self.assertTrue(True is self._calculate('employee', tree, employee_id_1))
 
 
     def test_calc_nones(self):

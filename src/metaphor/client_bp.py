@@ -4,7 +4,7 @@ from flask import render_template
 from flask import current_app
 from flask import request
 from flask import jsonify
-from flask_login import login_required
+from metaphor.login import login_required
 
 import flask_login
 
@@ -24,7 +24,6 @@ def schema():
 
 
 @client_bp.route("/", methods=['GET'])
-@login_required
 def client_root():
     return render_template('metaphor/api_client.html')
 

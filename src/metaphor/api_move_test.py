@@ -36,8 +36,8 @@ class ApiTest(unittest.TestCase):
         self.calcs_spec = self.schema.create_spec('calcs')
         self.schema.create_field('calcs', 'total_employees', 'calc', calc_str='sum(employees.age)')
         self.schema.create_field('calcs', 'total_former_employees', 'calc', calc_str='sum(former_employees.age)')
-        #self.schema.create_field('calcs', 'total_division_parttimers', 'calc', calc_str='sum(divisions.parttimers.age)')
-        #self.schema.create_field('calcs', 'total_division_contractors', 'calc', calc_str='sum(divisions.contractors.age)')
+        self.schema.create_field('calcs', 'total_division_parttimers', 'calc', calc_str='sum(divisions.parttimers.age)')
+        self.schema.create_field('calcs', 'total_division_contractors', 'calc', calc_str='sum(divisions.contractors.age)')
 
         self.schema.create_field('root', 'calcs', 'collection', 'calcs')
 
@@ -61,7 +61,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(0, self.api.get('/employees')['count'])
 
         # assert calc update
-        # apparently sum of empty list gives null
         self.assertEqual(None, self.api.get('/calcs/%s' % self.calcs_id)['total_employees'])
         self.assertEqual(1, self.api.get('/calcs/%s' % self.calcs_id)['total_former_employees'])
 

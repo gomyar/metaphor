@@ -51,7 +51,7 @@ class AggregatorTest(unittest.TestCase):
              'localField': '_parent_id'}},
             {'$group': {'_id': '$_field_employees'}},
             {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
+            {'$replaceRoot': {'newRoot': '$_id'}}], []], aggregations)
 
     def test_middle_of_calc(self):
         tree = parse('divisions.sections.members.age', self.schema.specs['division'])
@@ -125,6 +125,7 @@ class AggregatorTest(unittest.TestCase):
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}},
             ],
+            [],
         ], aggregations)
 
     def test_calc(self):
@@ -144,6 +145,7 @@ class AggregatorTest(unittest.TestCase):
                 {'$replaceRoot': {'newRoot': '$_id'}},
 
             ],
+            [],
             # TODO: if two of the aggregations are the same, remove the second one:
             [
                 {'$lookup': {'as': '_field_employees',
@@ -162,7 +164,7 @@ class AggregatorTest(unittest.TestCase):
                 {'$group': {'_id': '$_field_age_calc'}},
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}},
-            ]
+            ],
         ], aggregations)
 
     def test_double_aggregate(self):

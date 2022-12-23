@@ -57,9 +57,10 @@ class LRParseTest(unittest.TestCase):
         tree = parse("self.boss", self.employee_spec)
 
         expected = [{'$lookup': {'as': '_val',
-                        'foreignField': '_id',
                         'from': 'resource_employee',
-                        'localField': 'boss'}},
+                        'let': {'s_id': '$boss'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$s_id']}}},
+                                    {'$match': {'_deleted': {'$exists': False}}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]
@@ -68,6 +69,7 @@ class LRParseTest(unittest.TestCase):
     def test_linked_calc(self):
         tree = parse("self.age + (self.boss.duration)", self.employee_spec)
 
+
         expected = [{'$addFields': {'_val': '$age'}},
             {'$addFields': {'_v_self_age': '$_val'}},
             {'$lookup': {'as': '_lookup_val',
@@ -75,9 +77,11 @@ class LRParseTest(unittest.TestCase):
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'foreignField': '_id',
                                                     'from': 'resource_employee',
-                                                    'localField': 'boss'}},
+                                                    'let': {'s_id': '$boss'},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$s_id']}}},
+                                                                {'$match': {'_deleted': {'$exists': False}}}]}},
                                     {'$group': {'_id': '$_val'}},
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
@@ -94,7 +98,8 @@ class LRParseTest(unittest.TestCase):
 
         expected = [{'$lookup': {'as': '_val',
                         'from': 'resource_employee',
-                        'pipeline': [{'$match': {'_parent_canonical_url': '/',
+                        'pipeline': [{'$match': {'_deleted': {'$exists': False},
+                                                '_parent_canonical_url': '/',
                                                 '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
@@ -106,7 +111,8 @@ class LRParseTest(unittest.TestCase):
 
         expected = [{'$lookup': {'as': '_val',
                         'from': 'resource_employee',
-                        'pipeline': [{'$match': {'_parent_canonical_url': '/',
+                        'pipeline': [{'$match': {'_deleted': {'$exists': False},
+                                                '_parent_canonical_url': '/',
                                                 '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
@@ -142,16 +148,18 @@ class LRParseTest(unittest.TestCase):
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'foreignField': '_id',
                                                     'from': 'resource_employee',
-                                                    'localField': 'boss'}},
+                                                    'let': {'s_id': '$boss'},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$s_id']}}},
+                                                                {'$match': {'_deleted': {'$exists': False}}}]}},
                                     {'$group': {'_id': '$_val'}},
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
                                     {'$addFields': {'_val': '$name'}}]}},
             {'$set': {'_v_self_boss_name': {'$arrayElemAt': ['$_lookup_val._val', 0]}}},
             {'$addFields': {'_val': 'Bob'}},
-            {'$addFields': {'_v_8659372647791006834': '$_val'}},
+            {'$addFields': {'_v_3761198934935128740': '$_val'}},
             {'$addFields': {'_val': {'$eq': ['$_v_self_boss_name', 'Bob']}}},
             {'$addFields': {'_if': '$_val'}},
             {'$lookup': {'as': '_lookup_val',
@@ -159,9 +167,11 @@ class LRParseTest(unittest.TestCase):
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'foreignField': '_id',
                                                     'from': 'resource_employee',
-                                                    'localField': 'boss'}},
+                                                    'let': {'s_id': '$boss'},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$s_id']}}},
+                                                                {'$match': {'_deleted': {'$exists': False}}}]}},
                                     {'$group': {'_id': '$_val'}},
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
@@ -172,7 +182,6 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_val': {'$cond': {'else': '$_else',
                                                 'if': '$_if',
                                                 'then': '$_then'}}}}]
-
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch(self):
@@ -195,8 +204,10 @@ class LRParseTest(unittest.TestCase):
                                                             {'case': {'$eq': ['Fred',
                                                                                 '$_switch_val']},
                                                                 'then': '$_case_2'}],
-                                                'default': None}}}}]
-
+                                                'default': None}}}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$addFields': {'_val': '$_id'}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch_calc(self):
@@ -207,9 +218,11 @@ class LRParseTest(unittest.TestCase):
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'foreignField': '_id',
                                                     'from': 'resource_employee',
-                                                    'localField': 'boss'}},
+                                                    'let': {'s_id': '$boss'},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$s_id']}}},
+                                                                {'$match': {'_deleted': {'$exists': False}}}]}},
                                     {'$group': {'_id': '$_val'}},
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
@@ -231,8 +244,10 @@ class LRParseTest(unittest.TestCase):
                                                             {'case': {'$eq': ['Fred',
                                                                                 '$_switch_val']},
                                                                 'then': '$_case_2'}],
-                                                'default': None}}}}]
-
+                                                'default': None}}}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$addFields': {'_val': '$_id'}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch_calc_fields(self):
@@ -243,9 +258,11 @@ class LRParseTest(unittest.TestCase):
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'foreignField': '_id',
                                                     'from': 'resource_employee',
-                                                    'localField': 'boss'}},
+                                                    'let': {'s_id': '$boss'},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$s_id']}}},
+                                                                {'$match': {'_deleted': {'$exists': False}}}]}},
                                     {'$group': {'_id': '$_val'}},
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
@@ -257,9 +274,11 @@ class LRParseTest(unittest.TestCase):
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'foreignField': '_id',
                                                     'from': 'resource_employee',
-                                                    'localField': 'boss'}},
+                                                    'let': {'s_id': '$boss'},
+                                                    'pipeline': [{'$match': {'$expr': {'$eq': ['$_id',
+                                                                                            '$$s_id']}}},
+                                                                {'$match': {'_deleted': {'$exists': False}}}]}},
                                     {'$group': {'_id': '$_val'}},
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
@@ -278,8 +297,10 @@ class LRParseTest(unittest.TestCase):
                                                             {'case': {'$eq': ['Ted',
                                                                                 '$_switch_val']},
                                                                 'then': '$_case_2'}],
-                                                'default': None}}}}]
-
+                                                'default': None}}}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$addFields': {'_val': '$_id'}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_function(self):
@@ -293,6 +314,7 @@ class LRParseTest(unittest.TestCase):
                     {"$match": {
                         "_parent_field_name": "employees",
                         "_parent_canonical_url": "/",
+                        '_deleted': {'$exists': False},
                     }},
                 ]
             }},
