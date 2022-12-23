@@ -91,6 +91,10 @@ class LRParseTest(unittest.TestCase):
         resource = self.schema.db['resource_%s' % resource_name].find_one({"_id": resource_id})
         return resource.get("test_field") if resource else None
 
+    def perform_simple_calc(self, collection, resource_id, calc):
+        val = list(collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation()))
+        return val[0]['_val'] if val else None
+
     def test_basic(self):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
         division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
@@ -102,7 +106,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(self.schema.specs['division'].fields['yearly_sales'], tree.infer_type())
         self.assertFalse(tree.is_collection())
 
-        self.assertEquals(10, self._calculate('employee', tree, employee_id))
+        self.assertEqual(10, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id, tree))
 
     def test_even_basicer(self):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41}, 'employees')
@@ -467,8 +471,8 @@ class LRParseTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower'}, 'employees')
 
         tree = parse("self.salary_range -> ('upper': 20.0, 'lower': 40.0)", employee_spec)
-        self.assertEquals(20.0, self._calculate('employee', tree, employee_id_1))
-        self.assertEquals(40.0, self._calculate('employee', tree, employee_id_2))
+        self.assertEqual(20.0, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
+        self.assertEqual(40.0, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_2, tree))
 
     def test_switch_longer_list(self):
         employee_spec = self.schema.specs['employee']
@@ -479,8 +483,8 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("self.salary_range -> ('upper': 20.0, 'lower': 40.0, 'middling': 30.0)", employee_spec)
 
-        self.assertEquals(20.0, self._calculate('employee', tree, employee_id_1))
-        self.assertEquals(40.0, self._calculate('employee', tree, employee_id_2))
+        self.assertEqual(20, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
+        self.assertEqual(40, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_2, tree))
 
     def test_switch_basic(self):
         employee_spec = self.schema.specs['employee']
@@ -490,8 +494,8 @@ class LRParseTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower'}, 'employees')
 
         tree = parse("self.salary_range -> ('upper': 20.0)", employee_spec)
-        self.assertEquals(20.0, self._calculate('employee', tree, employee_id_1))
-        self.assertEquals(None, self._calculate('employee', tree, employee_id_2))
+        self.assertEqual(20.0, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
+        self.assertEqual(None, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_2, tree))
 
     def test_switch_field_refs(self):
         employee_spec = self.schema.specs['employee']
@@ -503,8 +507,8 @@ class LRParseTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower', 'upper_salary': 30000, 'lower_salary': 20000}, 'employees')
 
         tree = parse("self.salary_range -> ('upper': self.upper_salary, 'lower': self.lower_salary)", employee_spec)
-        self.assertEquals(50000, self._calculate('employee', tree, employee_id_1))
-        self.assertEquals(20000, self._calculate('employee', tree, employee_id_2))
+        self.assertEqual(50000, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
+        self.assertEqual(20000, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_2, tree))
 
     def test_switch_calcs(self):
         employee_spec = self.schema.specs['employee']
@@ -517,8 +521,8 @@ class LRParseTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'salary_range': 'lower', 'salary': 30000, 'upper_salary_level': 0.5, 'lower_salary_level': 0.3}, 'employees')
 
         tree = parse("self.salary_range -> ('upper': (self.salary * self.upper_salary_level), 'lower': (self.salary * self.lower_salary_level))", employee_spec)
-        self.assertEquals(20000, self._calculate('employee', tree, employee_id_1))
-        self.assertEquals(9000, self._calculate('employee', tree, employee_id_2))
+        self.assertEqual(20000, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
+        self.assertEqual(9000, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_2, tree))
 
     def test_math_functions(self):
         employee_spec = self.schema.specs['employee']
@@ -530,19 +534,19 @@ class LRParseTest(unittest.TestCase):
 
         # max
         tree = parse("max(employees.salary)", employee_spec)
-        self.assertEquals(30, self._calculate('employee', tree, employee_id_1))
+        self.assertEqual(30, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
         # min
         tree = parse("min(employees.salary)", employee_spec)
-        self.assertEquals(10, self._calculate('employee', tree, employee_id_1))
+        self.assertEqual(10, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
         # avg
         tree = parse("average(employees.salary)", employee_spec)
-        self.assertEquals(20, self._calculate('employee', tree, employee_id_1))
+        self.assertEqual(20, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
         # sum
         tree = parse("sum(employees.salary)", employee_spec)
-        self.assertEquals(60, self._calculate('employee', tree, employee_id_1))
+        self.assertEqual(60, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
     def test_extra_math(self):
         employee_spec = self.schema.specs['employee']
@@ -714,6 +718,7 @@ class LRParseTest(unittest.TestCase):
                 {'$unwind': '$_id'},
                 {'$replaceRoot': {'newRoot': '$_id'}}
             ],
+            [],
         ], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2, 'division', 'parttimers_age'))
 
     def test_dependencies(self):

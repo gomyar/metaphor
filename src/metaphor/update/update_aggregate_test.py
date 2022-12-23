@@ -62,12 +62,12 @@ class LRParseTest(unittest.TestCase):
         self.schema.create_linkcollection_entry('section', self.section_id_2, 'employees', self.employee_id_3)
 
     def perform_simple_calc(self, collection, resource_id, calc):
-        val = collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation())
-        return list(val)[0]['_val']
+        val = list(collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation()))
+        return val[0]['_val'] if val else None
 
     def perform_resource_calc(self, collection, resource_id, calc):
-        val = collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation())
-        return list(val)
+        val = list(collection.aggregate([{"$match": {"_id": self.schema.decodeid(resource_id)}}] + calc.create_aggregation()))
+        return val
 
     def test_field(self):
         tree = parse("self.name", self.employee_spec)

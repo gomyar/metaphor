@@ -144,7 +144,7 @@ class RootResourceRef(ResourceRef):
 
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         if self.resource_name in ["self", "ego"]:
-            return [[]]
+            return [[], []]
         else:
             # assuming root / collection
             return [[], self.create_reverse(calc_spec_name, calc_field_name)]
@@ -1432,14 +1432,18 @@ class SwitchRef(ResourceRef):
                 "then": "$_case_%s" % index,
             })
 
-        aggregation.append(
+        aggregation.extend([
             {"$addFields": {"_val": {
                 "$switch": {
                     "branches": branches,
                     "default": None
                 }
             }}},
-        )
+            {'$group': {'_id': '$_val'}},
+            {"$unwind": "$_id"},
+            {"$addFields": {"_val": "$_id"}},
+#            {"$replaceRoot": {"newRoot": "$_id"}},
+        ])
         return aggregation
 
 

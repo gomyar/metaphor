@@ -45,6 +45,14 @@ class DeleteResourceUpdate:
         if self.spec_name == 'grant':
             self.updater._remove_grants(self.resource_id, original_resource['url'])
 
+        # delete child resources
+        for field_name, field in spec.fields.items():
+            if field.field_type == 'collection':
+                for child_resource in self.schema.db['resource_%s' % field.target_spec_name].find({'_parent_id': self.schema.decodeid(self.resource_id)}, {'_id': 1}):
+                    self.updater.delete_resource(field.target_spec_name, self.schema.encodeid(child_resource['_id']), self.spec_name, field_name)
+
+
+
         # cleanup update
         self.schema.cleanup_update(update_id)
 

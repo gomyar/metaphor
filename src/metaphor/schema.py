@@ -547,8 +547,53 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
 
     def load_user(self, username, load_hash=False):
-        user_data = self.db['resource_user'].find_one({'username': username})
+        user_data = self.db['resource_user'].aggregate([
+            {"$match": {
+                'username': username,
+            }},
+            {"$lookup": {
+                'from': "resource_grant",
+                'as': 'read_grants',
+                'localField': 'read_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$lookup": {
+                'from': "resource_grant",
+                'as': 'create_grants',
+                'localField': 'create_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$lookup": {
+                'from': "resource_grant",
+                'as': 'update_grants',
+                'localField': 'update_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$lookup": {
+                'from': "resource_grant",
+                'as': 'delete_grants',
+                'localField': 'delete_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$project": {
+                'username': 1,
+                'password': 1,
+                'read_grants._id': 1,
+                'read_grants.url': 1,
+                'create_grants._id': 1,
+                'create_grants.url': 1,
+                'update_grants._id': 1,
+                'update_grants.url': 1,
+                'delete_grants._id': 1,
+                'delete_grants.url': 1,
+                'put_grants._id': 1,
+                'put_grants.url': 1,
+                'admin': 1,
+            }},
+        ])
+        user_data = list(user_data)
         if user_data:
+            user_data = user_data[0]
             user = User(username,
                         user_data['read_grants'],
                         user_data['create_grants'],
@@ -578,11 +623,11 @@ class Schema(object):
         self.create_field('user', 'groups', 'linkcollection', 'group')
         self.create_field('group', 'grants', 'collection', 'grant')
 
-        self.create_field('user', 'read_grants', 'calc', calc_str="self.groups.grants[type='read'].url")
-        self.create_field('user', 'create_grants', 'calc', calc_str="self.groups.grants[type='create'].url")
-        self.create_field('user', 'update_grants', 'calc', calc_str="self.groups.grants[type='update'].url")
-        self.create_field('user', 'delete_grants', 'calc', calc_str="self.groups.grants[type='delete'].url")
-        self.create_field('user', 'put_grants', 'calc', calc_str="self.groups.grants[type='put'].url")
+        self.create_field('user', 'read_grants', 'calc', calc_str="self.groups.grants[type='read']")
+        self.create_field('user', 'create_grants', 'calc', calc_str="self.groups.grants[type='create']")
+        self.create_field('user', 'update_grants', 'calc', calc_str="self.groups.grants[type='update']")
+        self.create_field('user', 'delete_grants', 'calc', calc_str="self.groups.grants[type='delete']")
+        self.create_field('user', 'put_grants', 'calc', calc_str="self.groups.grants[type='put']")
 
         self.create_field('root', 'users', 'collection', 'user')
         self.create_field('root', 'groups', 'collection', 'group')

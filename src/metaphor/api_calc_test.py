@@ -155,11 +155,11 @@ class ApiTest(unittest.TestCase):
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
             'age': 41,
             'division': '/divisions/%s' % division_id_1,
-            'division_link': '/divisions/%s' % division_id_1,
+            'division_link': {"_id": self.schema.decodeid(division_id_1)},
             'id': employee_id_1,
             'name': 'ned',
             'parent_section_parttimers': None,
-            'parttime_division_name': None,
+            'parttime_division_name': 'ned',
             'self': '/employees/%s' % employee_id_1}
             , self.api.get('/employees/%s' % employee_id_1))
 

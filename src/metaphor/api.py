@@ -48,8 +48,8 @@ class Api(object):
     def _has_grants(url_path, canonical_url, grants):
         url_path = re.sub(r'\[.*?]', '', url_path.strip('/'))
         canonical_url = canonical_url.strip('/')
-        def match_grant(url, grant_url, recurse=False):
-            match_re = grant_url.replace('/*', '\/ID[0-9a-f]*')
+        def match_grant(url, grant, recurse=False):
+            match_re = grant['url'].replace('/*', '\/ID[0-9a-f]*')
             if recurse and match_re != '/': # allow for root (admin) grant
                 match_re = match_re + r'(/.*)?$'
             if not recurse:

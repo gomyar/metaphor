@@ -527,3 +527,45 @@ class UpdaterTest(unittest.TestCase):
         division = self.schema.db['resource_division'].find_one()
         self.assertEqual(21, division['age_total'])
         self.assertEqual(22, division['age_total_plus'])
+
+    def test_update_same_resource(self):
+        self.schema.add_calc(self.employee_spec, 'is_old', 'self.age > 30')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 25})
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'ned', 'age': 35})
+
+        employee_1 = self.schema.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        self.assertEqual(False, employee_1['is_old'])
+        employee_2 = self.schema.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_2)})
+        self.assertEqual(True, employee_2['is_old'])
+
+        # change field
+        self.updater.update_fields("employee", employee_id_1, {'age': 45})
+        employee_1 = self.schema.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        self.assertEqual(True, employee_1['is_old'])
+
+    def test_create_switch_with_collections(self):
+        self.schema.add_calc(self.division_spec, 'older_employees', 'self.name -> ("sales": (self.employees[age>20]), "marketting": (self.employees[age>30]))')
+
+        division_id_1 = self.schema.insert_resource(
+            'division', {'name': 'sales'}, 'divisions')
+        employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'bob', 'age': 25})
+        employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
+            'name': 'ned', 'age': 35})
+
+        division = self.schema.db['resource_division'].find_one()
+        self.assertEqual(2, len(division['older_employees']))
+
+        # change field
+        self.updater.update_fields("division", division_id_1, {'name': 'marketting'})
+        #self.updater.update_fields("employee", employee_id_1, {'age': 15})
+
+        division = self.schema.db['resource_division'].find_one()
+        self.assertEqual(1, len(division['older_employees']))
+
+
