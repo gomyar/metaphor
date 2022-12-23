@@ -369,8 +369,11 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater.delete_resource('division', division_id_1, None, 'divisions')
 
-        self.assertEqual(0, self.db['resource_division'].count())
-        self.assertEqual(0, self.db['resource_employee'].count())
+        self.assertEqual(1, self.db['resource_division'].count())
+        self.assertEqual(2, self.db['resource_employee'].count())
+
+        self.assertEqual(0, self.db['resource_division'].count({"_deleted": {"$exists": False}}))
+        self.assertEqual(0, self.db['resource_employee'].count({"_deleted": {"$exists": False}}))
 
     def test_delete_resource_deletes_links_to_resource(self):
         self.schema.add_field(self.division_spec, 'employees', 'linkcollection', 'employee')

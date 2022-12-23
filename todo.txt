@@ -1,5 +1,19 @@
 
 Todo:
+ - Bug: cannot link to read-able /ego/whatever resource (client tries to use canonical url)
+ - Bug: Refresh buton under /ego resources doesn't work (client tries to use canonical url)
+ - Bug: Empty lists do not report 403
+
+ - CORS
+ - CSRF
+
+ - logout on password change
+ - logout on source address change?
+
+ - oauth token based api access
+
+ - login through api
+
  - take resource_id out of reverse aggregator, collect in updaters instead
  - rewrite calc resources to use aggregations instead of calculate()
  - add update collection to track updates (retry on fail etc)
@@ -20,6 +34,29 @@ Updates based on aggs:
    - agg merge
  - remove dirty flag
  - remove update_id
+ - add POST (_copy_from) similar to move, but creates new copies
+
+ - search bug - if one str field exists and is blank search finds nothing
+ - add type info to _meta structure for all resources ('resource', 'link', 'linkcollection', 'collection')
+   - remove delete button for links
+ - possibly add permission info to _meta for current user for each resource (read/write/update)
+ - OR just line up with known Schema
+
+Ideal websockets:
+ - client may listen for :
+   - resource: specify fields
+   - collection: items added / removed
+     - filter by pagination? by filter
+     - individual items updated?
+   - link collection: items added / removed / re-ordered
+     - filter by pagination? by filter
+     - individual items updated?
+
+ listen('/employees/ABCDEF', ['name', 'address'])  - notified when specific field in resource changed
+ listen('/employees/ABCDEF', [*])  - notified when any field in resource changed
+ listen('/employees') - notified is collection items added / removed
+ listen('/employees', ['name', 'address']) - notified is collection items added / removed or specific fields updated
+ listen('/employees[name~"Bob"]', ['name', 'address']) - notified when filtered collection changed
 
 Shortlist:
 

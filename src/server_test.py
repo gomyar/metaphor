@@ -143,14 +143,13 @@ class ServerTest(TestCase):
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
         employee = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
-        self.assertEqual([self.schema.decodeid(self.grant_id_1)], employee['_grants'])
+        self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], employee['_grants'])
 
         skill_id_1 = self.api.post('/employees/%s/skills' % employee_id_1, {'name': 'basket'})
 
         skill = self.db['resource_skill'].find_one({"_id": self.schema.decodeid(skill_id_1)})
         # note: only read grants are cached in the resource
-        self.assertEqual([self.schema.decodeid(self.grant_id_1)], skill['_grants'])
-
+        self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], skill['_grants'])
 
     def test_delete_grant_updates_user_grants(self):
         company_spec = self.schema.add_spec('company')
@@ -201,14 +200,15 @@ class ServerTest(TestCase):
         self.assertEqual({
             '_meta': {'is_collection': False, 'spec': {'name': 'user'}},
             'admin': None,
-            'create_grants': [],
-            'delete_grants': [],
+            'create_grants': '/users/%s/create_grants' % self.user_id,
+            'delete_grants': '/users/%s/delete_grants' % self.user_id,
             'groups': '/users/%s/groups' % self.user_id,
             'id': self.user_id,
             'password': '<password>',
-            'read_grants': ['/employees'],
+            'read_grants': '/users/%s/read_grants' % self.user_id,
             'self': '/users/%s' % self.user_id,
-            'update_grants': [],
+            'update_grants': '/users/%s/update_grants' % self.user_id,
+            'put_grants': '/users/%s/put_grants' % self.user_id,
             'username': 'bob'}, user)
 
     def test_create_password(self):

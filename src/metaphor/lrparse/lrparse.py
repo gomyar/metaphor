@@ -186,15 +186,17 @@ class RootResourceRef(ResourceRef):
             aggregation = [
                 {"$match": {"_grants": {"$in": user.grants}}}
             ] if user else []
-#            aggregation.extend([
-#                {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
-#            ])
+            aggregation.extend([
+                {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
+            ])
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             return aggregation, self.spec, False
         elif self.resource_name == 'ego':
             aggregation = [
             # using ego as dummy 
 #                {"$match": {"username": user.username}}
             ]
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             return aggregation, self.spec, False
         else:
             aggregation = [
@@ -206,6 +208,7 @@ class RootResourceRef(ResourceRef):
                     {"_parent_canonical_url": '/'},
                 ]}}
             ])
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             return aggregation, self.spec, True
 
     def is_collection(self):
@@ -273,6 +276,7 @@ class IDResourceRef(ResourceRef):
         aggregation.append(
             {"$match": {"_id": self.spec.schema.decodeid(self.resource_id)}}
         )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, spec, False
 
     def is_collection(self):
@@ -318,6 +322,7 @@ class CollectionResourceRef(ResourceRef):
         aggregation.append(
             {"$replaceRoot": {"newRoot": "$_id"}}
         )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def is_collection(self):
@@ -390,6 +395,7 @@ class LinkCollectionResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def create_reverse(self, calc_spec_name, calc_field_name):
@@ -464,6 +470,7 @@ class LinkResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, is_aggregate
 
     def create_reverse(self, calc_spec_name, calc_field_name):
@@ -539,6 +546,7 @@ class CalcResourceRef(ResourceRef, Calc):
                 aggregation.append(
                     {"$match": {"_grants": {"$in": user.grants}}}
                 )
+            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
             is_aggregate = is_aggregate or calc_tree.is_collection()
         return aggregation, calc_spec, is_aggregate
 
@@ -610,13 +618,16 @@ class ReverseLinkResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def is_collection(self):
         return True
 
     def get_resource_dependencies(self):
-        _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
+        #_, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
+        reverse_spec = self.spec.name
+        reverse_field = self.resource_ref.spec.name
         return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
     def create_reverse(self, calc_spec_name, calc_field_name):
@@ -674,6 +685,7 @@ class ParentCollectionResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, False
 
     def is_collection(self):
@@ -736,6 +748,7 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             aggregation.append(
                 {"$match": {"_grants": {"$in": user.grants}}}
             )
+        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
         return aggregation, child_spec, True
 
     def is_collection(self):
@@ -945,6 +958,8 @@ class Operator(Calc):
                 return lhs >= rhs
             elif op == '<=':
                 return lhs <= rhs
+            elif op == '!=':
+                return lhs != rhs
         except TypeError as te:
             return None
         except AttributeError as te:
@@ -1054,6 +1069,7 @@ class Operator(Calc):
 class Condition(object):
     OPERATORS = {
         '=': '$eq',
+        '!=': '$ne',
         '>': '$gt',
         '<': '$lt',
         '>=': '$gte',
@@ -1863,12 +1879,14 @@ class Parser(object):
             [(NAME, '<', ConstRef) , Condition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+            [(NAME, '!=', ConstRef) , Condition],
 
             [(NAME, '=', ResourceRef) , Condition],
             [(NAME, '>', ResourceRef) , Condition],
             [(NAME, '<', ResourceRef) , Condition],
             [(NAME, '>=', ResourceRef) , Condition],
             [(NAME, '<=', ResourceRef) , Condition],
+            [(NAME, '!=', ResourceRef) , Condition],
 
             [(Operable, '+', Operable) , Operator],
             [(Operable, '-', Operable) , Operator],
@@ -1881,6 +1899,7 @@ class Parser(object):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(Calc, '>=', Calc) , Operator],
             [(Calc, '<=', Calc) , Operator],
+            [(Calc, '!=', Calc) , Operator],
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
             [('[', Condition, ']'), Filter],
@@ -2030,6 +2049,7 @@ class UrlParser(Parser):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+            [(NAME, '!=', ConstRef) , Condition],
 
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],
@@ -2070,6 +2090,7 @@ class FilterParser(Parser):
             [(NAME, '~', ConstRef) , LikeCondition],
             [(NAME, '>=', ConstRef) , Condition],
             [(NAME, '<=', ConstRef) , Condition],
+            [(NAME, '!=', ConstRef) , Condition],
 
             [(Condition, '&', Condition) , AndCondition],
             [(Condition, '|', Condition) , OrCondition],

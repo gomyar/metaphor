@@ -582,7 +582,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.delete('/employees/%s' % employee_id_2)
 
-        new_employees = list(self.db['resource_employee'].find())
+        new_employees = list(self.db['resource_employee'].find({"_deleted": {"$exists": False}}))
 
         self.assertEquals([
             {'_id': self.schema.decodeid(employee_id_1),
@@ -644,6 +644,7 @@ class ApiTest(unittest.TestCase):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
         section_id_1 = self.schema.insert_resource('section', {'name': 'engineering'}, 'sections', 'division', division_id_1)
+        contractor_id_1 = self.schema.create_orderedcollection_entry('employee', 'section', 'contractors', section_id_1, {'name': 'bob'})
 
         self.assertEquals([{
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
@@ -668,7 +669,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual({
             '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
-            'link_employee_division': {
+            'link_employee_division': [{
                 '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
                 'age': 41,
                 'division': '/divisions/%s' % division_id_1,
@@ -677,7 +678,7 @@ class ApiTest(unittest.TestCase):
                 'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
                 'name': 'ned',
                 'parent_section_contractors': None,
-                'self': '/employees/%s' % employee_id_1},
+                'self': '/employees/%s' % employee_id_1}],
             'name': 'sales',
             'parttimers': '/divisions/%s/parttimers' % division_id_1,
             'sections': '/divisions/%s/sections' % division_id_1,
@@ -710,6 +711,48 @@ class ApiTest(unittest.TestCase):
             'parent_section_contractors': None,
             'self': '/employees/%s' % employee_id_1}
             , self.api.get('/employees/%s' % employee_id_1, args={"expand": 'division.sections'}))
+
+    def test_expand_reverse_link_collection(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+        self.api.post('/divisions/%s/parttimers' % division_id_1, {'id': employee_id_1})
+
+        # reverse link collection
+        self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'id': employee_id_1,
+            'age': 41,
+            'created': None,
+            'division': '/divisions/%s' % division_id_1,
+            'link_division_parttimers': [
+                {'_meta': {'is_collection': False,
+                 'spec': {'name': 'division'}},
+                 'id': division_id_1,
+                 'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+                 'name': 'sales',
+                 'parttimers': '/divisions/%s/parttimers' % division_id_1,
+                 'sections': '/divisions/%s/sections' % division_id_1,
+                 'self': '/divisions/%s' % division_id_1,
+                 'yearly_sales': 100}],
+            'name': 'ned',
+            'parent_section_contractors': None,
+            'self': '/employees/%s' % employee_id_1}]
+            , self.api.get('/employees', args={"expand": 'link_division_parttimers'})['results'])
+
+    def test_expand_null_link(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41,}, 'employees')
+
+        self.assertEquals([{
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'id': employee_id_1,
+            'age': 41,
+            'created': None,
+            'division': None,
+            'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+            'name': 'ned',
+            'parent_section_contractors': None,
+            'self': '/employees/%s' % employee_id_1}]
+            , self.api.get('/employees', args={"expand": 'division'})['results'])
 
     def test_expand_linkcollection(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -756,6 +799,33 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('sales', expanded['parttimers'][0]['division']['name'])
         self.assertEqual('bob', expanded['parttimers'][1]['name'])
         self.assertEqual('sales', expanded['parttimers'][1]['division']['name'])
+
+    def test_expand_reverse_link(self):
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
+            'id': division_id_1,
+            'link_employee_division': [
+                {
+				'_meta': {'is_collection': False,
+                          'spec': {'name': 'employee'}},
+                'age': 41,
+                'created': None,
+                'division': '/divisions/%s' % division_id_1,
+                'id': employee_id_1,
+                'link_division_parttimers': '/employees/%s/link_division_parttimers' % employee_id_1,
+                'name': 'ned',
+                'parent_section_contractors': None,
+                'self': '/employees/%s' % employee_id_1},
+            ],
+            'name': 'sales',
+            'parttimers': '/divisions/%s/parttimers' % division_id_1,
+            'sections': '/divisions/%s/sections' % division_id_1,
+            'self': '/divisions/%s' % division_id_1,
+            'yearly_sales': 100}
+            , self.api.get('/divisions/%s' % division_id_1, args={"expand": 'link_employee_division'}))
 
     def test_expand_collection(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -843,7 +913,16 @@ class ApiTest(unittest.TestCase):
             'contractors': '/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1),
             'id': section_id_1,
             'name': 'engineering',
-            'parent_division_sections': '/divisions/%s' % division_id_1,
+            'parent_division_sections': {
+                '_meta': {'is_collection': False,
+                'spec': {'name': 'division'}},
+                'id': division_id_1,
+                'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
+                'name': 'sales',
+                'parttimers': '/divisions/%s/parttimers' % division_id_1,
+                'sections': '/divisions/%s/sections' % division_id_1,
+                'self': '/divisions/%s' % division_id_1,
+                'yearly_sales': 100},
             'self': '/divisions/%s/sections/%s' % (division_id_1, section_id_1)}
             , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'parent_division_sections'}))
 

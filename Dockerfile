@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.0.0-experimental
   
-FROM alpine
+FROM alpine:3.13
 
 RUN apk add --update \
     python3 \
@@ -27,4 +27,4 @@ ENV PYTHONPATH=/app/
 
 EXPOSE 8000
 
-ENTRYPOINT ["gunicorn", "server:app", "--timeout", "6000", "--bind=0.0.0.0:8000", "--access-logfile=-"]
+ENTRYPOINT ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "server:app", "--timeout", "6000", "--bind=0.0.0.0:8000", "--access-logfile=-"]

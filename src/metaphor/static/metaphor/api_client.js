@@ -28,9 +28,9 @@ class ResourceSearch {
                 query_str += field_name + "~'" + this.search_text + "'";
             }
         }
-        var search_query = '/search/' + this.spec.name + '?query=' + query_str;
-        turtlegui.ajax.get(search_query, (response) => {
-            this.result_page = new Collection(JSON.parse(response), search_query);
+        var search_query = this.spec.name + '?query=' + query_str;
+        turtlegui.ajax.get('/search/' + search_query, (response) => {
+            this.result_page = new Collection(JSON.parse(response), '/search/', search_query);
             turtlegui.reload();
         }, function(error) {
             alert(error.statusText);
@@ -115,12 +115,12 @@ var search = new Search();
 
 class Resource {
     constructor(data) {
+        this._expanded = {};
         this._construct(data);
     }
 
     _construct(data) {
         Object.assign(this, data);
-        this._expanded = {};
         if (data._meta.spec.name == 'root') {
             this._meta.spec = Schema.root;
         } else {
@@ -140,10 +140,14 @@ class Resource {
                 alert("Error getting resource at " + this.self + ": " + error.status); 
             });
     }
+
+    _url() {
+        return this.self || '/';
+    }
 }
 
 class Collection {
-    constructor(collection, collection_url) {
+    constructor(collection, api_root, collection_url) {
         this.results = this._parse_results(collection.results);
         this.count = collection.count;
         this.previous = collection.previous;
@@ -154,7 +158,12 @@ class Collection {
 
         this._page_size = 10;
         this._page = 0;
+        this._api_root = api_root;
         this._collection_url = collection_url;
+    }
+
+    _url() {
+        return this._collection_url;
     }
 
     _parse_results(results) {
@@ -199,7 +208,7 @@ class Collection {
 
     _fetch() {
         turtlegui.ajax.get(
-            this._collection_url + "?page=" + this._page + "&page_size=" + this._page_size,
+            this._api_root + this._url()+ "?page=" + this._page + "&page_size=" + this._page_size,
             (success) => {
                 var collection = JSON.parse(success);
 
@@ -211,7 +220,7 @@ class Collection {
                 turtlegui.reload();
             },
             (error) => {
-                alert("Error getting api " + this._collection_url + ": " + error.status); 
+                alert("Error getting api " + this._url()+ ": " + error.status); 
             });
     }
 }
@@ -277,7 +286,7 @@ class ApiClient {
                 if (this.is_resource(resource_data)) {
                     this.root_resource = new Resource(resource_data);
                 } else {
-                    this.root_resource = new Collection(resource_data, this.full_path());
+                    this.root_resource = new Collection(resource_data, this.api_root, this.path);
                 }
                 if (api.path.startsWith('/ego')) {
                     ego_path = api.path;
@@ -298,7 +307,8 @@ class ApiClient {
     }
 
     is_resource(resource) {
-        return !resource._meta.is_collection;
+        //return !resource._meta.is_collection;
+        return !resource._meta.can_link && !resource._meta.is_collection;
     }
 
     is_field_array(field) {
@@ -327,11 +337,18 @@ class ApiClient {
         }
     }
 
+    is_parent_collection(resource, field_name) {
+        if (resource != null && field_name != null) {
+            return !resource._meta.can_link && resource._meta.is_collection;
+        }
+    }
+
     expand_collection(element, resource, field_name, field, ego_path) {
+        console.log('Expand');
         turtlegui.ajax.get(
             this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : resource[field_name]),
             (success) => {
-                resource._expanded[field_name] = new Collection(JSON.parse(success), this.api_root + resource[field_name]);
+                resource._expanded[field_name] = new Collection(JSON.parse(success), this.api_root, resource[field_name]);
                 turtlegui.reload(element);
             },
             (error) => {
@@ -367,7 +384,7 @@ class ApiClient {
         return resource._expanded[field_name] != null;
     }
 
-    show_create_resource(parent_resource, target_spec_name, parent_canonical_url) {
+    show_create_resource(parent_resource, target_spec_name, parent_canonical_url, collection) {
         var spec = Schema.specs[target_spec_name];
         this.creating_resource = {
             "_meta": {
@@ -376,6 +393,7 @@ class ApiClient {
         }
         this.creating_parent_resource = parent_resource;
         this.creating_resource_url = parent_canonical_url;
+        this.creating_collection = collection;
         turtlegui.reload();
     }
 
@@ -427,7 +445,7 @@ class ApiClient {
             (success) => {
                 console.log('Created');
                 api.creating_resource = null;
-                api.creating_parent_resource._fetch();
+                api.creating_collection._fetch();
             },
             (error) => {
                 console.log('Error creating ', error);
@@ -453,7 +471,7 @@ class ApiClient {
 
     perform_post_link_to_collection(collection, link_id) {
         turtlegui.ajax.post(
-            collection._collection_url,
+            collection._api_root + collection._url(),
             {id: link_id},
             (success) => {
                 collection._fetch();
@@ -519,13 +537,13 @@ class ApiClient {
     unlink_from_collection(resource, parent_resource, field_name, ego_path) {
         if (confirm("Unlink resource: " + resource.self + "?")) {
             turtlegui.ajax.delete(
-                this.api_root + (ego_path ? ego_path.replaceAll('.', '/') : parent_resource._collection_url + "/" + resource.id),
+                (ego_path ? this.api_root + ego_path.replaceAll('.', '/') : (parent_resource._api_root + parent_resource._url()) + "/" + resource.id),
                 (success) => {
                     parent_resource._fetch()
                 },
                 (error) => {
                     console.log('Error deleting', error);
-                    alert("Error deleting" + parent_resource._collection_url + "/" + resource.id);
+                    alert("Error deleting" + parent_resource._url()+ "/" + resource.id);
                 });
         }
     }
@@ -559,12 +577,92 @@ class ApiClient {
         turtlegui.reload();
     }
 
-
 }
 
 
+class ListenClient {
+    constructor() {
+        this.socket = null;
+        this.resources = {};
+    }
+
+    init() {
+        this.socket = io(location.host, {transports: ["websocket", "polling"]});
+        this.socket.on('resource_update', (msg) => {this.resource_updated(msg)});
+        this.socket.on('lost_stream', (msg) => {this.lost_stream(msg)});
+
+        this.socket.on('connect', () => {
+            console.log('Connected');
+            for (var url in this.resources) {
+                console.log('Listening to ' + url);
+                this.socket.emit('add_resource', {'url': url});
+            }
+        });
+        this.socket.on('disconnect', () => {
+            console.log('Disconnected');
+        });
+
+    }
+
+    lost_stream(msg) {
+        console.log('Lost stream:' + msg['url']);
+        if (msg['url'] in this.resources) {
+            console.log('Reestablishing: ' + msg['url']);
+            this.socket.emit('add_resource', {'url': msg['url']});
+        }
+    }
+
+    resource_updated(msg) {
+        console.log('Resource updated', msg);
+        console.log('type', msg.change.type);
+        if (this.resources[msg['url']]) {
+            this.resources[msg['url']]._fetch();
+        }
+    }
+
+    add_resource(resource) {
+        // If empty, establish socket connection
+        if (Object.keys(this.resources).length === 0) {
+            listen_client.init();
+        }
+        var url = resource._url();
+        if (!(this.resources[url])) {
+            console.log('Add resource', resource);
+            this.resources[url] = resource;
+        }
+        resource._fetch();
+    }
+
+    remove_resource(resource) {
+        var url = resource._url();
+        if (this.resources[url]) {
+            console.log('Remove resource', resource);
+            delete this.resources[url];
+            this.socket.emit('remove_resource', {'url': url});
+        }
+        // If empty, disconnect socket connection
+        if (Object.keys(this.resources).length === 0) {
+            listen_client.socket.disconnect();
+        }
+        turtlegui.reload();
+    }
+
+    is_listening(resource) {
+        return resource._url() in this.resources;
+    }
+}
 
 var api = new ApiClient();
+var listen_client = new ListenClient();
+
+var listen_dropdown = {
+    is_open: false,
+
+    toggle: function() {
+        this.is_open = !this.is_open;
+        turtlegui.reload();
+    }
+}
 
 
 document.addEventListener("DOMContentLoaded", function(){

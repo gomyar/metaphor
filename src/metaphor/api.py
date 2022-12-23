@@ -21,6 +21,12 @@ from bson.errors import InvalidId
 
 from werkzeug.security import generate_password_hash
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+log = logging.getLogger()
+
 
 def create_expand_dict(expand_str):
     expand = {}
@@ -75,10 +81,7 @@ class Api(object):
 
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
-        try:
-            tree = parse_canonical_url(path, self.schema.root)
-        except SyntaxError as te:
-            raise HTTPError('', 404, "Not Found", None, None)
+        tree = self._parse_canonical_url(path)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -114,10 +117,7 @@ class Api(object):
 
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
-            try:
-                tree = parse_canonical_url(parent_path, self.schema.root)
-            except SyntaxError as te:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(parent_path)
 
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -179,10 +179,7 @@ class Api(object):
 
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
-            try:
-                tree = parse_canonical_url(parent_path, self.schema.root)
-            except SyntaxError as te:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(parent_path)
 
             aggregate_query, spec, is_aggregate = tree.aggregation(None)
 
@@ -212,6 +209,8 @@ class Api(object):
                     field_name,
                     data['id'])
             elif field_spec.field_type == 'orderedcollection':
+                if field_spec.target_spec_name == 'user':
+                    data['password'] = generate_password_hash(data['password'])
                 return self.updater.create_orderedcollection_entry(
                     field_spec.target_spec_name,
                     spec.name,
@@ -220,6 +219,8 @@ class Api(object):
                     data,
                     self.schema.read_root_grants(path))
             else:
+                if field_spec.target_spec_name == 'user':
+                    data['password'] = generate_password_hash(data['password'])
                 return self.updater.create_resource(
                     field_spec.target_spec_name,
                     spec.name,
@@ -257,18 +258,15 @@ class Api(object):
             parent_field_path = '/'.join(path.split('/')[:-1])
             resource_id = path.split('/')[-1]
 
-            try:
-                tree = parse_canonical_url(path, self.schema.root)
-            except ValueError as ve:
-                raise HTTPError('', 404, "Not Found", None, None)
+            tree = self._parse_canonical_url(path)
 
-            parent_field_tree = parse_canonical_url(parent_field_path, self.schema.root)
+            parent_field_tree = self._parse_canonical_url(parent_field_path)
 
             parent_path = '/'.join(parent_field_path.split('/')[:-1])
             field_name = parent_field_path.split('/')[-1]
 
             if type(parent_field_tree) == LinkCollectionResourceRef:
-                parent_tree = parse_canonical_url(parent_path, self.schema.root)
+                parent_tree = self._parse_canonical_url(parent_path)
                 aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
                 if path.split('/')[0] == 'ego':
@@ -290,7 +288,7 @@ class Api(object):
                     field_name,
                     resource_id)
             elif type(parent_field_tree) == OrderedCollectionResourceRef:
-                parent_tree = parse_canonical_url(parent_path, self.schema.root)
+                parent_tree = self._parse_canonical_url(parent_path)
                 aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
                 if path.split('/')[0] == 'ego':
@@ -510,13 +508,36 @@ class Api(object):
                 "from": from_field,
                 "as": as_field,
                 "let": {
-                    "v_id": "$%s" % local_field,
+                    "v_id": {"$ifNull": ["$%s" % local_field, []]},
                 },
                 "pipeline": [
                     {
                         "$match": {
                             "$expr": {
                                 "$in": ["$%s" % foreign_field, "$$v_id"]
+                            }
+                        }
+                    }
+                ]
+            }}
+            for inner_field_name in expand_further:
+                inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+            return agg
+
+        def lookup_reverse_link_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
+            agg = {"$lookup": {
+                "from": from_field,
+                "as": as_field,
+                "let": {
+                    "v_id": {"$ifNull": ["$%s" % local_field, []]},
+                },
+                "pipeline": [
+                    {"$match": {foreign_field: {"$exists": True}}},
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$in": ["$$v_id", "$%s" % foreign_field]
                             }
                         }
                     }
@@ -543,7 +564,7 @@ class Api(object):
                         "_expanded_%s" % field_name,
                         expand_dict))
                 aggregate_query.append(
-                    {"$unwind": "$_expanded_%s" % field_name}
+                    {"$unwind": {"path": "$_expanded_%s" % field_name, "preserveNullAndEmptyArrays": True}}
                 )
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
@@ -557,9 +578,6 @@ class Api(object):
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
-                aggregate_query.append(
-                    {"$unwind": "$_expanded_%s" % field_name}
-                )
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
@@ -590,9 +608,24 @@ class Api(object):
             elif field.field_type == 'parent_collection':
                 aggregate_query.append(
                     lookup_agg(
-                            "resource_%s" % spec.name,
+                            "resource_%s" % spec.fields[field_name].target_spec_name,
                             "_parent_id",
                             "_id",
+                            "_expanded_%s" % field_name,
+                            expand_dict
+                    ))
+                aggregate_query.append(
+                    {"$unwind": {"path": "$_expanded_%s" % field_name, "preserveNullAndEmptyArrays": True}}
+                )
+                aggregate_query.append(
+                    {"$set": {field_name: "$_expanded_%s" % field_name}}
+                )
+            elif field.field_type == 'reverse_link_collection':
+                aggregate_query.append(
+                    lookup_reverse_link_collection_agg(
+                            "resource_%s" % field.target_spec_name,
+                            "_id",
+                            "%s._id" % field.reverse_link_field,
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
@@ -634,10 +667,13 @@ class Api(object):
                 else:
                     encoded[field_name] = None
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
-                encoded[field_name] = resource_data['_parent_canonical_url']
-            elif field.field_type in ('reverse_link',):
                 if field_name in expand_dict:
                     encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                else:
+                    encoded[field_name] = resource_data['_parent_canonical_url']
+            elif field.field_type in ('reverse_link',):
+                if field_name in expand_dict:
+                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
                 else:
                     # TODO: A canonical link would be better
                     encoded[field_name] = os.path.join(self_url, field_name)
@@ -676,6 +712,7 @@ class Api(object):
         pagination = self.create_pagination_aggregations(page, page_size)
         aggregation = [
             {"$match": query},
+            {"$match": {"_deleted": {"$exists": False}}},
             pagination,
         ]
 
@@ -697,3 +734,139 @@ class Api(object):
                 'is_collection': True,
             }
         }
+
+    def watch(self, url, user=None):
+        # resolve resource
+        path = url.strip().strip('/')
+        tree = self._parse_canonical_url(path)
+
+        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+        if path.split('/')[0] == 'ego':
+            aggregate_query = [
+                {"$match": {"username": user.username}}
+            ] + aggregate_query
+
+        # establish watch
+        # if single resource
+        if not is_aggregate:
+            log.debug("Watching resource")
+            cursor = tree.root_collection().aggregate(aggregate_query)
+
+            resource = next(cursor)
+
+            if user:
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                self._check_grants(path, resource['_canonical_url'], user.read_grants)
+
+            spec_fields = spec.fields.keys()
+            project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
+            project_fields['document.self'] = '$fullDocument._canonical_url'
+            project_fields['type'] = {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}}
+            project_fields['diff'] = "$updateDescription.updatedFields"
+            watch_agg = [
+                {"$match": {"documentKey._id": resource['_id']}},
+                {"$project": project_fields},
+            ]
+
+        # if collection
+        elif isinstance(tree, CollectionResourceRef) or isinstance(tree, RootResourceRef):
+            log.debug("Watching collection (root)")
+            if '/' in path:
+                parent_path, field_name = path.rsplit('/', 1)
+                tree = self._parse_canonical_url(parent_path)
+
+                aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+                field_spec = spec.fields[field_name]
+
+                if path.split('/')[0] == 'ego':
+                    aggregate_query = [
+                        {"$match": {"username": user.username}}
+                    ] + aggregate_query
+
+                # if we're using a simplified parser we can probably just pull the id off the path
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                # check permissions
+                if user:
+                    # TODO: also need to check read access to target if link
+                    # checking for /ego paths first, then all other paths
+                    self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+
+                parent_id = self.schema.encodeid(parent_resource['_id'])
+
+                # listen for changes to children of given parent
+                watch_agg = [
+                    {"$match": {"_parent_id": parent_id}},
+                ]
+            else:
+                log.debug("Collection watch")
+                # listen for changes to children of root
+                watch_agg = [
+                    {"$match": {"fullDocument._parent_id": None,
+                                "fullDocument._parent_field_name": path}}
+                ]
+            # send back type of change (update / delete / create) and details of change + diff
+            spec_fields = spec.fields.keys()
+            project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
+            project_fields['document.self'] = '$fullDocument._canonical_url'
+            project_fields['type'] = {
+                "$cond": {
+                    "if": {
+                        "$eq": ["$operationType", "insert"]
+                    },
+                    "then": "created",
+                    "else": {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}}
+                }
+            }
+            project_fields['diff'] = "$updateDescription.updatedFields"
+
+            watch_agg.extend([
+                {"$project": project_fields},
+            ])
+
+        # if link collection
+        elif isinstance(tree, LinkCollectionResourceRef):
+            log.debug("Watching link collection")
+            parent_path, field_name = path.rsplit('/', 1)
+            tree = self._parse_canonical_url(parent_path)
+
+            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
+            field_spec = spec.fields[field_name]
+
+            if path.split('/')[0] == 'ego':
+                aggregate_query = [
+                    {"$match": {"username": user.username}}
+                ] + aggregate_query
+
+            # if we're using a simplified parser we can probably just pull the id off the path
+            cursor = tree.root_collection().aggregate(aggregate_query)
+            parent_resource = next(cursor)
+
+            # check permissions
+            if user:
+                # TODO: also need to check read access to target if link
+                # checking for /ego paths first, then all other paths
+                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+
+            # only sending back updated signal, no way to get more details yet, client must reload collection
+            watch_agg = [
+                {"$match": {"documentKey._id": parent_resource['_id'],
+                            "updateDescription.updatedFields.%s" % field_name: {"$exists": True},
+                }},
+                {"$project": {
+                    "type": "updated",
+                }},
+            ]
+
+        return self.schema.db['resource_%s' % spec.name].watch(watch_agg, full_document='updateLookup')
+
+    def _parse_canonical_url(self, path):
+        try:
+            return parse_canonical_url(path, self.schema.root)
+        except SyntaxError as te:
+            raise HTTPError('', 404, "Not Found", None, None)

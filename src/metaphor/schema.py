@@ -1,5 +1,6 @@
 
 import os
+from uuid import uuid4
 from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import ReturnDocument
@@ -27,10 +28,10 @@ class Field(object):
         self.target_spec_name = target_spec_name
         self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
-            'str': ['str'],
-            'int': ['float', 'int'],
-            'float': ['float', 'int'],
-            'bool': ['bool'],
+            'str': ['str', 'NoneType'],
+            'int': ['float', 'int', 'NoneType'],
+            'float': ['float', 'int', 'NoneType'],
+            'bool': ['bool', 'NoneType'],
             'datetime': ['datetime'],
         }
         self.spec = None
@@ -121,8 +122,9 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, read_grants, create_grants, update_grants, delete_grants, put_grants, admin=False):
+    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, put_grants, admin=False):
         self.username = username
+        self.password = password
         self.read_grants = read_grants
         self.create_grants = create_grants
         self.update_grants = update_grants
@@ -131,7 +133,7 @@ class User(UserMixin):
         self.admin = admin
 
     def get_id(self):
-        return self.username
+        return self.password
 
     def is_admin(self):
         return self.admin
@@ -214,6 +216,7 @@ class Schema(object):
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}},
             upsert=True)
+        # TODO: set up indexes
         return self.add_spec(spec_name)
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
@@ -595,6 +598,7 @@ class Schema(object):
         if user_data:
             user_data = user_data[0]
             user = User(username,
+                        user_data['password'],
                         user_data['read_grants'],
                         user_data['create_grants'],
                         user_data['update_grants'],
@@ -606,6 +610,21 @@ class Schema(object):
             return user
         else:
             return None
+
+    def load_user_by_password_hash(self, password_hash):
+        user_data = self.db['resource_user'].find_one({'password': password_hash})
+        if user_data:
+            user = User(user_data['username'],
+                        user_data['password'],
+                        user_data['read_grants'],
+                        user_data['create_grants'],
+                        user_data['update_grants'],
+                        user_data['delete_grants'],
+                        user_data.get('admin') or False)
+            return user
+        else:
+            return None
+
 
     def create_initial_schema(self):
         self.create_spec('user')
@@ -646,15 +665,3 @@ class Schema(object):
             ]
         }
         return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
-
-    def list_integrations(self):
-        return self.db['metaphor_integrations'].find({})
-
-    def create_integration(self, integration_data):
-        self.db['metaphor_integrations'].insert(integration_data)
-
-    def update_integration(self, integration_data):
-        self.db['metaphor_integrations'].update_one({'_id': integration_data['_id']}, {"$set": integration_data})
-
-    def delete_integration(self, integration_id):
-        self.db['metaphor_integrations'].remove_one({'_id': integration_data['_id']})

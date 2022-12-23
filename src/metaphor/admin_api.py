@@ -112,18 +112,6 @@ class AdminApi(object):
 
         self.updater.remove_spec_field(spec_name, field_name)
 
-    def list_integrations(self):
-        return self.schema.list_integrations()
-
-    def create_integration(self, integration_data):
-        self.schema.create_integration(integration_data)
-
-    def update_integration(self, integration_data):
-        self.schema.update_integration(integration_data)
-
-    def delete_integration(self, integration_id):
-        self.schema.delete_integration(integration_id)
-
     def export_schema(self):
         schema = self.schema.db['metaphor_schema'].find_one()
         schema.pop('_id')

@@ -190,6 +190,22 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(self.schema.decodeid(employee_id_1), result[0]['_id'])
         self.assertEquals(self.schema.decodeid(employee_id_2), result[1]['_id'])
 
+    def test_spec_hier_error(self):
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor'}, 'employees')
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
+
+        self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
+
+        tree = parse("self.name", self.schema.specs['employee'])
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
+        # unsure how this guy fits in exactly
+
+        self.assertEquals([
+            {'$match': {'_id': self.schema.decodeid(employee_id)}},
+            {'$match': {'_deleted': {'$exists': False}}},
+            {'$project': {'name': True}}
+        ], aggregation)
+
     def test_nonexistant_field_in_calc(self):
         try:
             tree = parse("self.nonexistant", self.schema.specs['employee'])
@@ -260,6 +276,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals([
             {'$match': {'$and': [{'_parent_field_name': 'employees'},
                                  {'_parent_canonical_url': '/'}]}},
+            {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'age': {'$gt': 40}}},
             {'$lookup': {'as': '_field_division',
                         'foreignField': '_id',
@@ -268,6 +285,7 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_field_division'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'name': {'$eq': 'sales'}}},
             {'$addFields': {'yearly_sales': True}}], aggregation)
         self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
@@ -283,6 +301,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals([
             {'$match': {'$and': [{'_parent_field_name': 'employees'},
                                  {'_parent_canonical_url': '/'}]}},
+            {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'$and' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
             {'$addFields': {'name': True}}], aggregation)
         self.assertEquals(self.schema.specs['employee'].fields['name'],
@@ -298,6 +317,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals([
             {'$match': {'$and': [{'_parent_field_name': 'employees'},
                                  {'_parent_canonical_url': '/'}]}},
+            {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'$or' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
             {'$addFields': {'name': True}}], aggregation)
         self.assertEquals(self.schema.specs['employee'].fields['name'],
@@ -309,8 +329,22 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("self.division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
-        # it's an aggregate field
-        self.assertEquals([10], self._calculate('employee', tree, employee_id))
+        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
+        self.assertEquals([
+            {'$match': {'_id': self.schema.decodeid(employee_id)}},
+            {'$match': {'_deleted': {'$exists': False}}},
+            {'$lookup': {'as': '_field_division',
+                        'foreignField': '_id',
+                        'from': 'resource_division',
+                        'localField': 'division'}},
+            {'$group': {'_id': '$_field_division'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$match': {'_deleted': {'$exists': False}}},
+            {'$match': {'name': {'$eq': 'sales'}}},
+            {'$project': {'yearly_sales': True}}], aggregation)
+        self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
+                          spec)
 
     def test_aggregates(self):
         # entities[name=self.other[resolve='me',first=True]]
@@ -350,6 +384,10 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("self.salary >= self.tax", employee_spec)
         self.assertTrue(True is self._calculate('employee', tree, employee_id_1))
+
+        tree = parse("self.salary != self.tax", employee_spec)
+        self.assertTrue(True is tree.calculate(employee_id_1))
+
 
     def test_calc_nones(self):
         employee_spec = self.schema.specs['employee']
@@ -566,6 +604,9 @@ class LRParseTest(unittest.TestCase):
         self.assertEquals(50.69, self._calculate('employee', tree, employee_id_1))
 
         # filter nones
+        self.schema.insert_resource('employee', {'name': 'sam'}, 'employees')
+        tree = parse("employees[salary!=20.1234]", employee_spec)
+
         # filter generic aggregates (filter(aggregate, name='paul', age>20))
         # space out range
         # cap (ceil, floor) aggregates
@@ -774,6 +815,20 @@ class LRParseTest(unittest.TestCase):
             {
                 'employee.division',
                 'employee.name',
+            })
+
+    def test_dependencies_double_barreled(self):
+        spec = self.schema.create_spec('double_barreled')
+        self.schema.create_field('double_barreled', 'two_words', 'str')
+
+        employee_spec = self.schema.specs['employee']
+        self.schema.create_field('employee', 'double_barreled', 'link', 'double_barreled')
+
+        tree = parse("self.link_employee_double_barreled", spec)
+        self.assertEquals(
+            tree.get_resource_dependencies(),
+            {
+                'employee.double_barreled',
             })
 
     def test_gte(self):

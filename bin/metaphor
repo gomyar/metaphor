@@ -71,6 +71,24 @@ def run_create_user(mongohost, mongodb):
             print("User %s created" % username)
 
 
+def run_delete_user(mongohost, mongodb):
+    client = MongoClient(host=[mongohost])
+    db = client[mongodb]
+    username = input("Input username: ")
+    if username:
+        if db.resource_user.find_one({'username': username}):
+            schema = Schema(db)
+            schema.load_schema()
+
+            updater = Updater(schema)
+
+            user = updater.delete_user(username)
+
+            print("User %s deleted" % username)
+        else:
+            print("User %s does not exist" % username)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Metaphor init scripts')
 
@@ -90,6 +108,7 @@ if __name__ == '__main__':
         'init_schema': run_init_schema,
         'create_superuser': run_create_superuser,
         'create_user': run_create_user,
+        'delete_user': run_delete_user,
     }
 
     default_mongoconnection = "mongodb://%s:%s" % (
