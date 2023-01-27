@@ -1,5 +1,7 @@
 
 Todo:
+ - Bug: deleting calc field still exists (and errors after update)
+
  - Bug: cannot link to read-able /ego/whatever resource (client tries to use canonical url)
  - Bug: Refresh buton under /ego resources doesn't work (client tries to use canonical url)
  - Bug: Empty lists do not report 403

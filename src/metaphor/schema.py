@@ -313,6 +313,9 @@ class Schema(object):
         spec = self.specs[spec_name]
         field = spec.fields.pop(field_name)
         self._remove_reverse_link_for_field(field, spec)
+        dep = (spec_name, field_name)
+        if dep in self.calc_trees:
+            self.calc_trees.pop(dep)
 
         self.db['metaphor_schema'].update(
             {'_id': self._id},
@@ -358,7 +361,7 @@ class Schema(object):
 
     def _add_reverse_links(self):
         for spec in self.specs.values():
-            for field in spec.fields.values():
+            for field in list(spec.fields.values()):
                 self._add_reverse_link_for_field(field, spec)
 
     def _add_reverse_link_for_field(self, field, spec):

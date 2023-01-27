@@ -457,3 +457,18 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.load_schema()
         self.assertEquals(2, len(self.schema.specs))
+
+    def test_delete_field_with_dependencies(self):
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str')
+
+        self.schema.create_spec('secondary')
+        self.schema.create_field('secondary', 'name', 'str')
+        self.schema.create_field('secondary', 'primary', 'link', 'primary')
+        self.schema.create_field('secondary', 'primary_name', 'calc', calc_str="self.primary.name")
+
+        self.assertEqual({('secondary', 'primary_name'): self.schema.calc_trees[('secondary', 'primary_name')]}, self.schema.all_dependent_calcs_for('primary', 'name'))
+
+        self.schema.delete_field('secondary', 'primary_name')
+
+        self.assertEqual({}, self.schema.all_dependent_calcs_for('primary', 'name'))
