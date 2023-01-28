@@ -25,37 +25,30 @@ class Updater(object):
 
     def update_for(self, spec_name, field_names, update_id, start_agg):
         dependent_calcs = self.schema.all_dependent_calcs_for(spec_name, field_names)
-        for (calc_spec_name, calc_field_name), calc in dependent_calcs.items():
-            # create update_aggs
-            dependent_aggs = self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, self.schema.specs[spec_name], None)
-            if not dependent_aggs:
-                # this finds calcs in the same resource as the original resource
-                dependent_aggs = [[]]
-            for reverse_agg in dependent_aggs:
-                self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+        self._perform_aggregation_for_dependent_calcs(dependent_calcs, start_agg, spec_name, update_id)
 
     def update_for_field(self, spec_name, field_name, update_id, start_agg):
         # find calcs for field
         dependent_calcs = self.schema._dependent_calcs_for_field(spec_name, field_name)
-        for (calc_spec_name, calc_field_name), calc in dependent_calcs.items():
-            # create update_aggs
-            dependent_aggs = self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, self.schema.specs[spec_name], None)
-            if not dependent_aggs:
-                # this finds calcs in the same resource as the original resource
-                dependent_aggs = [[]]
-            for reverse_agg in dependent_aggs:
-                self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+        self._perform_aggregation_for_dependent_calcs(dependent_calcs, start_agg, spec_name, update_id)
 
     def update_for_resource(self, spec_name, update_id, start_agg):
         # find calcs for field
         dependent_calcs = self.schema._dependent_calcs_for_resource(spec_name)
+        self._perform_aggregation_for_dependent_calcs(dependent_calcs, start_agg, spec_name, update_id)
+
+    def _perform_aggregation_for_dependent_calcs(self, dependent_calcs, start_agg, spec_name, update_id):
         for (calc_spec_name, calc_field_name), calc in dependent_calcs.items():
             # create update_aggs
             dependent_aggs = self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, self.schema.specs[spec_name], None)
-            if not dependent_aggs:
+            if not dependent_aggs and calc_spec_name == spec_name:
                 # this finds calcs in the same resource as the original resource
                 dependent_aggs = [[]]
+            unique_aggs = []
             for reverse_agg in dependent_aggs:
+                if reverse_agg not in unique_aggs:
+                    unique_aggs.append(reverse_agg)
+            for reverse_agg in unique_aggs:
                 self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
 
     def perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
@@ -109,7 +102,7 @@ class Updater(object):
                 {"$unwind": {"path": "$_update", "preserveNullAndEmptyArrays": True}},
                 {"$addFields": {"_update": {"$ifNull": ["$_update", {"_val": None}]}}},
             ])
-        log.debug("Aggregate %s on resource_%s: %s", calc_field_name, spec_name, start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
+        print("Aggregate %s on resource_%s: %s", calc_field_name, spec_name, start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
         self.schema.db["resource_%s" % spec_name].aggregate(start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
 
         # update for subsequent calcs, if any
@@ -117,17 +110,6 @@ class Updater(object):
             {"$match": {"$expr": {"$in": [calc_field_name, {"$ifNull": ["$_dirty.%s" % update_id, []]}]}}}
         ]
         self.update_for_field(calc_spec_name, calc_field_name, update_id, start_agg)
-
-    def get_affected_ids_for_resource(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
-#        log.debug("get_affected_ids_for_resource(%s, %s, %s, %s)", calc_spec_name, calc_field_name, resource_spec, resource_id)
-        affected_ids = []
-        for aggregation in self.build_reverse_aggregations_to_calc(calc_spec_name, calc_field_name, resource_spec, resource_id):
-            if aggregation:
-                aggregation.append({"$project": {"_id": True}})
-                cursor = self.schema.db['resource_%s' % resource_spec.name].aggregate(aggregation)
-                found = [r['_id'] for r in cursor]
-                affected_ids.extend(found)
-        return affected_ids
 
     def build_reverse_aggregations_to_calc(self, calc_spec_name, calc_field_name, resource_spec, resource_id):
         calc_tree = self.schema.calc_trees[calc_spec_name, calc_field_name]

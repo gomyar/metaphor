@@ -127,7 +127,7 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_val': '$name'}},
             {'$addFields': {'_v_self_name': '$_val'}},
             {'$addFields': {'_val': 'Bob'}},
-            {'$addFields': {'_v_8659372647791006834': '$_val'}},
+            {'$addFields': {'_v_0': '$_val'}},
             {'$addFields': {'_val': {'$eq': ['$_v_self_name', 'Bob']}}},
             {'$addFields': {'_if': '$_val'}},
             {'$addFields': {'_val': 12}},
@@ -136,7 +136,11 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_else': '$_val'}},
             {'$addFields': {'_val': {'$cond': {'else': '$_else',
                                                 'if': '$_if',
-                                                'then': '$_then'}}}}]
+                                                'then': '$_then'}}}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$addFields': {'_val': '$_id'}},
+        ]
 
         self.assertEqual(expected, tree.create_aggregation(None))
 
@@ -159,7 +163,7 @@ class LRParseTest(unittest.TestCase):
                                     {'$addFields': {'_val': '$name'}}]}},
             {'$set': {'_v_self_boss_name': {'$arrayElemAt': ['$_lookup_val._val', 0]}}},
             {'$addFields': {'_val': 'Bob'}},
-            {'$addFields': {'_v_3761198934935128740': '$_val'}},
+            {'$addFields': {'_v_0': '$_val'}},
             {'$addFields': {'_val': {'$eq': ['$_v_self_boss_name', 'Bob']}}},
             {'$addFields': {'_if': '$_val'}},
             {'$lookup': {'as': '_lookup_val',
@@ -176,12 +180,15 @@ class LRParseTest(unittest.TestCase):
                                     {'$unwind': '$_id'},
                                     {'$replaceRoot': {'newRoot': '$_id'}},
                                     {'$addFields': {'_val': '$duration'}}]}},
-            {'$set': {'_then': {'$arrayElemAt': ['$_lookup_val._val', 0]}}},
+            {'$addFields': {'_then': {'$arrayElemAt': ['$_lookup_val._val', 0]}}},
             {'$addFields': {'_val': 99}},
             {'$addFields': {'_else': '$_val'}},
             {'$addFields': {'_val': {'$cond': {'else': '$_else',
                                                 'if': '$_if',
-                                                'then': '$_then'}}}}]
+                                                'then': '$_then'}}}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$addFields': {'_val': '$_id'}}]
         self.assertEqual(expected, tree.create_aggregation(None))
 
     def test_switch(self):

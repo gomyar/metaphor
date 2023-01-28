@@ -877,7 +877,11 @@ class ConstRef(Calc):
         return set()
 
     def resource_ref_snippet(self):
-        return str(hash(str(self.value))).replace('-', '_')
+        if self.value is True: return "true"
+        if self.value is False: return "false"
+        if self.value not in self._parser.constants:
+            self._parser.constants.append(self.value)
+        return self._parser.constants.index(self.value)
 
     def is_primitive(self):
         return True
@@ -1457,9 +1461,15 @@ class SwitchRef(ResourceRef):
             }}},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
-            {"$addFields": {"_val": "$_id"}},
-#            {"$replaceRoot": {"newRoot": "$_id"}},
         ])
+        if self.cases[0].value.is_primitive():
+            aggregation.append(
+                {"$addFields": {"_val": "$_id"}},
+            )
+        else:
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_id"}},
+            )
         return aggregation
 
 
@@ -1489,6 +1499,9 @@ class CalcTernary(Calc):
 
     def infer_type(self):
         return self.then_clause.infer_type()
+
+    def is_collection(self):
+        return self.then_clause.is_collection()
 
     def calculate(self, self_id):
         if self.condition.calculate(self_id):
@@ -1533,7 +1546,7 @@ class CalcTernary(Calc):
                         {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                     ] + self.then_clause.create_aggregation(user)
                 }},
-                {"$set": {"_then": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
+                {"$set": {"_then": "$_lookup_val"}},
             ]
         else:
             aggregation += self.then_clause.create_aggregation(user)
@@ -1552,7 +1565,7 @@ class CalcTernary(Calc):
                         {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                     ] + self.else_clause.create_aggregation(user)
                 }},
-                {"$set": {"_else": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
+                {"$set": {"_else": "$_lookup_val"}},
             ]
         else:
             aggregation += self.else_clause.create_aggregation(user)
@@ -1568,6 +1581,119 @@ class CalcTernary(Calc):
             }}},
         )
         return aggregation
+
+    def create_aggregation(self, user=None):
+        aggregation = []
+
+        aggregation += self.condition.create_aggregation(user)
+        aggregation.append({"$addFields": {"_if": "$_val"}})
+
+
+        # then
+        agg = []
+        if self.then_clause._is_lookup():
+            # add nested lookup
+            agg+= [
+                {"$lookup": {
+                    # forced lookup to enable separate pipeline
+                    "from": self.then_clause.root_collection().name,
+                    "as": "_lookup_val",
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        # match self
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
+                    ] + self.then_clause.create_aggregation(user)
+                }},
+            ]
+            if self.then_clause.is_collection():
+                if self.then_clause.is_primitive():
+                    agg+= [
+                        {"$addFields": {"_then": "$_lookup_val._val"}},
+                    ]
+                else:
+                    agg+= [
+                        {"$addFields": {"_then": "$_lookup_val"}},
+                    ]
+            else:
+                if self.then_clause.is_primitive():
+                    agg+= [
+                        {"$addFields": {"_then": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
+                    ]
+                else:
+                    agg+= [
+                        {"$addFields": {"_then": {"$arrayElemAt": ["$_lookup_val", 0]}}},
+                    ]
+        else:
+            agg += self.then_clause.create_aggregation(user)
+            agg.append({"$addFields": {"_then": "$_val"}})
+
+        aggregation += agg
+
+        # else
+        agg = []
+        if self.else_clause._is_lookup():
+            # add nested lookup
+            agg+= [
+                {"$lookup": {
+                    # forced lookup to enable separate pipeline
+                    "from": self.else_clause.root_collection().name,
+                    "as": "_lookup_val",
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        # match self
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
+                    ] + self.else_clause.create_aggregation(user)
+                }},
+            ]
+            if self.else_clause.is_collection():
+                if self.else_clause.is_primitive():
+                    agg+= [
+                        {"$addFields": {"_else": "$_lookup_val._val"}},
+                    ]
+                else:
+                    agg+= [
+                        {"$addFields": {"_else": "$_lookup_val"}},
+                    ]
+            else:
+                if self.else_clause.is_primitive():
+                    agg+= [
+                        {"$addFields": {"_else": {"$arrayElemAt": ["$_lookup_val._val", 0]}}},
+                    ]
+                else:
+                    agg+= [
+                        {"$addFields": {"_else": {"$arrayElemAt": ["$_lookup_val", 0]}}},
+                    ]
+        else:
+            agg += self.else_clause.create_aggregation(user)
+            agg.append({"$addFields": {"_else": "$_val"}})
+
+        aggregation += agg
+
+
+
+        aggregation.extend([
+            {"$addFields": {"_val": {
+                "$cond": {
+                    "if": "$_if",
+                    "then": "$_then",
+                    "else": "$_else",
+                }
+            }}},
+            {'$group': {'_id': '$_val'}},
+            {"$unwind": "$_id"},
+        ])
+
+
+        if self.then_clause.is_primitive():
+            aggregation.append(
+                {"$addFields": {"_val": "$_id"}},
+            )
+        else:
+            aggregation.append(
+                {"$replaceRoot": {"newRoot": "$_id"}},
+            )
+        return aggregation
+
 
 
 class ParameterList(object):
@@ -1873,6 +1999,7 @@ class Parser(object):
         self.tokens = tokens
         self.spec = spec
         self.shifted = []
+        self.constants = []
         self.patterns = [
             [(NAME, '=', ConstRef) , Condition],
             [(NAME, '>', ConstRef) , Condition],
