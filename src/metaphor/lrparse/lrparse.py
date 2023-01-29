@@ -17,9 +17,6 @@ class Calc(Operable):
     def __repr__(self):
         return "C[%s]" % (self.tokens,)
 
-    def calculate(self, self_id):
-        raise NotImplemented()
-
     def is_collection(self):
         return False
 
@@ -46,19 +43,6 @@ class ResourceRef(Operable):
 
     def is_primitive(self):
         return self.spec.is_primitive()
-
-    def calculate(self, self_id):
-        aggregate_query, spec, is_aggregate = self.aggregation(self_id)
-        # run mongo query from from root_resource collection
-        cursor = self.root_collection().aggregate(aggregate_query)
-
-        results = [row for row in cursor]
-        if is_aggregate:
-            return results
-        elif spec.is_field():
-            return results[0].get(self.field_name) if results else None
-        else:
-            return results[0]
 
     def aggregation(self, self_id, user=None):
         aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
@@ -864,9 +848,6 @@ class ConstRef(Calc):
         if type(self.value) not in ConstRef.ALLOWED_TYPES:
             raise SyntaxError("Unrecognised type for const: %s" % (type(self.value)))
 
-    def calculate(self, self_id):
-        return self.value
-
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         return []
 
@@ -937,36 +918,6 @@ class Operator(Calc):
     def validate_ref(self, spec):
         if not self.lhs.infer_type().check_comparable_type(self.rhs.infer_type().field_type):
             raise SyntaxError("Illegal types for operator %s %s %s" % (self.lhs.infer_type().field_type, self.op, self.rhs.infer_type().field_type))
-
-    def calculate(self, self_id):
-        lhs = self.lhs.calculate(self_id)
-        rhs = self.rhs.calculate(self_id)
-        try:
-            op = self.op
-            if op == '+':
-                return (lhs or 0) + (rhs or 0)
-            elif op == '-':
-                return (lhs or 0) - (rhs or 0)
-            elif op == '*':
-                return lhs * rhs
-            elif op == '/':
-                return lhs / rhs
-            elif op == '>':
-                return lhs > rhs
-            elif op == '<':
-                return lhs < rhs
-            elif op == '=':
-                return lhs == rhs
-            elif op == '>=':
-                return lhs >= rhs
-            elif op == '<=':
-                return lhs <= rhs
-            elif op == '!=':
-                return lhs != rhs
-        except TypeError as te:
-            return None
-        except AttributeError as te:
-            return None
 
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         lhs_aggs = self.lhs.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
@@ -1085,7 +1036,7 @@ class Condition(object):
             raise SyntaxError("Resource %s has no field %s" % (spec.name, self.field_name))
         field = spec.fields[self.field_name]
         if not field.check_comparable_type(self.const.infer_type().field_type):
-            raise SyntaxError("Cannot compare \"%s %s %s\"" % (field.field_type, self.operator, type(self.const.calculate(None)).__name__))
+            raise SyntaxError("Cannot compare \"%s %s %s\"" % (field.field_type, self.operator, type(self.const.value).__name__))
 
     def __init__(self, tokens, parser):
         self.field_name, self.operator, self.const = tokens
@@ -1096,10 +1047,10 @@ class Condition(object):
         # TODO: check removing this in favour of validate_ref()
         if not field_spec.check_comparable_type(self.const.infer_type().field_type):
             raise Exception("Incorrect type for condition: %s %s %s" %(
-                self.field_name, self.operator, self.const.calculate(resource_id)))
+                self.field_name, self.operator, self.value))
         aggregation = {
             self.field_name: {
-                self.OPERATORS[self.operator]: self.const.calculate(resource_id)}}
+                self.OPERATORS[self.operator]: self.const.value}}
         return aggregation
 
     def __repr__(self):
@@ -1123,11 +1074,11 @@ class LikeCondition(Condition):
 
     def condition_aggregation(self, spec, resource_id):
         field_spec = spec.build_child_spec(self.field_name)
-        if type(self.const.calculate(resource_id)) is not str:
+        if type(self.const.value) is not str:
             raise Exception("Incorrect type for condition: %s ~ %s" %(
-                self.field_name, self.const.calculate(resource_id)))
+                self.field_name, self.const.value))
         aggregation = {
-            self.field_name: {'$regex': self.const.calculate(resource_id), '$options': 'i'}}
+            self.field_name: {'$regex': self.const.value, '$options': 'i'}}
         return aggregation
 
     def __repr__(self):
@@ -1239,12 +1190,6 @@ class ResourceRefTernary(ResourceRef):
         else:
             return self.else_clause.aggregation(self_id, user)
 
-    def calculate(self, self_id):
-        if self.condition.calculate(self_id):
-            return self.then_clause.calculate(self_id)
-        else:
-            return self.else_clause.calculate(self_id)
-
     def root_collection(self):
         return self.then_clause.root_collection()
 
@@ -1341,14 +1286,6 @@ class SwitchRef(ResourceRef):
 
     def __repr__(self):
         return "%s => %s" % (self.resource_ref, self.cases)
-
-    def calculate(self, self_id):
-        comparable_value = self.resource_ref.calculate(self_id)
-
-        for case in self.cases:
-            if comparable_value == case.key.value:
-                return case.value.calculate(self_id)
-        return None
 
     def get_resource_dependencies(self):
         deps = set()
@@ -1502,12 +1439,6 @@ class CalcTernary(Calc):
 
     def is_collection(self):
         return self.then_clause.is_collection()
-
-    def calculate(self, self_id):
-        if self.condition.calculate(self_id):
-            return self.then_clause.calculate(self_id)
-        else:
-            return self.else_clause.calculate(self_id)
 
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         cond_aggs = self.condition.build_reverse_aggregations(resource_spec, resource_id, calc_spec_name, calc_field_name)
@@ -1714,9 +1645,6 @@ class Brackets(Calc):
         self.calc = tokens[1]
         self._parser = parser
 
-    def calculate(self, self_id):
-        return self.calc.calculate(self_id)
-
     def aggregation(self, self_id, user):
         return self.calc.aggregation(self_id, user)
 
@@ -1764,18 +1692,6 @@ class FunctionCall(ResourceRef):
         else:
             self.params = [p for p in tokens[2].params]
 
-        self.functions = {
-            'round': self._round,
-            'max': self._max,
-            'min': self._min,
-            'average': self._average,
-            'sum': self._sum,
-            'days': self._days,
-            'hours': self._hours,
-            'minutes': self._minutes,
-            'seconds': self._seconds,
-        }
-
     def get_resource_dependencies(self):
         deps = set()
         for param in self.params:
@@ -1788,69 +1704,6 @@ class FunctionCall(ResourceRef):
 
     def infer_type(self):
         return Field('function', 'float')
-
-    def calculate(self, self_id):
-        return self.functions[self.func_name](self_id, *self.params)
-
-    def _days(self, self_id, days):
-        return timedelta(days=days.value)
-
-    def _hours(self, self_id, hours):
-        return timedelta(hours=hours.value)
-
-    def _minutes(self, self_id, minutes):
-        return timedelta(minutes=minutes.value)
-
-    def _seconds(self, self_id, seconds):
-        return timedelta(seconds=seconds.value)
-
-    def _round(self, self_id, aggregate_field, digits=None):
-        value = aggregate_field.calculate(self_id)
-
-        if digits:
-            return round(value, digits.calculate(self_id))
-        else:
-            return round(value)
-
-    def _max(self, self_id, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
-        aggregate_query.append({'$group': {'_id': None, '_max': {'$max': '$' + spec.name}}})
-        # run mongo query from from root_resource collection
-        try:
-            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
-            return cursor.next()['_max']
-        except StopIteration:
-            return None
-
-    def _min(self, self_id, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
-        aggregate_query.append({'$group': {'_id': None, '_min': {'$min': '$' + spec.name}}})
-        # run mongo query from from root_resource collection
-        try:
-            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
-            return cursor.next()['_min']
-        except StopIteration:
-            return None
-
-    def _average(self, self_id, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
-        aggregate_query.append({'$group': {'_id': None, '_average': {'$avg': '$' + spec.name}}})
-        # run mongo query from from root_resource collection
-        try:
-            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
-            return cursor.next()['_average']
-        except StopIteration:
-            return None
-
-    def _sum(self, self_id, aggregate_field):
-        aggregate_query, spec, is_aggregate = aggregate_field.aggregation(self_id)
-        aggregate_query.append({'$group': {'_id': None, '_sum': {'$sum': '$' + aggregate_field.field_name}}})
-        # run mongo query from from root_resource collection
-        try:
-            cursor = aggregate_field.root_collection().aggregate(aggregate_query)
-            return cursor.next()['_sum']
-        except StopIteration:
-            return None
 
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         # take into account different functions and params

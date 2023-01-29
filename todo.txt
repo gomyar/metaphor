@@ -23,11 +23,6 @@ Todo:
 
  - login through api
 
- - take resource_id out of reverse aggregator, collect in updaters instead
- - rewrite calc resources to use aggregations instead of calculate()
- - add update collection to track updates (retry on fail etc)
- - merge affected_ids to update collection for move / delete updates
-
  - reverse aggregations are run against the altered resource, but may not be applicable to it. return the resource type for each reverse aggregation in the list.
 
 Updates based on aggs:
@@ -68,6 +63,8 @@ Ideal websockets:
  listen('/employees') - notified is collection items added / removed
  listen('/employees', ['name', 'address']) - notified is collection items added / removed or specific fields updated
  listen('/employees[name~"Bob"]', ['name', 'address']) - notified when filtered collection changed
+
+ - specific permission required: "LISTEN"
 
 Shortlist:
 
