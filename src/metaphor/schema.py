@@ -25,9 +25,10 @@ class MalformedFieldException(Exception):
 class Field(object):
     PRIMITIVES = ['int', 'str', 'float', 'bool', 'datetime']
 
-    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None):
+    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None, default=None):
         self.name = name
         self.field_type = field_type
+        self.default = default
         self.target_spec_name = target_spec_name
         self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
@@ -62,6 +63,7 @@ class CalcField(Field):
         self.calc_str = calc_str
         self.field_type = 'calc'
         self.spec = None
+        self.default = None
 
     def __repr__(self):
         return "<Calc %s = %s>" % (self.name, self.calc_str)
@@ -154,6 +156,18 @@ class Schema(object):
         self._id = None
         self.calc_trees = {}
 
+    def set_as_latest(self):
+        latest = self.db.metaphor_latest_schema.find_one_and_update(
+            {"_id": {"$exists": True}},
+            {
+                "$set": {
+                    "schema_id": self._id,
+                    "updated": datetime.now(),
+                },
+            }, upsert=True, return_document=ReturnDocument.AFTER)
+        if latest['schema_id'] != self._id:
+            raise Exception("Latest schema could not be set")
+
     def calculate_short_hash(self):
         schema_data = self._load_schema_data()
         schema_data.pop('_id')
@@ -171,12 +185,10 @@ class Schema(object):
     def _build_specs(self, schema_data):
         self._id = schema_data['_id']
         for spec_name, spec_data in schema_data['specs'].items():
-#            log.debug("Spec create: %s", spec_name)
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
                 if field_data['type'] != 'calc':
-#                    log.debug("Field create: %s.%s", spec_name, field_name)
-                    self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'))
+                    self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'), default=field_data.get('default'))
         self._add_reverse_links()
 
     def _collect_calcs(self, schema_data):
@@ -230,11 +242,11 @@ class Schema(object):
         # TODO: set up indexes
         return self.add_spec(spec_name)
 
-    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:
             raise MalformedFieldException('Field already exists: %s' % field_name)
         self._check_field_name(field_name)
-        self._update_field(spec_name, field_name, field_type, field_target, calc_str)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default)
         if spec_name == 'root':
             spec = self.root
         else:
@@ -242,15 +254,15 @@ class Schema(object):
         if field_type == 'calc':
             self.add_calc(spec, field_name, calc_str)
         else:
-            self.add_field(spec, field_name, field_type, field_target)
+            self.add_field(spec, field_name, field_type, field_target, default)
 
-    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None):
+    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None):
         if spec_name != 'root' and field_name not in self.specs[spec_name].fields:
             raise MalformedFieldException('Field does not exist: %s' % field_name)
-        self._update_field(spec_name, field_name, field_type, field_target, calc_str)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default)
         self.load_schema()
 
-    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str):
+    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str, default):
         if calc_str:
             self._check_calc_syntax(spec_name, calc_str)
             self._check_circular_dependencies(spec_name, field_name, calc_str)
@@ -262,6 +274,8 @@ class Schema(object):
             field_data = {'type': 'calc', 'calc_str': calc_str, 'deps': deps}
         elif field_type in ('int', 'str', 'float', 'bool'):
             field_data = {'type': field_type}
+            if default is not None:
+                field_data['default'] = default
         else:
             field_data = {'type': field_type, 'target_spec_name': field_target}
 
@@ -346,14 +360,14 @@ class Schema(object):
                         all_deps.append('%s.%s' % (name, fname))
         return all_deps
 
-    def _add_field(self, spec, field_name, field_type, target_spec_name=None):
-        field = Field(field_name, field_type, target_spec_name=target_spec_name)
+    def _add_field(self, spec, field_name, field_type, target_spec_name=None, default=None):
+        field = Field(field_name, field_type, target_spec_name=target_spec_name, default=default)
         spec.fields[field_name] = field
         field.spec = spec
         return field
 
-    def add_field(self, spec, field_name, field_type, target_spec_name=None):
-        field = self._add_field(spec, field_name, field_type, target_spec_name)
+    def add_field(self, spec, field_name, field_type, target_spec_name=None, default=None):
+        field = self._add_field(spec, field_name, field_type, target_spec_name, default)
         self._add_reverse_link_for_field(field, spec)
         return field
 
@@ -433,6 +447,9 @@ class Schema(object):
                 parsed_data[field_name] = datetime.fromisoformat(field_value.replace('Z', '+00:00'))
             else:
                 parsed_data[field_name] = field_value
+        for field_name, field in spec.fields.items():
+            if field.default is not None and field_name not in resource_data:
+                parsed_data[field_name] = field.default
         return parsed_data
 
     def _fields_with_dependant_calcs(self, spec_name):
@@ -536,6 +553,13 @@ class Schema(object):
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},
             return_document=ReturnDocument.AFTER)
+
+    def default_field_value(self, spec_name, field_name, default_value):
+        save_data = self._parse_fields(spec_name, {field_name: default_value})
+
+        self.db['resource_%s' % spec_name].update_many(
+            {field_name: {"$exists": False}},
+            {"$set": {field_name: default_value}})
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
@@ -677,69 +701,3 @@ class Schema(object):
             ]
         }
         return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
-
-
-class Mutation(object):
-    def __init__(self, from_schema, to_schema):
-        self.from_schema = from_schema
-        self.to_schema = to_schema
-        self.new_fields = []
-        self.new_specs = []
-
-    def init(self):
-        for spec_name, spec in self.to_schema.specs.items():
-            if spec_name not in self.from_schema.specs:
-                self.new_specs.append(spec_name)
-                for field_name in self.to_schema.specs[spec_name].fields:
-                    self.new_fields.append((spec_name, field_name))
-            else:
-                from_spec = self.from_schema.specs[spec_name]
-                for field_name, field in spec.fields.items():
-                    if field_name not in from_spec.fields:
-                        self.new_fields.append((spec_name, field_name))
-
-    def mutate(self):
-        for spec_name in self.new_specs:
-            spec = self.to_schema.specs[spec_name]
-            self.from_schema.create_spec(spec_name)
-        for spec_name, new_field in self.new_fields:
-            field = self.to_schema.specs[spec_name].fields[new_field]
-            if type(field) is CalcField:
-                self.from_schema.create_field(spec_name, new_field, field.field_type, field.calc_str)
-            else:
-                self.from_schema.create_field(spec_name, new_field, field.field_type, field.target_spec_name)
-
-
-def create_mutation(existing_schema, new_schema):
-    mutation = Mutation()
-
-    deleted_fields = []
-    deleted_specs = []
-    created_fields = []
-    created_specs = []
-
-    altered_fields = []
-    # altered fields:
-    #  - field type changed
-    #  - calc changed
-    #  - meta changed (required / default / restrictions)
-
-    for spec_name, spec in existing_schema.specs.items():
-        if spec_name not in new_schema.specs:
-            pass # new spec created
-        else:
-            new_spec = new_schema.specs[spec_name]
-            for field_name, field in spec.fields.items():
-                if field_name not in new_spec.fields:
-                    pass # new field created
-                elif field != new_spec.fields[field_name]:
-                    pass # field changed
-    for spec_name, spec in new_schema.specs.items():
-        if spec_name not in existing_schema.specs:
-            pass # spec deleted
-        else:
-            existing_spec = existing_schema.specs[spec_name]
-            for field_name, field in spec.fields.items():
-                if field_name not in existing_spec.fields:
-                    pass # field deleted
-    return mutation

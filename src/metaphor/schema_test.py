@@ -487,3 +487,30 @@ class SchemaTest(unittest.TestCase):
         })
         self.schema.load_schema()
         self.assertEqual("e5e48c9b", self.schema.calculate_short_hash())
+
+    def test_field_default(self):
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str', default='ned')
+
+        self.schema.insert_resource('primary', {}, 'employees')
+
+        self.assertEqual('ned', self.db.resource_primary.find_one()['name'])
+
+        self.assertEqual({
+            "_id": None,
+            "specs" : {
+                "primary" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str",
+                            "default": "ned"
+                        },
+                    },
+                },
+            }
+        }, self.db.metaphor_schema.find_one())
+
+        # test load
+        self.schema.load_schema()
+
+        self.assertEqual('ned', self.schema.specs['primary'].fields['name'].default)
