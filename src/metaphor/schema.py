@@ -2,9 +2,12 @@
 import os
 from uuid import uuid4
 from datetime import datetime
+import hashlib
+import json
+
 from bson.objectid import ObjectId
-from pymongo import ReturnDocument
 from flask_login import UserMixin
+from pymongo import ReturnDocument
 from toposort import toposort, CircularDependencyError
 
 import logging
@@ -150,6 +153,13 @@ class Schema(object):
         self.root = Spec('root', self)
         self._id = None
         self.calc_trees = {}
+
+    def calculate_short_hash(self):
+        schema_data = self._load_schema_data()
+        schema_data.pop('_id')
+        schema_data.pop('loaded')
+        schema_str = json.dumps(schema_data, sort_keys=True)
+        return hashlib.sha1(schema_str.encode("UTF-8")).hexdigest()[:8]
 
     def _load_schema_data(self):
         return self.db.metaphor_schema.find_one_and_update(
@@ -667,3 +677,64 @@ class Schema(object):
             ]
         }
         return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
+
+
+class Mutation(object):
+    def __init__(self, from_schema, to_schema):
+        self.from_schema = from_schema
+        self.to_schema = to_schema
+        self.new_fields = []
+        self.new_specs = []
+
+    def init(self):
+        for spec_name, spec in self.to_schema.specs.items():
+            if spec_name not in self.from_schema.specs:
+                self.new_specs.append(spec_name)
+            else:
+                from_spec = self.from_schema.specs[spec_name]
+                for field_name, field in spec.fields.items():
+                    if field_name not in from_spec.fields:
+                        self.new_fields.append((spec_name, field_name))
+
+    def mutate(self):
+        for spec_name, new_field in self.new_fields:
+            field = self.to_schema.specs[spec_name].fields[new_field]
+            if type(field) is CalcField:
+                self.from_schema.create_field(spec_name, new_field, field.field_type, field.calc_str)
+            else:
+                self.from_schema.create_field(spec_name, new_field, field.field_type, field.target_spec_name)
+
+
+def create_mutation(existing_schema, new_schema):
+    mutation = Mutation()
+
+    deleted_fields = []
+    deleted_specs = []
+    created_fields = []
+    created_specs = []
+
+    altered_fields = []
+    # altered fields:
+    #  - field type changed
+    #  - calc changed
+    #  - meta changed (required / default / restrictions)
+
+    for spec_name, spec in existing_schema.specs.items():
+        if spec_name not in new_schema.specs:
+            pass # new spec created
+        else:
+            new_spec = new_schema.specs[spec_name]
+            for field_name, field in spec.fields.items():
+                if field_name not in new_spec.fields:
+                    pass # new field created
+                elif field != new_spec.fields[field_name]:
+                    pass # field changed
+    for spec_name, spec in new_schema.specs.items():
+        if spec_name not in existing_schema.specs:
+            pass # spec deleted
+        else:
+            existing_spec = existing_schema.specs[spec_name]
+            for field_name, field in spec.fields.items():
+                if field_name not in existing_spec.fields:
+                    pass # field deleted
+    return mutation

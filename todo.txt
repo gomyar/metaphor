@@ -7,6 +7,8 @@ Todo:
  - Bug: Empty lists do not report 403
  - Bug: calculated resource collections are not covered by authentication check
 
+ - Add option for restrictions to fields - min/max value for ints/floats - sublist for linkcollections / links
+
  - oauth2 login (google)
    - GOOGLE_CLIENT_ID
    - GOOGLE_CLIENT_SECRET
@@ -332,10 +334,21 @@ permissions:
 
 
 mutating the schema:
- - schemas are versions by uuid - major.minor.micro
-   - breaking changes alter the major+minor+micro uuid
-   - additive changes alter the minor+micro uuid
-   - calc changes alter the micro uuid
+ - each schema is hashed, hash displayed with schema
+ - mutations between schemas display what will change:
+   - potential data loss: removed fields, resources
+   - whether the change is major / minor (compatibility affecting change)
+   - display options for moving data to reduce data loss
+     - fields moved within same resource
+     - fields collected in another collection
+   - require? default options for required fields with no default set
+     - for links, may be calc? ("self.") - would need to aggregate to check for blanks
+ - mutation is run when schema is published
+   - resources to be moved are moved
+   - deleted fields / resources are deleted
+   - altered calcs are rerun
+   - created fields / resources are defaulted
+
  - should be possible to apply any change to a schema, and to alert for data deletion on a major change
 
  - may mark each resource by the hash of the schema used to create / last update it. On load, if the has is different from the current schema, reload the schema
@@ -352,3 +365,30 @@ mutating the schema:
 export / import schema:
  - import updates the schema
    - checks update against existing schema, reports potential changes (and resource/field deletions)
+
+
+dynamic lists:
+ - want to create a given number of child resources based on a calc
+    - create_list('Resource', name, address, )
+    - type "list_calc" - given resource type, calcs for each field, INDEX as a special variable
+    - "extrapolation"
+
+    - as distinct from a "group_by" in calcs (if the data already exists)
+    - if "extrapolate" was a function it may be possible to nest it into a "group_by" function
+    - so, functions may need kwargs
+
+    - extrapolate may return type "collection"
+    - group_by may return type "link_collection"
+
+    - perhaps simple list types may be appropriate
+    - extrapolate(10, "x * 2 + x * 7 + 1") for each value of x
+      - that just ends up as a resource with field 'x' and self.x * 2...
+
+      - eg: PrimaryClient.yearly_income_until_retirement = extrapolate(self.income + self.income * self.annual_raise_percent * X, range(65-years(now()-self.date_of_birth)))
+        - X needs to have significance as a special variable
+        - the second parameter defines X as a list of primitives
+
+        - Note: the only problem here is primitives do not have a mapping to the date they represent, would have to be implied in another calculated field, i.e.:
+          - .years_until_retirement = extrapolate(X, range(65-years(now()-self.date_of_birth)))
+
+      - eg: PrimaryClient.mapped_years = map?zip?reduce?(Point(X, Y)?, self.yearly_income_until_retirement, self.years_until_retirement)

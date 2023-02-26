@@ -472,3 +472,18 @@ class SchemaTest(unittest.TestCase):
         self.schema.delete_field('secondary', 'primary_name')
 
         self.assertEqual({}, self.schema.all_dependent_calcs_for('primary', 'name'))
+
+    def test_hash(self):
+        self.db.metaphor_schema.insert_one({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "full_name" : {
+                            "type" : "str"
+                        },
+                    },
+                },
+            }
+        })
+        self.schema.load_schema()
+        self.assertEqual("e5e48c9b", self.schema.calculate_short_hash())
