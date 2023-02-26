@@ -690,6 +690,8 @@ class Mutation(object):
         for spec_name, spec in self.to_schema.specs.items():
             if spec_name not in self.from_schema.specs:
                 self.new_specs.append(spec_name)
+                for field_name in self.to_schema.specs[spec_name].fields:
+                    self.new_fields.append((spec_name, field_name))
             else:
                 from_spec = self.from_schema.specs[spec_name]
                 for field_name, field in spec.fields.items():
@@ -697,6 +699,9 @@ class Mutation(object):
                         self.new_fields.append((spec_name, field_name))
 
     def mutate(self):
+        for spec_name in self.new_specs:
+            spec = self.to_schema.specs[spec_name]
+            self.from_schema.create_spec(spec_name)
         for spec_name, new_field in self.new_fields:
             field = self.to_schema.specs[spec_name].fields[new_field]
             if type(field) is CalcField:
