@@ -7,7 +7,7 @@ var schema = {
     load_specs: function() {
         loading.inc_loading();
         turtlegui.ajax.get(
-            '/admin/schema_editor/api',
+            '/admin/api/schemas/' + schema_id,
             function(data) {
                 result = JSON.parse(data);
                 schema.specs = result.specs;
@@ -33,7 +33,7 @@ var schema = {
     delete_field: function(spec_name, field_name) {
         if (confirm("Delete " + spec_name + "." + field_name + "?")) {
             turtlegui.ajax.delete(
-                '/admin/schema_editor/api/specs/' + spec_name + '/fields/' + field_name,
+                '/admin/api/schemas/' + schema_id + '/specs/' + spec_name + '/fields/' + field_name,
                 function(data) {
                     schema.load_specs();
                 },
@@ -77,7 +77,7 @@ var create_spec = {
         loading.inc_loading();
         create_spec.hide_popup();
         turtlegui.ajax.post(
-            '/admin/schema_editor/api/specs',
+            '/admin/api/schemas/' + schema_id + '/specs',
             {'spec_name': create_spec.name},
             function(data) {
                 schema.load_specs();
@@ -116,7 +116,7 @@ var create_field = {
             return;
         }
         turtlegui.ajax.post(
-            '/admin/schema_editor/api/specs/' + create_field.spec_name + '/fields',
+            '/admin/api/schemas/' + schema_id + '/specs/' + create_field.spec_name + '/fields',
             {'field_name': create_field.field_name,
              'field_type': create_field.field_type,
              'field_target': create_field.field_target,
@@ -136,7 +136,7 @@ var create_field = {
 
     update_field: function() {
         turtlegui.ajax.patch(
-            '/admin/schema_editor/api/specs/' + create_field.spec_name + '/fields/' + create_field.field_name,
+            '/admin/api/schemas/' + schema_id + '/specs/' + create_field.spec_name + '/fields/' + create_field.field_name,
             {'field_type': create_field.field_type,
              'field_target': create_field.field_target,
              'calc_str': create_field.calc_str,
@@ -184,37 +184,6 @@ var create_field = {
         turtlegui.reload();
     }
 };
-
-var schema_import = {
-    
-    import_schema: (file_element) => {
-        var file = file_element.files[0];
-
-        var reader = new FileReader();
-        reader.readAsText(file, 'UTF-8');
-
-        reader.onload = readerEvent => {
-            var content = JSON.parse(readerEvent.target.result);
-            if (confirm("Import Schema?")) {
-                turtlegui.ajax.post(
-                    '/admin/schema_editor/api/import',
-                    content,
-                    function(data) {
-                        create_field.hide_popup();
-                        schema.load_specs();
-                    },
-                    function(data) {
-                        loading.dec_loading();
-                        alert("Error creating spec: " + data.error);
-                    }
-                );
-                        
-            }
-        }
-    },
-
-}
-
 
 document.addEventListener("DOMContentLoaded", function(){
     // call turtlegui.reload() when the page loads

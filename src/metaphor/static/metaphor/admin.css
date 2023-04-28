@@ -16,19 +16,19 @@ div.admin_titlebar div.title {
 }
 
 
-div.schemas_list {
+div.schema_list {
     margin : 10px;
     border-top : 2px solid black;
     top : 60px;
 }
 
-div.schemas_list div.title {
+div.schema_list div.title {
     font-size : 16px;
     font-weight : bold;
     display : inline-block;
 }
 
-div.schemas_list div.controls {
+div.schema_list div.controls {
     font-weight : bold;
     display : inline-block;
 }

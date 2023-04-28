@@ -7,6 +7,8 @@ from flask import request
 from flask import jsonify
 from metaphor.login import login_required
 from metaphor.login import admin_required
+from metaphor.admin_api import SchemaSerializer
+from metaphor.admin_api import AdminApi
 
 from urllib.error import HTTPError
 
@@ -100,10 +102,10 @@ def api(path):
         return jsonify({"error": he.reason}), he.getcode()
 
 
-@admin_bp.route("/schema_editor")
+@admin_bp.route("/schemas/<schema_id>")
 @admin_required
-def schema_editor():
-    return render_template('metaphor/schema_editor.html')
+def schema_editor(schema_id):
+    return render_template('metaphor/schema_editor.html', schema_id=schema_id)
 
 
 @admin_bp.route("/")
@@ -112,32 +114,52 @@ def admin_index():
     return render_template('metaphor/admin.html')
 
 
-@admin_bp.route("/admin/api/schemas", methods=['GET'])
+@admin_bp.route("/api/schemas", methods=['GET', 'POST'])
 @login_required
 def admin_api_schemas():
-    admin_api = current_app.config['admin_api']
-    return jsonify(admin_api.format_schema(flask_login.current_user.is_admin()))
+    factory = current_app.config['schema_factory']
+    if request.method == 'GET':
+        schema_list = factory.list_schemas()
+        for schema in schema_list:
+            schema.load_schema()
+        serializer = SchemaSerializer(flask_login.current_user.is_admin())
+        return jsonify({
+            "schemas": [serializer.serialize(s) for s in schema_list]
+        })
+    else:
+        if request.json:
+            admin_api = current_app.config['admin_api']
+            return jsonify(admin_api.import_schema(request.json))
+        else:
+            factory.create_schema()
+            return jsonify({'ok': 1})
 
 
-@admin_bp.route("/schema_editor/api", methods=['GET'])
+@admin_bp.route("/api/schemas/<schema_id>", methods=['GET'])
 @login_required
-def schema_editor_api():
-    admin_api = current_app.config['admin_api']
-    return jsonify(admin_api.format_schema(flask_login.current_user.is_admin()))
+def schema_editor_api(schema_id):
+    factory = current_app.config['schema_factory']
+    serializer = SchemaSerializer(flask_login.current_user.is_admin())
+    schema = factory.load_schema(schema_id)
+    return jsonify(serializer.serialize(schema))
 
 
-@admin_bp.route("/schema_editor/api/specs", methods=['POST'])
+@admin_bp.route("/api/schemas/<schema_id>/specs", methods=['POST'])
 @admin_required
-def schema_editor_create_spec():
-    admin_api = current_app.config['admin_api']
-    admin_api.create_spec(request.json['spec_name'])
+def schema_editor_create_spec(schema_id):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    schema.create_spec(request.json['spec_name'])
     return jsonify({'success': 1})
 
 
-@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields", methods=['POST'])
+@admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields", methods=['POST'])
 @admin_required
-def schema_editor_create_field(spec_name):
-    admin_api = current_app.config['admin_api']
+def schema_editor_create_field(schema_id, spec_name):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+
+    admin_api = AdminApi(schema)
 
     field_name = request.json['field_name']
     field_type = request.json['field_type']
@@ -148,10 +170,14 @@ def schema_editor_create_field(spec_name):
     return jsonify({'success': 1})
 
 
-@admin_bp.route("/schema_editor/api/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
+@admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
 @admin_required
-def schema_editor_delete_field(spec_name, field_name):
-    admin_api = current_app.config['admin_api']
+def schema_editor_delete_field(schema_id, spec_name, field_name):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+
+    admin_api = AdminApi(schema)
+
     if request.method == 'DELETE':
         admin_api.delete_field(spec_name, field_name)
     else:
@@ -163,10 +189,13 @@ def schema_editor_delete_field(spec_name, field_name):
     return jsonify({'success': 1})
 
 
-@admin_bp.route("/schema_editor/api/export", methods=['GET'])
+@admin_bp.route("/api/schemas/<schema_id>", methods=['GET'])
 @admin_required
 def schema_export():
-    admin_api = current_app.config['admin_api']
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+
+    admin_api = AdminApi(schema)
     return jsonify(admin_api.export_schema())
 
 

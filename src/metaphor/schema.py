@@ -155,6 +155,7 @@ class Schema(object):
         self.specs = {}
         self.root = Spec('root', self)
         self._id = None
+        self.current = None
         self.calc_trees = {}
 
     def set_as_latest(self):
@@ -179,7 +180,6 @@ class Schema(object):
         return self.db.metaphor_schema.find_one({"_id": self._id})
 
     def _build_specs(self, schema_data):
-        self._id = schema_data['_id']
         for spec_name, spec_data in schema_data['specs'].items():
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
@@ -212,6 +212,9 @@ class Schema(object):
 
     def _build_schema(self, schema_data):
         from metaphor.lrparse.lrparse import parse
+
+        self._id = schema_data['_id']
+        self.current = schema_data.get('current', False)
         self._build_specs(schema_data)
 
         calcs = self._collect_calcs(schema_data)

@@ -30,6 +30,8 @@ class SchemaSerializer(object):
 
     def _serialize_schema(self, schema):
         return {
+            'id': str(schema._id),
+            'current': schema.current,
             'specs': schema.specs,
             'version': 'tbd',
             'root': schema.root,

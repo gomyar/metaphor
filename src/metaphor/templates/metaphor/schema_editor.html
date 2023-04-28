@@ -3,6 +3,9 @@
 
 <script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/admin/static/metaphor/login.js"></script>
+<script>
+var schema_id = "{{ schema_id }}";
+</script>
 <script src="/admin/static/metaphor/schema_editor.js"></script>
 
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.css"/>
@@ -16,8 +19,7 @@
 
 <div class="layer anchortop title_version">
     <div class="title">Schema Editor</div><div class="version">abcdef:gghjk:aasdf</div>
-    <a class="button" gui-attrs="href='/admin/schema_editor/api/export'; download='schema.json'">Export</a>
-    <input class="button" type="file" gui-change="schema_import.import_schema(this)" ></input>
+    <a class="button" gui-attrs="href='/admin/api/schemas/'+schema_id; download='schema.json'">Export</a>
 </div>
 
 
@@ -46,7 +48,6 @@
         </div>
     </div>
 
-
     <div class="spec_inner" gui-list="schema.specs" gui-item="spec" gui-key="spec_name">
         <div class="spec">
             <div class="title" gui-text="spec_name"></div> 
@@ -69,6 +70,7 @@
         </div>
     </div>
 </div>
+
 
 <div id="popup_spec" class="popupwrapper" gui-show="create_spec.is_shown">
     <div class="popup">
