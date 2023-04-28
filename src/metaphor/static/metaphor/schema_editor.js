@@ -100,10 +100,15 @@ var create_field = {
     field_type: null,
     field_target: null,
     calc_str: null,
+    is_required: false,
 
     is_editing: false,
 
     all_field_types: ['int', 'float', 'str', 'bool', 'datetime', 'collection', 'link', 'linkcollection', 'orderedcollection', 'calc'],
+
+    is_primitive: function() {
+        return ['int', 'float', 'str', 'bool', 'datetime'].indexOf(this.field_type) != -1;
+    },
 
     create_field: function() {
         if (!create_field.field_name) {
@@ -115,7 +120,8 @@ var create_field = {
             {'field_name': create_field.field_name,
              'field_type': create_field.field_type,
              'field_target': create_field.field_target,
-             'calc_str': create_field.calc_str
+             'calc_str': create_field.calc_str,
+             'required': create_field.is_required
             },
             function(data) {
                 create_field.hide_popup();
@@ -133,7 +139,8 @@ var create_field = {
             '/admin/schema_editor/api/specs/' + create_field.spec_name + '/fields/' + create_field.field_name,
             {'field_type': create_field.field_type,
              'field_target': create_field.field_target,
-             'calc_str': create_field.calc_str
+             'calc_str': create_field.calc_str,
+             'required': create_field.is_required
             },
             function(data) {
                 create_field.hide_popup();
@@ -155,6 +162,7 @@ var create_field = {
         create_field.field_target = null;
         create_field.calc_str = null;
         create_field.is_editing = false;
+        create_field.is_required = false;
         turtlegui.reload();
     },
 
@@ -167,6 +175,7 @@ var create_field = {
         create_field.field_target = field.target_spec_name;
         create_field.calc_str = field.calc_str;
         create_field.is_editing = true;
+        create_field.is_required = field.required;
         turtlegui.reload();
     },
 

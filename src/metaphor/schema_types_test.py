@@ -147,3 +147,29 @@ class SchemaTest(unittest.TestCase):
 
         inserted = self.db.resource_employee.find_one()
         self.assertEqual(datetime(2021, 12, 31, 12, 30, 20), inserted['created'])
+
+    def test_required_field(self):
+        self.db.metaphor_schema.insert_one({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name": {
+                            "type": "str",
+                            "required": True
+                        },
+                        "address": {
+                            "type": "str"
+                        }
+                    },
+                },
+            }
+        })
+        self.schema.load_schema()
+        self.assertEquals(1, len(self.schema.specs))
+        self.assertEquals(True, self.schema.specs['employee'].fields['name'].required)
+
+        self.assertEquals([], self.schema.validate_spec('employee', {'name': 'Bob'}))
+
+        self.assertEquals([{'error': "Missing required field: 'name'"}],
+                          self.schema.validate_spec('employee', {'address': "12 Road"}))
+

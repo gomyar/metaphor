@@ -106,6 +106,19 @@ def schema_editor():
     return render_template('metaphor/schema_editor.html')
 
 
+@admin_bp.route("/")
+@admin_required
+def admin_index():
+    return render_template('metaphor/admin.html')
+
+
+@admin_bp.route("/admin/api/schemas", methods=['GET'])
+@login_required
+def schema_editor_api():
+    admin_api = current_app.config['admin_api']
+    return jsonify(admin_api.format_schema(flask_login.current_user.is_admin()))
+
+
 @admin_bp.route("/schema_editor/api", methods=['GET'])
 @login_required
 def schema_editor_api():

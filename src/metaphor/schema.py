@@ -25,10 +25,11 @@ class MalformedFieldException(Exception):
 class Field(object):
     PRIMITIVES = ['int', 'str', 'float', 'bool', 'datetime']
 
-    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None, default=None):
+    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None, default=None, required=None):
         self.name = name
         self.field_type = field_type
         self.default = default
+        self.required = required or False
         self.target_spec_name = target_spec_name
         self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
@@ -188,7 +189,7 @@ class Schema(object):
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
                 if field_data['type'] != 'calc':
-                    self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'), default=field_data.get('default'))
+                    self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'), default=field_data.get('default'), required=field_data.get('required'))
         self._add_reverse_links()
 
     def _collect_calcs(self, schema_data):
@@ -232,7 +233,7 @@ class Schema(object):
                     self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
 
         for root_name, root_data in schema_data.get('root', {}).items():
-            self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'))
+            self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'), default=root_data.get('default'), required=root_data.get('required'))
 
     def create_spec(self, spec_name):
         self.db['metaphor_schema'].update(
@@ -242,7 +243,7 @@ class Schema(object):
         # TODO: set up indexes
         return self.add_spec(spec_name)
 
-    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None):
+    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:
             raise MalformedFieldException('Field already exists: %s' % field_name)
         self._check_field_name(field_name)
@@ -254,15 +255,15 @@ class Schema(object):
         if field_type == 'calc':
             self.add_calc(spec, field_name, calc_str)
         else:
-            self.add_field(spec, field_name, field_type, field_target, default)
+            self.add_field(spec, field_name, field_type, field_target, default, required)
 
-    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None):
+    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None):
         if spec_name != 'root' and field_name not in self.specs[spec_name].fields:
             raise MalformedFieldException('Field does not exist: %s' % field_name)
-        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required)
         self.load_schema()
 
-    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str, default):
+    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str, default, required):
         if calc_str:
             self._check_calc_syntax(spec_name, calc_str)
             self._check_circular_dependencies(spec_name, field_name, calc_str)
@@ -276,6 +277,8 @@ class Schema(object):
             field_data = {'type': field_type}
             if default is not None:
                 field_data['default'] = default
+            if required is not None:
+                field_data['required'] = required
         else:
             field_data = {'type': field_type, 'target_spec_name': field_target}
 
@@ -360,14 +363,14 @@ class Schema(object):
                         all_deps.append('%s.%s' % (name, fname))
         return all_deps
 
-    def _add_field(self, spec, field_name, field_type, target_spec_name=None, default=None):
-        field = Field(field_name, field_type, target_spec_name=target_spec_name, default=default)
+    def _add_field(self, spec, field_name, field_type, target_spec_name=None, default=None, required=None):
+        field = Field(field_name, field_type, target_spec_name=target_spec_name, default=default, required=required)
         spec.fields[field_name] = field
         field.spec = spec
         return field
 
-    def add_field(self, spec, field_name, field_type, target_spec_name=None, default=None):
-        field = self._add_field(spec, field_name, field_type, target_spec_name, default)
+    def add_field(self, spec, field_name, field_type, target_spec_name=None, default=None, required=None):
+        field = self._add_field(spec, field_name, field_type, target_spec_name, default, required)
         self._add_reverse_link_for_field(field, spec)
         return field
 
@@ -589,6 +592,9 @@ class Schema(object):
                     errors.append({'error': "Invalid date string for field '%s' (expected ISO format)" % (field_name,)})
             elif not field.check_comparable_type(field_type):
                 errors.append({'error': "Invalid type: %s for field '%s' of '%s' (expected '%s')" % (field_type, field_name, spec_name, field.field_type)})
+        for field_name, field in spec.fields.items():
+            if field.required and field_name not in data:
+                errors.append({"error": "Missing required field: '%s'" % field_name})
         return errors
 
     def remove_spec_field(self, spec_name, field_name):

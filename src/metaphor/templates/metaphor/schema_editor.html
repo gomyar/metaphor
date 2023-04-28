@@ -2,6 +2,7 @@
 <head>
 
 <script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.js" crossorigin="anonymous"></script>
+<script src="/admin/static/metaphor/login.js"></script>
 <script src="/admin/static/metaphor/schema_editor.js"></script>
 
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.css"/>
@@ -133,6 +134,10 @@
                     <textarea class="calc_text" gui-val="create_field.calc_str" rows=4></textarea>
                 </div>
 
+            </div>
+            <div gui-show="create_field.is_primitive()">
+                <div class="label">Required:</div>
+                <input type="checkbox" gui-val="create_field.is_required"></input>
             </div>
         </div>
         <div class="popupbuttons">

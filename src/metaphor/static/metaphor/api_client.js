@@ -373,7 +373,7 @@ class ApiClient {
                 turtlegui.reload(element);
             },
             (error) => {
-                handle_http_error(error, 'Error loading', error);
+                handle_http_error(error, 'Error loading');
             });
     }
 
@@ -455,7 +455,7 @@ class ApiClient {
                 api.creating_collection._fetch();
             },
             (error) => {
-                handle_http_error(error, 'Error creating ', error);
+                handle_http_error(error, 'Error creating ');
             });
         
     }
@@ -650,45 +650,6 @@ class ListenClient {
 
     is_listening(resource) {
         return resource._url() in this.resources;
-    }
-}
-
-class Login {
-    constructor() {
-        this.username = null;
-        this.password = null;
-        this.is_shown = false;
-        this.error = null;
-    }
-
-    show_login() {
-        this.username = null;
-        this.password = null;
-        this.is_shown = true;
-        this.error = null;
-        turtlegui.reload();
-    }
-
-    attempt_login() {
-        turtlegui.ajax.post(
-            '/login',
-            {"username": this.username, "password": this.password},
-            (response) => {
-                this.cancel_login();
-                load_initial_api();                
-            },
-            (err) => {
-                this.error = err;
-                turtlegui.reload();
-            });
-    }
-
-    cancel_login() {
-        this.username = null;
-        this.password = null;
-        this.is_shown = false;
-        this.error = null;
-        turtlegui.reload();
     }
 }
 

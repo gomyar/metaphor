@@ -361,6 +361,24 @@ mutating the schema:
    - delete field (major)
    - delete resource(major)
 
+ - extra mutations:
+   - field type changes
+   - field default changes
+   - field required changes
+   - field changed to a calc
+   - calc changed to a field
+  
+ - field changed from simple type to collection ?
+ - field changed from collection to simple type ?
+   - probably treat as remove / add steps
+
+ - complex mutations:
+   - move field values to another field(s) based on source filter and target spec
+     - may be accomplished using an intermediary calc:
+       - target field value specified as calc (i.e. "self.parent.name")
+   - move children of collection to one or more target collections based on filter
+     - may manually specify target collections (based on search from UI), along with filter for moved resources
+
 
 export / import schema:
  - import updates the schema
@@ -392,3 +410,17 @@ dynamic lists:
           - .years_until_retirement = extrapolate(X, range(65-years(now()-self.date_of_birth)))
 
       - eg: PrimaryClient.mapped_years = map?zip?reduce?(Point(X, Y)?, self.yearly_income_until_retirement, self.years_until_retirement)
+
+metaphor library
+ - eg:
+   m = Metaphor(mongo_db, "schema.json")
+   m.root.users["name='bob'"]
+   users = m.root.users._find("name='bob'")
+   users[0].name
+   users[1].orgs[0].name  # lazy
+
+   org = m.root.orgs._create(name="SuperCost")
+   ned = m.root.users._create(name="Ned")
+   ned.orgs._add(org)   # "_link" instead of "_add"?
+
+   org.link_users._find(name="Ned", _order="name")._order('name')  # ?

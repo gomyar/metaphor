@@ -260,3 +260,7 @@ div.search_results {
     max-height: 70%;
     overflow-y: scroll;
 }
+
+div.error {
+    color: red;
+}

@@ -11,6 +11,7 @@ from flask import flash
 from flask import url_for
 from flask import Blueprint
 from flask import current_app
+from flask import jsonify
 
 from flask_login import login_user
 from flask_login import logout_user
@@ -47,9 +48,9 @@ def login():
 
             flash('Logged in successfully.')
 
-            return "ok", 200
+            return jsonify({"ok": 1}), 200
         else:
-            return "login incorrect", 401
+            return jsonify({"error": "login incorrect"}), 401
     else:
         return flask.render_template('login.html')
 
