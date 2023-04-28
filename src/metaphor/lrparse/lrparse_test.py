@@ -21,7 +21,7 @@ class LRParseTest(unittest.TestCase):
         self.db = client.metaphor2_test_db
         self.schema = Schema(self.db)
 
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -81,6 +81,10 @@ class LRParseTest(unittest.TestCase):
                 }
             },
         })
+
+    def _create_test_schema(self, data):
+        inserted = self.db.metaphor_schema.insert_one(data)
+        self.schema._id = inserted.inserted_id
         self.schema.load_schema()
 
     def _calculate(self, resource_name, tree, resource_id):

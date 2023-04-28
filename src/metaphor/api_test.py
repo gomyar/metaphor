@@ -41,6 +41,13 @@ class ApiTest(unittest.TestCase):
 
         self.api = Api(self.schema)
 
+    def _create_test_schema(self, data):
+        inserted = self.db.metaphor_schema.insert_one(data)
+        self.schema._id = inserted.inserted_id
+        self.schema.load_schema()
+
+
+
     def test_get(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
@@ -211,7 +218,7 @@ class ApiTest(unittest.TestCase):
 
     def test_canonical_url(self):
         self.db.metaphor_schema.drop()
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -254,7 +261,7 @@ class ApiTest(unittest.TestCase):
                 }
             },
         })
-        self.schema.load_schema()
+
 
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned'}, 'employees')
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales'}, 'divisions')

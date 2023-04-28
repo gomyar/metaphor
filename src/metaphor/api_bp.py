@@ -114,7 +114,7 @@ def admin_index():
 
 @admin_bp.route("/admin/api/schemas", methods=['GET'])
 @login_required
-def schema_editor_api():
+def admin_api_schemas():
     admin_api = current_app.config['admin_api']
     return jsonify(admin_api.format_schema(flask_login.current_user.is_admin()))
 

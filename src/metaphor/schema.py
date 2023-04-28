@@ -172,16 +172,11 @@ class Schema(object):
     def calculate_short_hash(self):
         schema_data = self._load_schema_data()
         schema_data.pop('_id')
-        schema_data.pop('loaded')
         schema_str = json.dumps(schema_data, sort_keys=True)
         return hashlib.sha1(schema_str.encode("UTF-8")).hexdigest()[:8]
 
     def _load_schema_data(self):
-        return self.db.metaphor_schema.find_one_and_update(
-            {"_id": {"$exists": True}},
-            {
-                "$set": {"loaded": datetime.now()},
-            }, return_document=ReturnDocument.AFTER)
+        return self.db.metaphor_schema.find_one({"_id": self._id})
 
     def _build_specs(self, schema_data):
         self._id = schema_data['_id']
@@ -209,11 +204,14 @@ class Schema(object):
         self.load_schema()
 
     def load_schema(self):
-        from metaphor.lrparse.lrparse import parse
         self.specs = {}
         self.root = Spec('root', self)
 
         schema_data = self._load_schema_data()
+        self._build_schema(schema_data)
+
+    def _build_schema(self, schema_data):
+        from metaphor.lrparse.lrparse import parse
         self._build_specs(schema_data)
 
         calcs = self._collect_calcs(schema_data)
@@ -247,7 +245,7 @@ class Schema(object):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:
             raise MalformedFieldException('Field already exists: %s' % field_name)
         self._check_field_name(field_name)
-        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required)
         if spec_name == 'root':
             spec = self.root
         else:

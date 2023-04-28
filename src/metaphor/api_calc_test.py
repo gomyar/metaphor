@@ -15,7 +15,7 @@ class ApiTest(unittest.TestCase):
         self.db = client.metaphor2_test_db
         self.schema = Schema(self.db)
 
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -103,9 +103,15 @@ class ApiTest(unittest.TestCase):
                 }
             },
         })
-        self.schema.load_schema()
+
 
         self.api = Api(self.schema)
+
+    def _create_test_schema(self, data):
+        inserted = self.db.metaphor_schema.insert_one(data)
+        self.schema._id = inserted.inserted_id
+        self.schema.load_schema()
+
 
     def test_calc_results(self):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})

@@ -17,8 +17,13 @@ class SchemaTest(unittest.TestCase):
         self.schema = Schema(self.db)
         self.maxDiff = None
 
+    def _create_test_schema(self, data):
+        inserted = self.db.metaphor_schema.insert_one(data)
+        self.schema._id = inserted.inserted_id
+        self.schema.load_schema()
+
     def test_load_basic_spec(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -32,13 +37,13 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals("str", self.schema.specs['employee'].fields['name'].field_type)
         self.assertEquals("int", self.schema.specs['employee'].fields['age'].field_type)
 
     def test_load_basic_link_with_reverse_link(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -57,7 +62,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(2, len(self.schema.specs))
         self.assertEquals("str", self.schema.specs['employee'].fields['name'].field_type)
         self.assertEquals("link", self.schema.specs['department'].fields['manager'].field_type)
@@ -67,7 +72,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals("department", self.schema.specs['employee'].fields['link_department_manager'].target_spec_name)
 
     def test_load_collection_with_parent_link(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -87,7 +92,7 @@ class SchemaTest(unittest.TestCase):
 
             },
         })
-        self.schema.load_schema()
+
         self.assertEquals(2, len(self.schema.specs))
         self.assertEquals("str", self.schema.specs['employee'].fields['name'].field_type)
         self.assertEquals("collection", self.schema.specs['department'].fields['employees'].field_type)
@@ -97,7 +102,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals("department", self.schema.specs['employee'].fields['parent_department_employees'].target_spec_name)
 
     def test_load_link_collection_with_reverse_link(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -117,7 +122,7 @@ class SchemaTest(unittest.TestCase):
 
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(2, len(self.schema.specs))
         self.assertEquals("str", self.schema.specs['employee'].fields['name'].field_type)
         self.assertEquals("linkcollection", self.schema.specs['department'].fields['parttimers'].field_type)
@@ -127,7 +132,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals("department", self.schema.specs['employee'].fields['link_department_parttimers'].target_spec_name)
 
     def test_save_resource_encode_id(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -138,7 +143,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         employee_id = self.schema.insert_resource('employee', {
             'name': 'Bob'
         }, 'employees')
@@ -157,7 +162,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals('ID%s' % (new_resource['_id'],), employee_id)
 
     def test_update_field(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -168,7 +173,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         employee_id = self.schema.insert_resource('employee', {
             'name': 'Bob'
         }, 'employees')
@@ -177,7 +182,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals('Ned', reload_employee['name'])
 
     def test_roots(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -206,7 +211,7 @@ class SchemaTest(unittest.TestCase):
                 }
             },
         })
-        self.schema.load_schema()
+
         self.assertEquals(2, len(self.schema.specs))
         self.assertEquals(2, len(self.schema.root.fields))
         self.assertEquals('collection', self.schema.root.fields['employees'].field_type)
@@ -215,7 +220,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals('department', self.schema.root.fields['departments'].target_spec_name)
 
     def test_canonical_url(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -264,7 +269,7 @@ class SchemaTest(unittest.TestCase):
                 }
             },
         })
-        self.schema.load_schema()
+
 
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
 
@@ -385,7 +390,7 @@ class SchemaTest(unittest.TestCase):
         self.schema.create_spec('section')
         self.schema.create_field('section', 'branch', 'link', 'branch')
 
-        self.schema.load_schema()
+
 
         self.schema.create_field('employee', 'average_section_income', 'calc', None, 'average(self.parent_branch_employees.income)')
         self.schema.create_field('branch', 'section', 'calc', None, 'self.link_section_branch')
@@ -437,7 +442,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual(expected, self.db.metaphor_schema.find_one()['specs'])
 
-        self.schema.load_schema()
+
         self.assertEquals(3, len(self.schema.specs))
 
     def test_load_calcs_by_dependency_almost_circular(self):
@@ -455,7 +460,7 @@ class SchemaTest(unittest.TestCase):
         self.schema.create_field('primary', 'secondary_name', 'calc', calc_str="self.secondary.calced_name")
         self.schema.create_field('secondary', 'primary_name', 'calc', calc_str="self.primary.calced_name")
 
-        self.schema.load_schema()
+
         self.assertEquals(2, len(self.schema.specs))
 
     def test_delete_field_with_dependencies(self):
@@ -474,7 +479,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({}, self.schema.all_dependent_calcs_for('primary', 'name'))
 
     def test_hash(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -485,7 +490,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEqual("e5e48c9b", self.schema.calculate_short_hash())
 
     def test_field_default(self):
@@ -511,6 +516,6 @@ class SchemaTest(unittest.TestCase):
         }, self.db.metaphor_schema.find_one())
 
         # test load
-        self.schema.load_schema()
+
 
         self.assertEqual('ned', self.schema.specs['primary'].fields['name'].default)

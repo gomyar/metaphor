@@ -1,0 +1,36 @@
+
+body {
+    font-family : "Courier New", Courier, monospace;
+}
+
+div.admin_titlebar {
+    margin : 10px;
+    border-top : 2px solid black;
+    height : 40px;
+}
+
+div.admin_titlebar div.title {
+    font-size : 18px;
+    font-weight : bold;
+    display : inline-block;
+}
+
+
+div.schemas_list {
+    margin : 10px;
+    border-top : 2px solid black;
+    top : 60px;
+}
+
+div.schemas_list div.title {
+    font-size : 16px;
+    font-weight : bold;
+    display : inline-block;
+}
+
+div.schemas_list div.controls {
+    font-weight : bold;
+    display : inline-block;
+}
+
+

@@ -18,8 +18,13 @@ class SchemaTest(unittest.TestCase):
         self.schema = Schema(self.db)
         self.maxDiff = None
 
+    def _create_test_schema(self, data):
+        inserted = self.db.metaphor_schema.insert_one(data)
+        self.schema._id = inserted.inserted_id
+        self.schema.load_schema()
+
     def test_int_type(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -30,7 +35,6 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals("int", self.schema.specs['employee'].fields['age'].field_type)
 
@@ -43,7 +47,7 @@ class SchemaTest(unittest.TestCase):
                           self.schema.validate_spec('employee', {'age': "12"}))
 
     def test_str_type(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -54,7 +58,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals("str", self.schema.specs['employee'].fields['name'].field_type)
 
@@ -67,7 +71,7 @@ class SchemaTest(unittest.TestCase):
                           self.schema.validate_spec('employee', {'name': 12}))
 
     def test_bool_type(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -78,7 +82,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals("bool", self.schema.specs['employee'].fields['admin'].field_type)
 
@@ -92,7 +96,7 @@ class SchemaTest(unittest.TestCase):
 
 
     def test_float_type(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -103,7 +107,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals("float", self.schema.specs['employee'].fields['salary'].field_type)
 
@@ -114,7 +118,7 @@ class SchemaTest(unittest.TestCase):
                           self.schema.validate_spec('employee', {'age': "12"}))
 
     def test_datetime_type(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -131,7 +135,7 @@ class SchemaTest(unittest.TestCase):
                 },
             },
         })
-        self.schema.load_schema()
+
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals("datetime", self.schema.specs['employee'].fields['created'].field_type)
 
@@ -149,7 +153,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual(datetime(2021, 12, 31, 12, 30, 20), inserted['created'])
 
     def test_required_field(self):
-        self.db.metaphor_schema.insert_one({
+        self._create_test_schema({
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -164,7 +168,7 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.schema.load_schema()
+
         self.assertEquals(1, len(self.schema.specs))
         self.assertEquals(True, self.schema.specs['employee'].fields['name'].required)
 
