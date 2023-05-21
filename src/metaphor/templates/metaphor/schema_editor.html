@@ -27,7 +27,7 @@ var schema_id = "{{ schema_id }}";
     <div class="specs_title">
         <div class="title">root</div>
         <div class="controls">
-            <button class="button" gui-click="create_field.show_create('root')">Add Root</button>
+            <button class="button" gui-click="create_field.show_create('root')" gui-show="!schema.current">Add Root</button>
         </div>
     </div>
 
@@ -44,7 +44,7 @@ var schema_id = "{{ schema_id }}";
     <div class="specs_title">
         <div class="title">Specs</div>
         <div class="controls">
-            <button class="button" gui-click="create_spec.show_popup()">Create Spec</button> 
+            <button class="button" gui-click="create_spec.show_popup()" gui-show="!schema.current">Create Spec</button> 
         </div>
     </div>
 
@@ -61,12 +61,12 @@ var schema_id = "{{ schema_id }}";
                         <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
                     </div>
                     <div class="field_controls">
-                        <button class="button edit_field" gui-click="create_field.show_edit(spec_name, field_name)">Edit</button>
-                        <button class="button delete_field" gui-click="schema.delete_field(spec_name, field_name)">Delete</button>
+                        <button class="button edit_field" gui-click="create_field.show_edit(spec_name, field_name)" gui-show="!schema.current">Edit</button>
+                        <button class="button delete_field" gui-click="schema.delete_field(spec_name, field_name)" gui-show="!schema.current">Delete</button>
                     </div>
                 </div>
             </div>
-            <button class="button" gui-click="create_field.show_create(spec_name)">Add Field</button> 
+            <button class="button" gui-click="create_field.show_create(spec_name)" gui-show="!schema.current">Add Field</button> 
         </div>
     </div>
 </div>

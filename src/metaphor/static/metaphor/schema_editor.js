@@ -3,6 +3,7 @@
 var schema = {
     specs: {},
     root: {},
+    current: false,
 
     load_specs: function() {
         loading.inc_loading();
@@ -12,6 +13,7 @@ var schema = {
                 result = JSON.parse(data);
                 schema.specs = result.specs;
                 schema.root = result.root;
+                schema.current = result.current;
                 loading.dec_loading();
             },
             function(data) {

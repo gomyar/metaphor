@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from metaphor.schema import Schema
 from metaphor.updater import Updater
+from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import generate_password_hash
 
 
@@ -17,8 +18,9 @@ def run_init_schema(mongohost, mongodb):
     if list(db.list_collections()):
         print("The given Database is not empty. Please run init_schema against a blank Database")
     else:
-        schema = Schema(db)
+        schema = Schema.create_schema(db)
         schema.create_initial_schema()
+        schema.set_as_current()
 
         updater = Updater(schema)
         group_id = updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'}, schema.read_root_grants('groups'))
@@ -38,8 +40,8 @@ def run_create_superuser(mongohost, mongodb):
         if db.resource_user.find_one({'username': username}):
             print("User %s already exists" % username)
         else:
-            schema = Schema(db)
-            schema.load_schema()
+            schema_factory = SchemaFactory(db)
+            schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
 
@@ -60,8 +62,8 @@ def run_create_user(mongohost, mongodb):
         if db.resource_user.find_one({'username': username}):
             print("User %s already exists" % username)
         else:
-            schema = Schema(db)
-            schema.load_schema()
+            schema_factory = SchemaFactory(db)
+            schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
 
@@ -77,8 +79,8 @@ def run_delete_user(mongohost, mongodb):
     username = input("Input username: ")
     if username:
         if db.resource_user.find_one({'username': username}):
-            schema = Schema(db)
-            schema.load_schema()
+            schema_factory = SchemaFactory(db)
+            schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
 

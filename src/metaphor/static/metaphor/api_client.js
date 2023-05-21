@@ -668,7 +668,7 @@ var listen_dropdown = {
 
 
 function load_initial_api() {
-    turtlegui.ajax.get('/admin/schema_editor/api', function(response) {
+    turtlegui.ajax.get('/api/schema', function(response) {
         Schema = JSON.parse(response);
         api.load();
     }, (error) => {

@@ -1,0 +1,40 @@
+<html>
+<head>
+
+<script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.js" crossorigin="anonymous"></script>
+<script src="/admin/static/metaphor/login.js"></script>
+<script src="/admin/static/metaphor/admin.js"></script>
+
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/admin.css"/>
+
+</head>
+
+<body>
+
+
+<div class="layer anchortop admin_titlebar">
+    <div class="title">Admin</div>
+    <span><input type="button" value="Create Schema" gui-click="admin.create_schema()"></input></span>
+    <input class="button" type="file" gui-change="schema_import.import_schema(this)" ></input>
+</div>
+
+<div class="layer anchortop schema_list">
+    <div class="title">Schemas</div>
+
+    <div gui-list="admin.schemas" gui-item="schema">
+        <div>
+            <span gui-text="schema.version"></span>
+            <span><a gui-attrs="href='/admin/schemas/'+schema.id" gui-show="schema.current">View</a></span>
+            <span><a gui-attrs="href='/admin/schemas/'+schema.id" gui-show="!schema.current">Edit</a></span>
+            <span gui-show="schema.current">Current</span>
+        </div>
+    </div>
+</div>
+
+
+
+</body>
+
+</html>

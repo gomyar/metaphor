@@ -14,7 +14,9 @@ class ServerTest(TestCase):
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
 
-        Schema(self.db).create_initial_schema()
+        schema = Schema.create_schema(self.db)
+        schema.create_initial_schema()
+        schema.set_as_current()
 
         self.app = create_app(self.db)
         self.api = self.app.config['api']

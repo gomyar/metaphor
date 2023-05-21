@@ -35,3 +35,12 @@ class SchemaFactory:
             schema._build_schema(data)
             schema_list.append(schema)
         return schema_list
+
+    def create_schema_from_import(self, schema_data):
+        saved = {
+            "root": schema_data['root']['fields'],
+            "specs": schema_data['specs'],
+        }
+        self.db.metaphor_schema.insert(saved)
+
+

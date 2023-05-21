@@ -158,6 +158,13 @@ class Schema(object):
         self.current = None
         self.calc_trees = {}
 
+    @staticmethod
+    def create_schema(db):
+        inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}})
+        schema = Schema(db)
+        schema._id = inserted.inserted_id
+        return schema
+
     def set_as_latest(self):
         latest = self.db.metaphor_latest_schema.find_one_and_update(
             {"_id": {"$exists": True}},
@@ -195,20 +202,18 @@ class Schema(object):
                     calcs[spec_name + '.' + field_name] = field_data
         return calcs
 
-    def save_imported_schema_data(self, schema_data):
-        self.db.metaphor_schema.find_one_and_update(
-            {"_id": {"$exists": True}},
-            {
-                "$set": schema_data,
-            }, upsert=True, return_document=ReturnDocument.AFTER)
-        self.load_schema()
-
     def load_schema(self):
         self.specs = {}
         self.root = Spec('root', self)
 
         schema_data = self._load_schema_data()
         self._build_schema(schema_data)
+
+    def set_as_current(self):
+        # we'll transact this later
+        self.db.metaphor_schema.update_one({"current": True}, {"$set": {"current": False}})
+        self.db.metaphor_schema.update_one({"_id": self._id}, {"$set": {"current": True}})
+        self.current = True
 
     def _build_schema(self, schema_data):
         from metaphor.lrparse.lrparse import parse
@@ -239,8 +244,7 @@ class Schema(object):
     def create_spec(self, spec_name):
         self.db['metaphor_schema'].update(
             {'_id': self._id},
-            {"$set": {'specs.%s' % spec_name: {'fields': {}}}},
-            upsert=True)
+            {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
         # TODO: set up indexes
         return self.add_spec(spec_name)
 

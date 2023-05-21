@@ -9,6 +9,7 @@ from metaphor.login import login_required
 from metaphor.login import admin_required
 from metaphor.admin_api import SchemaSerializer
 from metaphor.admin_api import AdminApi
+from metaphor.schema import Schema
 
 from urllib.error import HTTPError
 
@@ -102,6 +103,15 @@ def api(path):
         return jsonify({"error": he.reason}), he.getcode()
 
 
+@api_bp.route("/schema", methods=['GET'])
+@login_required
+def schema():
+    api = current_app.config['api']
+
+    serializer = SchemaSerializer(flask_login.current_user.is_admin())
+    return jsonify(serializer.serialize(api.schema))
+
+
 @admin_bp.route("/schemas/<schema_id>")
 @admin_required
 def schema_editor(schema_id):
@@ -128,8 +138,8 @@ def admin_api_schemas():
         })
     else:
         if request.json:
-            admin_api = current_app.config['admin_api']
-            return jsonify(admin_api.import_schema(request.json))
+            factory.create_schema_from_import(request.json)
+            return jsonify({'ok': 1})
         else:
             factory.create_schema()
             return jsonify({'ok': 1})
@@ -159,14 +169,19 @@ def schema_editor_create_field(schema_id, spec_name):
     factory = current_app.config['schema_factory']
     schema = factory.load_schema(schema_id)
 
-    admin_api = AdminApi(schema)
-
     field_name = request.json['field_name']
     field_type = request.json['field_type']
     field_target = request.json['field_target']
     calc_str = request.json['calc_str']
 
-    admin_api.create_field(spec_name, field_name, field_type, field_target, calc_str)
+    if spec_name != 'root' and spec_name not in self.schema.specs:
+        return jsonify({"error": "Not Found"}), 404
+
+    try:
+        schema.create_field(spec_name, field_name, field_type, field_target, calc_str)
+    except MalformedFieldException as me:
+        return jsonify({"error": str(me)}), 400
+
     return jsonify({'success': 1})
 
 
@@ -175,32 +190,27 @@ def schema_editor_create_field(schema_id, spec_name):
 def schema_editor_delete_field(schema_id, spec_name, field_name):
     factory = current_app.config['schema_factory']
     schema = factory.load_schema(schema_id)
-
-    admin_api = AdminApi(schema)
+    if schema.current:
+        return jsonify({"error": "cannot alter current schema"}), 400
 
     if request.method == 'DELETE':
-        admin_api.delete_field(spec_name, field_name)
+        if spec_name != 'root' and spec_name not in self.schema.specs:
+            return jsonify({"error": "Not Found"}), 404
+        try:
+            schema.delete_field(spec_name, field_name)
+        except DependencyException as de:
+            log.exception("DependencyException on DELETE for %s %s %s", schema_id, spec_name, field_name)
+            return jsonify({"error": str(me)}), 400
     else:
         field_type = request.json['field_type']
         field_target = request.json['field_target']
         calc_str = request.json['calc_str']
 
-        admin_api.update_field(spec_name, field_name, field_type, field_target, calc_str)
+        try:
+            schema.update_field(spec_name, field_name, field_type, field_target, calc_str)
+        except Exception as e:
+            log.exception("Exception on PATCH for %s %s %s", schema_id, spec_name, field_name)
+            return jsonify({"error": str(e)}), 400
+
     return jsonify({'success': 1})
 
-
-@admin_bp.route("/api/schemas/<schema_id>", methods=['GET'])
-@admin_required
-def schema_export():
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
-
-    admin_api = AdminApi(schema)
-    return jsonify(admin_api.export_schema())
-
-
-@admin_bp.route("/schema_editor/api/import", methods=['POST'])
-@admin_required
-def schema_import():
-    admin_api = current_app.config['admin_api']
-    return jsonify(admin_api.import_schema(request.json))

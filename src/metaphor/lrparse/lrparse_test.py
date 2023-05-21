@@ -83,8 +83,8 @@ class LRParseTest(unittest.TestCase):
         })
 
     def _create_test_schema(self, data):
-        inserted = self.db.metaphor_schema.insert_one(data)
-        self.schema._id = inserted.inserted_id
+        self.schema = Schema.create_schema(self.db)
+        self.db.metaphor_schema.update({"_id": self.schema._id}, data)
         self.schema.load_schema()
 
     def _calculate(self, resource_name, tree, resource_id):
