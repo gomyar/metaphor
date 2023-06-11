@@ -99,6 +99,7 @@ div.field {
 }
 
 div.field .name {
+    font-weight: bold;
     font-size : 12px;
     display : inline-block;
 }
@@ -126,6 +127,7 @@ div.calc_str {
 .spec_name {
     font-weight: bold;
     border-top: 1px solid grey;
+    margin-top: 10px;
 }
 
 
