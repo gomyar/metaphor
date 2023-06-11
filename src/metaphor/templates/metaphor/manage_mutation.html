@@ -40,54 +40,55 @@ var mutation_id = "{{ mutation_id }}";
         <div class="diff_item" gui-switch="diff.change">
             <div gui-case="'spec_deleted'">
                 <div class="diff_line">
-                    <span class="deleted" gui-text="diff.spec_name"></span>
+                    <span class="deleted">
+                        <div class="spec_name" gui-text="diff.spec_name"></div>
+
+                        <div gui-list="manage.mutation.from_schema.specs[diff.spec_name].fields" gui-item="field" gui-key="field_name" >
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="field_name"></span>
+                                    <span class="type" gui-text="field.type"></span>
+                                    <span class="target" gui-text="field.target_spec_name||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                            </span>
+                        </div>
+
+                    </span>
+
                     <span class="change deleted">Deleted</span>
                     <span></span>
                 </div>
-                <div class="diff_line" gui-list="manage.mutation.from_schema.specs[diff.spec_name].fields" gui-item="field" gui-key="field_name" >
-                    <span class="spec_fields deleted">
-                        <div class="field">
-                            <span class="name" gui-text="field_name"></span>
-                            <span class="type" gui-text="field.type"></span>
-                            <span class="target" gui-text="field.target_spec_name||''"></span>
-                        </div>
-                        <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
-                    </span>
-
-                    <span class="change"></span>
-
-                    <span class="spec_fields">
-                    </span>
-                </div>
             </div>
             <div gui-case="'spec_created'">
+
                 <div class="diff_line">
                     <span></span>
                     <span class="change created">Created</span>
-                    <span class="created" gui-text="diff.spec_name"></span>
-                </div>
-                <div class="diff_line" gui-list="manage.mutation.to_schema.specs[diff.spec_name].fields" gui-item="field" gui-key="field_name">
-                    <span class="spec_fields">
-                    </span>
+                    <span class="created">
+                        <div class="spec_name" gui-text="diff.spec_name"></div>
 
-                    <span class="change"></span>
-
-                    <span class="spec_fields created">
-                        <div class="field">
-                            <span class="name" gui-text="field_name"></span>
-                            <span class="type" gui-text="field.type"></span>
-                            <span class="target" gui-text="field.target_spec_name||''"></span>
+                        <div gui-list="manage.mutation.to_schema.specs[diff.spec_name].fields" gui-item="field" gui-key="field_name">
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="field_name"></span>
+                                    <span class="type" gui-text="field.type"></span>
+                                    <span class="target" gui-text="field.target_spec_name||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                            </span>
                         </div>
-                        <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+
                     </span>
+
                 </div>
- 
+
             </div>
             <div gui-case="'same'">
                 <div class="diff_line">
-                    <span gui-text="diff.spec_name"></span>
+                    <span class="spec_name" gui-text="diff.spec_name"></span>
                     <span></span>
-                    <span gui-text="diff.spec_name"></span>
+                    <span class="spec_name" gui-text="diff.spec_name"></span>
                 </div>
                 <div gui-list="diff.fields" gui-item="field">
                     <div gui-switch="field.change">

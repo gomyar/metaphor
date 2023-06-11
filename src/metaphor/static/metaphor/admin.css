@@ -66,7 +66,7 @@ div.diff_line {
 }
 
 div.diff_line:hover {
-    background-color: lightgrey;
+    background-color: #eeeeee;
 }
 
 
@@ -123,6 +123,10 @@ div.calc_str {
 }
 
 
+.spec_name {
+    font-weight: bold;
+    border-top: 1px solid grey;
+}
 
 
 .change {
@@ -130,7 +134,21 @@ div.calc_str {
     text-align: center;
     text-transform: uppercase;
     align-self:center;
+    height: 100%;
 }
+
+.change.created {
+    border-radius: 50% 0% 0% 50%;
+    display: grid;
+    align-items: center;
+}
+
+.change.deleted {
+    border-radius: 0% 50% 50% 0%;
+    display: grid;
+    align-items: center;
+}
+
 
 div.steps {
     margin : 10px;
