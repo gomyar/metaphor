@@ -4,6 +4,7 @@ import unittest
 from pymongo import MongoClient
 
 from metaphor.schema_factory import SchemaFactory
+from metaphor.mutation import Mutation
 
 
 class SchemaFactoryTest(unittest.TestCase):
@@ -33,3 +34,11 @@ class SchemaFactoryTest(unittest.TestCase):
         schemas = self.factory.list_schemas()
 
         self.assertEqual(2, len(schemas))
+
+    def test_mutations(self):
+        schema_1 = self.factory.create_schema()
+        schema_2 = self.factory.create_schema()
+
+        mutation = Mutation(schema_1, schema_2)
+
+        self.factory.save_mutation(mutation)

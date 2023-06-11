@@ -11,6 +11,7 @@ class SchemaSerializer(object):
     def __init__(self, include_admindata=False):
         self.serializers = dict(
             Schema=self._serialize_schema,
+            Mutation=self._serialize_mutation,
             Spec=self._serialize_spec,
             Field=self._serialize_field,
             CalcField=self._serialize_calcfield,
@@ -29,13 +30,17 @@ class SchemaSerializer(object):
         raise TypeError("Cannot serialize object %s" % obj_name)
 
     def _serialize_schema(self, schema):
-        return {
+        schema_data = {
             'id': str(schema._id),
             'current': schema.current,
             'specs': schema.specs,
-            'version': 'tbd',
+            'version': schema.version,
             'root': schema.root,
         }
+        return schema_data
+
+    def _serialize_mutation(self, mutation):
+        return {}
 
     def _serialize_spec(self, spec):
         return {

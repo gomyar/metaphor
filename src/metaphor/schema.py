@@ -163,23 +163,18 @@ class Schema(object):
         inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}})
         schema = Schema(db)
         schema._id = inserted.inserted_id
+        schema.update_version()
         return schema
 
-    def set_as_latest(self):
-        latest = self.db.metaphor_latest_schema.find_one_and_update(
-            {"_id": {"$exists": True}},
-            {
-                "$set": {
-                    "schema_id": self._id,
-                    "updated": datetime.now(),
-                },
-            }, upsert=True, return_document=ReturnDocument.AFTER)
-        if latest['schema_id'] != self._id:
-            raise Exception("Latest schema could not be set")
+    def update_version(self):
+        self.db.metaphor_schema.find_one_and_update({'_id': self._id}, {"$set": {"version": self.calculate_short_hash()}})
 
     def calculate_short_hash(self):
         schema_data = self._load_schema_data()
-        schema_data.pop('_id')
+        schema_data = {
+            "specs": schema_data["specs"],
+            "root": schema_data["root"],
+        }
         schema_str = json.dumps(schema_data, sort_keys=True)
         return hashlib.sha1(schema_str.encode("UTF-8")).hexdigest()[:8]
 
@@ -202,13 +197,6 @@ class Schema(object):
                     calcs[spec_name + '.' + field_name] = field_data
         return calcs
 
-    def load_schema(self):
-        self.specs = {}
-        self.root = Spec('root', self)
-
-        schema_data = self._load_schema_data()
-        self._build_schema(schema_data)
-
     def set_as_current(self):
         # we'll transact this later
         self.db.metaphor_schema.update_one({"current": True}, {"$set": {"current": False}})
@@ -218,7 +206,7 @@ class Schema(object):
     def _build_schema(self, schema_data):
         from metaphor.lrparse.lrparse import parse
 
-        self._id = schema_data['_id']
+        self._id = ObjectId(schema_data['id'])
         self.current = schema_data.get('current', False)
         self._build_specs(schema_data)
 
@@ -234,18 +222,20 @@ class Schema(object):
                 field_data = schema_data['specs'][spec_name]['fields'][field_name]
                 if field_data['type'] == 'calc':
                     spec = self.specs[spec_name]
-#                    log.debug("Calc create: %s.%s", spec_name, field_name)
                     self._add_calc(spec, field_name, field_data['calc_str'])
                     self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
 
         for root_name, root_data in schema_data.get('root', {}).items():
             self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'), default=root_data.get('default'), required=root_data.get('required'))
 
+        self.version = schema_data['version']
+
     def create_spec(self, spec_name):
         self.db['metaphor_schema'].update(
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
         # TODO: set up indexes
+        self.update_version()
         return self.add_spec(spec_name)
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None):
@@ -266,7 +256,6 @@ class Schema(object):
         if spec_name != 'root' and field_name not in self.specs[spec_name].fields:
             raise MalformedFieldException('Field does not exist: %s' % field_name)
         self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required)
-        self.load_schema()
 
     def _update_field(self, spec_name, field_name, field_type, field_target, calc_str, default, required):
         if calc_str:
@@ -292,11 +281,13 @@ class Schema(object):
                 {'_id': self._id},
                 {"$set": {'root.%s' % (field_name,): field_data}},
                 upsert=True)
+            self.update_version()
         else:
             self.db['metaphor_schema'].update(
                 {'_id': self._id},
                 {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}},
                 upsert=True)
+            self.update_version()
 
     def _check_field_name(self, field_name):
         if not field_name:
@@ -352,6 +343,7 @@ class Schema(object):
         self.db['metaphor_schema'].update(
             {'_id': self._id},
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
+        self.update_version()
 
     def _check_field_dependencies(self, spec_name, field_name):
         all_deps = self._get_field_dependencies(spec_name, field_name)
@@ -697,8 +689,6 @@ class Schema(object):
 
         self.create_field('root', 'users', 'collection', 'user')
         self.create_field('root', 'groups', 'collection', 'group')
-
-        self.load_schema()
 
     def read_root_grants(self, path):
         or_clause = [{'url': '/'}]

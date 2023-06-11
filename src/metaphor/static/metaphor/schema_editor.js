@@ -14,6 +14,7 @@ var schema = {
                 schema.specs = result.specs;
                 schema.root = result.root;
                 schema.current = result.current;
+                schema.version = result.version;
                 loading.dec_loading();
             },
             function(data) {

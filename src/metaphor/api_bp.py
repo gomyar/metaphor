@@ -10,6 +10,7 @@ from metaphor.login import admin_required
 from metaphor.admin_api import SchemaSerializer
 from metaphor.admin_api import AdminApi
 from metaphor.schema import Schema
+from metaphor.mutation import Mutation
 
 from urllib.error import HTTPError
 
@@ -45,10 +46,20 @@ def serialize_spec(spec):
 
 def serialize_schema(schema):
     return {
+        'id': str(schema._id),
         'specs': {
             name: serialize_spec(spec) for name, spec in schema.specs.items()
-        }
+        },
+        'version': schema.version
     }
+
+
+def serialize_mutation(mutation):
+    return {
+        'from_schema': serialize_schema(mutation.from_schema),
+        'to_schema': serialize_schema(mutation.to_schema),
+    }
+
 
 
 @search_bp.route("/<spec_name>", methods=['GET'])
@@ -118,6 +129,12 @@ def schema_editor(schema_id):
     return render_template('metaphor/schema_editor.html', schema_id=schema_id)
 
 
+@admin_bp.route("/mutations/<mutation_id>")
+@admin_required
+def manage_mutation(mutation_id):
+    return render_template('metaphor/manage_mutation.html', mutation_id=mutation_id)
+
+
 @admin_bp.route("/")
 @admin_required
 def admin_index():
@@ -125,16 +142,21 @@ def admin_index():
 
 
 @admin_bp.route("/api/schemas", methods=['GET', 'POST'])
-@login_required
+@admin_required
 def admin_api_schemas():
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
         schema_list = factory.list_schemas()
-        for schema in schema_list:
-            schema.load_schema()
         serializer = SchemaSerializer(flask_login.current_user.is_admin())
         return jsonify({
-            "schemas": [serializer.serialize(s) for s in schema_list]
+            "schemas": [{
+                'id': schema['id'],
+                'current': schema.get('current') or False,
+                'specs': schema['specs'],
+                'version': schema['version'],
+                'root': schema['root'],
+                'mutations': schema['mutations'],
+            } for schema in schema_list]
         })
     else:
         if request.json:
@@ -146,12 +168,19 @@ def admin_api_schemas():
 
 
 @admin_bp.route("/api/schemas/<schema_id>", methods=['GET'])
-@login_required
+@admin_required
 def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     serializer = SchemaSerializer(flask_login.current_user.is_admin())
-    schema = factory.load_schema(schema_id)
-    return jsonify(serializer.serialize(schema))
+    schema = factory.load_schema_data(schema_id, True)
+    return jsonify({
+        'id': schema['id'],
+        'current': schema.get('current') or False,
+        'specs': schema['specs'],
+        'version': schema['version'],
+        'root': schema['root'],
+        'mutations': [],
+    })
 
 
 @admin_bp.route("/api/schemas/<schema_id>/specs", methods=['POST'])
@@ -174,7 +203,7 @@ def schema_editor_create_field(schema_id, spec_name):
     field_target = request.json['field_target']
     calc_str = request.json['calc_str']
 
-    if spec_name != 'root' and spec_name not in self.schema.specs:
+    if spec_name != 'root' and spec_name not in schema.specs:
         return jsonify({"error": "Not Found"}), 404
 
     try:
@@ -214,3 +243,35 @@ def schema_editor_delete_field(schema_id, spec_name, field_name):
 
     return jsonify({'success': 1})
 
+
+@admin_bp.route("/api/mutations", methods=['POST'])
+@login_required
+def mutations():
+    data = request.json
+
+    factory = current_app.config['schema_factory']
+    from_schema = factory.load_schema(data['from_schema_id'])
+    to_schema = factory.load_schema(data['to_schema_id'])
+    mutation = Mutation(from_schema, to_schema)
+
+    factory.save_mutation(mutation)
+
+    return jsonify({"ok": 1})
+
+
+@admin_bp.route("/api/mutations/<mutation_id>", methods=['GET', 'PATCH'])
+@login_required
+def single_mutation(mutation_id):
+    factory = current_app.config['schema_factory']
+    if request.method == 'GET':
+
+        mutation = factory.load_mutation(mutation_id)
+
+        return serialize_mutation(mutation)
+    else:
+        if request.json.get('promote') == True:
+            mutation = factory.load_mutation(mutation_id)
+            mutation.to_schema.set_as_current()
+            return jsonify({"ok": 1})
+        else:
+            return jsonify({"error": "Unsupported option"}), 400

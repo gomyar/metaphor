@@ -84,34 +84,34 @@ div.specs div.spec div.field input[type="radio"] {
 
 div.specs div.spec div.field div.name{
     font-size : 12px;
-    min-width : 200px;
+    min-width : 25%;
     margin-left : 50px;
     display : inline-block;
 }
 
 div.specs div.spec div.field div.type{
     font-size : 12px;
-    width : 150px;
+    width : 10%;
     margin-left : 20px;
     display : inline-block;
 }
 
 div.specs div.spec div.field div.target {
     font-size : 12px;
-    min-width : 50px;
+    min-width : 10%;
     margin-left : 20px;
     display : inline-block;
 }
 
 div.specs div.spec div.field div.calc_str {
     font-size : 12px;
-    min-width : 50px;
+    min-width : 25%;
     margin-left : 20px;
     display : inline-block;
     overflow-wrap: break-word;
     overflow: hidden;
     white-space: pre;
-    width: 320px;
+    width: 30%;
     background-color: #eeeeee;
 }
 

@@ -1,0 +1,216 @@
+<html>
+<head>
+
+<script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.js" crossorigin="anonymous"></script>
+<script src="/admin/static/metaphor/login.js"></script>
+<script>
+var mutation_id = "{{ mutation_id }}";
+</script>
+<script src="/admin/static/metaphor/manage_mutation.js"></script>
+
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.17/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/schema_editor.css"/>
+<link rel="stylesheet" type="text/css" href="/admin/static/metaphor/admin.css"/>
+
+</head>
+
+<body>
+
+
+<div class="layer anchortop admin_titlebar">
+    <div class="title">
+        <span>Mutation</span>
+        <span gui-text="manage.mutation.from_schema.version"></span>
+        <span>-&gt;</span>
+        <span gui-text="manage.mutation.to_schema.version"></span>
+    </div>
+
+    <div class="tabs">
+        <span class="tab" gui-class="manage.tab=='diff'&&'selected'" gui-click="manage.select_tab('diff')">Schema diff</span>
+        <span class="tab" gui-class="manage.tab=='steps'&&'selected'" gui-click="manage.select_tab('steps')">Steps</span>
+    </div>
+</div>
+
+
+<div class="layer fullscreen schema_diff" gui-show="manage.tab=='diff'">
+    <div class="title">Schema diff</div>
+
+    <div class="diff_grid" gui-list="manage.diff" gui-item="diff">
+        <div class="diff_item" gui-switch="diff.change">
+            <div gui-case="'spec_deleted'">
+                <div class="diff_line">
+                    <span class="deleted" gui-text="diff.spec_name"></span>
+                    <span class="change deleted">Deleted</span>
+                    <span></span>
+                </div>
+                <div class="diff_line" gui-list="manage.mutation.from_schema.specs[diff.spec_name].fields" gui-item="field" gui-key="field_name" >
+                    <span class="spec_fields deleted">
+                        <div class="field">
+                            <span class="name" gui-text="field_name"></span>
+                            <span class="type" gui-text="field.type"></span>
+                            <span class="target" gui-text="field.target_spec_name||''"></span>
+                        </div>
+                        <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                    </span>
+
+                    <span class="change"></span>
+
+                    <span class="spec_fields">
+                    </span>
+                </div>
+            </div>
+            <div gui-case="'spec_created'">
+                <div class="diff_line">
+                    <span></span>
+                    <span class="change created">Created</span>
+                    <span class="created" gui-text="diff.spec_name"></span>
+                </div>
+                <div class="diff_line" gui-list="manage.mutation.to_schema.specs[diff.spec_name].fields" gui-item="field" gui-key="field_name">
+                    <span class="spec_fields">
+                    </span>
+
+                    <span class="change"></span>
+
+                    <span class="spec_fields created">
+                        <div class="field">
+                            <span class="name" gui-text="field_name"></span>
+                            <span class="type" gui-text="field.type"></span>
+                            <span class="target" gui-text="field.target_spec_name||''"></span>
+                        </div>
+                        <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
+                    </span>
+                </div>
+ 
+            </div>
+            <div gui-case="'same'">
+                <div class="diff_line">
+                    <span gui-text="diff.spec_name"></span>
+                    <span></span>
+                    <span gui-text="diff.spec_name"></span>
+                </div>
+                <div gui-list="diff.fields" gui-item="field">
+                    <div gui-switch="field.change">
+                        <div class="diff_line" gui-case="'field_created'">
+                            <span class="spec_fields">
+                            </span>
+
+                            <span class="change created">
+                                Created
+                            </span>
+
+                            <span class="spec_fields created">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].target_spec_name||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+                        </div>
+                        <div class="diff_line" gui-case="'field_deleted'">
+                            <span class="spec_fields deleted">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].target||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+
+                            <span class="change deleted">
+                                Deleted
+                            </span>
+
+                            <span class="spec_fields">
+                            </span>
+                        </div>
+                        <div class="diff_line" gui-case="'field_type_changed'">
+                            <span class="spec_fields updated">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].target_spec_name||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+
+                            <span class="change updated">
+                                Type Changed
+                            </span>
+
+                            <span class="spec_fields updated">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].target||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+                        </div>
+                        <div class="diff_line" gui-case="'field_calc_changed'">
+                            <span class="spec_fields updated">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].target_spec_name||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+
+                            <span class="change updated">
+                                Calc Changed
+                            </span>
+
+                            <span class="spec_fields updated">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].target||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+                        </div>
+                        <div class="diff_line" gui-case="'same'">
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].target_spec_name||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+
+                            <span class="change">
+                                
+                            </span>
+
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="field.field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].target||''"></span>
+                                </div>
+                                <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                            </span>
+                        </div>
+                    </div> 
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<div class="layer fullscreen steps" gui-show="manage.tab=='steps'">
+    <div class="title">Steps</div>
+
+</div>
+
+
+
+<div id="login" class="popupwrapper" gui-show="login.is_shown" gui-include="'/admin/static/metaphor/login.html'"></div>
+
+
+</body>

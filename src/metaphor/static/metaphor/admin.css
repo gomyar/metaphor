@@ -15,20 +15,133 @@ div.admin_titlebar div.title {
     display : inline-block;
 }
 
+div.admin_titlebar div.tabs {
+    margin-top: 10px;
+}
+
+div.admin_titlebar div.tabs span.tab {
+    padding: 5px;
+    border: 1px solid black;
+    border-radius: 3px;
+}
+
+div.admin_titlebar div.tabs span.tab:hover {
+    background-color: lightgrey;
+    cursor: pointer;
+}
+
+div.admin_titlebar div.tabs span.tab.selected {
+    padding: 3px;
+    border: 3px solid black;
+}
+
+
+div.current_schema {
+    margin : 10px;
+    border-top : 2px solid black;
+    top : 60px;
+    width: 48%;
+}
+
 
 div.schema_list {
     margin : 10px;
     border-top : 2px solid black;
     top : 60px;
+    width: 48%;
 }
 
-div.schema_list div.title {
-    font-size : 16px;
-    font-weight : bold;
+div.schema_diff {
+    margin : 10px;
+    border-top : 2px solid black;
+    top : 60px;
+}
+
+
+div.diff_line {
+    display: grid;
+    grid-template-columns: 40% 20% 40%;
+    grid-column-gap: 0px;
+    align-items: stretch;
+}
+
+div.diff_line:hover {
+    background-color: lightgrey;
+}
+
+
+.spec_fields {
+}
+
+.created {
+    background-color: lightgreen;
+}
+
+.deleted {
+    background-color: #FFCCCB;
+}
+
+.updated {
+    background-color: #FED8B1;
+}
+
+div.diff_item {
+    margin-top: 5px;
+}
+
+div.field {
+    padding-left: 5%;
+    display: grid;
+    grid-template-columns: 33% 33% 33%;
+    grid-column-gap: 10px;
+    grid-row-gap: 0px;
+    align-items: stretch;
+}
+
+div.field .name {
+    font-size : 12px;
     display : inline-block;
 }
 
-div.schema_list div.controls {
+div.field .type {
+    font-size : 12px;
+    display : inline-block;
+}
+
+div.field .target {
+    font-size : 12px;
+    display : inline-block;
+}
+
+div.calc_str {
+    margin-left: 50%;
+    font-size : 12px;
+    overflow-wrap: break-word;
+    overflow: hidden;
+    white-space: pre;
+    background-color: #eeeeee;
+}
+
+
+
+
+.change {
+    font-size: 12px;
+    text-align: center;
+    text-transform: uppercase;
+    align-self:center;
+}
+
+div.steps {
+    margin : 10px;
+    border-top : 2px solid black;
+    top : 60px;
+    width: 48%;
+}
+
+
+div.title {
+    font-size : 16px;
     font-weight : bold;
     display : inline-block;
 }
