@@ -336,7 +336,7 @@ class ApiClient {
     }
 
     is_field_reverse_link_collection(field) {
-        return field.type=='reverse_link_collection';
+        return field.type=='reverse_link_collection' || field.type=='reverse_link';
     }
 
     is_linkcollection(resource, field_name) {

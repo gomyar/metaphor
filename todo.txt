@@ -7,6 +7,8 @@ Todo:
  - Bug: Empty lists do not report 403
  - Bug: calculated resource collections are not covered by authentication check
 
+ - Add "global unique" option for usernames
+
  - Add option for restrictions to fields - min/max value for ints/floats - sublist for linkcollections / links
 
  - oauth2 login (google)

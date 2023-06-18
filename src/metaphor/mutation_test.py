@@ -58,6 +58,115 @@ class MutationTest(unittest.TestCase):
         self.assertEqual("42 ironside", user_1['address'])
         self.assertEqual("42 ironside", user_2['address'])
 
+    def test_delete_field(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('user')
+        self.schema_1.create_field('user', 'username', 'str')
+        self.schema_1.create_field('user', 'address', 'str')
+
+        self.schema_1.create_field('root', 'users', 'collection', 'user')
+
+        self.schema_2.create_spec('user')
+        self.schema_2.create_field('user', 'username', 'str')
+
+        self.schema_2.create_field('root', 'users', 'collection', 'user')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('user', {"username": "Bob", "address": "here"}, 'users')
+        user_2_id = self.schema_1.insert_resource('user', {"username": "Ned", "address": "there"}, 'users')
+
+        mutation = Mutation(self.schema_1, self.schema_2)
+        mutation.init()
+
+        self.assertEqual(1, len(mutation.steps))
+        self.assertEqual('<DeleteFieldMutation>', str(mutation.steps[0]))
+        self.assertEqual('user', mutation.steps[0].spec_name)
+        self.assertEqual('address', mutation.steps[0].field_name)
+
+        mutation.mutate()
+
+        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+
+        self.assertTrue('address' not in user_1)
+        self.assertTrue('address' not in user_2)
+
+    def test_alter_field_type_int_to_str(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('user')
+        self.schema_1.create_field('user', 'phone', 'int')
+        self.schema_1.create_field('root', 'users', 'collection', 'user')
+
+        self.schema_2.create_spec('user')
+        self.schema_2.create_field('user', 'phone', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'user')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('user', {"phone": 12345}, 'users')
+        user_2_id = self.schema_1.insert_resource('user', {"phone": 67890}, 'users')
+
+        mutation = Mutation(self.schema_1, self.schema_2)
+        mutation.init()
+
+        self.assertEqual(1, len(mutation.steps))
+        self.assertEqual('<AlterFieldTypePrimitiveToStrMutation>', str(mutation.steps[0]))
+        self.assertEqual('user', mutation.steps[0].spec_name)
+        self.assertEqual('phone', mutation.steps[0].field_name)
+
+        mutation.mutate()
+
+        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+
+        self.assertEqual("12345", user_1['phone'])
+        self.assertEqual("67890", user_2['phone'])
+
+    def test_alter_field_type_float_to_str(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('user')
+        self.schema_1.create_field('user', 'phone', 'float')
+        self.schema_1.create_field('root', 'users', 'collection', 'user')
+
+        self.schema_2.create_spec('user')
+        self.schema_2.create_field('user', 'phone', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'user')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('user', {"phone": 12345.67}, 'users')
+        user_2_id = self.schema_1.insert_resource('user', {"phone": 67890.12}, 'users')
+
+        mutation = Mutation(self.schema_1, self.schema_2)
+        mutation.init()
+
+        self.assertEqual(1, len(mutation.steps))
+        self.assertEqual('<AlterFieldTypePrimitiveToStrMutation>', str(mutation.steps[0]))
+        self.assertEqual('user', mutation.steps[0].spec_name)
+        self.assertEqual('phone', mutation.steps[0].field_name)
+
+        mutation.mutate()
+
+        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+
+        self.assertEqual("12345.7", user_1['phone'])
+        self.assertEqual("67890.1", user_2['phone'])
+
+
     # type changes
         # str -> int
         # int -> str

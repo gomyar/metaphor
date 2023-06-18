@@ -565,6 +565,23 @@ class Schema(object):
             {field_name: {"$exists": False}},
             {"$set": {field_name: default_value}})
 
+    def delete_field_value(self, spec_name, field_name):
+        self.db['resource_%s' % spec_name].update_many(
+            {field_name: {"$exists": True}},
+            {"$unset": {field_name: ""}})
+
+    def alter_field_type_to_str(self, spec_name, field_name):
+        self.db['resource_%s' % spec_name].aggregate([
+            {"$match": {field_name: {"$exists": True}}},
+            {"$addFields": {
+                field_name: {"$toString": "$%s"%field_name},
+            }},
+            {"$merge": {
+                "into": 'resource_%s' % spec_name,
+                "whenNotMatched": "discard",
+            }}
+        ])
+
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
