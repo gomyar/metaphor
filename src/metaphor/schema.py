@@ -513,6 +513,7 @@ class Schema(object):
             # assume grants taken from root
             parent_canonical_url = '/'
         data['_id'] = new_id
+        data['_schema_id'] = self._id
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name

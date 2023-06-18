@@ -153,6 +153,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals(ObjectId(employee_id[2:]), self.schema.decodeid(employee_id))
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id),
+            '_schema_id': self.schema._id,
             '_grants': [],
             '_canonical_url': '/employees/%s' % employee_id,
             'name': 'Bob',
@@ -277,6 +278,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_schema_id': self.schema._id,
             '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
@@ -291,6 +293,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(division_id_1),
+            '_schema_id': self.schema._id,
             '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
@@ -304,6 +307,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEquals({
             '_id': self.schema.decodeid(section_id_1),
+            '_schema_id': self.schema._id,
             '_grants': [],
             '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_parent_id': self.schema.decodeid(division_id_1),

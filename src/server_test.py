@@ -88,12 +88,14 @@ class ServerTest(TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id_1),
+            '_schema_id': self.schema._id,
             '_canonical_url': '/employees/%s' % employee_id_1,
             'name': 'fred',
             '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_schema_id': self.schema._id,
             '_grants': [
                 self.schema.decodeid(self.grant_id_1),
                 self.schema.decodeid(grant_id_2),
