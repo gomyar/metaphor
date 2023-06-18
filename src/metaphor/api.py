@@ -16,6 +16,7 @@ from metaphor.lrparse.lrparse import RootResourceRef
 from metaphor.lrparse.lrparse import LinkCollectionResourceRef
 from metaphor.lrparse.lrparse import OrderedCollectionResourceRef
 from metaphor.schema import CalcField
+from metaphor.schema_factory import SchemaFactory
 from metaphor.updater import Updater
 from bson.errors import InvalidId
 
@@ -46,9 +47,16 @@ def create_expand_dict(expand_str):
 
 
 class Api(object):
-    def __init__(self, schema):
-        self.schema = schema
-        self.updater = Updater(schema)
+    def __init__(self, db):
+        self.db = db
+
+    @property
+    def schema(self):
+        return SchemaFactory(self.db).load_current_schema()
+
+    @property
+    def updater(self):
+        return Updater(self.schema)
 
     @staticmethod
     def _has_grants(url_path, canonical_url, grants):

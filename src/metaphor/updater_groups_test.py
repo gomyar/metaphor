@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 from metaphor.updater import Updater
 from metaphor.lrparse.lrparse import parse
@@ -16,24 +16,25 @@ class UpdaterTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
 
         self.updater = Updater(self.schema)
 
         self.schema.create_initial_schema()
 
 
-        self.company_spec = self.schema.add_spec('company')
-        self.employee_spec = self.schema.add_spec('employee')
-        self.division_spec = self.schema.add_spec('division')
+        self.company_spec = self.schema.create_spec('company')
+        self.employee_spec = self.schema.create_spec('employee')
+        self.division_spec = self.schema.create_spec('division')
 
-        self.schema.add_field(self.company_spec, 'divisions', 'collection', 'division')
+        self.schema.create_field('company', 'divisions', 'collection', 'division')
 
-        self.schema.add_field(self.employee_spec, 'name', 'str')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
+        self.schema.create_field('division', 'employees', 'collection', 'employee')
 
-        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
+        self.schema.create_field('root', 'companies', 'collection', 'company')
 
 
     def test_delete_group(self):

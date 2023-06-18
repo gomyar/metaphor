@@ -215,18 +215,21 @@ class Schema(object):
 
         sorted_calcs = list(toposort(calc_deps))
 
+        for root_name, root_data in schema_data.get('root', {}).items():
+            self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'), default=root_data.get('default'), required=root_data.get('required'))
+
         for line in sorted_calcs:
             for field_str in line:
                 spec_name, field_name = field_str.split('.')
 
-                field_data = schema_data['specs'][spec_name]['fields'][field_name]
+                if spec_name == 'root':
+                    field_data = schema_data['root'][field_name]
+                else:
+                    field_data = schema_data['specs'][spec_name]['fields'][field_name]
                 if field_data['type'] == 'calc':
                     spec = self.specs[spec_name]
                     self._add_calc(spec, field_name, field_data['calc_str'])
                     self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
-
-        for root_name, root_data in schema_data.get('root', {}).items():
-            self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'), default=root_data.get('default'), required=root_data.get('required'))
 
         self.version = schema_data['version']
 

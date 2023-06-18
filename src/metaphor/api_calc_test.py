@@ -3,7 +3,7 @@ import unittest
 
 from pymongo import MongoClient
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 
 
@@ -13,7 +13,6 @@ class ApiTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
 
         self._create_test_schema({
             "specs" : {
@@ -105,13 +104,14 @@ class ApiTest(unittest.TestCase):
         })
 
 
-        self.api = Api(self.schema)
+        self.api = Api(self.db)
 
     def _create_test_schema(self, data):
+        data['current'] = True
+        data['version'] = 'test'
+        data['root'] = data.get('root', {})
         inserted = self.db.metaphor_schema.insert_one(data)
-        self.schema._id = inserted.inserted_id
-        self.schema.load_schema()
-
+        self.schema = SchemaFactory(self.db).load_current_schema()
 
     def test_calc_results(self):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})

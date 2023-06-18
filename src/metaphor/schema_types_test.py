@@ -6,6 +6,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 from metaphor.schema import Schema, Spec, Field
+from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 
@@ -19,9 +20,11 @@ class SchemaTest(unittest.TestCase):
         self.maxDiff = None
 
     def _create_test_schema(self, data):
+        data['current'] = True
+        data['version'] = 'test'
+        data['root'] = data.get('root', {})
         inserted = self.db.metaphor_schema.insert_one(data)
-        self.schema._id = inserted.inserted_id
-        self.schema.load_schema()
+        self.schema = SchemaFactory(self.db).load_current_schema()
 
     def test_int_type(self):
         self._create_test_schema({

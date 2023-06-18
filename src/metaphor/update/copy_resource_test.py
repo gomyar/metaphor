@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.updater import Updater
 
 from metaphor.update.copy_resource import CopyResourceUpdate
@@ -16,22 +16,23 @@ class CopyResourceTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
 
         self.updater = Updater(self.schema)
 
-        self.employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(self.employee_spec, 'name', 'str')
-        self.schema.add_field(self.employee_spec, 'age', 'int')
+        self.employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'age', 'int')
 
-        self.schema.add_field(self.schema.root, 'current_employees', 'collection', 'employee')
-        self.schema.add_field(self.schema.root, 'former_employees', 'collection', 'employee')
+        self.schema.create_field('root', 'current_employees', 'collection', 'employee')
+        self.schema.create_field('root', 'former_employees', 'collection', 'employee')
 
-        self.calcs_spec = self.schema.add_spec('calcs')
+        self.calcs_spec = self.schema.create_spec('calcs')
 
     def test_copy_from_root(self):
-        self.schema.add_calc(self.calcs_spec, 'sum_employee_age', 'sum(current_employees.age)')
-        self.schema.add_field(self.schema.root, 'calcs', 'collection', 'calcs')
+        self.schema.create_field('calcs',  'sum_employee_age', 'calc', calc_str= 'sum(current_employees.age)')
+        self.schema.create_field('root', 'calcs', 'collection', 'calcs')
 
         # add root resources
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'Bob', 'age': 10}, 'current_employees')
@@ -89,8 +90,8 @@ class CopyResourceTest(unittest.TestCase):
         ]), self.copy_resource.affected_ids_to_path())
 
     def test_copy_from_root_after_aggs(self):
-        self.schema.add_calc(self.calcs_spec, 'sum_employee_age', 'sum(former_employees.age)')
-        self.schema.add_field(self.schema.root, 'calcs', 'collection', 'calcs')
+        self.schema.create_field('calcs',  'sum_employee_age', 'calc', calc_str= 'sum(former_employees.age)')
+        self.schema.create_field('root', 'calcs', 'collection', 'calcs')
 
         # add root resources
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'Bob', 'age': 10}, 'current_employees')
@@ -155,8 +156,8 @@ class CopyResourceTest(unittest.TestCase):
         self.assertEqual('former_employees', employee['_parent_field_name'])
 
     def test_copy_from_root_more_resources(self):
-        self.schema.add_calc(self.calcs_spec, 'sum_employee_age', 'sum(current_employees.age)')
-        self.schema.add_field(self.schema.root, 'calcs', 'collection', 'calcs')
+        self.schema.create_field('calcs',  'sum_employee_age', 'calc', calc_str= 'sum(current_employees.age)')
+        self.schema.create_field('root', 'calcs', 'collection', 'calcs')
 
         # add root resources
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'Bob', 'age': 10}, 'current_employees')
@@ -182,16 +183,16 @@ class CopyResourceTest(unittest.TestCase):
         ]), self.copy_resource.affected_ids())
 
     def test_copy_from_child_collection(self):
-        self.division_spec = self.schema.add_spec('division')
-        self.schema.add_field(self.division_spec, 'name', 'str')
+        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_field('division', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'divisions', 'collection', 'division')
-        self.schema.add_field(self.schema.root, 'calcs', 'collection', 'calcs')
+        self.schema.create_field('root', 'divisions', 'collection', 'division')
+        self.schema.create_field('root', 'calcs', 'collection', 'calcs')
 
-        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
+        self.schema.create_field('division', 'employees', 'collection', 'employee')
 
-        self.schema.add_field(self.calcs_spec, 'division', 'link', 'division')
-        self.schema.add_calc(self.calcs_spec, 'sum_division_employee_age', 'sum(self.division.employees.age)')
+        self.schema.create_field('calcs', 'division', 'link', 'division')
+        self.schema.create_field('calcs',  'sum_division_employee_age', 'calc', calc_str= 'sum(self.division.employees.age)')
 
         # add root resources
         division_id_1 = self.schema.insert_resource('division', {'name': 'Sales'}, 'divisions')

@@ -6,6 +6,7 @@ from urllib.error import HTTPError
 from pymongo import MongoClient
 
 from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api, create_expand_dict
 
 
@@ -15,8 +16,9 @@ class ApiTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
         self.schema.create_initial_schema()
+        self.schema.set_as_current()
 
         self.employee_spec = self.schema.create_spec('employee')
         self.schema.create_field('employee', 'name', 'str')
@@ -39,14 +41,7 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('root', 'employees', 'collection', 'employee')
         self.schema.create_field('root', 'divisions', 'collection', 'division')
 
-        self.api = Api(self.schema)
-
-    def _create_test_schema(self, data):
-        inserted = self.db.metaphor_schema.insert_one(data)
-        self.schema._id = inserted.inserted_id
-        self.schema.load_schema()
-
-
+        self.api = Api(self.db)
 
     def test_get(self):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
@@ -218,50 +213,19 @@ class ApiTest(unittest.TestCase):
 
     def test_canonical_url(self):
         self.db.metaphor_schema.drop()
-        self._create_test_schema({
-            "specs" : {
-                "employee" : {
-                    "fields" : {
-                        "name" : {
-                            "type" : "str"
-                        },
-                        "section": {
-                            "type": "link",
-                            "target_spec_name": "section",
-                        },
-                    },
-                },
-                "division": {
-                    "fields": {
-                        "name": {
-                            "type": "str",
-                        },
-                        "sections": {
-                            "type": "collection",
-                            "target_spec_name": "section",
-                        }
-                    },
-                },
-                "section": {
-                    "fields": {
-                        "name": {
-                            "type": "str",
-                        },
-                    },
-                },
-            },
-            "root": {
-                "employees": {
-                    "type": "collection",
-                    "target_spec_name": "employee",
-                },
-                "divisions": {
-                    "type": "collection",
-                    "target_spec_name": "division",
-                }
-            },
-        })
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
+        self.schema.create_spec("section")
+        self.schema.create_field("section", "name", "str")
+        self.schema.create_spec("employee")
+        self.schema.create_field("employee", "name", "str")
+        self.schema.create_field("employee", "section", "link", "section")
+        self.schema.create_spec("division")
+        self.schema.create_field("division", "name", "str")
+        self.schema.create_field("division", "sections", "collection", "section")
 
+        self.schema.create_field("root", "employees", "collection", "employee")
+        self.schema.create_field("root", "divisions", "collection", "division")
 
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned'}, 'employees')
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales'}, 'divisions')
@@ -548,7 +512,7 @@ class ApiTest(unittest.TestCase):
                 'yearly_sales': 20}]}, self.api.search_resource('division', 'yearly_sales=20'))
 
     def test_can_post(self):
-        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.link_employee_division')
+        self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.link_employee_division')
 
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
@@ -575,7 +539,7 @@ class ApiTest(unittest.TestCase):
         self.assertTrue(is_linkcollection)
 
     def test_delete_resource(self):
-        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
+        self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.parttimers')
 
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
@@ -613,7 +577,7 @@ class ApiTest(unittest.TestCase):
         self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1)['results'])
 
     def test_delete_linkcollection_entry(self):
-        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
+        self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.parttimers')
 
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
@@ -630,7 +594,7 @@ class ApiTest(unittest.TestCase):
         self.assertEquals([], self.api.get('/divisions/%s/all_employees' % division_id_1)['results'])
 
     def test_delete_link(self):
-        self.schema.add_calc(self.schema.specs['division'], 'all_employees', 'self.parttimers')
+        self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.parttimers')
 
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41}, 'employees')
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 31}, 'employees')
@@ -1004,7 +968,7 @@ class ApiTest(unittest.TestCase):
         }, root_dict)
 
     def test_orderedcollection(self):
-        self.schema.add_calc(self.schema.specs['division'], 'all_contractors', 'self.sections.contractors')
+        self.schema.create_field('division', 'all_contractors', 'calc', calc_str='self.sections.contractors')
 
         employee_id_3 = self.schema.insert_resource('employee', {'name': 'fred', 'age': 21}, 'employees')
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -1050,7 +1014,7 @@ class ApiTest(unittest.TestCase):
         # test reverse link
 
         # test link to orderedcollection resource from another linkcollection or link
-        self.schema.add_field(self.schema.specs['division'], 'manager', 'link', 'employee')
+        self.schema.create_field('division', 'manager', 'link', 'employee')
         self.api.patch('/divisions/%s' % division_id_1, {'manager': contractor_id})
         contractor = self.api.get('/divisions/%s/manager' % division_id_1)
         self.assertEqual({
@@ -1116,7 +1080,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([self.schema.decodeid(grant_id_1)], employee_data['_grants'])
 
     def test_filter(self):
-        self.schema.add_calc(self.schema.specs['employee'], 'retirement_age', 'self.age + 20')
+        self.schema.create_field('employee', 'retirement_age', 'calc', calc_str='self.age + 20')
 
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
         employee_id_2 = self.api.post('employees', {'name': 'bob', 'age': 31})
@@ -1140,7 +1104,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('bob', employees_by_retirement_age['results'][1]['name'])
 
     def test_grants_set_on_post_path(self):
-        self.schema.add_field(self.schema.specs['user'], 'references', 'collection', 'employee')
+        self.schema.create_field('user', 'references', 'collection', 'employee')
 
         user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
 
@@ -1170,7 +1134,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('fred', employees['results'][0]['name'])
 
     def test_grants_set_on_patch_path(self):
-        self.schema.add_field(self.schema.specs['user'], 'reference', 'link', 'employee')
+        self.schema.create_field('user', 'reference', 'link', 'employee')
 
         user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
 
@@ -1195,7 +1159,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('bob', get_user['username'])
 
     def test_grants_set_on_ego(self):
-        self.schema.add_field(self.schema.specs['user'], 'references', 'collection', 'employee')
+        self.schema.create_field('user', 'references', 'collection', 'employee')
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/ego/references'})
@@ -1215,7 +1179,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('fred', employees['results'][0]['name'])
 
     def test_patch_grants_set_on_ego(self):
-        self.schema.add_field(self.schema.specs['user'], 'reference', 'link', 'employee')
+        self.schema.create_field('user', 'reference', 'link', 'employee')
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/ego/reference'})

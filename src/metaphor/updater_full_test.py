@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 from metaphor.updater import Updater
 
@@ -18,22 +18,23 @@ class UpdaterTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
 
         self.updater = Updater(self.schema)
 
-        self.employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(self.employee_spec, 'name', 'str')
-        self.schema.add_field(self.employee_spec, 'age', 'int')
+        self.employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'age', 'int')
 
-        self.division_spec = self.schema.add_spec('division')
-        self.schema.add_field(self.division_spec, 'name', 'str')
-        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
+        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_field('division', 'name', 'str')
+        self.schema.create_field('division', 'employees', 'collection', 'employee')
 
-        self.schema.add_field(self.schema.root, 'divisions', 'collection', 'division')
+        self.schema.create_field('root', 'divisions', 'collection', 'division')
 
     def test_update_simple_field(self):
-        self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
+        self.schema.create_field('division',  'older_employees', 'calc', calc_str= 'self.employees[age>30]')
 
         division_id_1 = self.schema.insert_resource(
             'division', {'name': 'sales'}, 'divisions')
@@ -73,7 +74,7 @@ class UpdaterTest(unittest.TestCase):
         }, division_data)
 
     def test_update_containing_collection(self):
-        self.schema.add_calc(self.division_spec, 'older_employees', 'self.employees[age>30]')
+        self.schema.create_field('division',  'older_employees', 'calc', calc_str= 'self.employees[age>30]')
 
         division_id_1 = self.updater.create_resource(
             'division', None, 'divisions', None, {'name': 'sales'})
@@ -126,9 +127,9 @@ class UpdaterTest(unittest.TestCase):
         }, employee_data)
 
     def test_update_link_collection(self):
-        self.schema.add_field(self.division_spec, 'managers', 'linkcollection', 'employee')
-        self.schema.add_calc(self.division_spec, 'older_managers', 'self.managers[age>30]')
-        self.schema.add_calc(self.division_spec, 'older_non_retired_managers', 'self.older_managers[age<65]')
+        self.schema.create_field('division', 'managers', 'linkcollection', 'employee')
+        self.schema.create_field('division',  'older_managers', 'calc', calc_str= 'self.managers[age>30]')
+        self.schema.create_field('division',  'older_non_retired_managers', 'calc', calc_str= 'self.older_managers[age<65]')
         log.debug("start")
 
         division_id_1 = self.schema.insert_resource(
@@ -202,8 +203,8 @@ class UpdaterTest(unittest.TestCase):
         }, division_data)
 
     def test_reverse_aggregation_loopback(self):
-        self.schema.add_field(self.division_spec, 'managers', 'linkcollection', 'employee')
-        self.schema.add_calc(self.employee_spec, 'all_my_subordinates', 'self.link_division_managers.employees')
+        self.schema.create_field('division', 'managers', 'linkcollection', 'employee')
+        self.schema.create_field('employee',  'all_my_subordinates', 'calc', calc_str= 'self.link_division_managers.employees')
 
         division_id_1 = self.schema.insert_resource(
             'division', {'name': 'sales'}, 'divisions')
@@ -242,7 +243,7 @@ class UpdaterTest(unittest.TestCase):
             ]}, employee_data)
 
     def test_resource_deps_for_field(self):
-        self.schema.add_calc(self.employee_spec, 'all_ages', 'divisions.employees.age + 10')
+        self.schema.create_field('employee',  'all_ages', 'calc', calc_str= 'divisions.employees.age + 10')
 
         # add manager
         calc_spec = self.schema.calc_trees[('employee', 'all_ages')]

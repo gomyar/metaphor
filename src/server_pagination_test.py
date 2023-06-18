@@ -31,10 +31,10 @@ class ServerTest(TestCase):
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         # add test data
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         for i in range(12):
             self.api.post('/employees', {'name': 'fred %s' % i})

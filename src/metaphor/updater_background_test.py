@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 from metaphor.updater import Updater
 
@@ -18,27 +18,28 @@ class UpdaterBackgroundTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
 
-        self.api = Api(self.schema)
+        self.api = Api(self.db)
 
-        self.employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(self.employee_spec, 'name', 'str')
-        self.schema.add_field(self.employee_spec, 'age', 'int')
+        self.employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'age', 'int')
 
-        self.division_spec = self.schema.add_spec('division')
-        self.schema.add_field(self.division_spec, 'name', 'str')
-        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
-        self.schema.add_field(self.division_spec, 'managers', 'linkcollection', 'employee')
-        self.schema.add_calc(self.division_spec, 'older_managers', 'self.managers[age>30]')
+        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_field('division', 'name', 'str')
+        self.schema.create_field('division', 'employees', 'collection', 'employee')
+        self.schema.create_field('division', 'managers', 'linkcollection', 'employee')
+        self.schema.create_field('division', 'older_managers', 'calc', calc_str='self.managers[age>30]')
 
-        self.company_spec = self.schema.add_spec('company')
-        self.schema.add_field(self.company_spec, 'name', 'str')
-        self.schema.add_field(self.company_spec, 'division', 'link', 'division')
-        self.schema.add_calc(self.company_spec, 'max_age', 'max(self.division.older_managers.age)')
+        self.company_spec = self.schema.create_spec('company')
+        self.schema.create_field('company', 'name', 'str')
+        self.schema.create_field('company', 'division', 'link', 'division')
+        self.schema.create_field('company', 'max_age', 'calc', calc_str='max(self.division.older_managers.age)')
 
-        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
-        self.schema.add_field(self.schema.root, 'divisions', 'collection', 'division')
+        self.schema.create_field('root', 'companies', 'collection', 'company')
+        self.schema.create_field('root', 'divisions', 'collection', 'division')
 
     def test_update(self):
         company_1_id = self.api.post('/companies', {'name': 'Bobs Burgers'})

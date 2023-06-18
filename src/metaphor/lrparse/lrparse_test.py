@@ -7,6 +7,8 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
+
 from metaphor.schema import Field
 from metaphor.update_aggregation import create_update_aggregation
 
@@ -19,8 +21,6 @@ class LRParseTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
-
         self._create_test_schema({
             "specs" : {
                 "employee" : {
@@ -83,9 +83,11 @@ class LRParseTest(unittest.TestCase):
         })
 
     def _create_test_schema(self, data):
-        self.schema = Schema.create_schema(self.db)
-        self.db.metaphor_schema.update({"_id": self.schema._id}, data)
-        self.schema.load_schema()
+        data['current'] = True
+        data['version'] = 'test'
+        data['root'] = data.get('root', {})
+        inserted = self.db.metaphor_schema.insert_one(data)
+        self.schema = SchemaFactory(self.db).load_current_schema()
 
     def _calculate(self, resource_name, tree, resource_id):
         resource_id = self.schema.decodeid(resource_id)

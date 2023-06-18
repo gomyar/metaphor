@@ -5,7 +5,7 @@ from urllib.error import HTTPError
 
 from pymongo import MongoClient
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api, create_expand_dict
 
 
@@ -15,15 +15,16 @@ class ApiTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
-        self.schema.create_initial_schema()
 
-        self.employee_spec = self.schema.create_spec('employee')
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
+
+        self.schema.create_spec('employee')
         self.schema.create_field('employee', 'name', 'str')
         self.schema.create_field('employee', 'age', 'int')
         self.schema.create_field('employee', 'created', 'datetime')
 
-        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_spec('division')
         self.schema.create_field('division', 'name', 'str')
         self.schema.create_field('division', 'employees', 'collection', 'employee')
         self.schema.create_field('division', 'parttimers', 'linkcollection', 'employee')
@@ -33,7 +34,7 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('root', 'former_employees', 'collection', 'employee')
         self.schema.create_field('root', 'divisions', 'collection', 'division')
 
-        self.calcs_spec = self.schema.create_spec('calcs')
+        self.schema.create_spec('calcs')
         self.schema.create_field('calcs', 'total_employees', 'calc', calc_str='sum(employees.age)')
         self.schema.create_field('calcs', 'total_former_employees', 'calc', calc_str='sum(former_employees.age)')
         self.schema.create_field('calcs', 'total_division_parttimers', 'calc', calc_str='sum(divisions.parttimers.age)')
@@ -41,7 +42,7 @@ class ApiTest(unittest.TestCase):
 
         self.schema.create_field('root', 'calcs', 'collection', 'calcs')
 
-        self.api = Api(self.schema)
+        self.api = Api(self.db)
 
     def test_move_resource(self):
         employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 1})

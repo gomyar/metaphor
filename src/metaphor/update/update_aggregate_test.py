@@ -6,7 +6,7 @@ from metaphor.lrparse.lrparse import parse, parse_filter
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.schema import Field
 
 from metaphor.updater import Updater
@@ -18,7 +18,9 @@ class LRParseTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
+
         self.updater = Updater(self.schema)
 
         self.employee_spec = self.schema.create_spec('employee')

@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 from metaphor.updater import Updater
 
@@ -15,8 +15,9 @@ class UpdaterTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
         self.schema.create_initial_schema()
+        self.schema.set_as_current()
 
         self.updater = Updater(self.schema)
 

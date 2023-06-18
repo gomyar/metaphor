@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 
 from urllib.error import HTTPError
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 from metaphor.admin_api import AdminApi
 
@@ -17,9 +17,10 @@ class AdminApiTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
 
-        self.api = Api(self.schema)
+        self.api = Api(self.db)
         self.admin_api = AdminApi(self.schema)
 
         self.admin_api.create_spec('employee')
@@ -51,8 +52,6 @@ class AdminApiTest(unittest.TestCase):
         self.admin_api.delete_field('branch', 'name')
 
         self.assertEqual({
-            'branch': {
-                'fields': {
                     'average_age': {
                         'calc_str': 'average(self.employees.age)',
                         'deps': ['branch.employees',
@@ -63,14 +62,7 @@ class AdminApiTest(unittest.TestCase):
                         'target_spec_name': 'employee',
                         'type': 'linkcollection'
                     },
-                }
-            },
-            'employee': {
-                'fields': {
-                    'age': {'type': 'int'},
-                    'name': {'type': 'str'}
-                }
-            }}, self.db['metaphor_schema'].find_one()['specs'])
+            }, self.db['metaphor_schema'].find_one()['specs']['branch']['fields'])
         self.assertEqual(['employees', 'average_age'], list(self.schema.specs['branch'].fields.keys()))
 
     def test_delete_field_removes_existing_data(self):

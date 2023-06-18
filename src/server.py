@@ -25,7 +25,6 @@ from flask_login import login_required
 
 from metaphor.api import Api
 from metaphor.admin_api import AdminApi
-from metaphor.schema import Schema
 from metaphor.schema_factory import SchemaFactory
 from metaphor.api_bp import api_bp
 from metaphor.api_bp import admin_bp
@@ -42,9 +41,8 @@ log = logging.getLogger()
 
 def create_app(db):
     schema_factory = SchemaFactory(db)
-    schema = schema_factory.load_current_schema()
 
-    api = Api(schema)
+    api = Api(db)
 
     app = Flask(__name__)
     app.secret_key = 'keepitsecretkeepitsafe'

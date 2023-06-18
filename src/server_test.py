@@ -4,6 +4,7 @@ from unittest import TestCase
 from server import create_app
 from pymongo import MongoClient
 from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -14,7 +15,7 @@ class ServerTest(TestCase):
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
 
-        schema = Schema.create_schema(self.db)
+        schema = SchemaFactory(self.db).create_schema()
         schema.create_initial_schema()
         schema.set_as_current()
 
@@ -45,10 +46,10 @@ class ServerTest(TestCase):
         self.assertEqual('bob', response.json['username'])
 
     def test_group_access(self):
-        client_spec = self.schema.add_spec('client')
-        self.schema.add_field(client_spec, 'name', 'str')
+        self.schema.create_spec('client')
+        self.schema.create_field('client', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'clients', 'collection', 'client')
+        self.schema.create_field('root', 'clients', 'collection', 'client')
 
         client_id_1 = self.schema.insert_resource('client', {'name': 'fred'}, 'clients')
 
@@ -62,10 +63,10 @@ class ServerTest(TestCase):
         self.assertEqual('fred', response.json['name'])
 
     def test_grant_group_permissions(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
@@ -75,10 +76,10 @@ class ServerTest(TestCase):
         self.assertEqual(200, response.status_code)
 
     def test_posting_new_grant_updates_resources(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
@@ -100,10 +101,10 @@ class ServerTest(TestCase):
         }, employee_data)
 
     def test_can_post_with_grant(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
@@ -116,10 +117,10 @@ class ServerTest(TestCase):
         self.assertEqual(201, yes_response.status_code)
 
     def test_can_patch_with_grant(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
@@ -132,14 +133,14 @@ class ServerTest(TestCase):
         self.assertEqual(200, yes_response.status_code)
 
     def test_create_subresource_inherits_grants(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
-        skill_spec = self.schema.add_spec('skill')
-        self.schema.add_field(skill_spec, 'name', 'str')
+        employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        skill_spec = self.schema.create_spec('skill')
+        self.schema.create_field('skill', 'name', 'str')
 
-        self.schema.add_field(employee_spec, 'skills', 'collection', 'skill')
+        self.schema.create_field('employee', 'skills', 'collection', 'skill')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/employees'})
 
@@ -155,10 +156,10 @@ class ServerTest(TestCase):
         self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], skill['_grants'])
 
     def test_delete_grant_updates_user_grants(self):
-        company_spec = self.schema.add_spec('company')
-        self.schema.add_field(company_spec, 'name', 'str')
+        company_spec = self.schema.create_spec('company')
+        self.schema.create_field('company', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
+        self.schema.create_field('root', 'companies', 'collection', 'company')
 
         grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/companies'})
 
@@ -174,10 +175,10 @@ class ServerTest(TestCase):
         self.assertEqual([], user['create_grants'])
 
     def test_delete_group_updates_user_grants(self):
-        company_spec = self.schema.add_spec('company')
-        self.schema.add_field(company_spec, 'name', 'str')
+        company_spec = self.schema.create_spec('company')
+        self.schema.create_field('company', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'companies', 'collection', 'company')
+        self.schema.create_field('root', 'companies', 'collection', 'company')
 
         grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/companies'})
 
@@ -231,16 +232,16 @@ class ServerTest(TestCase):
         self.assertEqual(400, no_response.status_code)
 
     def test_grant_ego_permissions(self):
-        employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
         # add employee link to user
         user_spec = self.schema.specs['user']
-        self.schema.add_field(user_spec, 'employee', 'link', 'employee')
+        self.schema.create_field('user', 'employee', 'link', 'employee')
 
         # link user to employee
         self.api.patch('/users/%s' % self.user_id, {'employee': employee_id_1})
@@ -257,17 +258,17 @@ class ServerTest(TestCase):
         self.assertEqual('bob', self.api.get('/employees/%s' % employee_id_1)['name'])
 
     def test_indirect_link_access(self):
-        employee_spec = self.schema.add_spec('employee')
-        contract_spec = self.schema.add_spec('contract')
+        employee_spec = self.schema.create_spec('employee')
+        contract_spec = self.schema.create_spec('contract')
 
-        self.schema.add_field(employee_spec, 'name', 'str')
-        self.schema.add_field(employee_spec, 'contracts', 'linkcollection', 'employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'contracts', 'linkcollection', 'employee')
 
-        self.schema.add_field(contract_spec, 'name', 'str')
-        self.schema.add_field(contract_spec, 'price', 'int')
+        self.schema.create_field('contract', 'name', 'str')
+        self.schema.create_field('contract', 'price', 'int')
 
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
-        self.schema.add_field(self.schema.root, 'contracts', 'collection', 'contract')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'contracts', 'collection', 'contract')
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
         contract_id_1 = self.api.post('/contracts', {'name': 'IBM', 'price': 100})
@@ -290,19 +291,19 @@ class ServerTest(TestCase):
         # assert expand also
 
     def test_grant_ego_permissions_expand(self):
-        organization_spec = self.schema.add_spec('organization')
-        section_spec = self.schema.add_spec('section')
-        employee_spec = self.schema.add_spec('employee')
+        organization_spec = self.schema.create_spec('organization')
+        section_spec = self.schema.create_spec('section')
+        employee_spec = self.schema.create_spec('employee')
 
-        self.schema.add_field(organization_spec, 'name', 'str')
-        self.schema.add_field(organization_spec, 'sections', 'linkcollection', 'section')
-        self.schema.add_field(section_spec, 'name', 'str')
-        self.schema.add_field(section_spec, 'employees', 'linkcollection', 'employee')
-        self.schema.add_field(employee_spec, 'name', 'str')
+        self.schema.create_field('organization', 'name', 'str')
+        self.schema.create_field('organization', 'sections', 'linkcollection', 'section')
+        self.schema.create_field('section', 'name', 'str')
+        self.schema.create_field('section', 'employees', 'linkcollection', 'employee')
+        self.schema.create_field('employee', 'name', 'str')
 
-        self.schema.add_field(self.schema.root, 'organizations', 'collection', 'organization')
-        self.schema.add_field(self.schema.root, 'sections', 'collection', 'section')
-        self.schema.add_field(self.schema.root, 'employees', 'collection', 'employee')
+        self.schema.create_field('root', 'organizations', 'collection', 'organization')
+        self.schema.create_field('root', 'sections', 'collection', 'section')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
 
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization/sections'})
@@ -317,7 +318,7 @@ class ServerTest(TestCase):
 
         # add employee link to user
         user_spec = self.schema.specs['user']
-        self.schema.add_field(user_spec, 'organization', 'link', 'organization')
+        self.schema.create_field('user', 'organization', 'link', 'organization')
 
         # link user to employee
         self.api.patch('/users/%s' % self.user_id, {'organization': organization_id_1})

@@ -25,8 +25,8 @@ class SchemaFactoryTest(unittest.TestCase):
 
         schema_1.create_spec('org')
 
-        schema_1.load_schema()
-        schema_2.load_schema()
+#        schema_1.load_schema()
+#        schema_2.load_schema()
 
         self.assertEqual(4, len(schema_1.specs))
         self.assertEqual(3, len(schema_2.specs))

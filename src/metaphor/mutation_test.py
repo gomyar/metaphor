@@ -5,6 +5,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 from metaphor.schema import Schema, Spec, Field
+from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 
@@ -21,12 +22,10 @@ class MutationTest(unittest.TestCase):
 
     def test_create_mutation(self):
         # given 2 schemas
-        self.schema_1 = Schema(self.db)
-        self.schema_1._id = ObjectId()
-        self.schema_2 = Schema(self.db)
-        self.schema_2._id = ObjectId()
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
 
-        self.schema_1.set_as_latest()
+        self.schema_1.set_as_current()
 
         self.schema_1.create_spec('user')
         self.schema_1.create_field('user', 'username', 'str')

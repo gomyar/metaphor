@@ -4,7 +4,7 @@ import unittest
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-from metaphor.schema import Schema
+from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
 from metaphor.updater import Updater
 from .lrparse import parse
@@ -17,24 +17,25 @@ class AggregatorTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
+        self.schema = SchemaFactory(self.db).create_schema()
+        self.schema.set_as_current()
 
         self.updater = Updater(self.schema)
 
-        self.employee_spec = self.schema.add_spec('employee')
-        self.schema.add_field(self.employee_spec, 'name', 'str')
-        self.schema.add_field(self.employee_spec, 'age', 'int')
+        self.employee_spec = self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('employee', 'age', 'int')
 
-        self.section_spec = self.schema.add_spec('section')
-        self.schema.add_field(self.section_spec, 'name', 'str')
-        self.schema.add_field(self.section_spec, 'members', 'linkcollection', 'employee')
+        self.section_spec = self.schema.create_spec('section')
+        self.schema.create_field('section', 'name', 'str')
+        self.schema.create_field('section', 'members', 'linkcollection', 'employee')
 
-        self.division_spec = self.schema.add_spec('division')
-        self.schema.add_field(self.division_spec, 'name', 'str')
-        self.schema.add_field(self.division_spec, 'employees', 'collection', 'employee')
-        self.schema.add_field(self.division_spec, 'sections', 'collection', 'section')
+        self.division_spec = self.schema.create_spec('division')
+        self.schema.create_field('division', 'name', 'str')
+        self.schema.create_field('division', 'employees', 'collection', 'employee')
+        self.schema.create_field('division', 'sections', 'collection', 'section')
 
-        self.schema.add_field(self.schema.root, 'divisions', 'collection', 'division')
+        self.schema.create_field('root', 'divisions', 'collection', 'division')
 
         self.aggregator = ReverseAggregator(self.schema)
 

@@ -5,6 +5,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 from metaphor.schema import Schema, Spec, Field
+from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 
@@ -14,13 +15,14 @@ class SchemaTest(unittest.TestCase):
         client = MongoClient()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
-        self.schema = Schema(self.db)
         self.maxDiff = None
 
     def _create_test_schema(self, data):
+        data['current'] = True
+        data['version'] = 'test'
+        data['root'] = data.get('root', {})
         inserted = self.db.metaphor_schema.insert_one(data)
-        self.schema._id = inserted.inserted_id
-        self.schema.load_schema()
+        self.schema = SchemaFactory(self.db).load_current_schema()
 
     def test_load_basic_spec(self):
         self._create_test_schema({
@@ -312,6 +314,11 @@ class SchemaTest(unittest.TestCase):
         }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
 
     def test_calc_infer_type(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         spec = self.schema.add_spec('employees')
         self.schema.add_field(spec, 'name', 'str')
         calc_field = self.schema.add_calc(spec, 'current_name', 'self.name')
@@ -321,6 +328,11 @@ class SchemaTest(unittest.TestCase):
         self.assertFalse(calc_field.is_collection())
 
     def test_calc_infer_type_collection(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         spec = self.schema.add_spec('employees')
         buddy_spec = self.schema.add_spec('buddy')
         self.schema.add_field(spec, 'buddies', 'collection', 'buddy')
@@ -338,6 +350,11 @@ class SchemaTest(unittest.TestCase):
         pass
 
     def test_initialize_schema(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         self.schema.create_initial_schema()
 
         schema = self.db.metaphor_schema.find_one()
@@ -380,6 +397,11 @@ class SchemaTest(unittest.TestCase):
                                 'username': {'type': 'str'}}}}, schema['specs'])
 
     def test_load_calcs_by_dependency(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         self.schema.create_spec('employee')
         self.schema.create_field('employee', 'name', 'str')
 
@@ -446,6 +468,11 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals(3, len(self.schema.specs))
 
     def test_load_calcs_by_dependency_almost_circular(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         self.schema.create_spec('primary')
         self.schema.create_field('primary', 'name', 'str')
         self.schema.create_field('primary', 'calced_name', 'calc', calc_str="self.name + 'a'")
@@ -464,6 +491,11 @@ class SchemaTest(unittest.TestCase):
         self.assertEquals(2, len(self.schema.specs))
 
     def test_delete_field_with_dependencies(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         self.schema.create_spec('primary')
         self.schema.create_field('primary', 'name', 'str')
 
@@ -491,9 +523,14 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
-        self.assertEqual("e5e48c9b", self.schema.calculate_short_hash())
+        self.assertEqual("446df9b7", self.schema.calculate_short_hash())
 
     def test_field_default(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
         self.schema.create_spec('primary')
         self.schema.create_field('primary', 'name', 'str', default='ned')
 
@@ -502,7 +539,9 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual('ned', self.db.resource_primary.find_one()['name'])
 
         self.assertEqual({
-            "_id": None,
+            "current": True,
+            "root": {},
+            "_id": self.schema._id,
             "specs" : {
                 "primary" : {
                     "fields" : {
@@ -512,7 +551,8 @@ class SchemaTest(unittest.TestCase):
                         },
                     },
                 },
-            }
+            },
+            "version": "043bb3e3",
         }, self.db.metaphor_schema.find_one())
 
         # test load
