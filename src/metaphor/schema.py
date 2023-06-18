@@ -446,7 +446,7 @@ class Schema(object):
                 parsed_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
             elif field.field_type == 'linkcollection' and field_value is not None:
                 raise Exception("Do this")
-            elif field.field_type == 'datetime':
+            elif field.field_type == 'datetime' and field_value is not None:
                 parsed_data[field_name] = datetime.fromisoformat(field_value.replace('Z', '+00:00'))
             else:
                 parsed_data[field_name] = field_value

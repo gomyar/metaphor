@@ -31,6 +31,8 @@ class Mutation(object):
         alter_map = {
             ('int', 'str'): AlterFieldTypePrimitiveToStrMutation,
             ('float', 'str'): AlterFieldTypePrimitiveToStrMutation,
+            ('bool', 'str'): AlterFieldTypePrimitiveToStrMutation,
+            ('datetime', 'str'): AlterFieldTypePrimitiveToStrMutation,
         }
         for spec_name, to_spec in self.to_schema.specs.items():
             if spec_name in self.from_schema.specs:
