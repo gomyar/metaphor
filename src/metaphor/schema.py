@@ -570,11 +570,16 @@ class Schema(object):
             {field_name: {"$exists": True}},
             {"$unset": {field_name: ""}})
 
-    def alter_field_type_to_str(self, spec_name, field_name):
+    def alter_field_convert_type(self, spec_name, field_name, new_type):
         self.db['resource_%s' % spec_name].aggregate([
             {"$match": {field_name: {"$exists": True}}},
             {"$addFields": {
-                field_name: {"$toString": "$%s"%field_name},
+                field_name: {"$convert": {
+                    "input": "$%s"%field_name,
+                    "to": new_type,
+                    "onError": None,
+                    "onNull": None,
+                }},
             }},
             {"$merge": {
                 "into": 'resource_%s' % spec_name,

@@ -2,7 +2,7 @@
 from .updater import Updater
 from .update.mutation_create_defaulted_field import DefaultFieldMutation
 from .update.mutation_delete_field import DeleteFieldMutation
-from .update.mutation_alter_field_type_primitive_to_str import AlterFieldTypePrimitiveToStrMutation
+from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
 
 
 class Mutation(object):
@@ -28,11 +28,12 @@ class Mutation(object):
                             self.steps.append(DefaultFieldMutation(self.updater, self.to_schema, spec_name, field_name, field.default))
 
     def init_altered_fields(self):
-        alter_map = {
-            ('int', 'str'): AlterFieldTypePrimitiveToStrMutation,
-            ('float', 'str'): AlterFieldTypePrimitiveToStrMutation,
-            ('bool', 'str'): AlterFieldTypePrimitiveToStrMutation,
-            ('datetime', 'str'): AlterFieldTypePrimitiveToStrMutation,
+        type_map = {
+            'str': 'string',
+            'int': 'int',
+            'float': 'double',
+            'bool': 'bool',
+            'datetime': 'date',
         }
         for spec_name, to_spec in self.to_schema.specs.items():
             if spec_name in self.from_schema.specs:
@@ -40,9 +41,11 @@ class Mutation(object):
                 for field_name, field in to_spec.fields.items():
                     if field_name in from_spec.fields and field.field_type != from_spec.fields[field_name].field_type:
                         field = self.to_schema.specs[spec_name].fields[field_name]
-                        mutation = alter_map[(from_spec.fields[field_name].field_type, to_spec.fields[field_name].field_type)]
-                        self.steps.append(mutation(self.updater, self.to_schema, spec_name, field_name, field.default))
-
+                        new_type = type_map[to_spec.fields[field_name].field_type]
+                        self.steps.append(
+                            AlterFieldConvertPrimitiveMutation(
+                                self.updater, self.to_schema, spec_name, field_name, new_type)
+                        )
 
     def init_deleted_fields(self):
         for spec_name, to_spec in self.to_schema.specs.items():
@@ -52,7 +55,6 @@ class Mutation(object):
                     if field_name not in to_spec.fields:
                         field = self.from_schema.specs[spec_name].fields[field_name]
                         self.steps.append(DeleteFieldMutation(self.updater, self.from_schema, spec_name, field_name, field.default))
-
 
     def mutate(self):
         for step in self.steps:
