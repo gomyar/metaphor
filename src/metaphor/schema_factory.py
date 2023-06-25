@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 from bson.objectid import ObjectId
 
 from metaphor.schema import Schema
@@ -48,6 +50,9 @@ class SchemaFactory:
             {"$project": {
                 "_id": 0,
             }},
+            {"$sort": {
+                "created": -1
+            }},
         ]
 
     def load_schema_data(self, schema_id, include_mutations=False):
@@ -61,6 +66,10 @@ class SchemaFactory:
         schema.create_initial_schema()
         return schema
 
+    def delete_schema(self, schema_id):
+        result = self.db.metaphor_schema.remove({"_id": ObjectId(schema_id), "current": {"$ne": True}})
+        return result['n']
+
     def list_schemas(self):
         return list(self.db.metaphor_schema.aggregate(self._schema_aggregation()))
 
@@ -69,8 +78,16 @@ class SchemaFactory:
             "root": schema_data['root']['fields'],
             "specs": schema_data['specs'],
             "version": schema_data['version'],
+            "created": schema_data['created'],
         }
         self.db.metaphor_schema.insert(saved)
+
+    def copy_schema_from_id(self, schema_id):
+        to_copy = self.db.metaphor_schema.find_one({"_id": ObjectId(schema_id)})
+        to_copy['current'] = False
+        to_copy.pop('_id')
+        to_copy['created'] = datetime.now().isoformat()
+        self.db.metaphor_schema.insert(to_copy)
 
     def load_mutation(self, mutation_id):
         mutation_id = ObjectId(mutation_id)

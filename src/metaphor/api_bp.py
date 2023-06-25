@@ -50,6 +50,9 @@ def serialize_schema(schema):
         'specs': {
             name: serialize_spec(spec) for name, spec in schema.specs.items()
         },
+        'root': {
+            name: {'target_spec_name': r.target_spec_name, 'type': 'collection', 'field_name': name} for (name, r) in schema.root.fields.items()
+        },
         'version': schema.version
     }
 
@@ -149,38 +152,34 @@ def admin_api_schemas():
         schema_list = factory.list_schemas()
         serializer = SchemaSerializer(flask_login.current_user.is_admin())
         return jsonify({
-            "schemas": [{
-                'id': schema['id'],
-                'current': schema.get('current') or False,
-                'specs': schema['specs'],
-                'version': schema['version'],
-                'root': schema['root'],
-                'mutations': schema['mutations'],
-            } for schema in schema_list]
+            "schemas": [serializer.serialize(schema) for schema in schema_list]
         })
     else:
         if request.json:
-            factory.create_schema_from_import(request.json)
-            return jsonify({'ok': 1})
+            if request.json.get('_from_id'):
+                factory.copy_schema_from_id(request.json['_from_id'])
+                return jsonify({'ok': 1})
+            else:
+                factory.create_schema_from_import(request.json)
+                return jsonify({'ok': 1})
         else:
             factory.create_schema()
             return jsonify({'ok': 1})
 
 
-@admin_bp.route("/api/schemas/<schema_id>", methods=['GET'])
+@admin_bp.route("/api/schemas/<schema_id>", methods=['GET', 'DELETE'])
 @admin_required
 def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
-    serializer = SchemaSerializer(flask_login.current_user.is_admin())
-    schema = factory.load_schema_data(schema_id, True)
-    return jsonify({
-        'id': schema['id'],
-        'current': schema.get('current') or False,
-        'specs': schema['specs'],
-        'version': schema['version'],
-        'root': schema['root'],
-        'mutations': [],
-    })
+    if request.method == 'GET':
+        serializer = SchemaSerializer(flask_login.current_user.is_admin())
+        schema = factory.load_schema_data(schema_id, True)
+        return jsonify(serializer.serialize(schema))
+    else:
+        if factory.delete_schema(schema_id):
+            return jsonify({'ok': 1})
+        else:
+            return jsonify({'error': 'Cannot delete current schema'}), 400
 
 
 @admin_bp.route("/api/schemas/<schema_id>/specs", methods=['POST'])
@@ -223,7 +222,7 @@ def schema_editor_delete_field(schema_id, spec_name, field_name):
         return jsonify({"error": "cannot alter current schema"}), 400
 
     if request.method == 'DELETE':
-        if spec_name != 'root' and spec_name not in self.schema.specs:
+        if spec_name != 'root' and spec_name not in schema.specs:
             return jsonify({"error": "Not Found"}), 404
         try:
             schema.delete_field(spec_name, field_name)

@@ -40,6 +40,22 @@ var admin = {
         turtlegui.ajax.post('/admin/api/schemas', {}, (response) => {
             admin.load_schemas();
         }, handle_http_error)
+    },
+
+    copy_schema: function(schema) {
+        if (confirm("Copy schema?")) {
+            turtlegui.ajax.post('/admin/api/schemas', {"_from_id": schema.id}, (response) => {
+                admin.load_schemas();
+            }, handle_http_error);
+        }
+    },
+
+    delete_schema: function(schema) {
+        if (confirm("Delete schema?")) {
+            turtlegui.ajax.delete('/admin/api/schemas/' + schema.id, (response) => {
+                admin.load_schemas();
+            }, handle_http_error);
+        }
     }
 }
 

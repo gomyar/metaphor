@@ -9,6 +9,8 @@ var manage = {
     load: function() {
         turtlegui.ajax.get('/admin/api/mutations/' + mutation_id, (data) => {
             manage.mutation = JSON.parse(data);
+            manage.mutation.to_schema.specs['root'] = {"fields": manage.mutation.to_schema.root};
+            manage.mutation.from_schema.specs['root'] = {"fields": manage.mutation.from_schema.root};
             manage.spec_names = manage.all_spec_names();
             manage.create_diff();
             turtlegui.reload();
@@ -52,6 +54,8 @@ var manage = {
         spec_names = spec_names.concat(Object.keys(this.mutation.from_schema.specs));
         spec_names = spec_names.filter((v, i, a) => { return a.indexOf(v) === i; });
         spec_names.sort();
+        spec_names.splice(spec_names.indexOf('root'), 1);
+        spec_names.unshift('root');
         return spec_names;
     },
 

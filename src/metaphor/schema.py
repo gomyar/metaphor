@@ -160,7 +160,7 @@ class Schema(object):
 
     @staticmethod
     def create_schema(db):
-        inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}})
+        inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}, "created": datetime.now().isoformat()})
         schema = Schema(db)
         schema._id = inserted.inserted_id
         schema.update_version()
