@@ -300,3 +300,18 @@ class AdminApiTest(unittest.TestCase):
         employee_id_1 = self.api.post('/employees', {'type': 'parttime', 'name': 'bob', 'age': 10, 'calced_initial': 10})
         employee = self.api.get('/employees/%s' % employee_id_1)
         self.assertEqual(6000, employee['calc_switch'])
+
+    def test_resolve_calc_str(self):
+        spec, is_collection = self.admin_api.resolve_calc_metadata(self.schema, 'employees')
+        self.assertEqual("employee", spec.name)
+        self.assertTrue(is_collection)
+
+        spec, is_collection = self.admin_api.resolve_calc_metadata(self.schema, 'branches.employees')
+        self.assertEqual("employee", spec.name)
+        self.assertTrue(is_collection)
+
+    def test_resolve_calc_str_error(self):
+        try:
+            self.admin_api.resolve_calc_metadata(self.schema, 'branches.nope')
+        except Exception as e:
+            self.assertEqual("No such field nope in branch", str(e))

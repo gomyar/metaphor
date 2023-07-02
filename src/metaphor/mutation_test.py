@@ -45,10 +45,10 @@ class MutationTest(unittest.TestCase):
         mutation = Mutation(self.schema_1, self.schema_2)
         mutation.init()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('<DefaultFieldMutation>', str(mutation.steps[0]))
-        self.assertEqual('user', mutation.steps[0].spec_name)
-        self.assertEqual('address', mutation.steps[0].field_name)
+        self.assertEqual(1, len(mutation.create_steps))
+        self.assertEqual('<DefaultFieldMutation>', str(mutation.create_steps[0]))
+        self.assertEqual('user', mutation.create_steps[0].spec_name)
+        self.assertEqual('address', mutation.create_steps[0].field_name)
 
         mutation.mutate()
 
@@ -83,10 +83,10 @@ class MutationTest(unittest.TestCase):
         mutation = Mutation(self.schema_1, self.schema_2)
         mutation.init()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('<DeleteFieldMutation>', str(mutation.steps[0]))
-        self.assertEqual('user', mutation.steps[0].spec_name)
-        self.assertEqual('address', mutation.steps[0].field_name)
+        self.assertEqual(1, len(mutation.delete_steps))
+        self.assertEqual('<DeleteFieldMutation>', str(mutation.delete_steps[0]))
+        self.assertEqual('user', mutation.delete_steps[0].spec_name)
+        self.assertEqual('address', mutation.delete_steps[0].field_name)
 
         mutation.mutate()
 
@@ -118,10 +118,10 @@ class MutationTest(unittest.TestCase):
         mutation = Mutation(self.schema_1, self.schema_2)
         mutation.init()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.steps[0]))
-        self.assertEqual('user', mutation.steps[0].spec_name)
-        self.assertEqual('phone', mutation.steps[0].field_name)
+        self.assertEqual(1, len(mutation.alter_steps))
+        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.alter_steps[0]))
+        self.assertEqual('user', mutation.alter_steps[0].spec_name)
+        self.assertEqual('phone', mutation.alter_steps[0].field_name)
 
         mutation.mutate()
 
@@ -153,10 +153,10 @@ class MutationTest(unittest.TestCase):
         mutation = Mutation(self.schema_1, self.schema_2)
         mutation.init()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.steps[0]))
-        self.assertEqual('user', mutation.steps[0].spec_name)
-        self.assertEqual('phone', mutation.steps[0].field_name)
+        self.assertEqual(1, len(mutation.alter_steps))
+        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.alter_steps[0]))
+        self.assertEqual('user', mutation.alter_steps[0].spec_name)
+        self.assertEqual('phone', mutation.alter_steps[0].field_name)
 
         mutation.mutate()
 
@@ -189,10 +189,10 @@ class MutationTest(unittest.TestCase):
         mutation = Mutation(self.schema_1, self.schema_2)
         mutation.init()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.steps[0]))
-        self.assertEqual('user', mutation.steps[0].spec_name)
-        self.assertEqual('phone', mutation.steps[0].field_name)
+        self.assertEqual(1, len(mutation.alter_steps))
+        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.alter_steps[0]))
+        self.assertEqual('user', mutation.alter_steps[0].spec_name)
+        self.assertEqual('phone', mutation.alter_steps[0].field_name)
 
         mutation.mutate()
 
@@ -224,10 +224,10 @@ class MutationTest(unittest.TestCase):
         mutation = Mutation(self.schema_1, self.schema_2)
         mutation.init()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.steps[0]))
-        self.assertEqual('user', mutation.steps[0].spec_name)
-        self.assertEqual('created', mutation.steps[0].field_name)
+        self.assertEqual(1, len(mutation.alter_steps))
+        self.assertEqual('<AlterFieldTypeConvertPrimitiveMutation>', str(mutation.alter_steps[0]))
+        self.assertEqual('user', mutation.alter_steps[0].spec_name)
+        self.assertEqual('created', mutation.alter_steps[0].field_name)
 
         mutation.mutate()
 
@@ -237,6 +237,37 @@ class MutationTest(unittest.TestCase):
         self.assertEqual("2023-01-02T10:11:22.000Z", user_1['created'])
         self.assertEqual(None, user_2['created'])
 
+    def test_data_steps(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('user')
+        self.schema_1.create_field('user', 'name', 'str')
+        self.schema_1.create_field('root', 'primary_users', 'collection', 'user')
+        self.schema_1.create_field('root', 'secondary_users', 'collection', 'user')
+
+        self.schema_2.create_spec('user')
+        self.schema_2.create_field('user', 'name', 'str')
+        self.schema_2.create_field('root', 'primary_users', 'collection', 'user')
+        self.schema_2.create_field('root', 'secondary_users', 'collection', 'user')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('user', {"name": "Bob"}, 'primary_users')
+        user_2_id = self.schema_1.insert_resource('user', {"name": "Ned"}, 'primary_users')
+
+        mutation = Mutation(self.schema_1, self.schema_2)
+        mutation.init()
+
+        mutation.add_pre_data_step("move", "primary_users", "root", "secondary_users")
+
+        mutation.mutate()
+
+        # assert data moved
+        self.assertEqual(0, self.db.resource_user.count_documents({"_parent_field_name": "primary_users"}))
+        self.assertEqual(2, self.db.resource_user.count_documents({"_parent_field_name": "secondary_users"}))
 
     # type changes
         # str -> int

@@ -1,9 +1,23 @@
 
+function handle_http_error(error, msg) {
+    if (error.status == 401) {
+        login.show_login();
+    } else {
+        try {
+            var err_data = JSON.parse(error.responseText);
+            alert(err_data.error);
+        } catch {
+            alert(error.status + ": " + msg);
+        }
+    }
+}
+
 
 var manage = {
     mutation: null,
     spec_names: [],
     diff: [],
+    step: null,
     tab: 'diff',
 
     load: function() {
@@ -15,6 +29,30 @@ var manage = {
             manage.create_diff();
             turtlegui.reload();
         });
+    },
+
+    reload_step: function() {
+        turtlegui.ajax.post('/admin/api/schemas/' + this.mutation.from_schema.id + '/calcs', {'calc_str': this.step.target_calc}, (data) => {
+            var meta = JSON.parse(data);
+            manage.step.target_spec = manage.mutation.from_schema.specs[meta.meta.spec_name];
+            manage.step.target_is_collection = meta.meta.is_collection;
+            manage.step.target_field_name = manage.target_collection_fields() ? manage.target_collection_fields()[0] : null;
+            turtlegui.reload();
+        }, handle_http_error);
+    },
+
+    enabled_attrs: function() {
+        return manage.step.target_spec != null ? {"disabled": true} : null;
+    },
+
+    target_collection_fields: function() {
+        var field_names = [];
+        for (var name in manage.step.target_spec.fields) {
+            if (manage.step.target_spec.fields[name].type == 'collection') {
+                field_names.push(name);
+            }
+        }
+        return field_names;
     },
 
     create_diff: function() {
@@ -73,6 +111,24 @@ var manage = {
 
         if (!from_spec) { return "spec_created"; }
         if (!to_spec) { return "spec_deleted"; }
+    },
+
+    show_create_step: function() {
+        this.step = {
+            "action": "move"
+        }
+        turtlegui.reload();
+    },
+
+    hide_create_step: function() {
+        this.step = null;
+        turtlegui.reload();
+    },
+
+    perform_create_step: function() {
+        turtlegui.ajax.post('/admin/api/mutations/' + this.mutation.id + '/steps', this.step, (data) => {
+            manage.hide_create_step();
+        });
     }
 }
 

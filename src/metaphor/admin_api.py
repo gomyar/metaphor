@@ -2,6 +2,7 @@
 import json
 
 from metaphor.updater import Updater
+from metaphor.lrparse.lrparse import parse
 from urllib.error import HTTPError
 
 from .schema import Schema, Spec, Field, CalcField, DependencyException, MalformedFieldException
@@ -125,3 +126,12 @@ class AdminApi(object):
 
     def import_schema(self, schema_data):
         self.schema.save_imported_schema_data(schema_data)
+
+    def resolve_calc_metadata(self, schema, calc_str, spec_name=None):
+        if spec_name is None or spec_name == 'root':
+            spec = self.schema.root
+        else:
+            spec = self.schema.specs[spec_name]
+        parsed = parse(calc_str, spec)
+
+        return parsed.infer_type(), parsed.is_collection()

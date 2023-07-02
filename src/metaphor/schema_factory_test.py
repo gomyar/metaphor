@@ -41,4 +41,4 @@ class SchemaFactoryTest(unittest.TestCase):
 
         mutation = Mutation(schema_1, schema_2)
 
-        self.factory.save_mutation(mutation)
+        self.factory.create_mutation(mutation)

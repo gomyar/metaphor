@@ -98,10 +98,19 @@ class SchemaFactory:
         to_schema = self.load_schema(data['to_schema_id'])
         mutation = Mutation(from_schema, to_schema)
         mutation._id = mutation_id
+        mutation.data_steps = data.get('data_steps') or []
         return mutation
 
-    def save_mutation(self, mutation):
+    def create_mutation(self, mutation):
         self.db.metaphor_mutation.insert({
             "from_schema_id": mutation.from_schema._id,
             "to_schema_id": mutation.to_schema._id,
+            "data_steps": [],
+        })
+
+    def save_mutation(self, mutation):
+        self.db.metaphor_mutation.update({"_id": ObjectId(mutation.id)}, {
+            "from_schema_id": mutation.from_schema._id,
+            "to_schema_id": mutation.to_schema._id,
+            "data_steps": mutation.data_steps,
         })

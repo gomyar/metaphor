@@ -61,6 +61,7 @@ def serialize_mutation(mutation):
     return {
         'from_schema': serialize_schema(mutation.from_schema),
         'to_schema': serialize_schema(mutation.to_schema),
+        'data_steps': mutation.data_steps,
     }
 
 
@@ -191,6 +192,28 @@ def schema_editor_create_spec(schema_id):
     return jsonify({'success': 1})
 
 
+@admin_bp.route("/api/schemas/<schema_id>/calcs", methods=['POST'])
+@admin_required
+def schema_editor_calcs(schema_id):
+    # resolve calc, return meta info for result (spec_name, is_collection, etc)
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+
+    calc_str = request.json['calc_str']
+    spec_name = request.json.get('spec_name', 'root')
+
+    admin_api = AdminApi(schema)
+    try:
+        resolved_spec, is_collection = admin_api.resolve_calc_metadata(schema, calc_str, spec_name)
+
+        return jsonify({"meta": {
+            "spec_name": resolved_spec.name,
+            "is_collection": is_collection,
+        }})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields", methods=['POST'])
 @admin_required
 def schema_editor_create_field(schema_id, spec_name):
@@ -244,7 +267,7 @@ def schema_editor_delete_field(schema_id, spec_name, field_name):
 
 
 @admin_bp.route("/api/mutations", methods=['POST'])
-@login_required
+@admin_required
 def mutations():
     data = request.json
 
@@ -253,13 +276,13 @@ def mutations():
     to_schema = factory.load_schema(data['to_schema_id'])
     mutation = Mutation(from_schema, to_schema)
 
-    factory.save_mutation(mutation)
+    factory.create_mutation(mutation)
 
     return jsonify({"ok": 1})
 
 
 @admin_bp.route("/api/mutations/<mutation_id>", methods=['GET', 'PATCH'])
-@login_required
+@admin_required
 def single_mutation(mutation_id):
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
@@ -274,3 +297,16 @@ def single_mutation(mutation_id):
             return jsonify({"ok": 1})
         else:
             return jsonify({"error": "Unsupported option"}), 400
+
+@admin_bp.route("/api/mutations/<mutation_id>/steps", methods=['GET', 'POST'])
+@admin_required
+def mutation_steps(mutation_id):
+    factory = current_app.config['schema_factory']
+    mutation = factory.load_mutation(mutation_id)
+    if request.method == 'GET':
+        return jsonify(mutation.steps)
+    else:
+        data = request.json
+        mutation.add_data_step(data['action'], data['target_calc'], data['target_field_name'], data['move_calc'])
+
+        return jsonify(mutation.steps)
