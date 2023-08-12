@@ -5,6 +5,7 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 from metaphor.schema import Schema, Spec, Field
+from metaphor.schema import DependencyException
 from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
@@ -513,6 +514,45 @@ class SchemaTest(unittest.TestCase):
         self.schema.delete_field('secondary', 'primary_name')
 
         self.assertEqual({}, self.schema.all_dependent_calcs_for('primary', 'name'))
+
+    def test_delete_spec_field_with_dependencies(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str')
+
+        self.schema.create_spec('secondary')
+        self.schema.create_field('secondary', 'name', 'str')
+        self.schema.create_field('secondary', 'primary', 'link', 'primary')
+        self.schema.create_field('secondary', 'primary_name', 'calc', calc_str="self.primary.name")
+
+        self.assertEqual({('secondary', 'primary_name'): self.schema.calc_trees[('secondary', 'primary_name')]}, self.schema.all_dependent_calcs_for('primary', 'name'))
+
+        try:
+            self.schema.delete_spec('secondary')
+        except DependencyException as de:
+            self.assertEqual("secondary.primary referenced by ['secondary.primary_name']", str(de))
+
+    def test_delete_spec(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str')
+
+        self.schema.create_spec('secondary')
+        self.schema.create_field('secondary', 'name', 'str')
+
+        self.schema.delete_spec("secondary")
+
+        self.assertEqual({'primary': {'fields': {'name': {'type': 'str'}}}},
+                         self.db.metaphor_schema.find_one({"current": True})['specs'])
+        self.assertEqual(['primary'], list(self.schema.specs.keys()))
 
     def test_hash(self):
         self._create_test_schema({

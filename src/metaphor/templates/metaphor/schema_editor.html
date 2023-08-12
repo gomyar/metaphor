@@ -50,7 +50,8 @@ var schema_id = "{{ schema_id }}";
 
     <div class="spec_inner" gui-list="schema.specs" gui-item="spec" gui-key="spec_name">
         <div class="spec">
-            <div class="title" gui-text="spec_name"></div> 
+            <div class="title" gui-text="spec_name"></div>
+            <div class="button delete_spec" gui-click="schema.delete_spec(spec_name)">Delete Spec</div>
             <div class="fields" gui-list="spec.fields" gui-item="field" gui-key="field_name">
                 <div class="field">
                     <input type="radio" gui-val="schema.significant_field(spec, field_name)" gui-click="schema.select_significant_field(spec, field_name)"></input>

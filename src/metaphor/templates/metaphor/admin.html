@@ -42,10 +42,10 @@
         <div>
             <span gui-text="schema.version"></span>
             <span><a class="button" gui-attrs="href='/admin/schemas/'+schema.id">Edit</a></span>
-            <span class="button" gui-click="admin.copy_schema(schema)"><a href="">Copy</a></span>
-            <span class="button" gui-click="admin.delete_schema(schema)"><a href="">Delete</a></span>
+            <span class="button" gui-click="admin.copy_schema(schema)"><span>Copy</span></span>
+            <span class="button" gui-click="admin.delete_schema(schema)"><span>Delete</span></span>
             <span gui-list="schema.mutations" gui-item="mutation">
-                <span>Mutation: </span> <span><a class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a> <a class="button" href="" gui-click="mutations.promote_schema(mutation)">Promote</a></span>
+                <span>Mutation: </span> <span><a class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a> <span class="button" href="" gui-click="mutations.promote_schema(mutation)">Promote</span></span>
             </span>
             <span class="button" gui-show="!(schema.current) && schema.mutations.length==0" gui-click="mutations.show_create(schema)">Create Mutation</span>
         </div>

@@ -336,6 +336,14 @@ class Schema(object):
     def delete_field(self, spec_name, field_name):
         self._check_field_dependencies(spec_name, field_name)
 
+        self._do_delete_field(spec_name, field_name)
+
+        self.db['metaphor_schema'].update(
+            {'_id': self._id},
+            {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
+        self.update_version()
+
+    def _do_delete_field(self, spec_name, field_name):
         spec = self.specs[spec_name]
         field = spec.fields.pop(field_name)
         self._remove_reverse_link_for_field(field, spec)
@@ -343,9 +351,19 @@ class Schema(object):
         if dep in self.calc_trees:
             self.calc_trees.pop(dep)
 
+    def delete_spec(self, spec_name):
+        spec = self.specs[spec_name]
+
+        for field_name in spec.fields:
+            self._check_field_dependencies(spec_name, field_name)
+
+        for field_name in list(spec.fields):
+            self._do_delete_field(spec_name, field_name)
+        self.specs.pop(spec_name)
+
         self.db['metaphor_schema'].update(
             {'_id': self._id},
-            {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
+            {"$unset": {'specs.%s' % (spec_name,): ''}})
         self.update_version()
 
     def _check_field_dependencies(self, spec_name, field_name):

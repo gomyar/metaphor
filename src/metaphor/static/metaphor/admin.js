@@ -112,7 +112,9 @@ var mutations = {
         if (confirm("Promote this schema to current?")) {
             turtlegui.ajax.patch('/admin/api/mutations/' + mutation.id, {"promote": true}, (data) => {
                 manage.load();
-            }, (e) => { alert("Error promoting: " + e)});
+            }, (e) => {
+                alert("Error promoting: " + e);
+            });
         }
     }
 }

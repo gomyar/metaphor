@@ -47,6 +47,21 @@ var schema = {
             );
         }
     },
+
+    delete_spec: function(spec_name) {
+        if (confirm("Delete " + spec_name + "?")) {
+            turtlegui.ajax.delete(
+                '/admin/api/schemas/' + schema_id + '/specs/' + spec_name,
+                function(data) {
+                    schema.load_specs();
+                },
+                function(data) {
+                    loading.dec_loading();
+                    alert("Error deleting spec: " + data.error);
+                }
+            );
+        }
+    },
 };
 
 var loading = {

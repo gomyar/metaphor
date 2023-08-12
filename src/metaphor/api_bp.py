@@ -18,6 +18,10 @@ import flask_login
 
 from bson.objectid import ObjectId
 
+import logging
+log = logging.getLogger(__name__)
+
+
 api_bp = Blueprint('api', __name__, template_folder='templates',
                    static_folder='static', url_prefix='/api')
 
@@ -236,6 +240,25 @@ def schema_editor_create_field(schema_id, spec_name):
     return jsonify({'success': 1})
 
 
+
+@admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>", methods=['DELETE'])
+@admin_required
+def schema_editor_delete_spec(schema_id, spec_name):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    if schema.current:
+        return jsonify({"error": "cannot alter current schema"}), 400
+
+    if spec_name != 'root' and spec_name not in schema.specs:
+        return jsonify({"error": "Not Found"}), 404
+    try:
+        schema.delete_spec(spec_name)
+    except DependencyException as de:
+        log.exception("DependencyException on DELETE for %s %s", schema_id, spec_name)
+        return jsonify({"error": str(me)}), 400
+    return jsonify({'success': 1})
+
+
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
 @admin_required
 def schema_editor_delete_field(schema_id, spec_name, field_name):
@@ -285,14 +308,13 @@ def mutations():
 @admin_required
 def single_mutation(mutation_id):
     factory = current_app.config['schema_factory']
+    mutation = factory.load_mutation(mutation_id)
+
     if request.method == 'GET':
-
-        mutation = factory.load_mutation(mutation_id)
-
         return serialize_mutation(mutation)
     else:
         if request.json.get('promote') == True:
-            mutation = factory.load_mutation(mutation_id)
+            log.info("Promoting mutation %s -> %s", mutation.from_schema.version, mutation.to_schema.version)
             mutation.to_schema.set_as_current()
             return jsonify({"ok": 1})
         else:
