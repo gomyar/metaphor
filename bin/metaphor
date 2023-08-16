@@ -6,7 +6,6 @@ import getpass
 import argparse
 from pymongo import MongoClient
 from pymongo.database import Database
-from metaphor.schema import Schema
 from metaphor.updater import Updater
 from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import generate_password_hash
@@ -18,9 +17,7 @@ def run_init_schema(mongohost, mongodb):
     if list(db.list_collections()):
         print("The given Database is not empty. Please run init_schema against a blank Database")
     else:
-        schema = Schema.create_schema(db)
-        schema.create_initial_schema()
-        schema.set_as_current()
+        schema = SchemaFactory(db).create_schema()
 
         updater = Updater(schema)
         group_id = updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'}, schema.read_root_grants('groups'))

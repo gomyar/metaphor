@@ -64,6 +64,7 @@ class SchemaFactory:
     def create_schema(self):
         schema = Schema.create_schema(self.db)
         schema.create_initial_schema()
+        schema.set_as_current()
         return schema
 
     def delete_schema(self, schema_id):
