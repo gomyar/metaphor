@@ -192,6 +192,7 @@ class AggregatorTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'name': 'Sales'}, next(result))
 
     def test_ternary_aggregate(self):
@@ -218,6 +219,7 @@ class AggregatorTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'name': 'Sales'}, next(result))
 
     def test_simple_root(self):

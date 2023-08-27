@@ -22,7 +22,7 @@ services:
     tty: true
 
   mongo:
-    image: mongo
+    image: mongo:5.0.0
     command: --replSet metaphor
     ports:
      - "127.0.0.1:27017:27017"

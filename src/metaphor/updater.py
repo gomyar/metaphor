@@ -2,6 +2,7 @@
 from werkzeug.security import generate_password_hash
 
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
+from metaphor.lrparse.lrparse import parse_canonical_url
 
 from metaphor.update.create_resource import CreateResourceUpdate
 from metaphor.update.fields_update import FieldsUpdate
@@ -173,6 +174,34 @@ class Updater(object):
         return resource_id
 
     def _update_grants(self, grant_id, url):
+        # aggregate target resources
+#        from_tree = parse_canonical_url(url, self.schema.root)
+#        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+
+        # update _parent_id, _parent_field to target parent resource for all resources
+
+        # update grants
+#        for field_name, field in from_spec.fields.items():
+#            if field.field_type == 'collection':
+#                aggregate_query.extend([
+#                    {"$lookup": {
+#                        "from": "resource_%s" % field.target_spec_name,
+#                        "as": "_grant_%s" % field.target_spec_name,
+#                        "let": {"id": "$_id"},
+#                        "pipeline": [
+#                            {"$match": {
+#                                "$expr": {"$and": [
+#                                    "$eq": ["$_parent_id": "$$id"]},
+#                                    "$eq": ["$_parent_field_name": field_name]},
+#                                ])
+#                            }},
+#                        ]
+#                    }}
+#                ])
+
+        # descend into children
+
+
         for spec_name, spec in self.schema.specs.items():
             self.schema.db['resource_%s' % spec_name].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
 
@@ -203,8 +232,11 @@ class Updater(object):
     def update_fields(self, spec_name, resource_id, fields):
         return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()
 
-    def move_resource(self, parent_path, parent_spec_name, field_name, to_path, from_path=None):
-        return MoveResourceUpdate(self, self.schema, parent_path, parent_spec_name, field_name, to_path, from_path).execute()
+    def move_resource(self, from_path, to_path, target_resource, target_field_name, target_spec_name):
+        return MoveResourceUpdate(self, self.schema, from_path, to_path, target_resource, target_field_name, target_spec_name).execute()
+
+    def move_resource_to_root(self, from_path, to_path):
+        return MoveResourceUpdate(self, self.schema, from_path, to_path, None, None, to_path).execute_root()
 
     def remove_spec_field(self, spec_name, field_name):
         self.schema.remove_spec_field(spec_name, field_name)

@@ -81,6 +81,7 @@ class AdminApiTest(unittest.TestCase):
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'employee',
             'age': 21},
             {'_id': self.schema.decodeid(employee_id_2),
             '_schema_id': self.schema._id,
@@ -91,6 +92,7 @@ class AdminApiTest(unittest.TestCase):
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'employee',
             'age': 17}], list(self.db['resource_employee'].find()))
         self.assertEqual(['age', 'link_branch_employees'], list(self.schema.specs['employee'].fields.keys()))
 

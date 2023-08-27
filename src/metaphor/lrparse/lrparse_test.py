@@ -2,7 +2,7 @@
 import unittest
 from datetime import datetime
 
-from .lrparse import parse, parse_filter
+from .lrparse import parse, parse_filter, parse_canonical_url
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
@@ -1055,3 +1055,12 @@ class LRParseTest(unittest.TestCase):
     def test_ternary_within_calc(self):
         # 1 + (self.a == 2 -> 'a': 'b')
         pass
+
+    def test_parse_canonical_url(self):
+        division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
+        employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'division': division_id}, 'employees')
+
+        tree = parse_canonical_url('employees/%s/division' % employee_id, self.schema.root)
+
+        result = self._calculate('employee', tree, employee_id)
+        self.assertEquals(division_id, self.schema.encodeid(result))

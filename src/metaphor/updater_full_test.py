@@ -55,6 +55,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'older_employees': [{"_id": ObjectId(employee_id_1[2:])}],
         }, division_data)
 
@@ -72,6 +73,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'older_employees': [],
         }, division_data)
 
@@ -93,6 +95,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'older_employees': [],
         }, division_data)
 
@@ -113,6 +116,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'older_employees': [{"_id": ObjectId(employee_id_1[2:])}],
         }, division_data)
 
@@ -128,6 +132,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_field_name': 'employees',
             '_parent_id': ObjectId(division_id_1[2:]),
+            '_type': 'employee',
             '_parent_type': 'division',
         }, employee_data)
 
@@ -187,6 +192,7 @@ class UpdaterTest(unittest.TestCase):
             "_parent_id" : None,
             "_parent_type" : "root",
             "_parent_canonical_url" : '/',
+            '_type': 'division',
             "name" : "sales",
             "managers" : [
                     {
@@ -240,6 +246,7 @@ class UpdaterTest(unittest.TestCase):
             "_parent_id" : self.schema.decodeid(division_id_1),
             "_parent_type" : "division",
             "_parent_canonical_url" : "/divisions/%s" % division_id_1,
+            '_type': 'employee',
             "name" : "bob",
             "age": 21,
             "all_my_subordinates" : [

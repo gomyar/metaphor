@@ -240,18 +240,6 @@ class ApiTest(unittest.TestCase):
         self.assertEquals('/divisions/%s/sections/%s' % (division_id_1, section_id_1), employee['section'])
 
         self.assertEquals({
-            '_id': self.schema.decodeid(section_id_1),
-            '_schema_id': self.schema._id,
-            '_grants': [],
-            '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
-            '_parent_id': self.schema.decodeid(division_id_1),
-            '_parent_type': 'division',
-            '_parent_field_name': 'sections',
-            '_parent_canonical_url': '/divisions/%s' % division_id_1,
-            'name': 'appropriation',
-        }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
-
-        self.assertEquals({
             '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'name': 'sales',
@@ -297,6 +285,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'employee',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
              '_canonical_url_division': '/divisions/%s' % division_id_1,
@@ -309,6 +298,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'employee',
              'age': 31,
              'name': 'bob'}], new_employees)
 
@@ -324,6 +314,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'employee',
              'age': 31,
              'created': datetime(2021, 12, 11),
              'name': 'bob'}], new_employees)
@@ -340,6 +331,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'employee',
              'age': 31,
              'created': datetime(2021, 12, 11, 12, 11, 10, 123000),
              'name': 'bob'}], new_employees)
@@ -359,6 +351,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'employee',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
              '_canonical_url_division': '/divisions/%s' % division_id_1,
@@ -380,6 +373,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'employee',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
              '_canonical_url_division': '/divisions/%s' % division_id_1,
@@ -395,6 +389,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'divisions',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'division',
              'yearly_sales': 100,
              'name': 'sales'}], divisions)
 
@@ -422,6 +417,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'divisions',
              '_parent_id': None,
              '_parent_type': 'root',
+             '_type': 'division',
              'name': 'sales',
              'yearly_sales': 100,
              }], new_divisions)
@@ -436,6 +432,7 @@ class ApiTest(unittest.TestCase):
              '_parent_field_name': 'sections',
              '_parent_id': self.schema.decodeid(division_id_1),
              '_parent_type': 'division',
+             '_type': 'section',
              'name': 'appropriation'}], new_sections)
 
     def test_post_linkcollection(self):
@@ -563,30 +560,27 @@ class ApiTest(unittest.TestCase):
 
         self.api.delete('/employees/%s' % employee_id_2)
 
-        new_employees = list(self.db['resource_employee'].find({"_deleted": {"$exists": False}}))
+        new_employees = self.api.get('/employees')
 
-        self.assertEquals([
-            {'_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
-             '_grants': [],
-             '_canonical_url': '/employees/%s' % employee_id_1,
-             '_parent_canonical_url': '/',
-             '_parent_field_name': 'employees',
-             '_parent_id': None,
-             '_parent_type': 'root',
-             'age': 41,
-             'name': 'ned'},
-            {'_id': self.schema.decodeid(employee_id_3),
-            '_schema_id': self.schema._id,
-             '_grants': [],
-             '_canonical_url': '/employees/%s' % employee_id_3,
-             '_parent_canonical_url': '/',
-             '_parent_field_name': 'employees',
-             '_parent_id': None,
-             '_parent_type': 'root',
-             'age': 35,
-             'name': 'fred'}], new_employees)
-        self.assertEquals([], self.api.get('/divisions/%s/parttimers' % division_id_1)['results'])
+        self.assertEqual([{'_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'age': 41,
+            'created': None,
+            'division': None,
+            'id': employee_id_1,
+            'link_division_parttimers': f'/employees/{employee_id_1}/link_division_parttimers',
+            'name': 'ned',
+            'parent_section_contractors': None,
+            'self': f'/employees/{employee_id_1}'},
+            {'_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            'age': 35,
+            'created': None,
+            'division': None,
+            'id': employee_id_3,
+            'link_division_parttimers': f'/employees/{employee_id_3}/link_division_parttimers',
+            'name': 'fred',
+            'parent_section_contractors': None,
+            'self': f'/employees/{employee_id_3}'}], new_employees['results'])
+        self.assertEqual([], self.api.get('/divisions/%s/parttimers' % division_id_1)['results'])
 
     def test_delete_linkcollection_entry(self):
         self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.parttimers')
@@ -997,6 +991,7 @@ class ApiTest(unittest.TestCase):
             '_parent_field_name': 'sections',
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
+            '_type': 'section',
             'contractors': [{'_id': self.schema.decodeid(contractor_id)}],
             'name': 'engineering'}, self.db.resource_section.find_one({'_id': self.schema.decodeid(section_id_1)}))
         self.assertEqual({
@@ -1008,6 +1003,7 @@ class ApiTest(unittest.TestCase):
             '_parent_field_name': 'contractors',
             '_parent_id': self.schema.decodeid(section_id_1),
             '_parent_type': 'section',
+            '_type': 'employee',
             'name': 'Angus'}, self.db.resource_employee.find_one(self.schema.decodeid(contractor_id)))
 
         # test calc update

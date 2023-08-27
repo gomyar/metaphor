@@ -142,6 +142,7 @@ class Api(object):
 
             # check permissions
             if user:
+                # TODO: Change to target_path url instead of resource canonical
                 self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.put_grants)
                 self._check_grants(from_path, from_path, user.read_grants)
                 self._check_grants(from_path, from_path, user.delete_grants)
@@ -153,7 +154,7 @@ class Api(object):
                 raise HTTPError('', 400, from_path, None, None)
 
             if field_spec.field_type == 'collection':
-                return self.updater.move_resource(parent_resource['_id'], spec.name, field_name, path, from_path)
+                return self.updater.move_resource(from_path, path, parent_resource, field_name, spec.name)
             else:
                 raise HTTPError('', 400, from_path, None, None)
 
@@ -180,7 +181,7 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 400, from_path, None, None)
 
-            return self.updater.move_resource(None, 'root', path, path, from_path)
+            return self.updater.move_resource_to_root(from_path, path)
 
     def post(self, path, data, user=None):
         path = path.strip().strip('/')

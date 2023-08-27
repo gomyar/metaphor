@@ -52,6 +52,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'older_employees': [{"_id": ObjectId(employee_id_1[2:])}],
         }, division_data)
 
@@ -72,6 +73,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'older_employees': [{"_id": ObjectId(employee_id_1[2:])}, {"_id": ObjectId(employee_id_2[2:])}],
         }, division_data)
 
@@ -367,6 +369,7 @@ class UpdaterTest(unittest.TestCase):
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
+            '_type': 'division',
             'employees': [],
             'manager': None,
             'name': 'sales'}, self.db['resource_division'].find_one())

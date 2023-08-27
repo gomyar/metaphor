@@ -8,29 +8,41 @@ from metaphor.lrparse.reverse_aggregator import ReverseAggregator
 
 
 class MoveResourceUpdate:
-    def __init__(self, updater, schema, parent_id, parent_spec_name, parent_field_name, to_path, from_path=None):
+    def __init__(self, updater, schema, from_path, to_path, target_resource, target_field_name, target_spec_name):
         self.updater = updater
         self.schema = schema
 
-        self.parent_id = parent_id
-        self.parent_spec_name = parent_spec_name
-        self.parent_field_name = parent_field_name
-        self.to_path = to_path
         self.from_path = from_path
+        self.to_path = to_path
+        self.target_resource = target_resource
+        self.target_field_name = target_field_name
+        self.target_spec_name = target_spec_name
 
-    def from_path_agg(self):
-        from_tree = parse_url(self.from_path, self.schema.root)
-        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
-        return aggregate_query, from_spec, is_aggregate
+    def execute(self):
+        self.update_id = str(self.schema.create_update())
 
-    def to_path_agg(self):
-        to_tree = parse_url(self.to_path, self.schema.root)
-        aggregate_query, to_spec, is_aggregate = to_tree.aggregation(None)
-        return aggregate_query, to_spec, is_aggregate
+        self.perform_move()
+        self.rebuild_canonical_urls()
+        self.rebuild_grants()
+        self.perform_update_for_moved_resources()
+        self.perform_update_for_source_collections()
+        self.perform_update_for_target_collection()
+        self.schema.cleanup_update(self.update_id)
+
+    def execute_root(self):
+        self.update_id = str(self.schema.create_update())
+
+        self.perform_move_to_root()
+        self.rebuild_canonical_urls()
+        self.rebuild_grants()
+        self.perform_update_for_moved_resources()
+        self.perform_update_for_source_collections()
+        self.perform_update_for_target_collection()
+        self.schema.cleanup_update(self.update_id)
 
     def affected_aggs(self):
         from_tree = parse_url(self.from_path, self.schema.root)
-        from_agg, from_spec, _ = self.from_path_agg()
+        from_agg, from_spec, _ = from_tree.aggregation(None)
 
         aggs = []
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
@@ -56,52 +68,6 @@ class MoveResourceUpdate:
                         aggs.append((calc_spec_name, calc_field_name, aggregation))
         return aggs
 
-    def affected_ids_to_path(self):
-        to_tree = parse_url(self.to_path, self.schema.root)
-        to_agg, to_spec, _ = self.to_path_agg()
-
-        affected_ids = set()
-        for calc_spec_name, calc_field_name, aggregation in self.affected_aggs_to_path():
-            affected_aggregation = to_agg + aggregation
-            affected_aggregation.append({"$project": {"_id": True}})
-            cursor = to_tree.root_collection().aggregate(
-                affected_aggregation)
-            found = set((calc_spec_name, calc_field_name, r['_id']) for r in cursor)
-            affected_ids.update(found)
-        return affected_ids
-
-    def affected_ids(self):
-        from_tree = parse_url(self.from_path, self.schema.root)
-        from_agg, from_spec, _ = self.from_path_agg()
-
-        affected_ids = set()
-        for calc_spec_name, calc_field_name, aggregation in self.affected_aggs():
-            affected_aggregation = from_agg + aggregation
-            affected_aggregation.append({"$project": {"_id": True}})
-            cursor = from_tree.root_collection().aggregate(
-                affected_aggregation)
-            found = set((calc_spec_name, calc_field_name, r['_id']) for r in cursor)
-            affected_ids.update(found)
-        return affected_ids
-
-    def execute(self):
-        update_id = str(self.schema.create_update())
-
-        self.perform_move(update_id)
-
-        self.perform_update(update_id)
-
-        self.schema.cleanup_update(update_id)
-
-    def _read_parent_canonical_url(self):
-        if self.parent_id:
-            parent = self.schema.db['resource_%s' % self.parent_spec_name].find_one(
-                {'_id': self.parent_id},
-                {'_canonical_url': 1})
-            return parent['_canonical_url']
-        else:
-            return ''
-
     def all_dependent_fields_in_tree(self, spec_name):
         dependent_fields = self.schema._fields_with_dependant_calcs(spec_name)
         for field_name, field in self.schema.specs[spec_name].fields.items():
@@ -109,38 +75,41 @@ class MoveResourceUpdate:
                 dependent_fields.extend(self.all_dependent_fields_in_tree(field.target_spec_name))
         return list(set(dependent_fields))
 
-    def perform_update(self, update_id):
-        from_tree = parse_url(self.from_path, self.schema.root)
+    def perform_update_for_moved_resources(self, spec_name=None):
+        if spec_name is None:
+            from_tree = parse_url(self.from_path, self.schema.root)
+            spec_name = from_tree.spec.name
 
-        dependent_fields = self.schema._fields_with_dependant_calcs(from_tree.spec.name)
+        dependent_fields = self.schema._fields_with_dependant_calcs(spec_name)
         start_agg = [
             {"$match": {
-                "_dirty.%s" % update_id: {"$exists": True},
+                "_dirty.%s" % self.update_id: {"$exists": True},
             }}
         ]
-        self.updater.update_for(from_tree.spec.name, dependent_fields, update_id, start_agg)
-        for field_name, field in self.schema.specs[from_tree.spec.name].fields.items():
+        self.updater.update_for(spec_name, dependent_fields, self.update_id, start_agg)
+        for field_name, field in self.schema.specs[spec_name].fields.items():
             if field.field_type in ('collection', 'orderedcollection'):
-                self.perform_update(update_id, field.target_spec_name)
+                self.perform_update_for_moved_resources(field.target_spec_name)
 
-    def perform_move(self, update_id):
+    def perform_move(self):
         from_tree = parse_url(self.from_path, self.schema.root)
-        parent_canonical_url = self._read_parent_canonical_url()
+        parent_canonical_url = self.target_resource['_canonical_url']
 
         aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
 
         all_dependent_fields = self.all_dependent_fields_in_tree(from_tree.spec.name)
 
+        # move all resources to target parent resource
         aggregate_query.extend([
             {"$project": {
-                "_parent_type": self.parent_spec_name,
-                "_parent_id": self.parent_id,
-                "_parent_field_name": self.parent_field_name,
+                "_parent_type": self.target_spec_name,
+                "_parent_id": self.target_resource['_id'],
+                "_parent_field_name": self.target_field_name,
                 "_parent_canonical_url": parent_canonical_url or "/",
                 "_canonical_url": {
-                    "$concat": [parent_canonical_url, "/", self.parent_field_name, "/ID", {"$toString": "$_id"}],
+                    "$concat": [parent_canonical_url, "/", self.target_field_name, "/ID", {"$toString": "$_id"}],
                 },
-                "_dirty.%s" % update_id: all_dependent_fields,
+                "_dirty.%s" % self.update_id: all_dependent_fields,
             }},
             {"$merge": {
                 "into": "resource_%s" % from_tree.spec.name,
@@ -151,3 +120,43 @@ class MoveResourceUpdate:
         ])
 
         from_tree.root_collection().aggregate(aggregate_query)
+
+    def perform_move_to_root(self):
+        from_tree = parse_url(self.from_path, self.schema.root)
+        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+
+        all_dependent_fields = self.all_dependent_fields_in_tree(from_tree.spec.name)
+
+        # move all resources to target parent resource
+        aggregate_query.extend([
+            {"$project": {
+                "_parent_type": "root",
+                "_parent_id": None,
+                "_parent_field_name": self.to_path,
+                "_parent_canonical_url": "/",
+                "_canonical_url": {
+                    "$concat": ["/", self.to_path, "/ID", {"$toString": "$_id"}],
+                },
+                "_dirty.%s" % self.update_id: all_dependent_fields,
+            }},
+            {"$merge": {
+                "into": "resource_%s" % from_tree.spec.name,
+                "on": "_id",
+                "whenMatched": "merge",
+                "whenNotMatched": "discard",
+            }},
+        ])
+
+        from_tree.root_collection().aggregate(aggregate_query)
+
+    def rebuild_canonical_urls(self):
+        pass
+
+    def rebuild_grants(self):
+        pass
+
+    def perform_update_for_source_collections(self):
+        pass
+
+    def perform_update_for_target_collection(self):
+        pass
