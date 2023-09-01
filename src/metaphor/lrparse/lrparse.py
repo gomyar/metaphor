@@ -44,11 +44,6 @@ class ResourceRef(Operable):
     def is_primitive(self):
         return self.spec.is_primitive()
 
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        return aggregation, child_spec, is_aggregate
-
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
         # create own agg
         agg = self.create_reverse(calc_spec_name, calc_field_name)
@@ -84,15 +79,6 @@ class ResourceRef(Operable):
 
 
 class FieldRef(ResourceRef, Calc):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        aggregation.append(
-            {"$addFields": {
-                self.field_name: True,
-            }})
-        return aggregation, child_spec, is_aggregate
-
     def get_resource_dependencies(self):
         return self.resource_ref.get_resource_dependencies() | {'%s.%s' % (self.spec.spec.name, self.field_name)}
 
@@ -165,38 +151,8 @@ class RootResourceRef(ResourceRef):
     def infer_type(self):
         return self.spec
 
-    def aggregation(self, self_id, user=None):
-        if self.resource_name == 'self':
-            aggregation = [
-                {"$match": {"_grants": {"$in": user.grants}}}
-            ] if user else []
-            aggregation.extend([
-                {"$match": {"_id": self.spec.schema.decodeid(self_id)}}
-            ])
-            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-            return aggregation, self.spec, False
-        elif self.resource_name == 'ego':
-            aggregation = [
-            # using ego as dummy 
-#                {"$match": {"username": user.username}}
-            ]
-            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-            return aggregation, self.spec, False
-        else:
-            aggregation = [
-                {"$match": {"_grants": {"$in": user.grants}}}
-            ] if user else []
-            aggregation.extend([
-                {"$match": {"$and": [
-                    {"_parent_field_name": self.resource_name},
-                    {"_parent_canonical_url": '/'},
-                ]}}
-            ])
-            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-            return aggregation, self.spec, True
-
     def is_collection(self):
-        if self.resource_name == 'self':
+        if self.resource_name in ('self', 'ego'):
             return False
         else:
             return True
@@ -224,6 +180,12 @@ class RootResourceRef(ResourceRef):
 #                    ]
 #                }},
 #                {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
+            ]
+        elif self.resource_name == 'ego':
+            if user is None:
+                raise Exception("Invalid ego reference - no user set")
+            return [
+                {"$match": {"username": user.username}}
             ]
         else:
             return [
@@ -254,14 +216,6 @@ class IDResourceRef(ResourceRef):
     def infer_type(self):
         return self.spec
 
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        aggregation.append(
-            {"$match": {"_id": self.spec.schema.decodeid(self.resource_id)}}
-        )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, spec, False
-
     def is_collection(self):
         return False
 
@@ -284,29 +238,6 @@ class CollectionResourceRef(ResourceRef):
     def __init__(self, resource_ref, field_name, parser, spec, parent_spec):
         super(CollectionResourceRef, self).__init__(resource_ref, field_name, parser, spec)
         self.parent_spec = parent_spec
-
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        # if linkcollection / collection
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
-                    "localField": "_id",
-                    "foreignField": "_parent_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, child_spec, True
 
     def is_collection(self):
         return True
@@ -354,33 +285,6 @@ class CollectionResourceRef(ResourceRef):
 
 
 class LinkCollectionResourceRef(ResourceRef):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        # if linkcollection / collection
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
-                    "localField": "%s._id" % self.field_name,
-                    "foreignField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        if user:
-            aggregation.append(
-                {"$match": {"_grants": {"$in": user.grants}}}
-            )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, child_spec, True
-
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
@@ -428,34 +332,6 @@ class OrderedCollectionResourceRef(LinkCollectionResourceRef):
 
 
 class LinkResourceRef(ResourceRef):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        # if linkcollection / collection
-        # if link
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
-                    "localField": self.field_name,
-                    "foreignField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        if user:
-            aggregation.append(
-                {"$match": {"_grants": {"$in": user.grants}}}
-            )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, child_spec, is_aggregate
-
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
@@ -499,39 +375,10 @@ class LinkResourceRef(ResourceRef):
 
 
 class CalcResourceRef(ResourceRef, Calc):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
+    def is_collection(self):
+        spec = self.resource_ref.infer_type()
         calc_tree = spec.schema.calc_trees[spec.name, self.field_name]
-        calc_spec = calc_tree.infer_type()
-        if spec.fields[self.field_name].is_primitive():
-            # int float str
-            pass
-        else:
-            # resource
-            # lookup
-            aggregation.append(
-                {"$lookup": {
-                        "from": "resource_%s" % (calc_spec.name,),
-                        "localField": "%s._id" % self.field_name,
-                        "foreignField": "_id",
-                        "as": "_field_%s" % (self.field_name,),
-                }})
-            aggregation.append(
-                {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-            )
-            aggregation.append(
-                {"$unwind": "$_id"}
-            )
-            aggregation.append(
-                {"$replaceRoot": {"newRoot": "$_id"}}
-            )
-            if user:
-                aggregation.append(
-                    {"$match": {"_grants": {"$in": user.grants}}}
-                )
-            aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-            is_aggregate = is_aggregate or calc_tree.is_collection()
-        return aggregation, calc_spec, is_aggregate
+        return calc_tree.is_collection()
 
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
@@ -578,32 +425,6 @@ class CalcResourceRef(ResourceRef, Calc):
 
 
 class ReverseLinkResourceRef(ResourceRef):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
-                    "localField": "_id",
-                    "foreignField": spec.fields[self.field_name].reverse_link_field,
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        if user:
-            aggregation.append(
-                {"$match": {"_grants": {"$in": user.grants}}}
-            )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, child_spec, True
-
     def is_collection(self):
         return True
 
@@ -645,32 +466,6 @@ class ReverseLinkResourceRef(ResourceRef):
 
 
 class ParentCollectionResourceRef(ResourceRef):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
-                    "localField": "_parent_id",
-                    "foreignField": "_id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        if user:
-            aggregation.append(
-                {"$match": {"_grants": {"$in": user.grants}}}
-            )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, child_spec, False
-
     def is_collection(self):
         return False
 
@@ -706,34 +501,6 @@ class ParentCollectionResourceRef(ResourceRef):
 
 
 class ReverseLinkCollectionResourceRef(ResourceRef):
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        child_spec = spec.build_child_spec(self.field_name)
-        # when a reverse aggregate is followed by another reverse aggregate
-        # reverse link to collection (through _owners)
-        aggregation.append(
-            {"$lookup": {
-                    "from": "resource_%s" % (child_spec.name,),
-                    "localField": '_id',
-                    "foreignField": spec.fields[self.field_name].reverse_link_field + "._id",
-                    "as": "_field_%s" % (self.field_name,),
-            }})
-        aggregation.append(
-            {'$group': {'_id': '$_field_%s' % (self.field_name,)}}
-        )
-        aggregation.append(
-            {"$unwind": "$_id"}
-        )
-        aggregation.append(
-            {"$replaceRoot": {"newRoot": "$_id"}}
-        )
-        if user:
-            aggregation.append(
-                {"$match": {"_grants": {"$in": user.grants}}}
-            )
-        aggregation.append({"$match": {"_deleted": {"$exists": False}}})
-        return aggregation, child_spec, True
-
     def is_collection(self):
         return True
 
@@ -786,12 +553,6 @@ class FilteredResourceRef(ResourceRef):
 
     def infer_type(self):
         return self.resource_ref.infer_type()
-
-    def aggregation(self, self_id, user=None):
-        aggregation, spec, is_aggregate = self.resource_ref.aggregation(self_id, user)
-        filter_agg = self.filter_ref.filter_aggregation(spec, self_id)
-        aggregation.append(filter_agg)
-        return aggregation, spec, True
 
     def is_collection(self):
         return True

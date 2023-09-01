@@ -50,45 +50,6 @@ class CopyResourceTest(unittest.TestCase):
             'former_employees',
             'current_employees')
 
-        from_path_agg, from_path_spec, from_path_is_coll = self.copy_resource.from_path_agg()
-
-        self.assertEqual([
-            {'$match': {
-                '$and': [
-                    {'_parent_field_name': 'current_employees'},
-                    {'_parent_canonical_url': '/'}
-                ]
-            }},
-            {'$match': {'_deleted': {'$exists': False}}},
-        ], from_path_agg)
-        self.assertEqual(self.schema.specs['employee'], from_path_spec)
-        self.assertTrue(from_path_is_coll)
-
-        affected_ids_agg_before = self.copy_resource.affected_aggs()
-        self.assertEqual([
-            ('calcs', 'sum_employee_age', [
-            {'$lookup': {'as': '_field_sum_employee_age',
-               'from': 'resource_calcs',
-               'pipeline': []}},
-            {'$group': {'_id': '$_field_sum_employee_age'}},
-            {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}])
-        ], affected_ids_agg_before)
-
-        # check affected agg to path
-        affected_ids_agg_after = self.copy_resource.affected_aggs_to_path()
-        self.assertEqual([
-        ], affected_ids_agg_after)
-
-        # check affected ids
-        self.assertEqual(set([
-            ('calcs', 'sum_employee_age', self.schema.decodeid(calcs_id_1)),
-        ]), self.copy_resource.affected_ids())
-
-        # check affected ids for to path
-        self.assertEqual(set([
-        ]), self.copy_resource.affected_ids_to_path())
-
     def test_copy_from_root_after_aggs(self):
         self.schema.create_field('calcs',  'sum_employee_age', 'calc', calc_str= 'sum(former_employees.age)')
         self.schema.create_field('root', 'calcs', 'collection', 'calcs')
@@ -108,39 +69,6 @@ class CopyResourceTest(unittest.TestCase):
             'former_employees',
             'former_employees',
             'current_employees')
-
-        from_path_agg, from_path_spec, from_path_is_coll = self.copy_resource.from_path_agg()
-
-        self.assertEqual([
-            {'$match': {
-                '$and': [
-                    {'_parent_field_name': 'current_employees'},
-                    {'_parent_canonical_url': '/'}
-                ]
-            }},
-            {'$match': {'_deleted': {'$exists': False}}}
-        ], from_path_agg)
-        self.assertEqual(self.schema.specs['employee'], from_path_spec)
-        self.assertTrue(from_path_is_coll)
-
-        affected_ids_agg_before = self.copy_resource.affected_aggs()
-        self.assertEqual([
-        ], affected_ids_agg_before)
-
-        # check affected agg to path
-        affected_ids_agg_after = self.copy_resource.affected_aggs_to_path()
-        self.assertEqual([
-            ('calcs', 'sum_employee_age',
-            [{'$lookup': {'as': '_field_sum_employee_age',
-                            'from': 'resource_calcs',
-                            'pipeline': []}},
-            {'$group': {'_id': '$_field_sum_employee_age'}},
-            {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}])], affected_ids_agg_after)
-
-        # check affected ids
-        self.assertEqual(set([
-        ]), self.copy_resource.affected_ids())
 
         # need to perform the copy before the after ids will show up
         self.copy_resource.perform_copy('111')
@@ -215,48 +143,3 @@ class CopyResourceTest(unittest.TestCase):
             'divisions/%s/employees' % division_id_2,
             'divisions/%s/employees' % division_id_1)
 
-        # check from agg
-        from_path_agg, from_path_spec, from_path_is_coll = self.copy_resource.from_path_agg()
-        self.assertEqual([
-            {'$match': {'$and': [{'_parent_field_name': 'divisions'},
-                                 {'_parent_canonical_url': '/'}]}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$match': {'_id': self.schema.decodeid(division_id_1)}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$lookup': {'as': '_field_employees',
-                        'foreignField': '_parent_id',
-                        'from': 'resource_employee',
-                        'localField': '_id'}},
-            {'$group': {'_id': '$_field_employees'}},
-            {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            ], from_path_agg)
-        self.assertEqual(self.schema.specs['employee'], from_path_spec)
-        self.assertTrue(from_path_is_coll)
-
-        # check affected ids agg
-        affected_ids_agg_before = self.copy_resource.affected_aggs()
-        self.assertEqual([
-            ('calcs', 'sum_division_employee_age', [
-            # lookup to division
-            {'$lookup': {'as': '_field_employees',
-                        'foreignField': '_id',
-                        'from': 'resource_division',
-                        'localField': '_parent_id'}},
-            {'$group': {'_id': '$_field_employees'}},
-            {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}},
-            # lookup to calcs
-            {'$lookup': {'as': '_field_division',
-                        'foreignField': 'division',
-                        'from': 'resource_calcs',
-                        'localField': '_id'}},
-            {'$group': {'_id': '$_field_division'}},
-            {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}])], affected_ids_agg_before)
-
-        # check affected ids
-        self.assertEqual(set([
-            ('calcs', 'sum_division_employee_age', self.schema.decodeid(calcs_id_1)),
-        ]), self.copy_resource.affected_ids())

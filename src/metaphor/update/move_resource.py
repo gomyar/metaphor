@@ -95,7 +95,9 @@ class MoveResourceUpdate:
         from_tree = parse_url(self.from_path, self.schema.root)
         parent_canonical_url = self.target_resource['_canonical_url']
 
-        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+        aggregate_query = from_tree.create_aggregation(None)
+        from_spec = from_tree.infer_type()
+        is_aggregate = from_tree.is_collection()
 
         all_dependent_fields = self.all_dependent_fields_in_tree(from_tree.spec.name)
 
@@ -123,7 +125,10 @@ class MoveResourceUpdate:
 
     def perform_move_to_root(self):
         from_tree = parse_url(self.from_path, self.schema.root)
-        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+
+        aggregate_query = from_tree.create_aggregation(None)
+        from_spec = from_tree.infer_type()
+        is_aggregate = from_tree.is_collection()
 
         all_dependent_fields = self.all_dependent_fields_in_tree(from_tree.spec.name)
 

@@ -91,15 +91,12 @@ class Api(object):
         path = path.strip().strip('/')
         tree = self._parse_canonical_url(path)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
+        aggregate_query = tree.create_aggregation(user)
+        spec = tree.infer_type()
+        is_aggregate = tree.is_collection()
 
         if is_aggregate:
             raise HTTPError('', 400, 'PATCH not supported on collections', None, None)
-
-        if path.split('/')[0] == 'ego':
-            aggregate_query = [
-                {"$match": {"username": user.username}}
-            ] + aggregate_query
 
         cursor = tree.root_collection().aggregate(aggregate_query)
 
@@ -127,14 +124,11 @@ class Api(object):
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+            aggregate_query = tree.create_aggregation(user)
+            spec = tree.infer_type()
+            is_aggregate = tree.is_collection()
 
             field_spec = spec.fields[field_name]
-
-            if path.split('/')[0] == 'ego':
-                aggregate_query = [
-                    {"$match": {"username": user.username}}
-                ] + aggregate_query
 
             # if we're using a simplified parser we can probably just pull the id off the path
             cursor = tree.root_collection().aggregate(aggregate_query)
@@ -190,14 +184,11 @@ class Api(object):
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+            aggregate_query = tree.create_aggregation(user)
+            spec = tree.infer_type()
+            is_aggregate = tree.is_collection()
 
             field_spec = spec.fields[field_name]
-
-            if path.split('/')[0] == 'ego':
-                aggregate_query = [
-                    {"$match": {"username": user.username}}
-                ] + aggregate_query
 
             # if we're using a simplified parser we can probably just pull the id off the path
             cursor = tree.root_collection().aggregate(aggregate_query)
@@ -276,12 +267,10 @@ class Api(object):
 
             if type(parent_field_tree) == LinkCollectionResourceRef:
                 parent_tree = self._parse_canonical_url(parent_path)
-                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
-                if path.split('/')[0] == 'ego':
-                    aggregate_query = [
-                        {"$match": {"username": user.username}}
-                    ] + aggregate_query
+                aggregate_query = parent_tree.create_aggregation(user)
+                spec = parent_tree.infer_type()
+                is_aggregate = parent_tree.is_collection()
 
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
@@ -298,12 +287,15 @@ class Api(object):
                     resource_id)
             elif type(parent_field_tree) == OrderedCollectionResourceRef:
                 parent_tree = self._parse_canonical_url(parent_path)
-                aggregate_query, spec, is_aggregate = parent_tree.aggregation(None)
 
-                if path.split('/')[0] == 'ego':
-                    aggregate_query = [
-                        {"$match": {"username": user.username}}
-                    ] + aggregate_query
+                aggregate_query = parent_tree.create_aggregation(user)
+                spec = parent_tree.infer_type()
+                is_aggregate = parent_tree.is_collection()
+
+                #if path.split('/')[0] == 'ego':
+                #    aggregate_query = [
+                #        {"$match": {"username": user.username}}
+                #    ] + aggregate_query
 
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
@@ -318,12 +310,9 @@ class Api(object):
                     field_name,
                     resource_id)
             else:
-                aggregate_query, spec, is_aggregate = parent_field_tree.aggregation(None)
-
-                if path.split('/')[0] == 'ego':
-                    aggregate_query = [
-                        {"$match": {"username": user.username}}
-                    ] + aggregate_query
+                aggregate_query = parent_field_tree.create_aggregation(user)
+                spec = parent_field_tree.infer_type()
+                is_aggregate = parent_field_tree.is_collection()
 
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
@@ -364,14 +353,9 @@ class Api(object):
         except SyntaxError as te:
             return None
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
-
-        if path.split('/')[0] == 'ego':
-
-            aggregate_query = [
-                {"$match": {"username": user.username}}
-            ] + aggregate_query
-
+        aggregate_query = tree.create_aggregation(user)
+        spec = tree.infer_type()
+        is_aggregate = tree.is_collection()
 
         if is_aggregate:
 
@@ -466,11 +450,13 @@ class Api(object):
         else:
             return None
 
-    def get_spec_for(self, path, user=None):
+    def get_spec_for(self, path):
         path = path.strip().strip('/')
         tree = parse_url(path, self.schema.root)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None, user)
+        aggregate_query = tree.create_aggregation(None)
+        spec = tree.infer_type()
+        is_aggregate = tree.is_collection()
         return (
             spec,
             is_aggregate,
@@ -750,6 +736,7 @@ class Api(object):
         tree = self._parse_canonical_url(path)
 
         aggregate_query, spec, is_aggregate = tree.aggregation(None)
+
 
         if path.split('/')[0] == 'ego':
             aggregate_query = [

@@ -234,7 +234,7 @@ class Schema(object):
         self.version = schema_data['version']
 
     def create_spec(self, spec_name):
-        self.db['metaphor_schema'].update(
+        self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
         # TODO: set up indexes
@@ -280,13 +280,13 @@ class Schema(object):
             field_data = {'type': field_type, 'target_spec_name': field_target}
 
         if spec_name == 'root':
-            self.db['metaphor_schema'].update(
+            self.db['metaphor_schema'].update_one(
                 {'_id': self._id},
                 {"$set": {'root.%s' % (field_name,): field_data}},
                 upsert=True)
             self.update_version()
         else:
-            self.db['metaphor_schema'].update(
+            self.db['metaphor_schema'].update_one(
                 {'_id': self._id},
                 {"$set": {'specs.%s.fields.%s' % (spec_name, field_name): field_data}},
                 upsert=True)
@@ -338,7 +338,7 @@ class Schema(object):
 
         self._do_delete_field(spec_name, field_name)
 
-        self.db['metaphor_schema'].update(
+        self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
         self.update_version()
@@ -361,7 +361,7 @@ class Schema(object):
             self._do_delete_field(spec_name, field_name)
         self.specs.pop(spec_name)
 
-        self.db['metaphor_schema'].update(
+        self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {"$unset": {'specs.%s' % (spec_name,): ''}})
         self.update_version()
@@ -556,7 +556,7 @@ class Schema(object):
         return self.db['resource_%s' % spec_name].find_one_and_delete({'_id': self.decodeid(resource_id)})
 
     def mark_link_collection_item_deleted(self, spec_name, parent_id, field_name, resource_id):
-        self.db['resource_%s' % spec_name].update({
+        self.db['resource_%s' % spec_name].update_one({
             "_id": parent_id,
             field_name: {"$elemMatch": {"_id": self.decodeid(resource_id)}},
         }, {
@@ -564,7 +564,7 @@ class Schema(object):
         }})
 
     def delete_linkcollection_entry(self, spec_name, parent_id, field_name, resource_id):
-        self.db['resource_%s' % spec_name].update({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
+        self.db['resource_%s' % spec_name].update_one({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         save_data = self._parse_fields(spec_name, field_data)
@@ -607,7 +607,7 @@ class Schema(object):
         ])
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
-        self.db['resource_%s' % spec_name].update({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
+        self.db['resource_%s' % spec_name].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
 
     def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None, extra_fields=None):

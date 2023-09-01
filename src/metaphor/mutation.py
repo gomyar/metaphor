@@ -92,7 +92,7 @@ class Mutation(object):
             #   move filtered resources to root collection
             from_tree = parse_url(move_calc, self.schema.root)
             #   for all fitered resources
-            aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+            aggregate_query, from_spec, is_aggregate = from_tree.create_aggregation(None)
             #   alter parent info
 
             #   adjust for orderedcollections in parent

@@ -203,13 +203,11 @@ class LRParseTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
         tree = parse("self.name", self.schema.specs['employee'])
-        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
+        aggregation = tree.create_aggregation(None)
         # unsure how this guy fits in exactly
 
         self.assertEquals([
-            {'$match': {'_id': self.schema.decodeid(employee_id)}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$addFields': {'name': True}}
+            {'$addFields': {'_val': '$name'}}
         ], aggregation)
 
     def test_nonexistant_field_in_calc(self):
@@ -278,24 +276,29 @@ class LRParseTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
         tree = parse("employees[age>40].division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
-        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
-        self.assertEquals([
-            {'$match': {'$and': [{'_parent_field_name': 'employees'},
-                                 {'_parent_canonical_url': '/'}]}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$match': {'age': {'$gt': 40}}},
-            {'$lookup': {'as': '_field_division',
-                        'foreignField': '_id',
-                        'from': 'resource_division',
-                        'localField': 'division'}},
-            {'$group': {'_id': '$_field_division'}},
+        aggregation = tree.create_aggregation(None)
+        self.assertEqual([
+            {'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
+                        'pipeline': [{'$match': {'_deleted': {'$exists': False},
+                                                '_parent_canonical_url': '/',
+                                                '_parent_field_name': 'employees'}}]}},
+            {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
-            {'$match': {'_deleted': {'$exists': False}}},
+            {'$match': {'age': {'$gt': 40}}},
+            {'$lookup': {'as': '_val',
+                        'from': 'resource_division',
+                        'let': {'s_id': '$division'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$s_id']}}},
+                                    {'$match': {'_deleted': {'$exists': False}}}]}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
             {'$match': {'name': {'$eq': 'sales'}}},
-            {'$addFields': {'yearly_sales': True}}], aggregation)
+            {'$addFields': {'_val': '$yearly_sales'}}], aggregation)
         self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
-                          spec)
+                          tree.infer_type())
 
     def test_conditions_multiple(self):
         employee_spec = self.schema.specs['employee']
@@ -303,15 +306,20 @@ class LRParseTest(unittest.TestCase):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'salary': 100}, 'employees')
         tree = parse("employees[age>40 & salary>99].name", self.schema.specs['employee'])
 
-        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
-        self.assertEquals([
-            {'$match': {'$and': [{'_parent_field_name': 'employees'},
-                                 {'_parent_canonical_url': '/'}]}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$match': {'$and' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
-            {'$addFields': {'name': True}}], aggregation)
+        aggregation = tree.create_aggregation(None)
+        self.assertEqual([
+            {'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
+                        'pipeline': [{'$match': {'_deleted': {'$exists': False},
+                                                '_parent_canonical_url': '/',
+                                                '_parent_field_name': 'employees'}}]}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$match': {'$and': [{'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
+            {'$addFields': {'_val': '$name'}}], aggregation)
         self.assertEquals(self.schema.specs['employee'].fields['name'],
-                          spec)
+                          tree.infer_type())
 
     def test_conditions_multiple_or(self):
         employee_spec = self.schema.specs['employee']
@@ -319,15 +327,20 @@ class LRParseTest(unittest.TestCase):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'salary': 100}, 'employees')
         tree = parse("employees[age>40 | salary>99].name", self.schema.specs['employee'])
 
-        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
-        self.assertEquals([
-            {'$match': {'$and': [{'_parent_field_name': 'employees'},
-                                 {'_parent_canonical_url': '/'}]}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$match': {'$or' : [ {'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
-            {'$addFields': {'name': True}}], aggregation)
+        aggregation = tree.create_aggregation(None)
+        self.assertEqual([
+            {'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
+                        'pipeline': [{'$match': {'_deleted': {'$exists': False},
+                                                '_parent_canonical_url': '/',
+                                                '_parent_field_name': 'employees'}}]}},
+            {'$group': {'_id': '$_val'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$match': {'$or': [{'age': {'$gt': 40}}, {'salary': {'$gt': 99}}]}},
+            {'$addFields': {'_val': '$name'}}], aggregation)
         self.assertEquals(self.schema.specs['employee'].fields['name'],
-                          spec)
+                          tree.infer_type())
 
     def test_aggregation_self(self):
         division_id = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 10}, 'divisions')
@@ -335,22 +348,20 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("self.division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
-        aggregation, spec, is_aggregate = tree.aggregation(employee_id)
-        self.assertEquals([
-            {'$match': {'_id': self.schema.decodeid(employee_id)}},
-            {'$match': {'_deleted': {'$exists': False}}},
-            {'$lookup': {'as': '_field_division',
-                        'foreignField': '_id',
+        aggregation = tree.create_aggregation(None)
+        self.assertEqual([
+            {'$lookup': {'as': '_val',
                         'from': 'resource_division',
-                        'localField': 'division'}},
-            {'$group': {'_id': '$_field_division'}},
+                        'let': {'s_id': '$division'},
+                        'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$s_id']}}},
+                                    {'$match': {'_deleted': {'$exists': False}}}]}},
+            {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
-            {'$match': {'_deleted': {'$exists': False}}},
             {'$match': {'name': {'$eq': 'sales'}}},
-            {'$addFields': {'yearly_sales': True}}], aggregation)
+            {'$addFields': {'_val': '$yearly_sales'}}], aggregation)
         self.assertEquals(self.schema.specs['division'].fields['yearly_sales'],
-                          spec)
+                          tree.infer_type())
 
     def test_aggregates(self):
         # entities[name=self.other[resolve='me',first=True]]

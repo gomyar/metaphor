@@ -20,12 +20,18 @@ class CopyResourceUpdate:
 
     def from_path_agg(self):
         from_tree = parse_url(self.from_path, self.schema.root)
-        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+        aggregate_query = from_tree.create_aggregation(None)
+        from_spec = from_tree.infer_type()
+        is_aggregate = from_tree.is_collection()
+
         return aggregate_query, from_spec, is_aggregate
 
     def to_path_agg(self):
         to_tree = parse_url(self.to_path, self.schema.root)
-        aggregate_query, to_spec, is_aggregate = to_tree.aggregation(None)
+        aggregate_query = to_tree.create_aggregation(None)
+        to_spec = to_tree.infer_type()
+        is_aggregate = to_tree.is_collection()
+
         return aggregate_query, to_spec, is_aggregate
 
     def affected_aggs(self):
@@ -44,7 +50,8 @@ class CopyResourceUpdate:
 
     def affected_aggs_to_path(self):
         to_tree = parse_url(self.to_path, self.schema.root)
-        to_agg, to_spec, _ = to_tree.aggregation(None)
+        to_agg = to_tree.create_aggregation(None)
+        to_spec = to_tree.infer_type()
 
         aggs = []
         for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
@@ -127,7 +134,9 @@ class CopyResourceUpdate:
         from_tree = parse_url(self.from_path, self.schema.root)
         parent_canonical_url = self._read_parent_canonical_url()
 
-        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
+        aggregate_query = from_tree.create_aggregation(None)
+        from_spec = from_tree.infer_type()
+        is_aggregate = from_tree.is_collection()
 
         all_dependent_fields = self.all_dependent_fields_in_tree(from_tree.spec.name)
 
