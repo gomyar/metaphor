@@ -102,7 +102,7 @@ class CopyResourceUpdate:
 
     def _read_parent_canonical_url(self):
         if self.parent_id:
-            parent = self.schema.db['resource_%s' % self.parent_spec_name].find_one(
+            parent = self.schema.db['metaphor_resource'].find_one(
                 {'_id': self.parent_id},
                 {'_canonical_url': 1})
             return parent['_canonical_url']
@@ -152,7 +152,7 @@ class CopyResourceUpdate:
                 "_dirty.%s" % update_id: all_dependent_fields,
             }},
             {"$merge": {
-                "into": "resource_%s" % from_tree.spec.name,
+                "into": "metaphor_resource",
                 "on": "_id",
                 "whenMatched": "merge",
                 "whenNotMatched": "discard",

@@ -114,7 +114,7 @@ class MoveResourceUpdate:
                 "_dirty.%s" % self.update_id: all_dependent_fields,
             }},
             {"$merge": {
-                "into": "resource_%s" % from_tree.spec.name,
+                "into": "metaphor_resource",
                 "on": "_id",
                 "whenMatched": "merge",
                 "whenNotMatched": "discard",
@@ -145,7 +145,7 @@ class MoveResourceUpdate:
                 "_dirty.%s" % self.update_id: all_dependent_fields,
             }},
             {"$merge": {
-                "into": "resource_%s" % from_tree.spec.name,
+                "into": "metaphor_resource",
                 "on": "_id",
                 "whenMatched": "merge",
                 "whenNotMatched": "discard",

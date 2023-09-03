@@ -35,13 +35,15 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned'})
         employee_id_2 = self.api.post('employees', {'name': 'bob'})
 
-        cursor = self.db.resource_employee.aggregate([
+        cursor = self.db.metaphor_resource.aggregate([
+            {"$match": {"_type": "employee"}},
             {"$set": {"update_id": 1}},
             {"$project": {"resource_id": "$_id", "update_id": True, "_id": False}},
             {"$merge": {"into": "delete_calc", "on": ["update_id", "resource_id"], "whenNotMatched": "insert"}},
         ])
 
-        cursor = self.db.resource_employee.aggregate([
+        cursor = self.db.metaphor_resource.aggregate([
+            {"$match": {"_type": "employee"}},
             {"$set": {"update_id": 2}},
             {"$project": {"resource_id": "$_id", "update_id": True, "_id": False}},
             {"$merge": {"into": "delete_calc", "on": ["update_id", "resource_id"], "whenNotMatched": "insert"}},
@@ -49,7 +51,8 @@ class UpdaterTest(unittest.TestCase):
 
         employee_id_3 = self.api.post('employees', {'name': 'fred'})
 
-        cursor = self.db.resource_employee.aggregate([
+        cursor = self.db.metaphor_resource.aggregate([
+            {"$match": {"_type": "employee"}},
             {"$set": {"update_id": 2}},
             {"$project": {"resource_id": "$_id", "update_id": True, "_id": False}},
             {"$merge": {"into": "delete_calc", "on": ["update_id", "resource_id"], "whenNotMatched": "insert"}},

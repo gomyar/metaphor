@@ -113,8 +113,10 @@ class RootResourceRef(ResourceRef):
             self.spec = self.root_spec(spec.schema)
 
     def build_reverse_aggregations(self, resource_spec, resource_id, calc_spec_name, calc_field_name):
-        if self.resource_name in ["self", "ego"]:
-            return [[], []]
+        if self.resource_name == "ego":
+            raise Exception("Unexpected ego reference in reverse aggregation")
+        if self.resource_name in ["self"]:
+            return [[], [{"$match": {"_type": calc_spec_name}}]]
         else:
             # assuming root / collection
             return [[], self.create_reverse(calc_spec_name, calc_field_name)]
@@ -122,9 +124,9 @@ class RootResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                "from": "resource_%s" % (calc_spec_name,),
+                "from": "metaphor_resource",
                 "as": "_field_%s" % (calc_field_name,),
-                "pipeline": [],
+                "pipeline": [{"$match": {"_type": calc_field_name}}],
             }},
             {'$group': {'_id': '$_field_%s' % (calc_field_name,)}},
             {"$unwind": "$_id"},
@@ -140,7 +142,7 @@ class RootResourceRef(ResourceRef):
             schema.root.fields[self.resource_name].target_spec_name]
 
     def root_collection(self):
-        return self.spec.schema.db['resource_%s' % self.spec.name]
+        return self.spec.schema.db['metaphor_resource']
 
     def get_resource_dependencies(self):
         if self.resource_name == 'self':
@@ -168,19 +170,7 @@ class RootResourceRef(ResourceRef):
 
     def create_aggregation(self, user=None):
         if self.resource_name == 'self':
-            return [
-#                {"$lookup": {
-#                    "from": "resource_%s" % self.spec.name,
-#                    "as": "_val",
-#                    "let": {"id": "$_id"},
-#                    "pipeline":[
-#                        {"$match": {"$expr": {
-#                            "_id": "$$id",
-#                        }}}
-#                    ]
-#                }},
-#                {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
-            ]
+            return []
         elif self.resource_name == 'ego':
             if user is None:
                 raise Exception("Invalid ego reference - no user set")
@@ -190,10 +180,11 @@ class RootResourceRef(ResourceRef):
         else:
             return [
                 {"$lookup": {
-                    "from": "resource_%s" % self.spec.name,
+                    "from": "metaphor_resource",
                     "as": "_val",
                     "pipeline":[
                         {"$match": {
+                            "_type": self.spec.name,
                             "_parent_field_name": self.resource_name,
                             "_parent_canonical_url": '/',
                             "_deleted": {"$exists": False},
@@ -248,10 +239,17 @@ class CollectionResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                "from": "resource_%s" % (self.parent_spec.name,),
-                "localField": "_parent_id",
-                "foreignField": "_id",
+                "from": "metaphor_resource",
                 "as": "_field_%s" % (self.field_name,),
+                "let": {"id": "$_parent_id"},
+                "pipeline": [
+                    {"$match": {"$expr":
+                        {"$and": [
+                            {"$eq": ["$_id", "$$id"]},
+                            {"$eq": ["$_type", self.parent_spec.name]},
+                        ]}
+                    }}
+                ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -264,13 +262,16 @@ class CollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % self.spec.name,
+                    "from": "metaphor_resource",
                     "as": "_val",
-                    "let": {"s_id": "$_id"},
+                    "let": {"id": "$_id"},
                     "pipeline": [
                         {"$match": {
                             "$expr": {
-                                "$eq": ["$_parent_id", "$$s_id"],
+                                "$and": [
+                                    {"$eq": ["$_parent_id", "$$id"]},
+                                    {"$eq": ["$_type", self.spec.name]},
+                                ]
                             }
                         }},
                         {"$match": {
@@ -288,10 +289,20 @@ class LinkCollectionResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": "%s._id" % self.field_name,
-                    "localField": "_id",
+                    "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    #{"$eq": ["$%s._id" % self.field_name, "$$id"]},
+                                    {"$in": [{"_id": "$$id"}, {"$ifNull": ["$%s" % self.field_name, []]}]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -310,13 +321,16 @@ class LinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % self.spec.name,
+                    "from": "metaphor_resource",
                     "as": "_val",
-                    "let": {"s_id": {"$ifNull": ["$%s" % self.field_name, []]}},
+                    "let": {"id": {"$ifNull": ["$%s" % self.field_name, []]}},
                     "pipeline": [
                         {"$match": {
                             "$expr": {
-                                "$in": [{"_id": "$_id"}, "$$s_id"],
+                                "$and": [
+                                    {"$in": [{"_id": "$_id"}, "$$id"]},
+                                    {"$eq": ["$_type", self.spec.name]},
+                                ]
                             }
                         }}
                     ]
@@ -335,10 +349,19 @@ class LinkResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "localField": "_id",
-                    "foreignField": self.field_name,
+                    "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$%s" % self.field_name, "$$id"]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -354,13 +377,16 @@ class LinkResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                "from": 'resource_%s' % self.spec.name,
+                "from": 'metaphor_resource',
                 "as": '_val',
-                "let": {"s_id": "$%s" % self.field_name},
+                "let": {"id": "$%s" % self.field_name},
                 "pipeline": [
                     {"$match": {
                         "$expr": {
-                            "$eq": ["$_id", "$$s_id"],
+                            "$and": [
+                                {"$eq": ["$_id", "$$id"]},
+                                {"$eq": ["$_type", self.spec.name]},
+                            ]
                         }
                     }},
                     {"$match": {
@@ -386,10 +412,19 @@ class CalcResourceRef(ResourceRef, Calc):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": self.field_name,
-                    "localField": "_id",
+                    "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$%s" % self.field_name, "$$id"]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -413,7 +448,7 @@ class CalcResourceRef(ResourceRef, Calc):
         else:
             return agg + [
                 {"$lookup": {
-                        "from": "resource_%s" % (calc_spec.name,),
+                        "from": "metaphor_resource",
                         "localField": "%s._id" % self.field_name,
                         "foreignField": "_id",
                         "as": "_val",
@@ -437,10 +472,19 @@ class ReverseLinkResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "localField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
-                    "foreignField": "_id",
+                    "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
+                    "let": {"id": self.resource_ref.spec.fields[self.field_name].reverse_link_field},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$_id", "$$id"]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -453,10 +497,19 @@ class ReverseLinkResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (self.spec.name,),
-                    "localField": "_id",
-                    "foreignField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
+                    "from": "metaphor_resource",
                     "as": "_val",
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$$id", "$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field]},
+                                    {"$eq": ["$_type", self.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
@@ -472,10 +525,19 @@ class ParentCollectionResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": "_parent_id",
-                    "localField": "_id",
+                    "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$_parent_id", "$$id"]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -488,10 +550,19 @@ class ParentCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "resource_%s" % (self.spec.name,),
-                    "localField": "_parent_id",
-                    "foreignField": "_id",
+                    "from": "metaphor_resource",
                     "as": "_val",
+                    "let": {"id": "$_parent_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$_id", "$$id"]},
+                                    {"$eq": ["$_type", self.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},
@@ -511,10 +582,19 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
-                    "from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "foreignField": "_id",
-                    "localField": "%s._id" % (self.resource_ref.spec.fields[self.field_name].reverse_link_field,),
+                    "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
+                    "let": {"id": "$%s._id" % (self.resource_ref.spec.fields[self.field_name].reverse_link_field,)},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$eq": ["$_id", "$$id"]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -527,11 +607,19 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    #"from": "resource_%s" % (self.resource_ref.spec.name,),
-                    "from": "resource_%s" % (self.resource_ref.spec.fields[self.field_name].target_spec_name,),
-                    "localField": '_id',
-                    "foreignField": self.resource_ref.spec.fields[self.field_name].reverse_link_field + "._id",
+                    "from": "metaphor_resource",
                     "as": "_val",
+                    "let": {"id": "$_id"},
+                    "pipeline": [
+                        {"$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$in": [{"_id": "$$id"}, {"$ifNull": ["$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field, []]}]},
+                                    {"$eq": ["$_type", self.resource_ref.spec.fields[self.field_name].target_spec_name]},
+                                ]
+                            }
+                        }}
+                    ]
             }},
             {'$group': {'_id': '$_val'}},
             {"$unwind": "$_id"},

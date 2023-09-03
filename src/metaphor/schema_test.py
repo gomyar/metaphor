@@ -150,7 +150,7 @@ class SchemaTest(unittest.TestCase):
         employee_id = self.schema.insert_resource('employee', {
             'name': 'Bob'
         }, 'employees')
-        new_resource = self.db.resource_employee.find_one()
+        new_resource = self.db.metaphor_resource.find_one({'_type': 'employee'})
         self.assertEquals(ObjectId(employee_id[2:]), self.schema.decodeid(employee_id))
         self.assertEquals({
             '_id': self.schema.decodeid(employee_id),
@@ -183,7 +183,7 @@ class SchemaTest(unittest.TestCase):
             'name': 'Bob'
         }, 'employees')
         self.schema.update_resource_fields('employee', employee_id, {'name': 'Ned'})
-        reload_employee = self.db.resource_employee.find_one({'_id': self.schema.decodeid(employee_id)})
+        reload_employee = self.db.metaphor_resource.find_one({'_id': self.schema.decodeid(employee_id)})
         self.assertEquals('Ned', reload_employee['name'])
 
     def test_roots(self):
@@ -290,7 +290,7 @@ class SchemaTest(unittest.TestCase):
             '_type': 'division',
             'name': 'sales',
             'yearly_sales': 100,
-        }, self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id_1)}))
+        }, self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(division_id_1)}))
 
         section_id_1 = self.schema.insert_resource('section', {'name': 'appropriation'}, parent_type='division', parent_id=division_id_1, parent_field_name='sections')
 
@@ -306,7 +306,7 @@ class SchemaTest(unittest.TestCase):
             '_type': 'division',
             'name': 'sales',
             'yearly_sales': 100,
-        }, self.db['resource_division'].find_one({'_id': self.schema.decodeid(division_id_1)}))
+        }, self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(division_id_1)}))
 
 
         self.assertEquals({
@@ -320,7 +320,7 @@ class SchemaTest(unittest.TestCase):
             '_parent_canonical_url': '/divisions/%s' % division_id_1,
             '_type': 'section',
             'name': 'appropriation',
-        }, self.db['resource_section'].find_one({'_id': self.schema.decodeid(section_id_1)}))
+        }, self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(section_id_1)}))
 
     def test_calc_infer_type(self):
         self._create_test_schema({
@@ -584,7 +584,7 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.insert_resource('primary', {}, 'employees')
 
-        self.assertEqual('ned', self.db.resource_primary.find_one()['name'])
+        self.assertEqual('ned', self.db.metaphor_resource.find_one({'_type': 'primary'})['name'])
 
         self.assertEqual({
             "current": True,

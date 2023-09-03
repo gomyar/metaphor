@@ -449,7 +449,7 @@ class Schema(object):
             return '/'
 
     def load_parent_data(self, parent_type, parent_id):
-        return self.db['resource_%s' % parent_type].find_one({'_id': self.decodeid(parent_id)})
+        return self.db['metaphor_resource'].find_one({'_id': self.decodeid(parent_id)})
 
     def check_field_types(self, spec_name, data):
         pass
@@ -513,11 +513,10 @@ class Schema(object):
 
     def cleanup_update(self, update_id):
         # remove dirty flags
-        for spec_name in self.specs:
-            self.db["resource_%s" % spec_name].update_many(
-                {"_dirty.%s" % update_id: {"$exists": True}},
-                {"$unset": {"_dirty.%s" % update_id: ""}}
-            )
+        self.db["metaphor_resource"].update_many(
+            {"_dirty.%s" % update_id: {"$exists": True}},
+            {"$unset": {"_dirty.%s" % update_id: ""}}
+        )
         return self.db['metaphor_updates'].remove({"_id": ObjectId(update_id)})
 
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None, extra_fields=None):
@@ -546,17 +545,17 @@ class Schema(object):
         if spec_name == 'user':
             data['_user_hash'] = str(uuid4())
 
-        new_resource_id = self.db['resource_%s' % spec_name].insert(data)
+        new_resource_id = self.db['metaphor_resource'].insert(data)
         return self.encodeid(new_resource_id)
 
     def mark_resource_deleted(self, spec_name, resource_id):
-        return self.db['resource_%s' % spec_name].find_one_and_update({'_id': self.decodeid(resource_id)}, {"$set": {"_deleted": True}})
+        return self.db['metaphor_resource'].find_one_and_update({'_id': self.decodeid(resource_id)}, {"$set": {"_deleted": True}})
 
     def delete_resource(self, spec_name, resource_id):
-        return self.db['resource_%s' % spec_name].find_one_and_delete({'_id': self.decodeid(resource_id)})
+        return self.db['metaphor_resource'].find_one_and_delete({'_id': self.decodeid(resource_id)})
 
     def mark_link_collection_item_deleted(self, spec_name, parent_id, field_name, resource_id):
-        self.db['resource_%s' % spec_name].update_one({
+        self.db['metaphor_resource'].update_one({
             "_id": parent_id,
             field_name: {"$elemMatch": {"_id": self.decodeid(resource_id)}},
         }, {
@@ -564,7 +563,7 @@ class Schema(object):
         }})
 
     def delete_linkcollection_entry(self, spec_name, parent_id, field_name, resource_id):
-        self.db['resource_%s' % spec_name].update_one({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
+        self.db['metaphor_resource'].update_one({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         save_data = self._parse_fields(spec_name, field_data)
@@ -572,7 +571,7 @@ class Schema(object):
         if spec_name == 'user' and field_data.get('password'):
             save_data['_user_hash'] = str(uuid4())
 
-        new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
+        new_resource = self.db['metaphor_resource'].find_one_and_update(
             {"_id": self.decodeid(resource_id)},
             {"$set": save_data},
             return_document=ReturnDocument.AFTER)
@@ -580,18 +579,18 @@ class Schema(object):
     def default_field_value(self, spec_name, field_name, default_value):
         save_data = self._parse_fields(spec_name, {field_name: default_value})
 
-        self.db['resource_%s' % spec_name].update_many(
-            {field_name: {"$exists": False}},
+        self.db['metaphor_resource'].update_many(
+            {'_type': spec_name, field_name: {"$exists": False}},
             {"$set": {field_name: default_value}})
 
     def delete_field_value(self, spec_name, field_name):
-        self.db['resource_%s' % spec_name].update_many(
-            {field_name: {"$exists": True}},
+        self.db['metaphor_resource'].update_many(
+            {'_type': spec_name, field_name: {"$exists": True}},
             {"$unset": {field_name: ""}})
 
     def alter_field_convert_type(self, spec_name, field_name, new_type):
-        self.db['resource_%s' % spec_name].aggregate([
-            {"$match": {field_name: {"$exists": True}}},
+        self.db['metaphor_resource'].aggregate([
+            {"$match": {'_type': spec_name, field_name: {"$exists": True}}},
             {"$addFields": {
                 field_name: {"$convert": {
                     "input": "$%s"%field_name,
@@ -601,13 +600,13 @@ class Schema(object):
                 }},
             }},
             {"$merge": {
-                "into": 'resource_%s' % spec_name,
+                "into": 'metaphor_resource',
                 "whenNotMatched": "discard",
             }}
         ])
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
-        self.db['resource_%s' % spec_name].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
+        self.db['metaphor_resource'].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
 
     def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None, extra_fields=None):
@@ -640,7 +639,7 @@ class Schema(object):
         return errors
 
     def remove_spec_field(self, spec_name, field_name):
-        self.db['resource_%s' % spec_name].update_many({}, {'$unset': {field_name: ''}})
+        self.db['metaphor_resource'].update_many({'_type': spec_name}, {'$unset': {field_name: ''}})
 
     def load_user_by_username(self, username, load_hash=False):
         return self._load_user_with_aggregate({'username': username}, load_hash)
@@ -649,28 +648,29 @@ class Schema(object):
         return self._load_user_with_aggregate({'_user_hash': user_hash})
 
     def _load_user_with_aggregate(self, match, load_hash=False):
-        user_data = self.db['resource_user'].aggregate([
+        user_data = self.db['metaphor_resource'].aggregate([
+            {"$match": {"_type": "user"}},
             {"$match": match},
             {"$lookup": {
-                'from': "resource_grant",
+                'from': "metaphor_resource",
                 'as': 'read_grants',
                 'localField': 'read_grants._id',
                 'foreignField': '_id',
             }},
             {"$lookup": {
-                'from': "resource_grant",
+                'from': "metaphor_resource",
                 'as': 'create_grants',
                 'localField': 'create_grants._id',
                 'foreignField': '_id',
             }},
             {"$lookup": {
-                'from': "resource_grant",
+                'from': "metaphor_resource",
                 'as': 'update_grants',
                 'localField': 'update_grants._id',
                 'foreignField': '_id',
             }},
             {"$lookup": {
-                'from': "resource_grant",
+                'from': "metaphor_resource",
                 'as': 'delete_grants',
                 'localField': 'delete_grants._id',
                 'foreignField': '_id',
@@ -743,7 +743,8 @@ class Schema(object):
             segments = segments[:-1]
         query = {
             "$and": [
+                {"_type": "grant"},
                 {"$or": or_clause},
             ]
         }
-        return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
+        return [g['_id'] for g in self.db['metaphor_resource'].find(query, {'_id': True})]

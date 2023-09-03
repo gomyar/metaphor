@@ -42,4 +42,7 @@ class CreateOrderedCollectionUpdate:
 
         self.updater.update_for_resource(self.spec_name, update_id, start_agg)
 
+        # cleanup update
+        self.schema.cleanup_update(update_id)
+
         return resource_id

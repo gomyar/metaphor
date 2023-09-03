@@ -121,7 +121,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('bob', self.api.get('/former_divisions/%s/employees/%s' % (division_id_1, employee_id_1))['name'])
 
         # check parent url for child is correct
-        employee = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
         self.assertEqual("/former_divisions/%s" % division_id_1, employee['_parent_canonical_url'])
 
     def test_move_all_children(self):
@@ -144,10 +144,10 @@ class ApiTest(unittest.TestCase):
         self.assertEqual('ned', self.api.get('/former_divisions/%s/employees/%s' % (division_id_2, employee_id_2))['name'])
 
         # check parent url for child is correct
-        employee = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
         self.assertEqual("/former_divisions/%s" % division_id_1, employee['_parent_canonical_url'])
 
-        employee = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_2)})
+        employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_2)})
         self.assertEqual("/former_divisions/%s" % division_id_2, employee['_parent_canonical_url'])
 
         # check after calcs

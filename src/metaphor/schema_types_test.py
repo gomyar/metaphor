@@ -152,7 +152,7 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.insert_resource('employee', {'created': "2021-12-31T12:30:20"}, 'employees')
 
-        inserted = self.db.resource_employee.find_one()
+        inserted = self.db.metaphor_resource.find_one({'_type': 'employee'})
         self.assertEqual(datetime(2021, 12, 31, 12, 30, 20), inserted['created'])
 
     def test_required_field(self):

@@ -46,12 +46,12 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater.create_linkcollection_entry('user', self.user_id, 'groups', self.admin_group_id)
 
-        user_db = self.db['resource_user'].find_one()
+        user_db = self.db['metaphor_resource'].find_one({'_type': 'user'})
         self.assertEqual(1, len(user_db['read_grants']))
 
         self.updater.delete_linkcollection_entry('user', self.schema.decodeid(self.user_id), 'groups', self.admin_group_id)
 
-        user_db = self.db['resource_user'].find_one()
+        user_db = self.db['metaphor_resource'].find_one({'_type': 'user'})
         self.assertEqual(0, len(user_db['read_grants']))
 
     def test_root_grants(self):
@@ -60,7 +60,7 @@ class UpdaterTest(unittest.TestCase):
 
         company_id = self.updater.create_resource('company', 'root', 'companies', None, {}, self.schema.read_root_grants('companies'))
 
-        company_data = self.db['resource_company'].find_one({})
+        company_data = self.db['metaphor_resource'].find_one({'_type': 'company'})
         self.assertEqual([self.schema.decodeid(grant_id)], company_data['_grants'])
 
     def test_nested_grants(self):
@@ -82,25 +82,25 @@ class UpdaterTest(unittest.TestCase):
         employee_id_4 = self.updater.create_resource('employee', 'division', 'employees', division_id_2, {}, self.schema.read_root_grants(division_2_path))
 
         # check grants
-        company_data = self.db['resource_company'].find_one({})
+        company_data = self.db['metaphor_resource'].find_one({"_type": "company"})
         self.assertEqual([self.schema.decodeid(grant_id)], company_data['_grants'])
 
-        division_1_data = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_1)})
+        division_1_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(division_id_1)})
         self.assertEqual([self.schema.decodeid(grant_id)], division_1_data['_grants'])
 
-        division_2_data = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_2)})
+        division_2_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(division_id_2)})
         self.assertEqual([self.schema.decodeid(grant_id)], division_2_data['_grants'])
 
-        employee_1_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee_1_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
         self.assertEqual([self.schema.decodeid(grant_id)], employee_1_data['_grants'])
 
-        employee_2_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_2)})
+        employee_2_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_2)})
         self.assertEqual([self.schema.decodeid(grant_id)], employee_2_data['_grants'])
 
-        employee_3_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_3)})
+        employee_3_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_3)})
         self.assertEqual([self.schema.decodeid(grant_id)], employee_3_data['_grants'])
 
-        employee_4_data = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_4)})
+        employee_4_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_4)})
         self.assertEqual([self.schema.decodeid(grant_id)], employee_4_data['_grants'])
 
     def test_deleting_grant_removes_grant_id(self):
@@ -111,5 +111,5 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater.delete_resource('grant', grant_id, 'group', 'grants')
 
-        company_data = self.db['resource_company'].find_one({})
+        company_data = self.db['metaphor_resource'].find_one({'_type': 'company'})
         self.assertEqual([], company_data['_grants'])

@@ -478,7 +478,7 @@ class Api(object):
 
         def lookup_agg(from_field, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": from_field,
+                "from": "metaphor_resource",
                 "as": as_field,
                 "let": {
                     "v_id": "$%s" % local_field,
@@ -487,7 +487,10 @@ class Api(object):
                     {
                         "$match": {
                             "$expr": {
-                                "$eq": ["$$v_id", "$%s" % foreign_field]
+                                "$and": [
+                                    {"$eq": ["$$v_id", "$%s" % foreign_field]},
+                                    {"$eq": ["$_type", from_field]},
+                                ]
                             }
                         }
                     }
@@ -500,7 +503,7 @@ class Api(object):
 
         def lookup_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": from_field,
+                "from": "metaphor_resource",
                 "as": as_field,
                 "let": {
                     "v_id": {"$ifNull": ["$%s" % local_field, []]},
@@ -509,7 +512,10 @@ class Api(object):
                     {
                         "$match": {
                             "$expr": {
-                                "$in": ["$%s" % foreign_field, "$$v_id"]
+                                "$and": [
+                                    {"$in": ["$%s" % foreign_field, "$$v_id"]},
+                                    {"$eq": ["$_type", from_field]},
+                                ]
                             }
                         }
                     }
@@ -522,7 +528,7 @@ class Api(object):
 
         def lookup_reverse_link_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": from_field,
+                "from": "metaphor_resource",
                 "as": as_field,
                 "let": {
                     "v_id": {"$ifNull": ["$%s" % local_field, []]},
@@ -532,7 +538,10 @@ class Api(object):
                     {
                         "$match": {
                             "$expr": {
-                                "$in": ["$$v_id", "$%s" % foreign_field]
+                                "$and": [
+                                    {"$in": ["$$v_id", "$%s" % foreign_field]},
+                                    {"$eq": ["$_type", from_field]},
+                                ]
                             }
                         }
                     }
@@ -553,7 +562,7 @@ class Api(object):
                 # add check for ' if in "expand" parameter'
                 aggregate_query.append(
                     lookup_agg(
-                        "resource_%s" % field.target_spec_name,
+                        field.target_spec_name,
                         field_name,
                         "_id",
                         "_expanded_%s" % field_name,
@@ -567,7 +576,7 @@ class Api(object):
             elif field.field_type == 'reverse_link':
                 aggregate_query.append(
                     lookup_agg(
-                            "resource_%s" % field.target_spec_name,
+                            field.target_spec_name,
                             "_id",
                             field.reverse_link_field,
                             "_expanded_%s" % field_name,
@@ -579,7 +588,7 @@ class Api(object):
             elif field.field_type in ('linkcollection', 'orderedcollection'):
                 aggregate_query.append(
                     lookup_collection_agg(
-                            "resource_%s" % field.target_spec_name,
+                            field.target_spec_name,
                             "%s._id" % field.name,
                             "_id",
                             "_expanded_%s" % field_name,
@@ -591,7 +600,7 @@ class Api(object):
             elif field.field_type == 'collection':
                 aggregate_query.append(
                     lookup_agg(
-                            "resource_%s" % field.target_spec_name,
+                            field.target_spec_name,
                             "_id",
                             "_parent_id",
                             "_expanded_%s" % field_name,
@@ -603,7 +612,7 @@ class Api(object):
             elif field.field_type == 'parent_collection':
                 aggregate_query.append(
                     lookup_agg(
-                            "resource_%s" % spec.fields[field_name].target_spec_name,
+                            spec.fields[field_name].target_spec_name,
                             "_parent_id",
                             "_id",
                             "_expanded_%s" % field_name,
@@ -618,7 +627,7 @@ class Api(object):
             elif field.field_type == 'reverse_link_collection':
                 aggregate_query.append(
                     lookup_reverse_link_collection_agg(
-                            "resource_%s" % field.target_spec_name,
+                            field.target_spec_name,
                             "_id",
                             "%s._id" % field.reverse_link_field,
                             "_expanded_%s" % field_name,
@@ -706,12 +715,12 @@ class Api(object):
             query = {}
         pagination = self.create_pagination_aggregations(page, page_size)
         aggregation = [
+            {"$match": {"_type": spec_name, "_deleted": {"$exists": False}}},
             {"$match": query},
-            {"$match": {"_deleted": {"$exists": False}}},
             pagination,
         ]
 
-        cursor = self.schema.db['resource_%s' % spec_name].aggregate(aggregation)
+        cursor = self.schema.db['metaphor_resource'].aggregate(aggregation)
         page_results = next(cursor)
 
         results = list(page_results['results'])
@@ -853,13 +862,14 @@ class Api(object):
             watch_agg = [
                 {"$match": {"documentKey._id": parent_resource['_id'],
                             "updateDescription.updatedFields.%s" % field_name: {"$exists": True},
+                            "_type": spec.name,
                 }},
                 {"$project": {
                     "type": "updated",
                 }},
             ]
 
-        return self.schema.db['resource_%s' % spec.name].watch(watch_agg, full_document='updateLookup')
+        return self.schema.db['metaphor_resource'].watch(watch_agg, full_document='updateLookup')
 
     def _parse_canonical_url(self, path):
         try:

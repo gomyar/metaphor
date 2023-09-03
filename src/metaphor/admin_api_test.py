@@ -93,7 +93,7 @@ class AdminApiTest(unittest.TestCase):
             '_parent_id': None,
             '_parent_type': 'root',
             '_type': 'employee',
-            'age': 17}], list(self.db['resource_employee'].find()))
+            'age': 17}], list(self.db['metaphor_resource'].find({'_type': 'employee'})))
         self.assertEqual(['age', 'link_branch_employees'], list(self.schema.specs['employee'].fields.keys()))
 
     def test_delete_field_error_when_referenced_by_calc(self):

@@ -52,8 +52,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("42 ironside", user_1['address'])
         self.assertEqual("42 ironside", user_2['address'])
@@ -90,8 +90,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertTrue('address' not in user_1)
         self.assertTrue('address' not in user_2)
@@ -125,8 +125,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("12345", user_1['phone'])
         self.assertEqual("67890", user_2['phone'])
@@ -160,8 +160,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("12345.7", user_1['phone'])
         self.assertEqual("67890.1", user_2['phone'])
@@ -196,8 +196,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("true", user_1['phone'])
         self.assertEqual("false", user_2['phone'])
@@ -231,8 +231,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("2023-01-02T10:11:22.000Z", user_1['created'])
         self.assertEqual(None, user_2['created'])
@@ -266,8 +266,8 @@ class MutationTest(unittest.TestCase):
         mutation.mutate()
 
         # assert data moved
-        self.assertEqual(0, self.db.resource_user.count_documents({"_parent_field_name": "primary_users"}))
-        self.assertEqual(2, self.db.resource_user.count_documents({"_parent_field_name": "secondary_users"}))
+        self.assertEqual(0, self.db.metaphor_resource.count_documents({"_type": "user", "_parent_field_name": "primary_users"}))
+        self.assertEqual(2, self.db.metaphor_resource.count_documents({"_type": "user", "_parent_field_name": "secondary_users"}))
 
     # type changes
         # str -> int

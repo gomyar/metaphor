@@ -79,7 +79,7 @@ class CopyResourceTest(unittest.TestCase):
         ]), self.copy_resource.affected_ids_to_path())
 
         # check canonical_url
-        employee = self.db['resource_employee'].find_one({'_id': self.schema.decodeid(employee_id_1 )})
+        employee = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(employee_id_1 )})
         self.assertEqual('/', employee['_parent_canonical_url'])
         self.assertEqual('former_employees', employee['_parent_field_name'])
 

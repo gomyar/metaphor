@@ -48,7 +48,7 @@ class AggregatorTest(unittest.TestCase):
         self.assertEqual([[
             {'$lookup': {'as': '_field_employees',
              'foreignField': '_id',
-             'from': 'resource_division',
+             'from': 'metaphor_resource',
              'localField': '_parent_id'}},
             {'$group': {'_id': '$_field_employees'}},
             {'$unwind': '$_id'},
@@ -63,13 +63,13 @@ class AggregatorTest(unittest.TestCase):
         self.assertEqual([[
             {'$lookup': {'as': '_field_sections',
              'foreignField': '_id',
-             'from': 'resource_division',
+             'from': 'metaphor_resource',
              'localField': '_parent_id'}},
             {'$group': {'_id': '$_field_sections'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
            [{'$lookup': {'as': '_field_all_ages',
-                            'from': 'resource_division',
+                            'from': 'metaphor_resource',
                             'pipeline': []}},
             {'$group': {'_id': '$_field_all_ages'}},
             {'$unwind': '$_id'},
@@ -86,7 +86,7 @@ class AggregatorTest(unittest.TestCase):
 
                 {'$lookup': {'as': '_field_members',
                 'foreignField': 'members._id',
-                'from': 'resource_section',
+                'from': 'metaphor_resource',
                 'localField': '_id'}},
                 {'$group': {'_id': '$_field_members'}},
                 {'$unwind': '$_id'},
@@ -94,7 +94,7 @@ class AggregatorTest(unittest.TestCase):
 
                 {'$lookup': {'as': '_field_sections',
                 'foreignField': '_id',
-                'from': 'resource_division',
+                'from': 'metaphor_resource',
                 'localField': '_parent_id'}},
                 {'$group': {'_id': '$_field_sections'}},
                 {'$unwind': '$_id'},
@@ -102,7 +102,7 @@ class AggregatorTest(unittest.TestCase):
 
                 {'$lookup': {'as': '_field_parent_division_employees',
                 'foreignField': '_parent_id',
-                'from': 'resource_employee',
+                'from': 'metaphor_resource',
                 'localField': '_id'}},
                 {'$group': {'_id': '$_field_parent_division_employees'}},
                 {'$unwind': '$_id'},
@@ -110,7 +110,7 @@ class AggregatorTest(unittest.TestCase):
 
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
-                'from': 'resource_division',
+                'from': 'metaphor_resource',
                 'localField': '_parent_id'}},
                 {'$group': {'_id': '$_field_employees'}},
                 {'$unwind': '$_id'},
@@ -120,7 +120,7 @@ class AggregatorTest(unittest.TestCase):
 
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
-                'from': 'resource_division',
+                'from': 'metaphor_resource',
                 'localField': '_parent_id'}},
                 {'$group': {'_id': '$_field_employees'}},
                 {'$unwind': '$_id'},
@@ -139,7 +139,7 @@ class AggregatorTest(unittest.TestCase):
             [
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
-                'from': 'resource_division',
+                'from': 'metaphor_resource',
                 'localField': '_parent_id'}},
                 {'$group': {'_id': '$_field_employees'}},
                 {'$unwind': '$_id'},
@@ -151,7 +151,7 @@ class AggregatorTest(unittest.TestCase):
             [
                 {'$lookup': {'as': '_field_employees',
                 'foreignField': '_id',
-                'from': 'resource_division',
+                'from': 'metaphor_resource',
                 'localField': '_parent_id'}},
                 {'$group': {'_id': '$_field_employees'}},
                 {'$unwind': '$_id'},
@@ -160,7 +160,7 @@ class AggregatorTest(unittest.TestCase):
             ],
             [
                 {'$lookup': {'as': '_field_age_calc',
-                             'from': 'resource_section',
+                             'from': 'metaphor_resource',
                              'pipeline': []}},
                 {'$group': {'_id': '$_field_age_calc'}},
                 {'$unwind': '$_id'},
@@ -182,7 +182,7 @@ class AggregatorTest(unittest.TestCase):
 
         aggregations = self.aggregator.get_for_resource(tree, 'employee', self.schema.decodeid(employee_id_1))
 
-        result = self.schema.db['resource_employee'].aggregate(aggregations[0])
+        result = self.schema.db['metaphor_resource'].aggregate(aggregations[0])
         self.assertEqual({
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_grants': [],
@@ -209,7 +209,7 @@ class AggregatorTest(unittest.TestCase):
 
         aggregations = self.aggregator.get_for_resource(tree, 'employee', self.schema.decodeid(employee_id_1))
 
-        result = self.schema.db['resource_employee'].aggregate(aggregations[0])
+        result = self.schema.db['metaphor_resource'].aggregate(aggregations[0])
         self.assertEqual({
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_grants': [],
@@ -231,7 +231,7 @@ class AggregatorTest(unittest.TestCase):
         aggregations = self.aggregator.get_for_resource(tree, 'division', self.schema.decodeid(division_id_1), 'division', 'max_divisions_name')
 
         self.assertEqual([[{'$lookup': {'as': '_field_max_divisions_name',
-                        'from': 'resource_division',
+                        'from': 'metaphor_resource',
                         'pipeline': []}},
             {'$group': {'_id': '$_field_max_divisions_name'}},
             {'$unwind': '$_id'},
