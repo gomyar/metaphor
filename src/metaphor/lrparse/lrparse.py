@@ -474,7 +474,7 @@ class ReverseLinkResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": self.resource_ref.spec.fields[self.field_name].reverse_link_field},
+                    "let": {"id": "$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field},
                     "pipeline": [
                         {"$match": {
                             "$expr": {
@@ -584,12 +584,12 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "metaphor_resource",
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": "$%s._id" % (self.resource_ref.spec.fields[self.field_name].reverse_link_field,)},
+                    "let": {"id": {"$ifNull": ["$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field, []]}},
                     "pipeline": [
                         {"$match": {
                             "$expr": {
                                 "$and": [
-                                    {"$eq": ["$_id", "$$id"]},
+                                    {"$in": [{"_id": "$_id"}, "$$id"]},
                                     {"$eq": ["$_type", self.resource_ref.spec.name]},
                                 ]
                             }

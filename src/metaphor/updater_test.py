@@ -82,31 +82,33 @@ class UpdaterTest(unittest.TestCase):
         self.schema.add_calc(self.division_spec, 'average_age', 'average(self.employees.age)')
 
         average_agg = self.updater.build_reverse_aggregations_to_calc('division', 'average_age', self.employee_spec, None)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "localField": "_parent_id",
-                "foreignField": "_id",
-                "as": "_field_employees",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_employees'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], average_agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'division'}}]], average_agg)
 
         # different calc
         older_agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees', self.employee_spec, None)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "localField": "_parent_id",
-                "foreignField": "_id",
-                "as": "_field_employees",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_employees'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], average_agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'division'}}]], older_agg)
 
     def test_reverse_aggregation_link(self):
         self.schema.add_field(self.division_spec, 'manager', 'link', 'employee')
@@ -120,17 +122,18 @@ class UpdaterTest(unittest.TestCase):
         self.schema.update_resource_fields('division', division_id_1, {'manager': employee_id_1})
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'manager_age', self.employee_spec, employee_id_1)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "localField": "_id",
-                "foreignField": "manager",
-                "as": "_field_manager",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_manager',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$manager',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_manager'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'division'}}]], agg)
 
         # check having two links
         division_id_2 = self.schema.insert_resource(
@@ -149,17 +152,19 @@ class UpdaterTest(unittest.TestCase):
         self.schema.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_1)
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'average_manager_age', self.employee_spec, employee_id_1)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "foreignField": "managers._id",
-                "localField": "_id",
-                "as": "_field_managers",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_managers',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
+                                                                                {'$ifNull': ['$managers',
+                                                                                            []]}]},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_managers'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'division'}}]], agg)
 
         division_id_2 = self.schema.insert_resource(
             'division', {'name': 'marketting'}, 'divisions')
@@ -192,17 +197,18 @@ class UpdaterTest(unittest.TestCase):
         self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', division_id_2)
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees_called_ned', self.employee_spec, employee_id_2)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "foreignField": "older_employees",
-                "localField": "_id",
-                "as": "_field_older_employees",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_older_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$older_employees',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_older_employees'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'division'}}]], agg)
 
     def test_reverse_aggregation_parent_link(self):
         self.schema.add_calc(self.employee_spec, 'division_name', 'self.parent_division_employees.name')
@@ -213,17 +219,18 @@ class UpdaterTest(unittest.TestCase):
             'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
 
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'division_name', self.division_spec, division_id_1)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "foreignField": "_parent_id",
-                "localField": "_id",
-                "as": "_field_parent_division_employees",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_parent_division_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_parent_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'employee']}]}}}]}},
             {'$group': {'_id': '$_field_parent_division_employees'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'employee'}}]], agg)
 
     def test_reverse_aggregation_reverse_link(self):
         self.schema.add_field(self.division_spec, 'manager', 'link', 'employee')
@@ -241,17 +248,18 @@ class UpdaterTest(unittest.TestCase):
         self.schema.update_resource_fields('division', division_id_2, {'manager': employee_id_1})
 
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'divisions_i_manage', self.division_spec, division_id_1)
-        self.assertEquals([[
-            {"$lookup": {
-                "from": 'metaphor_resource',
-                "foreignField": "_id",
-                "localField": "manager",
-                "as": "_field_link_division_manager",
-            }},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_link_division_manager',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$manager'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'employee']}]}}}]}},
             {'$group': {'_id': '$_field_link_division_manager'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], agg)
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'employee'}}]], agg)
 
         division_id_2 = self.schema.insert_resource(
             'division', {'name': 'marketting'}, 'divisions')
@@ -278,15 +286,18 @@ class UpdaterTest(unittest.TestCase):
 
         # a little unsure of this
         agg = self.updater.build_reverse_aggregations_to_calc('employee', 'all_my_subordinates', self.division_spec, division_id_1)
-        self.assertEquals([[
-            {'$lookup': {'as': '_field_link_division_managers',
-                            'foreignField': '_id',
-                            'from': 'metaphor_resource',
-                            'localField': 'managers._id'}},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_link_division_managers',
+                        'from': 'metaphor_resource',
+                        'let': {'id': {'$ifNull': ['$managers', []]}},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$_id'},
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'employee']}]}}}]}},
             {'$group': {'_id': '$_field_link_division_managers'}},
             {'$unwind': '$_id'},
-            {"$replaceRoot": {"newRoot": "$_id"}},
-        ], []], agg)
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'employee'}}]], agg)
 
     def test_reverse_aggregation_simple_collection(self):
         self.schema.add_calc(self.division_spec, 'all_employees', 'self.employees')
@@ -334,16 +345,16 @@ class UpdaterTest(unittest.TestCase):
         employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
             'name': 'ned', 'age': 31})
 
-        self.assertEqual(1, self.db['metaphor_resource'].count())
-        self.assertEqual(2, self.db['metaphor_resource'].count())
+        self.assertEqual(1, self.db['metaphor_resource'].count({'_type': 'division'}))
+        self.assertEqual(2, self.db['metaphor_resource'].count({'_type': 'employee'}))
 
         self.updater.delete_resource('division', division_id_1, None, 'divisions')
 
-        self.assertEqual(0, self.db['metaphor_resource'].count())
-        self.assertEqual(0, self.db['metaphor_resource'].count())
+        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'division'}))
+        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'employee'}))
 
-        self.assertEqual(0, self.db['metaphor_resource'].count({"_deleted": {"$exists": False}}))
-        self.assertEqual(0, self.db['metaphor_resource'].count({"_deleted": {"$exists": False}}))
+        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'division', "_deleted": {"$exists": False}}))
+        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'employee', "_deleted": {"$exists": False}}))
 
     def test_delete_resource_deletes_links_to_resource(self):
         self.schema.add_field(self.division_spec, 'employees', 'linkcollection', 'employee')
@@ -414,11 +425,11 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.updater.create_resource(
             'employee', 'division', 'employees', division_id_1, {'name': 'Fred'})
 
-        self.assertEqual('Fredsales', self.db['metaphor_resource'].find_one()['both_names'])
+        self.assertEqual('Fredsales', self.db['metaphor_resource'].find_one({'_type': 'employee'})['both_names'])
 
         self.updater.update_fields('division', division_id_1, {'name': 'marketting'})
 
-        self.assertEqual('Fredmarketting', self.db['metaphor_resource'].find_one()['both_names'])
+        self.assertEqual('Fredmarketting', self.db['metaphor_resource'].find_one({'_type': 'employee'})['both_names'])
 
     def test_aggregate_for_sum(self):
         self.schema.create_field('employee', 'val1', 'int')
@@ -474,7 +485,7 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
             'name': 'bob', 'age': 21})
 
-        division = self.schema.db['metaphor_resource'].find_one()
+        division = self.schema.db['metaphor_resource'].find_one({'_type': 'division'})
         self.assertEqual(21, division['age_total'])
 
     def test_update_create_update_calc_same_resource(self):
@@ -486,7 +497,7 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
             'name': 'bob', 'age': 21})
 
-        employee = self.schema.db['metaphor_resource'].find_one()
+        employee = self.schema.db['metaphor_resource'].find_one({'_type': 'employee'})
         self.assertEqual(31, employee['my_next_age'])
 
     def test_update_create_update_subsequent_calc(self):

@@ -45,14 +45,18 @@ class AggregatorTest(unittest.TestCase):
         employee_id = ObjectId()
         aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id, 'division', 'all_employees_age')
 
-        self.assertEqual([[
-            {'$lookup': {'as': '_field_employees',
-             'foreignField': '_id',
-             'from': 'metaphor_resource',
-             'localField': '_parent_id'}},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_employees'}},
             {'$unwind': '$_id'},
-            {'$replaceRoot': {'newRoot': '$_id'}}], []], aggregations)
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'division'}}]], aggregations)
 
     def test_middle_of_calc(self):
         tree = parse('divisions.sections.members.age', self.schema.specs['division'])
@@ -60,17 +64,20 @@ class AggregatorTest(unittest.TestCase):
         section_id = ObjectId()
         aggregations = self.aggregator.get_for_resource(tree, 'section', section_id, 'division', 'all_ages')
 
-        self.assertEqual([[
-            {'$lookup': {'as': '_field_sections',
-             'foreignField': '_id',
-             'from': 'metaphor_resource',
-             'localField': '_parent_id'}},
+        self.assertEqual([
+            [{'$lookup': {'as': '_field_sections',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
             {'$group': {'_id': '$_field_sections'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
-           [{'$lookup': {'as': '_field_all_ages',
-                            'from': 'metaphor_resource',
-                            'pipeline': []}},
+            [{'$lookup': {'as': '_field_all_ages',
+                        'from': 'metaphor_resource',
+                        'pipeline': [{'$match': {'_type': 'all_ages'}}]}},
             {'$group': {'_id': '$_field_all_ages'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
@@ -82,52 +89,58 @@ class AggregatorTest(unittest.TestCase):
         aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id)
 
         self.assertEqual([
-            [
-
-                {'$lookup': {'as': '_field_members',
-                'foreignField': 'members._id',
-                'from': 'metaphor_resource',
-                'localField': '_id'}},
-                {'$group': {'_id': '$_field_members'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-
-                {'$lookup': {'as': '_field_sections',
-                'foreignField': '_id',
-                'from': 'metaphor_resource',
-                'localField': '_parent_id'}},
-                {'$group': {'_id': '$_field_sections'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-
-                {'$lookup': {'as': '_field_parent_division_employees',
-                'foreignField': '_parent_id',
-                'from': 'metaphor_resource',
-                'localField': '_id'}},
-                {'$group': {'_id': '$_field_parent_division_employees'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-
-                {'$lookup': {'as': '_field_employees',
-                'foreignField': '_id',
-                'from': 'metaphor_resource',
-                'localField': '_parent_id'}},
-                {'$group': {'_id': '$_field_employees'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-            ],
-            [
-
-                {'$lookup': {'as': '_field_employees',
-                'foreignField': '_id',
-                'from': 'metaphor_resource',
-                'localField': '_parent_id'}},
-                {'$group': {'_id': '$_field_employees'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-            ],
-            [],
-        ], aggregations)
+            [{'$lookup': {'as': '_field_members',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
+                                                                                {'$ifNull': ['$members',
+                                                                                            []]}]},
+                                                                    {'$eq': ['$_type',
+                                                                                'section']}]}}}]}},
+            {'$group': {'_id': '$_field_members'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$lookup': {'as': '_field_sections',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
+            {'$group': {'_id': '$_field_sections'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$lookup': {'as': '_field_parent_division_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_parent_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'employee']}]}}}]}},
+            {'$group': {'_id': '$_field_parent_division_employees'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}},
+            {'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
+            {'$group': {'_id': '$_field_employees'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
+            {'$group': {'_id': '$_field_employees'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': None}}]], aggregations)
 
     def test_calc(self):
         tree = parse('max(self.employees.age) + min(divisions.employees.age) + 10', self.schema.specs['division'])
@@ -136,37 +149,33 @@ class AggregatorTest(unittest.TestCase):
         aggregations = self.aggregator.get_for_resource(tree, 'employee', employee_id, 'section', 'age_calc')
 
         self.assertEqual([
-            [
-                {'$lookup': {'as': '_field_employees',
-                'foreignField': '_id',
-                'from': 'metaphor_resource',
-                'localField': '_parent_id'}},
-                {'$group': {'_id': '$_field_employees'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-
-            ],
-            [],
-            # TODO: if two of the aggregations are the same, remove the second one:
-            [
-                {'$lookup': {'as': '_field_employees',
-                'foreignField': '_id',
-                'from': 'metaphor_resource',
-                'localField': '_parent_id'}},
-                {'$group': {'_id': '$_field_employees'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-
-            ],
-            [
-                {'$lookup': {'as': '_field_age_calc',
-                             'from': 'metaphor_resource',
-                             'pipeline': []}},
-                {'$group': {'_id': '$_field_age_calc'}},
-                {'$unwind': '$_id'},
-                {'$replaceRoot': {'newRoot': '$_id'}},
-            ],
-        ], aggregations)
+            [{'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
+            {'$group': {'_id': '$_field_employees'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$match': {'_type': 'section'}}],
+            [{'$lookup': {'as': '_field_employees',
+                        'from': 'metaphor_resource',
+                        'let': {'id': '$_parent_id'},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
+                                                                                '$$id']},
+                                                                    {'$eq': ['$_type',
+                                                                                'division']}]}}}]}},
+            {'$group': {'_id': '$_field_employees'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}],
+            [{'$lookup': {'as': '_field_age_calc',
+                        'from': 'metaphor_resource',
+                        'pipeline': [{'$match': {'_type': 'age_calc'}}]}},
+            {'$group': {'_id': '$_field_age_calc'}},
+            {'$unwind': '$_id'},
+            {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
 
     def test_double_aggregate(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'Sales'}, 'divisions')
@@ -232,7 +241,7 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([[{'$lookup': {'as': '_field_max_divisions_name',
                         'from': 'metaphor_resource',
-                        'pipeline': []}},
+                        'pipeline': [{'$match': {'_type': 'max_divisions_name'}}]}},
             {'$group': {'_id': '$_field_max_divisions_name'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)

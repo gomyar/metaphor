@@ -772,8 +772,9 @@ class LRParseTest(unittest.TestCase):
             [{'$lookup': {'as': '_field_parttimers',
                         'from': 'metaphor_resource',
                         'let': {'id': '$_id'},
-                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$parttimers._id',
-                                                                                '$$id']},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
+                                                                                {'$ifNull': ['$parttimers',
+                                                                                            []]}]},
                                                                     {'$eq': ['$_type',
                                                                                 'division']}]}}}]}},
             {'$group': {'_id': '$_field_parttimers'}},
@@ -782,14 +783,15 @@ class LRParseTest(unittest.TestCase):
             [{'$lookup': {'as': '_field_parttimers',
                         'from': 'metaphor_resource',
                         'let': {'id': '$_id'},
-                        'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$parttimers._id',
-                                                                                '$$id']},
+                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
+                                                                                {'$ifNull': ['$parttimers',
+                                                                                            []]}]},
                                                                     {'$eq': ['$_type',
                                                                                 'division']}]}}}]}},
             {'$group': {'_id': '$_field_parttimers'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
-            []], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2, 'division', 'parttimers_age'))
+            [{'$match': {'_type': 'division'}}]], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2, 'division', 'parttimers_age'))
 
     def test_dependencies(self):
         employee_spec = self.schema.specs['employee']

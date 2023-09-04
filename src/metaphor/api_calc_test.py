@@ -129,11 +129,11 @@ class ApiTest(unittest.TestCase):
         # test simple type
         section_1 = self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1))
 
-        self.assertEquals('sales', section_1['division_name'])
+        self.assertEqual('sales', section_1['division_name'])
 
         # test resource type
         division_1 = self.api.get('/divisions/%s' % division_id_1)
-        self.assertEquals({
+        self.assertEqual({
             '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
             'id': division_id_1,
             'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
@@ -148,7 +148,7 @@ class ApiTest(unittest.TestCase):
 
         # test calculated resource collection endpoint
         older_employees = self.api.get('/divisions/%s/older_employees' % division_id_1)['results']
-        self.assertEquals(1, len(older_employees))
+        self.assertEqual(1, len(older_employees))
 
     def test_calc_link_1(self):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41})
