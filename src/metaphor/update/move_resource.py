@@ -155,7 +155,70 @@ class MoveResourceUpdate:
         from_tree.root_collection().aggregate(aggregate_query)
 
     def rebuild_canonical_urls(self):
-        pass
+        aggregate_query = [
+            {"$match": {"_dirty.%s" % self.update_id: {"$exists": True}}},
+            {"$graphLookup": {
+                "from": "metaphor_resource",
+                "as": "_all_children",
+                "startWith": "$_id",
+                "connectFromField": "_id",
+                "connectToField": "_parent_id",
+                "depthField": "_depth",
+            }},
+            {'$group': {'_id': '$_all_children'}},
+            {"$unwind": "$_id"},
+            {"$replaceRoot": {"newRoot": "$_id"}},
+
+            {"$graphLookup": {
+                "from": "metaphor_resource",
+                "as": "_parent_canonical_url",
+                "startWith": "$_parent_id",
+                "connectFromField": "_parent_id",
+                "connectToField": "_id",
+                "depthField": "_depth",
+            }},
+            {"$addFields": {
+                "_parent_canonical_url": {
+                    "$sortArray": {
+                        "input": "$_parent_canonical_url",
+                        "sortBy": {"_depth": 1},
+                    }
+                }
+            }},
+            {"$addFields": {
+                '_parent_canonical_url': {
+                    '$reduce': {
+                        'input': '$_parent_canonical_url',
+                        'initialValue': '',
+                        'in': {
+                            '$concat': [
+                                '/',
+                                '$$this._parent_field_name',
+                                '/ID',
+                                {"$toString": '$$this._id'},
+                                '$$value',
+                                ]
+                        }
+                    }
+                }
+            }},
+            {"$addFields": {
+                '_canonical_url': {
+                    "$concat": ["$_parent_canonical_url", "/", "$_parent_field_name", "/ID", {"$toString": "$_id"}]
+                }
+            }},
+            {"$project": {
+                "_canonical_url": 1,
+                "_parent_canonical_url": 1,
+            }},
+            {"$merge": {
+                "into": "metaphor_resource",
+                "on": "_id",
+                "whenMatched": "merge",
+                "whenNotMatched": "discard",
+            }},
+        ]
+        self.schema.db.metaphor_resource.aggregate(aggregate_query)
 
     def rebuild_grants(self):
         pass
