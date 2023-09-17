@@ -242,8 +242,8 @@ class Updater(object):
     def update_fields(self, spec_name, resource_id, fields):
         return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()
 
-    def move_resource(self, from_path, to_path, target_resource, target_field_name, target_spec_name):
-        return MoveResourceUpdate(self, self.schema, from_path, to_path, target_resource, target_field_name, target_spec_name).execute()
+    def move_resource(self, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
+        return MoveResourceUpdate(self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
 
     def move_resource_to_root(self, from_path, to_path):
         return MoveResourceUpdate(self, self.schema, from_path, to_path, None, None, to_path).execute_root()

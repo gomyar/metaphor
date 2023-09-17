@@ -77,7 +77,7 @@ class AggregatorTest(unittest.TestCase):
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_all_ages',
                         'from': 'metaphor_resource',
-                        'pipeline': [{'$match': {'_type': 'all_ages'}}]}},
+                        'pipeline': [{'$match': {'_type': 'division'}}]}},
             {'$group': {'_id': '$_field_all_ages'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
@@ -172,7 +172,7 @@ class AggregatorTest(unittest.TestCase):
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_age_calc',
                         'from': 'metaphor_resource',
-                        'pipeline': [{'$match': {'_type': 'age_calc'}}]}},
+                        'pipeline': [{'$match': {'_type': 'section'}}]}},
             {'$group': {'_id': '$_field_age_calc'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)
@@ -241,7 +241,7 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([[{'$lookup': {'as': '_field_max_divisions_name',
                         'from': 'metaphor_resource',
-                        'pipeline': [{'$match': {'_type': 'max_divisions_name'}}]}},
+                        'pipeline': [{'$match': {'_type': 'division'}}]}},
             {'$group': {'_id': '$_field_max_divisions_name'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]], aggregations)

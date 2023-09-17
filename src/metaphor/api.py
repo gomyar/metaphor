@@ -148,7 +148,7 @@ class Api(object):
                 raise HTTPError('', 400, from_path, None, None)
 
             if field_spec.field_type == 'collection':
-                return self.updater.move_resource(from_path, path, parent_resource, field_name, spec.name)
+                return self.updater.move_resource(from_path, path, parent_resource['_id'], parent_resource['_canonical_url'], field_name, spec.name)
             else:
                 raise HTTPError('', 400, from_path, None, None)
 
@@ -175,7 +175,7 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 400, from_path, None, None)
 
-            return self.updater.move_resource_to_root(from_path, path)
+            return self.updater.move_resource(from_path, path, None, '/', path, 'root')
 
     def post(self, path, data, user=None):
         path = path.strip().strip('/')

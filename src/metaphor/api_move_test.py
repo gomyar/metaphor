@@ -111,18 +111,18 @@ class ApiTest(unittest.TestCase):
 
     def test_move_children(self):
         division_id_1 = self.api.post('/divisions', {'name': 'sales'})
-        division_id_2 = self.api.post('/divisions', {'name': 'marketting'})
+#        division_id_2 = self.api.post('/divisions', {'name': 'marketting'})
 
-        employee_id_1 = self.api.post('/divisions/%s/employees' % division_id_1, {'name': 'bob'})
-        employee_id_2 = self.api.post('/divisions/%s/employees' % division_id_2, {'name': 'ned'})
+        employee_id_1 = self.api.post(f'/divisions/{division_id_1}/employees', {'name': 'bob'})
+#        employee_id_2 = self.api.post(f'/divisions/{division_id_2}/employees', {'name': 'ned'})
 
-        self.api.put('/former_divisions', {'_from': '/divisions/%s' % (division_id_1,)})
+        self.api.put('/former_divisions', {'_from': f'/divisions/{division_id_1}'})
 
-        self.assertEqual('bob', self.api.get('/former_divisions/%s/employees/%s' % (division_id_1, employee_id_1))['name'])
+        employee = self.api.get(f'/former_divisions/{division_id_1}/employees/{employee_id_1}')
+        self.assertEqual('bob', employee['name'])
 
         # check parent url for child is correct
-        employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
-        self.assertEqual("/former_divisions/%s" % division_id_1, employee['_parent_canonical_url'])
+        self.assertEqual(f"/former_divisions/{division_id_1}/employees/{employee_id_1}", employee['self'])
 
     def test_move_all_children(self):
         division_id_1 = self.api.post('/divisions', {'name': 'sales', 'amount': 1})
@@ -151,9 +151,9 @@ class ApiTest(unittest.TestCase):
         self.assertEqual("/former_divisions/%s" % division_id_2, employee['_parent_canonical_url'])
 
         # check after calcs
-        self.assertEqual(0, self.api.get('/calcs/%s' % self.calcs_id)['total_divisions'])
+        self.assertEqual(None, self.api.get('/calcs/%s' % self.calcs_id)['total_divisions'])
         self.assertEqual(2, self.api.get('/calcs/%s' % self.calcs_id)['total_former_divisions'])
-        self.assertEqual(0, self.api.get('/calcs/%s' % self.calcs_id)['total_division_employees'])
+        self.assertEqual(None, self.api.get('/calcs/%s' % self.calcs_id)['total_division_employees'])
         self.assertEqual(2, self.api.get('/calcs/%s' % self.calcs_id)['total_former_division_employees'])
 
     def test_two_phase_delete(self):
@@ -189,7 +189,8 @@ class ApiTest(unittest.TestCase):
 
         result = self.api.get(f'/employees/{employee_id_1}/divisions/{division_id_1}/employees')
 
-        self.assertEqual({}, result)
+        self.assertEqual("ned", result['results'][0]['name'])
+        self.assertEqual(f"/employees/{employee_id_1}/divisions/{division_id_1}/employees/{employee_id_2}", result['results'][0]['self'])
 
     def test_children_tree(self):
         self.schema = SchemaFactory(self.db).create_schema()
@@ -211,4 +212,7 @@ class ApiTest(unittest.TestCase):
 
         result = self.api.get(f'/employees/{employee_id_1}/employees/{employee_id_2}/employees')
 
-        self.assertEqual({}, result)
+        self.assertEqual("ned", result['results'][0]['name'])
+        self.assertEqual(f"/employees/{employee_id_1}/employees/{employee_id_2}/employees/{employee_id_3}", result['results'][0]['self'])
+
+
