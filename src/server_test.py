@@ -96,6 +96,7 @@ class ServerTest(TestCase):
             '_parent_id': None,
             '_parent_type': 'root',
             '_schema_id': self.schema._id,
+            '_type': 'employee',
             '_grants': [
                 self.schema.decodeid(self.grant_id_1),
                 self.schema.decodeid(grant_id_2),

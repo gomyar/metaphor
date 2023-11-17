@@ -97,3 +97,6 @@ class MoveResourceTest(unittest.TestCase):
         # check updates occured
         self.assertEqual(None, self.api.get(f"/current_employees/{employee_id_1}")['count_sector'])
         self.assertEqual(2, self.api.get(f"/current_employees/{employee_id_2}")['count_sector'])
+
+    def test_rebuild_grants_after_move(self):
+        self.fail("do this")

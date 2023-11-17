@@ -163,8 +163,8 @@ class MutationTest(unittest.TestCase):
         user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
         user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
-        self.assertEqual("12345.7", user_1['phone'])
-        self.assertEqual("67890.1", user_2['phone'])
+        self.assertEqual("12345.67", user_1['phone'])
+        self.assertEqual("67890.12", user_2['phone'])
 
 
     def test_alter_field_type_bool_to_str(self):

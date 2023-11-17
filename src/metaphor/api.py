@@ -744,8 +744,9 @@ class Api(object):
         path = url.strip().strip('/')
         tree = self._parse_canonical_url(path)
 
-        aggregate_query, spec, is_aggregate = tree.aggregation(None)
-
+        aggregate_query = tree.create_aggregation(user)
+        spec = tree.infer_type()
+        is_aggregate = tree.is_collection()
 
         if path.split('/')[0] == 'ego':
             aggregate_query = [
@@ -782,7 +783,9 @@ class Api(object):
                 parent_path, field_name = path.rsplit('/', 1)
                 tree = self._parse_canonical_url(parent_path)
 
-                aggregate_query, spec, is_aggregate = tree.aggregation(None)
+                aggregate_query = tree.create_aggregation(user)
+                spec = tree.infer_type()
+                is_aggregate = tree.is_collection()
 
                 field_spec = spec.fields[field_name]
 
@@ -801,11 +804,10 @@ class Api(object):
                     # checking for /ego paths first, then all other paths
                     self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
 
-                parent_id = self.schema.encodeid(parent_resource['_id'])
-
                 # listen for changes to children of given parent
                 watch_agg = [
-                    {"$match": {"_parent_id": parent_id}},
+                    {"$match": {"fullDocument._parent_id": parent_resource['_id'],
+                                "fullDocument._parent_field_name": field_name}},
                 ]
             else:
                 log.debug("Collection watch")
@@ -839,7 +841,9 @@ class Api(object):
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
 
-            aggregate_query, spec, is_aggregate = tree.aggregation(None)
+            aggregate_query = tree.create_aggregation(user)
+            spec = tree.infer_type()
+            is_aggregate = tree.is_collection()
 
             field_spec = spec.fields[field_name]
 

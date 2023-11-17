@@ -619,6 +619,11 @@ class ListenClient {
         if (this.resources[msg['url']]) {
             this.resources[msg['url']]._fetch();
         }
+        if (msg.change.type == 'deleted') {
+            if (msg.change.document.self in this.resources) {
+                this.remove_resource(this.resources[msg.change.document.self]);
+            }
+        }
     }
 
     add_resource(resource) {
@@ -643,6 +648,7 @@ class ListenClient {
         }
         // If empty, disconnect socket connection
         if (Object.keys(this.resources).length === 0) {
+            console.log('Disconnecting socket');
             listen_client.socket.disconnect();
         }
         turtlegui.reload();

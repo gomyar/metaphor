@@ -156,14 +156,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(None, self.api.get('/calcs/%s' % self.calcs_id)['total_division_employees'])
         self.assertEqual(2, self.api.get('/calcs/%s' % self.calcs_id)['total_former_division_employees'])
 
-    def test_two_phase_delete(self):
-        pass
-
-    # update for:
-    #   source collection(s)
-    #      add dirty to each
-    #   target collection
-
     def test_children_of_children(self):
         self.schema = SchemaFactory(self.db).create_schema()
         self.schema.set_as_current()
