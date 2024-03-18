@@ -452,7 +452,9 @@ class ApiClient {
             (success) => {
                 console.log('Created');
                 api.creating_resource = null;
-                api.creating_collection._fetch();
+                if (api.creating_collection) {
+                    api.creating_collection._fetch();
+                }
             },
             (error) => {
                 handle_http_error(error, 'Error creating ');
