@@ -517,7 +517,7 @@ class Schema(object):
             {"_dirty.%s" % update_id: {"$exists": True}},
             {"$unset": {"_dirty.%s" % update_id: ""}}
         )
-        return self.db['metaphor_updates'].remove({"_id": ObjectId(update_id)})
+        return self.db['metaphor_updates'].delete_one({"_id": ObjectId(update_id)})
 
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None, extra_fields=None):
         data = self._parse_fields(spec_name, data)
