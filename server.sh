@@ -5,7 +5,6 @@ export FLASK_APP=server:app
 export FLASK_DEBUG=1
 export METAPHOR_DBNAME=metaphor
 export METAPHOR_MONGO_HOST=localhost
-export METAPHOR_MONGO_PORT=27017
 
 export FLASK_RUN_HOST=127.0.0.1
 export FLASK_RUN_PORT=8000

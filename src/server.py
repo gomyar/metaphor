@@ -63,8 +63,7 @@ def create_app(db):
     return app
 
 
-client = MongoClient(os.environ.get('METAPHOR_MONGO_HOST', 'localhost'),
-                        int(os.environ.get('METAPHOR_MONGO_PORT', 27017)))
+client = MongoClient(os.environ.get('METAPHOR_MONGO_HOST', 'mongodb://127.0.0.1:27017'))
 db = client[os.environ.get('METAPHOR_DBNAME', 'metaphor')]
 
 app = create_app(db)
