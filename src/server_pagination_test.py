@@ -2,7 +2,7 @@
 import json
 from unittest import TestCase
 from server import create_app
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 from metaphor.schema import Schema
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 class ServerTest(TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
 

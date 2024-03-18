@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash
 
 class SchemaTest(unittest.TestCase):
     def setUp(self):
-        client = MongoClient()
+        client = MongoClient("mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.2.0")
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.maxDiff = None

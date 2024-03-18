@@ -1,7 +1,7 @@
 
 import unittest
 
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 from bson.objectid import ObjectId
 
 from metaphor.schema_factory import SchemaFactory
@@ -12,7 +12,7 @@ from metaphor.updater import Updater
 class UpdaterTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = SchemaFactory(self.db).create_schema()
@@ -345,16 +345,16 @@ class UpdaterTest(unittest.TestCase):
         employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
             'name': 'ned', 'age': 31})
 
-        self.assertEqual(1, self.db['metaphor_resource'].count({'_type': 'division'}))
-        self.assertEqual(2, self.db['metaphor_resource'].count({'_type': 'employee'}))
+        self.assertEqual(1, self.db['metaphor_resource'].count_documents({'_type': 'division'}))
+        self.assertEqual(2, self.db['metaphor_resource'].count_documents({'_type': 'employee'}))
 
         self.updater.delete_resource('division', division_id_1, None, 'divisions')
 
-        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'division'}))
-        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'employee'}))
+        self.assertEqual(0, self.db['metaphor_resource'].count_documents({'_type': 'division'}))
+        self.assertEqual(0, self.db['metaphor_resource'].count_documents({'_type': 'employee'}))
 
-        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'division', "_deleted": {"$exists": False}}))
-        self.assertEqual(0, self.db['metaphor_resource'].count({'_type': 'employee', "_deleted": {"$exists": False}}))
+        self.assertEqual(0, self.db['metaphor_resource'].count_documents({'_type': 'division', "_deleted": {"$exists": False}}))
+        self.assertEqual(0, self.db['metaphor_resource'].count_documents({'_type': 'employee', "_deleted": {"$exists": False}}))
 
     def test_delete_resource_deletes_links_to_resource(self):
         self.schema.add_field(self.division_spec, 'employees', 'linkcollection', 'employee')

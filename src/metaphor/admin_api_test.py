@@ -14,7 +14,7 @@ from metaphor.admin_api import AdminApi
 class AdminApiTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = MongoClient("mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.2.0")
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = SchemaFactory(self.db).create_schema()

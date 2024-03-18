@@ -1,7 +1,7 @@
 
 import unittest
 
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 
 from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api
@@ -10,7 +10,7 @@ from metaphor.api import Api
 class ApiTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
 

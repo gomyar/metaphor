@@ -5,7 +5,7 @@ from urllib.error import HTTPError
 import json
 import gevent
 
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 
 from flask_socketio import SocketIO, emit
 
@@ -17,7 +17,7 @@ from metaphor.api import Api, create_expand_dict
 class ApiWatchTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = Schema.create_schema(self.db)

@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from .lrparse import parse, parse_filter
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 from bson.objectid import ObjectId
 
 from metaphor.schema_factory import SchemaFactory
@@ -15,7 +15,7 @@ from .lrparse import FieldRef, ResourceRef
 class LRParseTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = SchemaFactory(self.db).create_schema()

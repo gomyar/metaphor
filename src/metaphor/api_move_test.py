@@ -4,7 +4,7 @@ from datetime import datetime
 from urllib.error import HTTPError
 from bson.objectid import ObjectId
 
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 
 from metaphor.schema_factory import SchemaFactory
 from metaphor.api import Api, create_expand_dict
@@ -13,7 +13,7 @@ from metaphor.api import Api, create_expand_dict
 class ApiTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
 

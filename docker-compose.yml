@@ -2,6 +2,7 @@ version: '3'
 
 services:
   metaphor:
+    build: .
     image: metaphor:latest
     environment:
       - SECRET_KEY=keepitsecretkeepitsafe
@@ -10,8 +11,7 @@ services:
       - FLASK_DEBUG=1
       - FLASK_RUN_PORT=8000
       - METAPHOR_DBNAME=metaphor
-      - METAPHOR_MONGO_HOST=mongo
-      - METAPHOR_MONGO_PORT=27017
+      - METAPHOR_MONGO_HOST=mongodb://mongo:27017/admin
     volumes:
       - "${PWD}/src/:/app/"
     ports:
@@ -25,4 +25,4 @@ services:
     image: mongo:6.0
     command: --replSet metaphor
     ports:
-     - "127.0.0.1:27017:27017"
+      - "localhost:27017:27017"

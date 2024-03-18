@@ -1,7 +1,7 @@
 
 import unittest
 
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 from bson.objectid import ObjectId
 
 from metaphor.schema_factory import SchemaFactory
@@ -15,7 +15,7 @@ log = logging.getLogger('metaphor.test')
 class UpdaterTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = SchemaFactory(self.db).create_schema()

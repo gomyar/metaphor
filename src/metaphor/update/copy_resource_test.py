@@ -1,7 +1,7 @@
 
 import unittest
 
-from pymongo import MongoClient
+from metaphor.mongoclient_testutils import mongo_connection
 from bson.objectid import ObjectId
 
 from metaphor.schema_factory import SchemaFactory
@@ -13,7 +13,7 @@ from metaphor.update.copy_resource import CopyResourceUpdate
 class CopyResourceTest(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
-        client = MongoClient()
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = SchemaFactory(self.db).create_schema()
@@ -24,6 +24,14 @@ class CopyResourceTest(unittest.TestCase):
         self.employee_spec = self.schema.create_spec('employee')
         self.schema.create_field('employee', 'name', 'str')
         self.schema.create_field('employee', 'age', 'int')
+
+        self.task_spec = self.schema.create_spec('task')
+        self.schema.create_field('task', 'title', 'str')
+
+        self.subtask_spec = self.schema.create_spec('subtask')
+        self.schema.create_field('subtask', 'description', 'str')
+
+        self.schema.create_field('employee', 'tasks', 'collection', 'task')
 
         self.schema.create_field('root', 'current_employees', 'collection', 'employee')
         self.schema.create_field('root', 'former_employees', 'collection', 'employee')

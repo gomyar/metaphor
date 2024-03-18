@@ -57,7 +57,7 @@ class ResourceRef(Operable):
         # if own spec same as changed resource spec
         if self.spec == resource_spec:
             # duplicate initial agg chain, add match, and return
-            aggregations.insert_one(0, list(aggregations[0]))
+            aggregations.insert(0, list(aggregations[0]))
 #            if resource_id:
 #                aggregations[1].insert(0, {"$match": {"_id": self.spec.schema.decodeid(resource_id)}})
         return aggregations
