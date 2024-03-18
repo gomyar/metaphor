@@ -81,14 +81,14 @@ class SchemaFactory:
             "version": schema_data['version'],
             "created": schema_data['created'],
         }
-        self.db.metaphor_schema.insert(saved)
+        self.db.metaphor_schema.insert_one(saved)
 
     def copy_schema_from_id(self, schema_id):
         to_copy = self.db.metaphor_schema.find_one({"_id": ObjectId(schema_id)})
         to_copy['current'] = False
         to_copy.pop('_id')
         to_copy['created'] = datetime.now().isoformat()
-        self.db.metaphor_schema.insert(to_copy)
+        self.db.metaphor_schema.insert_one(to_copy)
 
     def load_mutation(self, mutation_id):
         mutation_id = ObjectId(mutation_id)
@@ -103,14 +103,14 @@ class SchemaFactory:
         return mutation
 
     def create_mutation(self, mutation):
-        self.db.metaphor_mutation.insert({
+        self.db.metaphor_mutation.insert_one({
             "from_schema_id": mutation.from_schema._id,
             "to_schema_id": mutation.to_schema._id,
             "data_steps": [],
         })
 
     def save_mutation(self, mutation):
-        self.db.metaphor_mutation.update({"_id": ObjectId(mutation.id)}, {
+        self.db.metaphor_mutation.update_one({"_id": ObjectId(mutation.id)}, {
             "from_schema_id": mutation.from_schema._id,
             "to_schema_id": mutation.to_schema._id,
             "data_steps": mutation.data_steps,

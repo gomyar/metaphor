@@ -509,7 +509,7 @@ class Schema(object):
         return calcs
 
     def create_update(self):
-        return self.db['metaphor_updates'].insert({})
+        return self.db['metaphor_updates'].insert_one({}).inserted_id
 
     def cleanup_update(self, update_id):
         # remove dirty flags
