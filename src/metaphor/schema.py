@@ -545,7 +545,7 @@ class Schema(object):
         if spec_name == 'user':
             data['_user_hash'] = str(uuid4())
 
-        new_resource_id = self.db['metaphor_resource'].insert(data)
+        new_resource_id = self.db['metaphor_resource'].insert_one(data).inserted_id
         return self.encodeid(new_resource_id)
 
     def mark_resource_deleted(self, spec_name, resource_id):
