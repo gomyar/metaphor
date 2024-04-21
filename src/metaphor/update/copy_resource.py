@@ -96,7 +96,7 @@ class CopyResourceUpdate:
 
         self.perform_copy(update_id)
 
-        self.perform_update(update_id)
+#        self.perform_update(update_id)
 
         self.schema.cleanup_update(update_id)
 

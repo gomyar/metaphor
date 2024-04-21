@@ -32,6 +32,7 @@ class CopyResourceTest(unittest.TestCase):
         self.schema.create_field('subtask', 'description', 'str')
 
         self.schema.create_field('employee', 'tasks', 'collection', 'task')
+        self.schema.create_field('task', 'subtasks', 'collection', 'subtask')
 
         self.schema.create_field('root', 'current_employees', 'collection', 'employee')
         self.schema.create_field('root', 'former_employees', 'collection', 'employee')
@@ -151,3 +152,21 @@ class CopyResourceTest(unittest.TestCase):
             'divisions/%s/employees' % division_id_2,
             'divisions/%s/employees' % division_id_1)
 
+    def test_copy_more_children(self):
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'Bob', 'age': 10}, 'current_employees')
+        task_id_1 = self.schema.insert_resource("task", {"title": "New Task"}, 'tasks', 'employee', employee_id_1)
+        subtask_id_1 = self.schema.insert_resource("subtask", {"description": "subtask 1"}, 'task', task_id_1)
+
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'Ned', 'age': 14}, 'current_employees')
+
+        # create copy update
+        self.copy_resource = CopyResourceUpdate(
+            self.updater,
+            self.schema,
+            None,
+            'root',
+            'root',
+            'former_employees',
+            'current_employees')
+
+        self.copy_resource.execute()

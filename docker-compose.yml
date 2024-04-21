@@ -25,4 +25,4 @@ services:
     image: mongo:6.0
     command: --replSet metaphor
     ports:
-      - "localhost:27017:27017"
+      - "127.0.0.1:27017:27017"

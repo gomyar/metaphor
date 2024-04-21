@@ -23,111 +23,125 @@ class MoveResourceTest(unittest.TestCase):
 
         self.updater = Updater(self.schema)
 
-        self.employee_spec = self.schema.create_spec('employee')
-        self.schema.create_field('employee', 'name', 'str')
-        self.schema.create_field('employee', 'age', 'int')
+        self.grandparent_spec = self.schema.create_spec('grandparent')
+        self.schema.create_field('grandparent', 'name', 'str')
+        self.schema.create_field('grandparent', 'age', 'int')
 
-        self.career_spec = self.schema.create_spec('career')
-        self.schema.create_field('career', 'name', 'str')
+        self.parent_spec = self.schema.create_spec('parent')
+        self.schema.create_field('parent', 'name', 'str')
+        self.schema.create_field('parent', 'age', 'int')
 
-        self.schema.create_field('employee', 'careers', 'collection', 'career')
+        self.schema.create_field('grandparent', 'parents', 'collection', 'parent')
 
-        self.sector_spec = self.schema.create_spec('sector')
-        self.schema.create_field('sector', 'name', 'str')
-        self.schema.create_field('sector', 'count', 'int')
+        self.child_spec = self.schema.create_spec('child')
+        self.schema.create_field('child', 'name', 'str')
+        self.schema.create_field('child', 'age', 'int')
 
-        self.schema.create_field('career', 'sectors', 'collection', 'sector')
+        self.schema.create_field('parent', 'childs', 'collection', 'child')
 
-        self.schema.create_field('employee', 'count_sector', 'calc', calc_str='sum(self.careers.sectors.count)')
+        self.schema.create_field('grandparent', 'age_child', 'calc', calc_str='sum(self.parents.childs.age)')
 
-        self.schema.create_field('root', 'current_employees', 'collection', 'employee')
-        self.schema.create_field('root', 'former_employees', 'collection', 'employee')
+        self.schema.create_field('root', 'current_grandparents', 'collection', 'grandparent')
+        self.schema.create_field('root', 'former_grandparents', 'collection', 'grandparent')
 
-        self.schema.create_spec('current_sector')
-        self.schema.create_field('current_sector', 'referenced_sectors', 'linkcollection', 'sector')
+        self.schema.create_spec('current_child')
+        self.schema.create_field('current_child', 'referenced_childs', 'linkcollection', 'child')
 
-        self.schema.create_field('root', 'current_sectors', 'collection', 'current_sector')
+        self.schema.create_field('root', 'current_childs', 'collection', 'current_child')
 
         self.api = Api(self.db)
 
     def test_move(self):
-        employee_id_1 = self.api.post("/current_employees", {"name": "Bob", "age": 40})
-        career_id_1 = self.api.post(f"/current_employees/{employee_id_1}/careers", {"name": "salesman"})
-        sector_id_1 = self.api.post(f"/current_employees/{employee_id_1}/careers/{career_id_1}/sectors", {"name": "vacuums", "count": 1})
+        grandparent_id_1 = self.api.post("/current_grandparents", {"name": "Old Bob", "age": 60})
+        parent_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "Dad", "age": 40})
+        child_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs", {"name": "Bobby", "age": 10})
 
-        employee_id_2 = self.api.post("/current_employees", {"name": "Ned", "age": 40})
-        career_id_2 = self.api.post(f"/current_employees/{employee_id_2}/careers", {"name": "workman"})
-        sector_id_2 = self.api.post(f"/current_employees/{employee_id_2}/careers/{career_id_2}/sectors", {"name": "building", "count": 1})
+        grandparent_id_2 = self.api.post("/current_grandparents", {"name": "Old Ned", "age": 70})
+        parent_id_2 = self.api.post(f"/current_grandparents/{grandparent_id_2}/parents", {"name": "Papa"})
+        child_id_2 = self.api.post(f"/current_grandparents/{grandparent_id_2}/parents/{parent_id_2}/childs", {"name": "Neddy", "age": 8})
 
-        self.assertEqual(1, self.api.get(f"/current_employees/{employee_id_1}")['count_sector'])
+        self.assertEqual(10, self.api.get(f"/current_grandparents/{grandparent_id_1}")['age_child'])
 
-        self.api.put("/former_employees", {"_from": "/current_employees"})
+        self.api.put("/former_grandparents", {"_from": "/current_grandparents"})
 
-        self.assertEqual(0, self.api.get("/current_employees")['count'])
-        self.assertEqual(2, self.api.get("/former_employees")['count'])
+        self.assertEqual(0, self.api.get("/current_grandparents")['count'])
+        self.assertEqual(2, self.api.get("/former_grandparents")['count'])
+
+        self.assertEqual(f"/former_grandparents/{grandparent_id_1}", self.api.get("/former_grandparents")['results'][0]['self'])
+        self.assertEqual(f"/former_grandparents/{grandparent_id_2}", self.api.get("/former_grandparents")['results'][1]['self'])
+
+        # test expand
+        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}", self.api.get("/former_grandparents", {"expand": "parents"})['results'][0]['parents'][0]['self'])
+
+        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs/{child_id_1}", self.api.get("/former_grandparents", {"expand": "parents.childs"})['results'][0]['parents'][0]['childs'][0]['self'])
+
+        # test url
+        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}", self.api.get(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}")['self'])
+
+        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs/{child_id_1}", self.api.get(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs/{child_id_1}")['self'])
 
     def test_move_children_update(self):
-        employee_id_1 = self.api.post("/current_employees", {"name": "Bob", "age": 40})
-        career_id_1 = self.api.post(f"/current_employees/{employee_id_1}/careers", {"name": "salesman"})
-        sector_id_1 = self.api.post(f"/current_employees/{employee_id_1}/careers/{career_id_1}/sectors", {"name": "vacuums", "count": 1})
-        career_id_2 = self.api.post(f"/current_employees/{employee_id_1}/careers", {"name": "workman"})
-        sector_id_2 = self.api.post(f"/current_employees/{employee_id_1}/careers/{career_id_2}/sectors", {"name": "building", "count": 1})
+        grandparent_id_1 = self.api.post("/current_grandparents", {"name": "Bob", "age": 40})
+        parent_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "salesman"})
+        child_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs", {"name": "vacuums", "age": 1})
+        parent_id_2 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "workman"})
+        child_id_2 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_2}/childs", {"name": "building", "age": 1})
 
-        employee_id_2 = self.api.post("/current_employees", {"name": "Ned", "age": 40})
+        grandparent_id_2 = self.api.post("/current_grandparents", {"name": "Ned", "age": 40})
 
         # check calc correct initially
-        self.assertEqual(2, self.api.get(f"/current_employees/{employee_id_1}")['count_sector'])
+        self.assertEqual(2, self.api.get(f"/current_grandparents/{grandparent_id_1}")['age_child'])
 
         # move a resource
-        self.api.put(f"/current_employees/{employee_id_2}/careers", {"_from": f"/current_employees/{employee_id_1}/careers/{career_id_1}"})
+        self.api.put(f"/current_grandparents/{grandparent_id_2}/parents", {"_from": f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}"})
 
         # check resource moved
-        moved_resource = self.api.get(f"/current_employees/{employee_id_2}/careers/{career_id_1}")
+        moved_resource = self.api.get(f"/current_grandparents/{grandparent_id_2}/parents/{parent_id_1}")
         self.assertEqual("salesman", moved_resource['name'])
 
-        empty_resource = self.api.get(f"/current_employees/{employee_id_1}/careers/{career_id_1}")
+        empty_resource = self.api.get(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}")
         self.assertEqual(None, empty_resource)
 
-        empty_collection = self.api.get(f"/current_employees/{employee_id_1}/careers")
+        empty_collection = self.api.get(f"/current_grandparents/{grandparent_id_1}/parents")
         self.assertEqual(1, empty_collection['count'])
         self.assertEqual(1, len(empty_collection['results']))
 
         # check updates occured
-        self.assertEqual(1, self.api.get(f"/current_employees/{employee_id_1}")['count_sector'])
-        self.assertEqual(1, self.api.get(f"/current_employees/{employee_id_2}")['count_sector'])
+        self.assertEqual(1, self.api.get(f"/current_grandparents/{grandparent_id_1}")['age_child'])
+        self.assertEqual(1, self.api.get(f"/current_grandparents/{grandparent_id_2}")['age_child'])
 
         # move rest of resources in collection
-        self.api.put(f"/current_employees/{employee_id_2}/careers", {"_from": f"/current_employees/{employee_id_1}/careers"})
+        self.api.put(f"/current_grandparents/{grandparent_id_2}/parents", {"_from": f"/current_grandparents/{grandparent_id_1}/parents"})
 
         # check updates occured
-        self.assertEqual(None, self.api.get(f"/current_employees/{employee_id_1}")['count_sector'])
-        self.assertEqual(2, self.api.get(f"/current_employees/{employee_id_2}")['count_sector'])
+        self.assertEqual(None, self.api.get(f"/current_grandparents/{grandparent_id_1}")['age_child'])
+        self.assertEqual(2, self.api.get(f"/current_grandparents/{grandparent_id_2}")['age_child'])
 
     def test_rebuild_grants_after_move(self):
-        employee_id_1 = self.api.post("/current_employees", {"name": "Bob", "age": 40})
-        career_id_1 = self.api.post(f"/current_employees/{employee_id_1}/careers", {"name": "salesman"})
-        sector_id_1 = self.api.post(f"/current_employees/{employee_id_1}/careers/{career_id_1}/sectors", {"name": "vacuums", "count": 1})
+        grandparent_id_1 = self.api.post("/current_grandparents", {"name": "Bob", "age": 40})
+        parent_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "salesman"})
+        child_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs", {"name": "vacuums", "age": 1})
 
         self.user_id_1 = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.user_id_2 = self.api.post('/users', {'username': 'ned', 'password': 'password'})
 
-        # add link to sectors
-        current_sector_id = self.api.post('/current_sectors', {})
-        self.api.post(f'/current_sectors/{current_sector_id}/referenced_sectors', {"id": sector_id_1})
+        # add link to childs
+        current_child_id = self.api.post('/current_childs', {})
+        self.api.post(f'/current_childs/{current_child_id}/referenced_childs', {"id": child_id_1})
 
         # add source grant
         self.group_id_1 = self.api.post('/groups', {'name': 'source'})
-        self.grant_id_1 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': '/current_sectors'})
-        self.grant_id_2 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': '/current_employees'})
+        self.grant_id_1 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': '/current_childs'})
+        self.grant_id_2 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': '/current_grandparents'})
         self.api.post(f'/users/{self.user_id_1}/groups', {'id': self.group_id_1})
 
         user1 = self.schema.load_user_by_username("bob")
 
-        self.api.get(f'/current_sectors/{current_sector_id}/referenced_sectors/{sector_id_1}', user=user1)
+        self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
 
         # move resource
-        self.api.put(f"/former_employees", {"_from": f"/current_employees/{employee_id_1}"})
+        self.api.put(f"/former_grandparents", {"_from": f"/current_grandparents/{grandparent_id_1}"})
 
         # check acces removed
         with self.assertRaises(HTTPError):
-            self.api.get(f'/current_sectors/{current_sector_id}/referenced_sectors/{sector_id_1}', user=user1)
+            self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
