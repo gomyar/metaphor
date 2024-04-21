@@ -321,23 +321,31 @@ class LinkCollectionResourceRef(ResourceRef):
     def create_aggregation(self, user=None):
         return self.resource_ref.create_aggregation(user) + [
             {"$lookup": {
-                    "from": "metaphor_resource",
-                    "as": "_val",
-                    "let": {"id": {"$ifNull": ["$%s" % self.field_name, []]}},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$in": [{"_id": "$_id"}, "$$id"]},
-                                    {"$eq": ["$_type", self.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                "from": "metaphor_link",
+                "as": "_link",
+                "let": {"id": "$_id"},
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$eq": ["$$id", "$_id"]},
+                                {"$eq": ["$_from_field_name", self.field_name]},  # possible different collection per field
+                            ]
+                        }
+                    }}
+                ]
             }},
-            {'$group': {'_id': '$_val'}},
-            {"$unwind": "$_id"},
-            {"$replaceRoot": {"newRoot": "$_id"}},
+            # possible sort
+            {"$unwind": "$_link"},
+            {"$replaceRoot": {"newRoot": "$_link"}},
+            {"$lookup": {
+                "from": "metaphor_resource",
+                "as": "_resource",
+                "localField": "_to_id",
+                "foreignField": "_id",
+            }},
+            {"$unwind": "$_resource"},
+            {"$replaceRoot": {"newRoot": "$_resource"}},
         ]
 
 

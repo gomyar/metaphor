@@ -212,8 +212,9 @@ class Updater(object):
         # descend into children
 
 
-        for spec_name, spec in self.schema.specs.items():
-            self.schema.db['metaphor_resource'].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
+        self.schema.db['metaphor_resource'].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
+        for resource in self.schema.db['metaphor_resource'].find({'_canonical_url': {"$regex": "^%s" % url}}, {"_id": 1}):
+            self.db['metaphor_link'].insert_one({"_type": "grant", "_from_id": resource['_id'], "_from_field_name": "_grants", "_to_id": self.schema.decodeid(grant_id)})
 
     def _remove_grants(self, grant_id, url):
         for spec_name, spec in self.schema.specs.items():
