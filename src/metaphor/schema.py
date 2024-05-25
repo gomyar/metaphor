@@ -607,7 +607,6 @@ class Schema(object):
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['metaphor_resource'].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
-        self.db['metaphor_link'].insert_one({"_type": spec_name, "_from_id": self.decodeid(parent_id), "_from_field_name": parent_field, "_to_id": self.decodeid(link_id)})
         return link_id
 
     def validate_spec(self, spec_name, data):

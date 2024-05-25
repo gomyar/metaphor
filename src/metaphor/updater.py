@@ -181,43 +181,6 @@ class Updater(object):
 
         return resource_id
 
-    def _update_grants(self, grant_id, url):
-        # aggregate target resources
-#        from_tree = parse_canonical_url(url, self.schema.root)
-#        aggregate_query, from_spec, is_aggregate = from_tree.aggregation(None)
-
-        # update _parent_id, _parent_field to target parent resource for all resources
-
-        # update grants
-#        for field_name, field in from_spec.fields.items():
-#            if field.field_type == 'collection':
-#                aggregate_query.extend([
-#                    {"$lookup": {
-#                        "from": "resource_%s" % field.target_spec_name,
-#                        "as": "_grant_%s" % field.target_spec_name,
-#                        "let": {"id": "$_id"},
-#                        "pipeline": [
-#                            {"$match": {
-#                                "$expr": {"$and": [
-#                                    "$eq": ["$_parent_id": "$$id"]},
-#                                    "$eq": ["$_parent_field_name": field_name]},
-#                                ])
-#                            }},
-#                        ]
-#                    }}
-#                ])
-
-        # descend into children
-
-
-        self.schema.db['metaphor_resource'].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
-        for resource in self.schema.db['metaphor_resource'].find({'_canonical_url': {"$regex": "^%s" % url}}, {"_id": 1}):
-            self.schema.db['metaphor_link'].insert_one({"_type": "grant", "_from_id": resource['_id'], "_from_field_name": "_grants", "_to_id": self.schema.decodeid(grant_id)})
-
-    def _remove_grants(self, grant_id, url):
-        for spec_name, spec in self.schema.specs.items():
-            self.schema.db['metaphor_resource'].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$pull": {'_grants': self.schema.decodeid(grant_id)}})
-
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):
         return CreateResourceUpdate(self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,

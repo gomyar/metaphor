@@ -37,10 +37,6 @@ class CreateResourceUpdate:
             {"$match": {"_id": self.schema.decodeid(resource_id)}}
         ]
 
-        # create grant links
-        for grant in self.grants:
-            self.schema.db['metaphor_link'].insert_one({"_type": self.spec_name, "_from_id": self.schema.decodeid(resource_id), "_from_field_name": "_grants", "_to_id": grant})
-
         # TODO: collate all affected calcs together
         # update local resource calcs
         for field_name, field in self.spec.fields.items():
