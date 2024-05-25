@@ -45,10 +45,6 @@ class CreateResourceUpdate:
 
         self.updater.update_for(self.spec_name, dependent_fields, update_id, start_agg)
 
-        # check if new resource is read grant
-        if self.spec_name == 'grant' and self.fields['type'] == 'read':
-            self.updater._update_grants(resource_id, self.fields['url'])
-
         # cleanup update
         self.schema.cleanup_update(update_id)
 
