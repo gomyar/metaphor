@@ -646,55 +646,57 @@ class Schema(object):
         user_data = self.db['metaphor_resource'].aggregate([
             {"$match": match},
             {"$limit": 1},
+             {"$lookup": {
+                'from': "metaphor_resource",
+                'as': 'read_grants',
+                'localField': 'read_grants._id',
+                'foreignField': '_id',
+            }},
             {"$lookup": {
-                "from": "metaphor_link",
-                "as": "_grants",
-                "let": {"id": "$_id"},
-                "pipeline": [
-                    {"$match": {
-                        "$expr": {
-                            "$and": [
-                                {"$eq": ["$_from_field_name", "groups"]},
-                                {"$eq": ["$$id", "$_from_id"]},
-                            ]
-                        }
-                    }},
-                    {"$lookup": {
-                        "from": "metaphor_resource",
-                        "as": "_groups",
-                        "localField": "_to_id",
-                        "foreignField": "_id",
-                    }},
-                    {"$unwind": "$_groups"},
-                    {"$replaceRoot": {"newRoot": "$_groups"}},
-
-                    {"$lookup": {
-                        "from": "metaphor_resource",
-                        "as": "_grants",
-                        "localField": "_id",
-                        "foreignField": "_parent_id",
-                    }},
-                    {"$unwind": "$_grants"},
-                    {"$replaceRoot": {"newRoot": "$_grants"}},
-                ]
+                'from': "metaphor_resource",
+                'as': 'create_grants',
+                'localField': 'create_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$lookup": {
+                'from': "metaphor_resource",
+                'as': 'update_grants',
+                'localField': 'update_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$lookup": {
+                'from': "metaphor_resource",
+                'as': 'delete_grants',
+                'localField': 'delete_grants._id',
+                'foreignField': '_id',
+            }},
+            {"$project": {
+                'username': 1,
+                'password': 1,
+                'read_grants._id': 1,
+                'read_grants.url': 1,
+                'create_grants._id': 1,
+                'create_grants.url': 1,
+                'update_grants._id': 1,
+                'update_grants.url': 1,
+                'delete_grants._id': 1,
+                'delete_grants.url': 1,
+                'put_grants._id': 1,
+                'put_grants.url': 1,
+                '_user_hash': 1,
+                'admin': 1,
             }},
         ])
         user_data = list(user_data)
         if user_data:
             user_data = user_data[0]
-            grants = user_data["_grants"]
-            read_grants = [g for g in grants if g['type'] == 'read']
-            create_grants = [g for g in grants if g['type'] == 'create']
-            update_grants = [g for g in grants if g['type'] == 'update']
-            delete_grants = [g for g in grants if g['type'] == 'delete']
-            put_grants = [g for g in grants if g['type'] == 'put']
             user = User(user_data['username'],
                         user_data['password'],
-                        read_grants,
-                        create_grants,
-                        update_grants,
-                        delete_grants,
-                        put_grants,
+                        user_data['read_grants'],
+                        user_data['create_grants'],
+                        user_data['update_grants'],
+                        user_data['delete_grants'],
+                        user_data['put_grants'],
                         user_data['_user_hash'],
                         user_data.get('admin'))
             if load_hash:

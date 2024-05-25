@@ -115,7 +115,6 @@ class LRParseTest(unittest.TestCase):
     def test_multi_collection_filtered_at_sections(self):
         tree = parse("divisions.sections[name='alpha'].employees", self.employee_spec)
 
-        import ipdb; ipdb.set_trace()
         val = self.perform_resource_calc(self.employee_id_1, tree)
         self.assertEqual(1, len(val))
         self.assertEqual('Bob', val[0]['name'])
