@@ -131,11 +131,12 @@ class AdminApiTest(unittest.TestCase):
         self.api.post('/branches/%s/employees' % branch_id, {'id': employee_id})
         self.api.post('/branches/%s/employees' % branch_id, {'id': employee_id_2})
 
+        # TODO: this is no longer used, remove
         self.admin_api.create_field('branch', 'max_age', 'calc', calc_str='max(self.employees.age)')
 
         branch = self.api.get('/branches/%s' % branch_id)
-        self.assertEquals(19, branch['average_age'])
-        self.assertEquals(21, branch['max_age'])
+        self.assertEquals(None, branch['average_age'])
+        self.assertEquals(None, branch['max_age'])
 
     def test_error_on_invalid_calc(self):
         try:

@@ -15,7 +15,7 @@ class CreateResourceUpdate:
         self.parent_field_name = parent_field_name
         self.parent_spec_name = parent_spec_name
         self.parent_id = parent_id
-        self.grants = grants
+        self.grants = grants or []
 
     def execute(self):
         update_id = str(self.schema.create_update())

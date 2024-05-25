@@ -2,10 +2,6 @@
 def create_update_aggregation(resource_name, field_name, calc_tree, match_agg, updater_id=None):
     if calc_tree._is_lookup():
         calc_agg = calc_tree.create_aggregation()
-#        if calc_tree.is_collection():
-#            calc_agg += [
-#                {"$project": {"_id": 1}},
-#            ]
         agg = match_agg + [
             {"$lookup": {
                 "from": "metaphor_resource",
@@ -23,14 +19,6 @@ def create_update_aggregation(resource_name, field_name, calc_tree, match_agg, u
                 ] + calc_agg
             }},
         ]
-#        if calc_tree.is_collection():
-#            # for collections / linkcollections / orderedcollections
-#            agg.extend([
-#                {"$project": {
-#                    field_name: 1,
-#                }},
-#            ])
-#        else:
         if calc_tree.is_collection():
             if calc_tree.is_primitive():
                 agg.extend([

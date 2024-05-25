@@ -8,9 +8,7 @@ from metaphor.update.create_resource import CreateResourceUpdate
 from metaphor.update.fields_update import FieldsUpdate
 from metaphor.update.delete_resource import DeleteResourceUpdate
 from metaphor.update.delete_linkcollection import DeleteLinkCollectionUpdate
-from metaphor.update.delete_orderedcollection import DeleteOrderedCollectionUpdate
 from metaphor.update.create_linkcollection import CreateLinkCollectionUpdate
-from metaphor.update.create_orderedcollection import CreateOrderedCollectionUpdate
 from metaphor.update.move_resource import MoveResourceUpdate
 from metaphor.update.move_link import MoveLinkUpdate
 from metaphor.update_aggregation import create_update_aggregation
@@ -214,7 +212,7 @@ class Updater(object):
 
         self.schema.db['metaphor_resource'].update_many({'_canonical_url': {"$regex": "^%s" % url}}, {"$addToSet": {'_grants': self.schema.decodeid(grant_id)}})
         for resource in self.schema.db['metaphor_resource'].find({'_canonical_url': {"$regex": "^%s" % url}}, {"_id": 1}):
-            self.db['metaphor_link'].insert_one({"_type": "grant", "_from_id": resource['_id'], "_from_field_name": "_grants", "_to_id": self.schema.decodeid(grant_id)})
+            self.schema.db['metaphor_link'].insert_one({"_type": "grant", "_from_id": resource['_id'], "_from_field_name": "_grants", "_to_id": self.schema.decodeid(grant_id)})
 
     def _remove_grants(self, grant_id, url):
         for spec_name, spec in self.schema.specs.items():
@@ -228,17 +226,11 @@ class Updater(object):
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         CreateLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
 
-    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
-        return CreateOrderedCollectionUpdate(self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
-
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
         return DeleteResourceUpdate(self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()
 
     def delete_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         return DeleteLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
-
-    def delete_orderedcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        return DeleteOrderedCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
 
     def update_fields(self, spec_name, resource_id, fields):
         return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()

@@ -122,7 +122,7 @@ var create_field = {
 
     is_editing: false,
 
-    all_field_types: ['int', 'float', 'str', 'bool', 'datetime', 'collection', 'link', 'linkcollection', 'orderedcollection', 'calc'],
+    all_field_types: ['int', 'float', 'str', 'bool', 'datetime', 'collection', 'link', 'linkcollection', 'calc'],
 
     is_primitive: function() {
         return ['int', 'float', 'str', 'bool', 'datetime'].indexOf(this.field_type) != -1;

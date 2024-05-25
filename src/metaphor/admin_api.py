@@ -92,8 +92,6 @@ class AdminApi(object):
         except MalformedFieldException as me:
             raise HTTPError(None, 400, str(me), None, None)
 
-        self._update_for_calc_field(spec_name, field_name, field_type)
-
     def _update_for_calc_field(self, spec_name, field_name, field_type):
         if field_type == 'calc':
             update_id = str(self.schema.create_update())

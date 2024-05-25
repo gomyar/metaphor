@@ -47,7 +47,7 @@ class ApiTest(unittest.TestCase):
                             "type": "int",
                         },
                         "sections": {
-                            "type": "orderedcollection",
+                            "type": "collection",
                             "target_spec_name": "section",
                         },
                         "primary_sections": {
@@ -85,7 +85,7 @@ class ApiTest(unittest.TestCase):
                             "calc_str": "self.section_total - average(self.parent_division_sections.sections.section_total)",
                         },
                         "parttimers": {
-                            "type": "orderedcollection",
+                            "type": "collection",
                             "target_spec_name": "employee",
                         },
                     },

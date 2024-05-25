@@ -95,11 +95,9 @@ class Mutation(object):
             aggregate_query, from_spec, is_aggregate = from_tree.create_aggregation(None)
             #   alter parent info
 
-            #   adjust for orderedcollections in parent
 
         # if filtered non-root resources
         #   for each resource in filter
         #   nested agg using filter
         #   alter parent info
-        #   adjust for orderedcollections in parent
 

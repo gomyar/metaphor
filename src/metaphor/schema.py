@@ -45,7 +45,7 @@ class Field(object):
         return self.field_type in Field.PRIMITIVES
 
     def is_collection(self):
-        return self.field_type in ['collection', 'linkcollection', 'reverse_link', 'reverse_link_collection', 'orderedcollection']
+        return self.field_type in ['collection', 'linkcollection', 'reverse_link', 'reverse_link_collection',]
 
     def is_field(self):
         return True
@@ -106,7 +106,7 @@ class Spec(object):
             raise SyntaxError("No such field %s in %s" % (name, self.name))
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection', 'orderedcollection'):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection',):
             return self.schema.specs[self.fields[name].target_spec_name]
         elif self.fields[name].field_type == 'calc':
             from metaphor.lrparse.lrparse import parse
@@ -415,7 +415,7 @@ class Schema(object):
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
-        if field.field_type in ['collection', 'orderedcollection']:
+        if field.field_type in ['collection',]:
             parent_field_name = "parent_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name, field.name)
         if field.field_type == 'linkcollection':
@@ -428,7 +428,7 @@ class Schema(object):
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields.pop(reverse_field_name)
-        if field.field_type in ['collection', 'orderedcollection']:
+        if field.field_type in ['collection',]:
             parent_field_name = "parent_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields.pop(parent_field_name)
         if field.field_type == 'linkcollection':
@@ -607,13 +607,8 @@ class Schema(object):
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['metaphor_resource'].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
-        self.db['metaphor_link'].insert_one({"_type": spec_name, "_from_id": parent_id, "_from_field_name": parent_field, "_to_id": link_id})
+        self.db['metaphor_link'].insert_one({"_type": spec_name, "_from_id": self.decodeid(parent_id), "_from_field_name": parent_field, "_to_id": self.decodeid(link_id)})
         return link_id
-
-    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None, extra_fields=None):
-        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, grants, extra_fields)
-        self.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, resource_id)
-        return resource_id
 
     def validate_spec(self, spec_name, data):
         spec = self.specs[spec_name]
@@ -643,66 +638,64 @@ class Schema(object):
         self.db['metaphor_resource'].update_many({'_type': spec_name}, {'$unset': {field_name: ''}})
 
     def load_user_by_username(self, username, load_hash=False):
-        return self._load_user_with_aggregate({'username': username}, load_hash)
+        return self._load_user_with_aggregate({'username': username, '_type': 'user'}, load_hash)
 
     def load_user_by_user_hash(self, user_hash):
-        return self._load_user_with_aggregate({'_user_hash': user_hash})
+        return self._load_user_with_aggregate({'_user_hash': user_hash, '_type': 'user'})
 
     def _load_user_with_aggregate(self, match, load_hash=False):
         user_data = self.db['metaphor_resource'].aggregate([
-            {"$match": {"_type": "user"}},
             {"$match": match},
+            {"$limit": 1},
             {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'read_grants',
-                'localField': 'read_grants._id',
-                'foreignField': '_id',
-            }},
-            {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'create_grants',
-                'localField': 'create_grants._id',
-                'foreignField': '_id',
-            }},
-            {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'update_grants',
-                'localField': 'update_grants._id',
-                'foreignField': '_id',
-            }},
-            {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'delete_grants',
-                'localField': 'delete_grants._id',
-                'foreignField': '_id',
-            }},
-            {"$project": {
-                'username': 1,
-                'password': 1,
-                'read_grants._id': 1,
-                'read_grants.url': 1,
-                'create_grants._id': 1,
-                'create_grants.url': 1,
-                'update_grants._id': 1,
-                'update_grants.url': 1,
-                'delete_grants._id': 1,
-                'delete_grants.url': 1,
-                'put_grants._id': 1,
-                'put_grants.url': 1,
-                '_user_hash': 1,
-                'admin': 1,
+                "from": "metaphor_link",
+                "as": "_grants",
+                "let": {"id": "$_id"},
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                {"$eq": ["$_from_field_name", "groups"]},
+                                {"$eq": ["$$id", "$_from_id"]},
+                            ]
+                        }
+                    }},
+                    {"$lookup": {
+                        "from": "metaphor_resource",
+                        "as": "_groups",
+                        "localField": "_to_id",
+                        "foreignField": "_id",
+                    }},
+                    {"$unwind": "$_groups"},
+                    {"$replaceRoot": {"newRoot": "$_groups"}},
+
+                    {"$lookup": {
+                        "from": "metaphor_resource",
+                        "as": "_grants",
+                        "localField": "_id",
+                        "foreignField": "_parent_id",
+                    }},
+                    {"$unwind": "$_grants"},
+                    {"$replaceRoot": {"newRoot": "$_grants"}},
+                ]
             }},
         ])
         user_data = list(user_data)
         if user_data:
             user_data = user_data[0]
+            grants = user_data["_grants"]
+            read_grants = [g for g in grants if g['type'] == 'read']
+            create_grants = [g for g in grants if g['type'] == 'create']
+            update_grants = [g for g in grants if g['type'] == 'update']
+            delete_grants = [g for g in grants if g['type'] == 'delete']
+            put_grants = [g for g in grants if g['type'] == 'put']
             user = User(user_data['username'],
                         user_data['password'],
-                        user_data['read_grants'],
-                        user_data['create_grants'],
-                        user_data['update_grants'],
-                        user_data['delete_grants'],
-                        user_data['put_grants'],
+                        read_grants,
+                        create_grants,
+                        update_grants,
+                        delete_grants,
+                        put_grants,
                         user_data['_user_hash'],
                         user_data.get('admin'))
             if load_hash:
