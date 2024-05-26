@@ -10,7 +10,6 @@ from metaphor.update.delete_resource import DeleteResourceUpdate
 from metaphor.update.delete_linkcollection import DeleteLinkCollectionUpdate
 from metaphor.update.create_linkcollection import CreateLinkCollectionUpdate
 from metaphor.update.move_resource import MoveResourceUpdate
-from metaphor.update.move_link import MoveLinkUpdate
 from metaphor.update_aggregation import create_update_aggregation
 
 import logging
