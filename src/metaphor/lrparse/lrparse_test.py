@@ -589,6 +589,26 @@ class LRParseTest(unittest.TestCase):
         self.assertEqual(20000, self.perform_simple_calc(self.schema.db['metaphor_resource'], employee_id_1, tree))
         self.assertEqual(9000, self.perform_simple_calc(self.schema.db['metaphor_resource'], employee_id_2, tree))
 
+    def test_switch_collections(self):
+        spec = self.schema.create_spec('branch')
+        self.schema.create_field('branch', 'name', 'str')
+        self.schema.create_field('branch', 'employees', 'collection', 'employee')
+
+        branch_id = self.schema.insert_resource('branch', {'name': 'sales'}, 'branches')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'bob', 'age': 25}, 'employees', 'branch', branch_id)
+        employee_id_2 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 35}, 'employees', 'branch', branch_id)
+
+        tree=parse('self.name -> ("sales": (self.employees[age>20]), "marketting": (self.employees[age>30]))', spec)
+        val = list(self.schema.db['metaphor_resource'].aggregate([{"$match": {"_id": self.schema.decodeid(branch_id)}}] + tree.create_aggregation()))
+        self.assertEqual(2, len(val))
+        self.assertEqual("bob", val[0]['name'])
+        self.assertEqual("ned", val[1]['name'])
+
+        self.schema.update_resource_fields('branch', branch_id, {'name': 'marketting'})
+        val = list(self.schema.db['metaphor_resource'].aggregate([{"$match": {"_id": self.schema.decodeid(branch_id)}}] + tree.create_aggregation()))
+        self.assertEqual(1, len(val))
+        self.assertEqual("ned", val[0]['name'])
+
     def test_math_functions(self):
         employee_spec = self.schema.specs['employee']
         employee_spec.fields["salary"] = Field("salary", "float")

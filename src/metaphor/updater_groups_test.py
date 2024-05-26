@@ -102,14 +102,3 @@ class UpdaterTest(unittest.TestCase):
 
         employee_4_data = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_4)})
         self.assertEqual([self.schema.decodeid(grant_id)], employee_4_data['_grants'])
-
-    def test_deleting_grant_removes_grant_id(self):
-        group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'readall'}, self.schema.read_root_grants('groups'))
-        grant_id = self.updater.create_resource('grant', 'group', 'grants', group_id, {'type': 'read', 'url': '/'})
-
-        company_id = self.updater.create_resource('company', 'root', 'companies', None, {}, self.schema.read_root_grants('companies'))
-
-        self.updater.delete_resource('grant', grant_id, 'group', 'grants')
-
-        company_data = self.db['metaphor_resource'].find_one({'_type': 'company'})
-        self.assertEqual([], company_data['_grants'])

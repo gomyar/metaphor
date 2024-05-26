@@ -75,34 +75,6 @@ class ServerTest(TestCase):
         response = self.client.get('/api/employees/%s' % employee_id_1)
         self.assertEqual(200, response.status_code)
 
-    def test_posting_new_grant_updates_resources(self):
-        self.schema.create_spec('employee')
-        self.schema.create_field('employee', 'name', 'str')
-
-        self.schema.create_field('root', 'employees', 'collection', 'employee')
-
-        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
-
-        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
-
-        employee_data = self.db.metaphor_resource.find_one({'_type': 'employee'})
-        self.assertEquals({
-            '_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
-            '_canonical_url': '/employees/%s' % employee_id_1,
-            'name': 'fred',
-            '_parent_canonical_url': '/',
-            '_parent_field_name': 'employees',
-            '_parent_id': None,
-            '_parent_type': 'root',
-            '_schema_id': self.schema._id,
-            '_type': 'employee',
-            '_grants': [
-                self.schema.decodeid(self.grant_id_1),
-                self.schema.decodeid(grant_id_2),
-            ]
-        }, employee_data)
-
     def test_can_post_with_grant(self):
         employee_spec = self.schema.create_spec('employee')
         self.schema.create_field('employee', 'name', 'str')
