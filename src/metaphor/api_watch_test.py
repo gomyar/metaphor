@@ -37,7 +37,7 @@ class ApiWatchTest(unittest.TestCase):
 
         self.section_spec = self.schema.create_spec('section')
         self.schema.create_field('section', 'name', 'str')
-        self.schema.create_field('section', 'contractors', 'collection', 'employee')
+        self.schema.create_field('section', 'contractors', 'orderedcollection', 'employee')
 
         self.schema.create_field('division', 'sections', 'collection', 'section')
 

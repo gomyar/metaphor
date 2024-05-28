@@ -8,7 +8,9 @@ from metaphor.update.create_resource import CreateResourceUpdate
 from metaphor.update.fields_update import FieldsUpdate
 from metaphor.update.delete_resource import DeleteResourceUpdate
 from metaphor.update.delete_linkcollection import DeleteLinkCollectionUpdate
+from metaphor.update.delete_orderedcollection import DeleteOrderedCollectionUpdate
 from metaphor.update.create_linkcollection import CreateLinkCollectionUpdate
+from metaphor.update.create_orderedcollection import CreateOrderedCollectionUpdate
 from metaphor.update.move_resource import MoveResourceUpdate
 from metaphor.update_aggregation import create_update_aggregation
 
@@ -188,11 +190,20 @@ class Updater(object):
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         CreateLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
 
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
+        return CreateOrderedCollectionUpdate(self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
+
+
+
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
         return DeleteResourceUpdate(self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()
 
     def delete_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         return DeleteLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+
+    def delete_orderedcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
+        return DeleteOrderedCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+
 
     def update_fields(self, spec_name, resource_id, fields):
         return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()

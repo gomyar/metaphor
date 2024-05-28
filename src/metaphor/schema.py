@@ -45,7 +45,7 @@ class Field(object):
         return self.field_type in Field.PRIMITIVES
 
     def is_collection(self):
-        return self.field_type in ['collection', 'linkcollection', 'reverse_link', 'reverse_link_collection',]
+        return self.field_type in ['collection', 'orderedcollection', 'linkcollection', 'reverse_link', 'reverse_link_collection',]
 
     def is_field(self):
         return True
@@ -106,7 +106,7 @@ class Spec(object):
             raise SyntaxError("No such field %s in %s" % (name, self.name))
         if self.fields[name].is_primitive():
             return self.fields[name]
-        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection',):
+        elif self.fields[name].field_type in ('link', 'reverse_link', 'parent_collection', 'collection', 'linkcollection', 'reverse_link_collection', 'orderedcollection'):
             return self.schema.specs[self.fields[name].target_spec_name]
         elif self.fields[name].field_type == 'calc':
             from metaphor.lrparse.lrparse import parse
@@ -415,7 +415,7 @@ class Schema(object):
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[reverse_field_name] = Field(reverse_field_name, "reverse_link", spec.name, field.name)
-        if field.field_type in ['collection',]:
+        if field.field_type in ['collection', 'orderedcollection']:
             parent_field_name = "parent_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields[parent_field_name] = Field(parent_field_name, "parent_collection", spec.name, field.name)
         if field.field_type == 'linkcollection':
@@ -428,7 +428,7 @@ class Schema(object):
         if field.field_type == 'link':
             reverse_field_name = "link_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields.pop(reverse_field_name)
-        if field.field_type in ['collection',]:
+        if field.field_type in ['collection', 'orderedcollection']:
             parent_field_name = "parent_%s_%s" % (spec.name, field.name)
             self.specs[field.target_spec_name].fields.pop(parent_field_name)
         if field.field_type == 'linkcollection':
@@ -608,6 +608,12 @@ class Schema(object):
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['metaphor_resource'].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
+
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None, extra_fields=None):
+        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, grants, extra_fields)
+        self.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, resource_id)
+        return resource_id
+
 
     def validate_spec(self, spec_name, data):
         spec = self.specs[spec_name]

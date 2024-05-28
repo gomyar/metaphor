@@ -164,7 +164,7 @@ class MoveResourceUpdate:
     def _collect_child_resources(self, spec_name):
         child_specs = []
         for field_name, field in self.schema.specs[spec_name].fields.items():
-            if field.field_type in ('collection',):
+            if field.field_type in ('collection', 'orderedcollection'):
                 child_specs.append(field.target_spec_name)
                 child_specs.extend(self._collect_child_resources(field.target_spec_name))
         return list(set(child_specs))

@@ -85,7 +85,7 @@ class ApiTest(unittest.TestCase):
                             "calc_str": "self.section_total - average(self.parent_division_sections.sections.section_total)",
                         },
                         "parttimers": {
-                            "type": "collection",
+                            "type": "orderedcollection",
                             "target_spec_name": "employee",
                         },
                     },

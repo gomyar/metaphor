@@ -14,6 +14,7 @@ from metaphor.lrparse.lrparse import parse_filter
 from metaphor.lrparse.lrparse import CollectionResourceRef
 from metaphor.lrparse.lrparse import RootResourceRef
 from metaphor.lrparse.lrparse import LinkCollectionResourceRef
+from metaphor.lrparse.lrparse import OrderedCollectionResourceRef
 from metaphor.schema import CalcField
 from metaphor.schema_factory import SchemaFactory
 from metaphor.updater import Updater
@@ -207,6 +208,16 @@ class Api(object):
                     parent_id,
                     field_name,
                     data['id'])
+            elif field_spec.field_type == 'orderedcollection':
+                if field_spec.target_spec_name == 'user':
+                    data['password'] = generate_password_hash(data['password'])
+                return self.updater.create_orderedcollection_entry(
+                    field_spec.target_spec_name,
+                    spec.name,
+                    field_name,
+                    parent_id,
+                    data,
+                    self.schema.read_root_grants(path))
             else:
                 if field_spec.target_spec_name == 'user':
                     data['password'] = generate_password_hash(data['password'])
@@ -274,6 +285,31 @@ class Api(object):
                     parent_resource['_id'],
                     field_name,
                     resource_id)
+            elif type(parent_field_tree) == OrderedCollectionResourceRef:
+                parent_tree = self._parse_canonical_url(parent_path)
+
+                aggregate_query = parent_tree.create_aggregation(user)
+                spec = parent_tree.infer_type()
+                is_aggregate = parent_tree.is_collection()
+
+                #if path.split('/')[0] == 'ego':
+                #    aggregate_query = [
+                #        {"$match": {"username": user.username}}
+                #    ] + aggregate_query
+
+                # if we're using a simplified parser we can probably just pull the id off the path
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                if user:
+                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
+
+                return self.updater.delete_orderedcollection_entry(
+                    spec.name,
+                    parent_resource['_id'],
+                    field_name,
+                    resource_id)
+
             else:
                 aggregate_query = parent_field_tree.create_aggregation(user)
                 spec = parent_field_tree.infer_type()
@@ -549,7 +585,7 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
-            elif field.field_type in ('linkcollection',):
+            elif field.field_type in ('linkcollection','orderedcollection'):
                 aggregate_query.append(
                     lookup_collection_agg(
                             field.target_spec_name,
@@ -645,7 +681,7 @@ class Api(object):
                 else:
                     # TODO: A canonical link would be better
                     encoded[field_name] = os.path.join(self_url, field_name)
-            elif field.field_type in ('linkcollection', 'collection', 'reverse_link_collection',):
+            elif field.field_type in ('linkcollection', 'orderedcollection', 'collection', 'reverse_link_collection',):
                 if field_name in expand_dict:
                     encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
                 else:

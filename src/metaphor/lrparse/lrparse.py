@@ -341,6 +341,10 @@ class LinkCollectionResourceRef(ResourceRef):
         ]
 
 
+class OrderedCollectionResourceRef(LinkCollectionResourceRef):
+    pass
+
+
 class LinkResourceRef(ResourceRef):
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
@@ -1771,6 +1775,8 @@ class Parser(object):
             return CollectionResourceRef(root_resource_ref, field_name, parser, child_spec, root_resource_ref.spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'linkcollection':
             return LinkCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
+        if root_resource_ref.spec.fields[field_name].field_type == 'orderedcollection':
+            return OrderedCollectionResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'link':
             return LinkResourceRef(root_resource_ref, field_name, parser, child_spec)
         if root_resource_ref.spec.fields[field_name].field_type == 'calc':
