@@ -69,7 +69,7 @@ class SchemaFactory:
 
     def delete_schema(self, schema_id):
         result = self.db.metaphor_schema.delete_one({"_id": ObjectId(schema_id), "current": {"$ne": True}})
-        return result['n']
+        return result.acknowledged
 
     def list_schemas(self):
         return list(self.db.metaphor_schema.aggregate(self._schema_aggregation()))

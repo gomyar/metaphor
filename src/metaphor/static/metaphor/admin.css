@@ -85,6 +85,19 @@ div.diff_line:hover {
     background-color: #FED8B1;
 }
 
+.renamed{
+    background-color: #FFD580;
+}
+
+.renamed_from {
+    background-color: #FFD580;
+}
+
+.renamed_to {
+    background-color: #FFD580;
+}
+
+
 div.diff_item {
     margin-top: 5px;
 }
@@ -137,17 +150,35 @@ div.calc_str {
     text-transform: uppercase;
     align-self:center;
     height: 100%;
+    display: inline-grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-content: center;
 }
 
-.change.created {
-    border-radius: 50% 0% 0% 50%;
-    display: grid;
+.change span {
+    padding-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.change span.created {
+    border-radius: 6px 0% 0% 6px;
+    align-items: right;
+}
+
+.change span.deleted {
+    border-radius: 0% 6px 6px 0%;
     align-items: center;
 }
 
-.change.deleted {
-    border-radius: 0% 50% 50% 0%;
-    display: grid;
+.change span.renamed_to {
+    border-radius: 6px 0% 0% 6px;
+    align-items: right;
+}
+
+.change span.renamed_from {
+    border-radius: 0% 6px 6px 0%;
     align-items: center;
 }
 
