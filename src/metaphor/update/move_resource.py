@@ -176,9 +176,9 @@ class MoveResourceUpdate:
                 "_moving_child": {"$exists": False},
             }},
             {"$project": {
-                "_parent_id": self.target_id,
-                "_parent_type": self.target_spec_name,
-                "_parent_canonical_url": self.target_canonical_url,
+                "_parent_id": self.target_id or None,
+                "_parent_type": self.target_spec_name or 'root',
+                "_parent_canonical_url": self.target_canonical_url or '/',
                 "_parent_field_name": self.target_field_name,
             }},
             {"$merge": {
