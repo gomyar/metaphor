@@ -41,7 +41,7 @@ class UpdaterTest(unittest.TestCase):
         self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', employee_id_1)
 
         division_data = self.db.metaphor_resource.find_one({'_type': 'division'})
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_grants': [],
@@ -62,7 +62,7 @@ class UpdaterTest(unittest.TestCase):
         #self.updater.update_calc('division', 'older_employees', division_id_1)
         self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', employee_id_2)
         division_data = self.db.metaphor_resource.find_one({'_type': 'division'})
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_grants': [],

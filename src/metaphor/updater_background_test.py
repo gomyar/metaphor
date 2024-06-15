@@ -51,8 +51,8 @@ class UpdaterBackgroundTest(unittest.TestCase):
         self.api.post('/divisions/%s/managers' % division_1_id, {'id': employee_1_id})
         self.api.post('/divisions/%s/managers' % division_1_id, {'id': employee_2_id})
 
-        self.assertEquals(None, self.api.get('/companies/%s' % company_1_id)['max_age'])
+        self.assertEqual(None, self.api.get('/companies/%s' % company_1_id)['max_age'])
 
         self.api.patch('/companies/%s' % company_1_id, {'division': division_1_id})
 
-        self.assertEquals(38, self.api.get('/companies/%s' % company_1_id)['max_age'])
+        self.assertEqual(38, self.api.get('/companies/%s' % company_1_id)['max_age'])

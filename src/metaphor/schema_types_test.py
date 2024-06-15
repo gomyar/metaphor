@@ -38,15 +38,15 @@ class SchemaTest(unittest.TestCase):
                 },
             }
         })
-        self.assertEquals(1, len(self.schema.specs))
-        self.assertEquals("int", self.schema.specs['employee'].fields['age'].field_type)
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual("int", self.schema.specs['employee'].fields['age'].field_type)
 
-        self.assertEquals([], self.schema.validate_spec('employee', {'age': 12}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'age': 12}))
 
-        self.assertEquals([{'error': "Nonexistant field: 'name'"}],
+        self.assertEqual([{'error': "Nonexistant field: 'name'"}],
                           self.schema.validate_spec('employee', {'name': "12"}))
 
-        self.assertEquals([{'error': "Invalid type: str for field 'age' of 'employee' (expected 'int')"}],
+        self.assertEqual([{'error': "Invalid type: str for field 'age' of 'employee' (expected 'int')"}],
                           self.schema.validate_spec('employee', {'age': "12"}))
 
     def test_str_type(self):
@@ -62,15 +62,15 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
-        self.assertEquals(1, len(self.schema.specs))
-        self.assertEquals("str", self.schema.specs['employee'].fields['name'].field_type)
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual("str", self.schema.specs['employee'].fields['name'].field_type)
 
-        self.assertEquals([], self.schema.validate_spec('employee', {'name': 'Bob'}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'name': 'Bob'}))
 
-        self.assertEquals([{'error': "Nonexistant field: 'age'"}],
+        self.assertEqual([{'error': "Nonexistant field: 'age'"}],
                           self.schema.validate_spec('employee', {'age': "12"}))
 
-        self.assertEquals([{'error': "Invalid type: int for field 'name' of 'employee' (expected 'str')"}],
+        self.assertEqual([{'error': "Invalid type: int for field 'name' of 'employee' (expected 'str')"}],
                           self.schema.validate_spec('employee', {'name': 12}))
 
     def test_bool_type(self):
@@ -86,15 +86,15 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
-        self.assertEquals(1, len(self.schema.specs))
-        self.assertEquals("bool", self.schema.specs['employee'].fields['admin'].field_type)
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual("bool", self.schema.specs['employee'].fields['admin'].field_type)
 
-        self.assertEquals([], self.schema.validate_spec('employee', {'admin': True}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'admin': True}))
 
-        self.assertEquals([{'error': "Nonexistant field: 'age'"}],
+        self.assertEqual([{'error': "Nonexistant field: 'age'"}],
                           self.schema.validate_spec('employee', {'age': "12"}))
 
-        self.assertEquals([{'error': "Invalid type: int for field 'admin' of 'employee' (expected 'bool')"}],
+        self.assertEqual([{'error': "Invalid type: int for field 'admin' of 'employee' (expected 'bool')"}],
                           self.schema.validate_spec('employee', {'admin': 12}))
 
 
@@ -111,13 +111,13 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
-        self.assertEquals(1, len(self.schema.specs))
-        self.assertEquals("float", self.schema.specs['employee'].fields['salary'].field_type)
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual("float", self.schema.specs['employee'].fields['salary'].field_type)
 
-        self.assertEquals([], self.schema.validate_spec('employee', {'salary': 22.33}))
-        self.assertEquals([], self.schema.validate_spec('employee', {'salary': 22}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'salary': 22.33}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'salary': 22}))
 
-        self.assertEquals([{'error': "Nonexistant field: 'age'"}],
+        self.assertEqual([{'error': "Nonexistant field: 'age'"}],
                           self.schema.validate_spec('employee', {'age': "12"}))
 
     def test_datetime_type(self):
@@ -139,15 +139,15 @@ class SchemaTest(unittest.TestCase):
             },
         })
 
-        self.assertEquals(1, len(self.schema.specs))
-        self.assertEquals("datetime", self.schema.specs['employee'].fields['created'].field_type)
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual("datetime", self.schema.specs['employee'].fields['created'].field_type)
 
-        self.assertEquals([], self.schema.validate_spec('employee', {'created': "2021-12-21T12:30:40"}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'created': "2021-12-21T12:30:40"}))
 
         self.assertEqual([{'error': "Invalid type for field 'created' (expected 'str')"}],
                          self.schema.validate_spec('employee', {'created': 12}))
 
-        self.assertEquals([{'error': "Invalid date string for field 'created' (expected ISO format)"}],
+        self.assertEqual([{'error': "Invalid date string for field 'created' (expected ISO format)"}],
                           self.schema.validate_spec('employee', {'created': "March 12"}))
 
         self.schema.insert_resource('employee', {'created': "2021-12-31T12:30:20"}, 'employees')
@@ -172,11 +172,11 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
-        self.assertEquals(1, len(self.schema.specs))
-        self.assertEquals(True, self.schema.specs['employee'].fields['name'].required)
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual(True, self.schema.specs['employee'].fields['name'].required)
 
-        self.assertEquals([], self.schema.validate_spec('employee', {'name': 'Bob'}))
+        self.assertEqual([], self.schema.validate_spec('employee', {'name': 'Bob'}))
 
-        self.assertEquals([{'error': "Missing required field: 'name'"}],
+        self.assertEqual([{'error': "Missing required field: 'name'"}],
                           self.schema.validate_spec('employee', {'address': "12 Road"}))
 

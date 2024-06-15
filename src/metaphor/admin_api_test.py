@@ -41,12 +41,12 @@ class AdminApiTest(unittest.TestCase):
         branch_id = self.api.post('/branches', {'name': 'Sales'})
 
         branch = self.api.get('/branches/%s' % branch_id)
-        self.assertEquals(None, branch['average_age'])
+        self.assertEqual(None, branch['average_age'])
 
         self.api.post('/branches/%s/employees' % branch_id, {'id': employee_id})
 
         branch = self.api.get('/branches/%s' % branch_id)
-        self.assertEquals(21, branch['average_age'])
+        self.assertEqual(21, branch['average_age'])
 
     def test_delete_field(self):
         self.admin_api.delete_field('branch', 'name')
