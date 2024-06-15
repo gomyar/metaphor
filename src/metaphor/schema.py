@@ -234,6 +234,8 @@ class Schema(object):
         self.version = schema_data['version']
 
     def create_spec(self, spec_name):
+        if spec_name in self.specs:
+            raise Exception("Spec already exists: %s" % spec_name)
         self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}})

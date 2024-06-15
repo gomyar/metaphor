@@ -27,26 +27,26 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.set_as_current()
 
-        self.schema_1.create_spec('user')
-        self.schema_1.create_field('user', 'username', 'str')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'username', 'str')
 
-        self.schema_1.create_field('root', 'users', 'collection', 'user')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
 
-        self.schema_2.create_spec('user')
-        self.schema_2.create_field('user', 'username', 'str')
-        self.schema_2.create_field('user', 'address', 'str', default="42 ironside")
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'username', 'str')
+        self.schema_2.create_field('client', 'address', 'str', default="42 ironside")
 
-        self.schema_2.create_field('root', 'users', 'collection', 'user')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('user', {"username": "Bob"}, 'users')
-        user_2_id = self.schema_1.insert_resource('user', {"username": "Ned"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"username": "Bob"}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"username": "Ned"}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('create_field', mutation.steps[0]['action'])
-        self.assertEqual('user', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('address', mutation.steps[0]['params']['field_name'])
 
         mutation.mutate()
@@ -64,26 +64,26 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.set_as_current()
 
-        self.schema_1.create_spec('user')
-        self.schema_1.create_field('user', 'username', 'str')
-        self.schema_1.create_field('user', 'address', 'str')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'username', 'str')
+        self.schema_1.create_field('client', 'address', 'str')
 
-        self.schema_1.create_field('root', 'users', 'collection', 'user')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
 
-        self.schema_2.create_spec('user')
-        self.schema_2.create_field('user', 'username', 'str')
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'username', 'str')
 
-        self.schema_2.create_field('root', 'users', 'collection', 'user')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('user', {"username": "Bob", "address": "here"}, 'users')
-        user_2_id = self.schema_1.insert_resource('user', {"username": "Ned", "address": "there"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"username": "Bob", "address": "here"}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"username": "Ned", "address": "there"}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('delete_field', mutation.steps[0]['action'])
-        self.assertEqual('user', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('address', mutation.steps[0]['params']['field_name'])
 
         mutation.mutate()
@@ -101,23 +101,23 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.set_as_current()
 
-        self.schema_1.create_spec('user')
-        self.schema_1.create_field('user', 'phone', 'int')
-        self.schema_1.create_field('root', 'users', 'collection', 'user')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'phone', 'int')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
 
-        self.schema_2.create_spec('user')
-        self.schema_2.create_field('user', 'phone', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'user')
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'phone', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('user', {"phone": 12345}, 'users')
-        user_2_id = self.schema_1.insert_resource('user', {"phone": 67890}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('convert_field', mutation.steps[0]['action'])
-        self.assertEqual('user', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['field_name'])
 
         mutation.mutate()
@@ -135,23 +135,23 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.set_as_current()
 
-        self.schema_1.create_spec('user')
-        self.schema_1.create_field('user', 'phone', 'float')
-        self.schema_1.create_field('root', 'users', 'collection', 'user')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'phone', 'float')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
 
-        self.schema_2.create_spec('user')
-        self.schema_2.create_field('user', 'phone', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'user')
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'phone', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('user', {"phone": 12345.67}, 'users')
-        user_2_id = self.schema_1.insert_resource('user', {"phone": 67890.12}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('convert_field', mutation.steps[0]['action'])
-        self.assertEqual('user', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['field_name'])
 
         mutation.mutate()
@@ -170,23 +170,23 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.set_as_current()
 
-        self.schema_1.create_spec('user')
-        self.schema_1.create_field('user', 'phone', 'bool')
-        self.schema_1.create_field('root', 'users', 'collection', 'user')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'phone', 'bool')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
 
-        self.schema_2.create_spec('user')
-        self.schema_2.create_field('user', 'phone', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'user')
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'phone', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('user', {"phone": True}, 'users')
-        user_2_id = self.schema_1.insert_resource('user', {"phone": False}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": True}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": False}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('convert_field', mutation.steps[0]['action'])
-        self.assertEqual('user', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['field_name'])
 
         mutation.mutate()
@@ -204,23 +204,23 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.set_as_current()
 
-        self.schema_1.create_spec('user')
-        self.schema_1.create_field('user', 'created', 'datetime')
-        self.schema_1.create_field('root', 'users', 'collection', 'user')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'created', 'datetime')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
 
-        self.schema_2.create_spec('user')
-        self.schema_2.create_field('user', 'created', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'user')
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'created', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('user', {"created": "2023-01-02T10:11:22.000Z"}, 'users')
-        user_2_id = self.schema_1.insert_resource('user', {"created": None}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"created": "2023-01-02T10:11:22.000Z"}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"created": None}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('convert_field', mutation.steps[0]['action'])
-        self.assertEqual('user', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('created', mutation.steps[0]['params']['field_name'])
 
         mutation.mutate()
@@ -231,7 +231,7 @@ class MutationTest(unittest.TestCase):
         self.assertEqual("2023-01-02T10:11:22.000Z", user_1['created'])
         self.assertEqual(None, user_2['created'])
 
-    def test_steps(self):
+    def test_move_steps_root(self):
         # given 2 schemas
         self.schema_1 = SchemaFactory(self.db).create_schema()
         self.schema_2 = SchemaFactory(self.db).create_schema()
@@ -262,20 +262,47 @@ class MutationTest(unittest.TestCase):
         self.assertEqual(0, self.db.metaphor_resource.count_documents({"_type": "client", "_parent_field_name": "primary_clients"}))
         self.assertEqual(2, self.db.metaphor_resource.count_documents({"_type": "client", "_parent_field_name": "secondary_clients"}))
 
-    # type changes
-        # str -> int
-        # int -> str
-        # float -> int
-        # int -> float
-        # str -> datetime
-        # int -> bool
+    def test_move_steps(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
 
-    # test infer mutation add field
+        self.schema_1.set_as_current()
 
-    # test infer delete field
+        # create schema 1
+        self.schema_1.create_spec('job')
+        self.schema_1.create_field('job', 'description', 'str')
 
-    # test infer add resource
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+        self.schema_1.create_field('client', 'jobs', 'collection', 'job')
 
-    # test infer delete resource
+        self.schema_1.create_field('root', 'primary_clients', 'collection', 'client')
+        self.schema_1.create_field('root', 'secondary_clients', 'collection', 'client')
 
-    # test infer alter field (default / required / type)
+        # create schema 2
+        self.schema_2.create_spec('job')
+        self.schema_2.create_field('job', 'description', 'str')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'jobs', 'collection', 'job')
+        self.schema_2.create_field('root', 'primary_clients', 'collection', 'client')
+        self.schema_2.create_field('root', 'secondary_clients', 'collection', 'client')
+
+        # insert test data
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'primary_clients')
+        client_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'secondary_clients')
+
+        job_1_id = self.schema_1.insert_resource('job', {'description': 'Job 1'}, 'jobs', 'client', client_1_id)
+        job_2_id = self.schema_1.insert_resource('job', {'description': 'Job 2'}, 'jobs', 'client', client_2_id)
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        mutation.add_move_step(f"primary_clients/{client_1_id}/jobs", f"secondary_clients/{client_2_id}/jobs")
+
+        mutation.mutate()
+
+        # assert data moved
+        self.assertEqual(0, self.db.metaphor_resource.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_1_id)}))
+        self.assertEqual(2, self.db.metaphor_resource.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_2_id)}))

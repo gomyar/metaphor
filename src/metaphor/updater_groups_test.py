@@ -21,9 +21,6 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater = Updater(self.schema)
 
-        self.schema.create_initial_schema()
-
-
         self.company_spec = self.schema.create_spec('company')
         self.employee_spec = self.schema.create_spec('employee')
         self.division_spec = self.schema.create_spec('division')

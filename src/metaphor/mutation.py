@@ -4,6 +4,7 @@ from .update.mutation_delete_field import DeleteFieldMutation
 from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
 from .updater import Updater
 
+from metaphor.lrparse.lrparse import parse_canonical_url
 from metaphor.lrparse.lrparse import parse_url
 
 

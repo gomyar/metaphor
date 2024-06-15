@@ -607,3 +607,12 @@ class SchemaTest(unittest.TestCase):
 
 
         self.assertEqual('ned', self.schema.specs['primary'].fields['name'].default)
+
+    def test_cannot_duplicate(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('primary')
+        self.assertRaises(Exception, self.schema.create_spec, 'primary')

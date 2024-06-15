@@ -16,7 +16,6 @@ class ServerTest(TestCase):
         self.db = client.metaphor2_test_db
 
         schema = SchemaFactory(self.db).create_schema()
-        schema.create_initial_schema()
         schema.set_as_current()
 
         self.app = create_app(self.db)

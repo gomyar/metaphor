@@ -17,7 +17,6 @@ class ApiTest(unittest.TestCase):
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.schema = SchemaFactory(self.db).create_schema()
-        self.schema.create_initial_schema()
         self.schema.set_as_current()
 
         self.employee_spec = self.schema.create_spec('employee')
