@@ -2,6 +2,10 @@
 from .update.mutation_create_defaulted_field import DefaultFieldMutation
 from .update.mutation_delete_field import DeleteFieldMutation
 from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
+from .update.mutation_create_spec import CreateSpecMutation
+from .update.mutation_delete_spec import DeleteSpecMutation
+from .update.mutation_rename_field import RenameFieldMutation
+
 from .updater import Updater
 
 from metaphor.lrparse.lrparse import parse_canonical_url
@@ -12,6 +16,9 @@ ACTIONS = {
     "create_field": DefaultFieldMutation,
     "convert_field": AlterFieldConvertPrimitiveMutation,
     "delete_field": DeleteFieldMutation,
+    "create_spec": CreateSpecMutation,
+    "delete_spec": DeleteSpecMutation,
+    "rename_field": RenameFieldMutation,
 }
 
 
@@ -22,10 +29,44 @@ class MutationFactory(object):
         self.mutation = Mutation(from_schema, to_schema)
 
     def create(self):
+        self.init_created_specs()
+        self.init_deleted_specs()
         self.init_created_defaulted_fields()
         self.init_altered_fields()
         self.init_deleted_fields()
         return self.mutation
+
+    def init_created_specs(self):
+        for spec_name, to_spec in self.to_schema.specs.items():
+            if spec_name not in self.from_schema.specs:
+                spec = self.to_schema.specs[spec_name]
+                self.mutation.steps.append({
+                    "action": "create_spec",
+                    "params": {
+                        "spec_name": spec_name,
+                    }
+                })
+                for field_name, field in spec.fields.items():
+                    self.mutation.steps.append({
+                        "action": "create_field",
+                        "params": {
+                            "spec_name": spec_name,
+                            "field_name": field_name,
+                            "field_value": field.default,
+                        }
+                    })
+
+
+    def init_deleted_specs(self):
+        for spec_name, to_spec in self.from_schema.specs.items():
+            if spec_name not in self.to_schema.specs:
+                spec = self.from_schema.specs[spec_name]
+                self.mutation.steps.append({
+                    "action": "delete_spec",
+                    "params": {
+                        "spec_name": spec_name,
+                    }
+                })
 
     def init_created_defaulted_fields(self):
         for spec_name, to_spec in self.to_schema.specs.items():
@@ -33,16 +74,15 @@ class MutationFactory(object):
                 from_spec = self.from_schema.specs[spec_name]
                 for field_name, field in to_spec.fields.items():
                     if field_name not in from_spec.fields:
-                        if field.default is not None:
-                            field = self.to_schema.specs[spec_name].fields[field_name]
-                            self.mutation.steps.append({
-                                "action": "create_field",
-                                "params": {
-                                    "spec_name": spec_name,
-                                    "field_name": field_name,
-                                    "field_value": field.default,
-                                }
-                            })
+                        field = self.to_schema.specs[spec_name].fields[field_name]
+                        self.mutation.steps.append({
+                            "action": "create_field",
+                            "params": {
+                                "spec_name": spec_name,
+                                "field_name": field_name,
+                                "field_value": field.default,
+                            }
+                        })
 
     def init_altered_fields(self):
         type_map = {
@@ -103,6 +143,57 @@ class Mutation:
             "from_path": from_path,
             "to_path": to_path,
         })
+
+    def _find_delete_field_step(self, spec_name, field_name):
+        for step in self.steps:
+            if step['action'] == 'delete_field' and step['params']['spec_name'] == spec_name and step['params']['field_name'] == field_name:
+                return step
+
+    def _find_create_field_step(self, spec_name, field_name):
+        for step in self.steps:
+            if step['action'] == 'create_field' and step['params']['spec_name'] == spec_name and step['params']['field_name'] == field_name:
+                return step
+
+    def convert_delete_field_to_rename(self, spec_name, from_field_name, to_field_name):
+        delete_step = self._find_delete_field_step(spec_name, from_field_name)
+        create_step = self._find_create_field_step(spec_name, to_field_name)
+
+        self.steps.pop(self.steps.index(delete_step))
+        self.steps.pop(self.steps.index(create_step))
+
+        self.steps.append({
+            "action": "rename_field",
+            "params": {
+                "spec_name": spec_name,
+                "from_field_name": from_field_name,
+                "to_field_name": to_field_name,
+            }})
+
+    def _find_step(self, action, spec_name, field_name):
+        for step in self.steps:
+            if step['action'] == action and step['params']['spec_name'] == spec_name and step['params']['from_field_name'] == field_name:
+                return step
+
+    def cancel_rename_field(self, spec_name, field_name):
+        rename_step = self._find_step('rename_field', spec_name, field_name)
+
+        self.steps.pop(self.steps.index(rename_step))
+
+        self.steps.append({
+            "action": "create_field",
+            "params": {
+                "spec_name": spec_name,
+                "field_name": rename_step['params']['to_field_name'],
+            }
+        })
+        self.steps.append({
+            "action": "delete_field",
+            "params": {
+                "spec_name": spec_name,
+                "field_name": field_name,
+            }
+        })
+
 
     def execute_data_step(self, step):
         self.execute_move_data(**step)

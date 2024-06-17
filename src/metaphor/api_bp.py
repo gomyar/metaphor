@@ -65,10 +65,9 @@ def serialize_mutation(mutation):
     return {
         'from_schema': serialize_schema(mutation.from_schema),
         'to_schema': serialize_schema(mutation.to_schema),
-        'steps': serialize_steps(mutation.steps),
+        'steps': mutation.steps,
         'data_steps': mutation.data_steps,
     }
-
 
 
 @search_bp.route("/<spec_name>", methods=['GET'])

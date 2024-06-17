@@ -345,6 +345,9 @@ class Schema(object):
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
         self.update_version()
 
+    def rename_field(self, spec_name, from_field_name, to_field_name):
+        self.db['metaphor_resource'].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
+
     def _do_delete_field(self, spec_name, field_name):
         spec = self.specs[spec_name]
         field = spec.fields.pop(field_name)
@@ -555,6 +558,9 @@ class Schema(object):
 
     def delete_resource(self, spec_name, resource_id):
         return self.db['metaphor_resource'].find_one_and_delete({'_id': self.decodeid(resource_id)})
+
+    def delete_resources_of_type(self, spec_name):
+        return self.db['metaphor_resource'].delete_many({'_type': spec_name})
 
     def mark_link_collection_item_deleted(self, spec_name, parent_id, field_name, resource_id):
         self.db['metaphor_resource'].update_one({

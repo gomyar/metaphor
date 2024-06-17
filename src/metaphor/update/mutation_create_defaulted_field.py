@@ -1,7 +1,7 @@
 
 
 class DefaultFieldMutation:
-    def __init__(self, updater, from_schema, to_schema, spec_name, field_name, field_value):
+    def __init__(self, updater, from_schema, to_schema, spec_name, field_name, field_value=None):
         self.updater = updater
         self.to_schema = to_schema
 
@@ -13,14 +13,18 @@ class DefaultFieldMutation:
         return "<DefaultFieldMutation>"
 
     def execute(self):
-        update_id = str(self.to_schema.create_update())
 
         spec = self.to_schema.specs[self.spec_name]
-        self.to_schema.default_field_value(self.spec_name, self.field_name, self.field_value)
+        field = spec.fields[self.field_name]
 
-        # find and update dependent calcs
-        start_agg = []
+        # only action required on a field create is default
+        if field.default is not None:
+            update_id = str(self.to_schema.create_update())
+            self.to_schema.default_field_value(self.spec_name, self.field_name, self.field_value)
 
-        self.updater.update_for_field(self.spec_name, self.field_name, update_id, start_agg)
+            # find and update dependent calcs
+            start_agg = []
 
-        self.to_schema.cleanup_update(update_id)
+            self.updater.update_for_field(self.spec_name, self.field_name, update_id, start_agg)
+
+            self.to_schema.cleanup_update(update_id)

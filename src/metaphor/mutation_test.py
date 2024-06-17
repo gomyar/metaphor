@@ -28,19 +28,19 @@ class MutationTest(unittest.TestCase):
         self.schema_1.set_as_current()
 
         self.schema_1.create_spec('client')
-        self.schema_1.create_field('client', 'username', 'str')
+        self.schema_1.create_field('client', 'name', 'str')
 
         self.schema_1.create_field('root', 'users', 'collection', 'client')
 
         self.schema_2.create_spec('client')
-        self.schema_2.create_field('client', 'username', 'str')
+        self.schema_2.create_field('client', 'name', 'str')
         self.schema_2.create_field('client', 'address', 'str', default="42 ironside")
 
         self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"username": "Bob"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"username": "Ned"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -65,19 +65,19 @@ class MutationTest(unittest.TestCase):
         self.schema_1.set_as_current()
 
         self.schema_1.create_spec('client')
-        self.schema_1.create_field('client', 'username', 'str')
+        self.schema_1.create_field('client', 'name', 'str')
         self.schema_1.create_field('client', 'address', 'str')
 
         self.schema_1.create_field('root', 'users', 'collection', 'client')
 
         self.schema_2.create_spec('client')
-        self.schema_2.create_field('client', 'username', 'str')
+        self.schema_2.create_field('client', 'name', 'str')
 
         self.schema_2.create_field('root', 'users', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"username": "Bob", "address": "here"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"username": "Ned", "address": "there"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob", "address": "here"}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned", "address": "there"}, 'users')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -306,3 +306,161 @@ class MutationTest(unittest.TestCase):
         # assert data moved
         self.assertEqual(0, self.db.metaphor_resource.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_1_id)}))
         self.assertEqual(2, self.db.metaphor_resource.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_2_id)}))
+
+    def test_create_spec(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'address', 'str', default="42 ironside")
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        self.assertEqual(3, len(mutation.steps))
+        self.assertEqual('create_spec', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+
+        self.assertEqual('create_field', mutation.steps[1]['action'])
+        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('name', mutation.steps[1]['params']['field_name'])
+
+        self.assertEqual('create_field', mutation.steps[2]['action'])
+        self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
+        self.assertEqual('address', mutation.steps[2]['params']['field_name'])
+        self.assertEqual('42 ironside', mutation.steps[2]['params']['field_value'])
+
+        mutation.mutate()
+
+    def test_delete_spec(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+        self.schema_1.create_field('client', 'address', 'str', default="42 ironside")
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        # create test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'users')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        self.assertEqual(1, len(mutation.steps))
+        self.assertEqual('delete_spec', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+
+        mutation.mutate()
+
+        self.assertEqual(0, self.db.metaphor_resource.count_documents({"_type": "client"}))
+
+    def test_rename_field(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'username', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # create test data
+        client_1_id = self.schema_1.insert_resource('client', {"username": "Bob"}, 'clients')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        # creates a delete and a create
+        self.assertEqual(2, len(mutation.steps))
+
+        self.assertEqual('create_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('name', mutation.steps[0]['params']['field_name'])
+
+        self.assertEqual('delete_field', mutation.steps[1]['action'])
+        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('username', mutation.steps[1]['params']['field_name'])
+
+        # alter the mutation
+        mutation.convert_delete_field_to_rename('client', 'username', 'name')
+
+        self.assertEqual(1, len(mutation.steps))
+
+        self.assertEqual('rename_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('username', mutation.steps[0]['params']['from_field_name'])
+        self.assertEqual('name', mutation.steps[0]['params']['to_field_name'])
+
+        mutation.mutate()
+
+        client = self.schema_2.db['metaphor_resource'].find_one({'_id': self.schema_1.decodeid(client_1_id)})
+        self.assertEqual("Bob", client["name"])
+        self.assertIsNone(client.get('username'))
+
+    def test_cancel_rename_field(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'username', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # create test data
+        client_1_id = self.schema_1.insert_resource('client', {"username": "Bob"}, 'clients')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        # alter the mutation
+        mutation.convert_delete_field_to_rename('client', 'username', 'name')
+
+        # cancel it again
+        mutation.cancel_rename_field('client', 'username')
+
+        # creates a delete and a create
+        self.assertEqual(2, len(mutation.steps))
+
+        self.assertEqual('create_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('name', mutation.steps[0]['params']['field_name'])
+
+        self.assertEqual('delete_field', mutation.steps[1]['action'])
+        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('username', mutation.steps[1]['params']['field_name'])
+
+        mutation.mutate()
+
+        client = self.schema_2.db['metaphor_resource'].find_one({'_id': self.schema_2.decodeid(client_1_id)})
+        self.assertIsNone(client.get('name'))
+        self.assertIsNone(client.get('username'))
+
+
+    def test_rename_field_add_default(self):
+        pass
+
+    def test_create_calc_fields_in_correct_order(self):
+        pass

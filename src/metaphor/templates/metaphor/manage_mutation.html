@@ -271,9 +271,10 @@ var mutation_id = "{{ mutation_id }}";
     </div>
     
     <div gui-list="manage.mutation.steps" gui-item="step">
-        <div gui-text="step.action"></div>
-        <div gui-text="step.target_calc"></div>
-        <div gui-text="step.move_calc"></div>
+        <span>Move: </span>
+        <span gui-text="step.from_path"></span>
+        <span>To: </span>
+        <span gui-text="step.to_path"></span>
     </div>
 </div>
 
@@ -281,33 +282,26 @@ var mutation_id = "{{ mutation_id }}";
 <div class="popupwrapper" gui-show="manage.step">
     <div class="popup">
         <div class="title">
-            Create Step:
+            Create Move Step:
         </div>
         <div class="popupform">
             <div class="formfield">
-                <div class="label">Action:</div>
-                <select gui-val="manage.step.action">
-                    <option value="move">Move</option>
-                </select>
+                <div class="label">From path:</div>
+                <input gui-val="manage.step.from_path" gui-change="manage.reload_from_step()"></input>
             </div>
             <div class="formfield">
-                <div class="label">Target resources:</div>
-                <input gui-val="manage.step.target_calc" gui-change="manage.reload_step()"></input>
+                <div class="label">From spec:</div>
+                <div gui-text="manage.step.from_spec.name"></div>
             </div>
             <div class="formfield">
-                <div class="label">Target spec:</div>
-                <div gui-text="manage.step.target_spec.name"></div>
+                <div class="label">To path:</div>
+                <input gui-val="manage.step.to_path" gui-change="manage.reload_to_step()"></input>
             </div>
             <div class="formfield">
-                <div class="label">Target collection field:</div>
-                <select gui-val="manage.step.target_field_name" gui-list="manage.target_collection_fields()" gui-item="field_name">
-                    <option gui-val="field_name" gui-text="field_name"></option>
-                </select>
+                <div class="label">To spec:</div>
+                <div gui-text="manage.step.to_spec.name"></div>
             </div>
-            <div class="formfield">
-                <div class="label">Filter moved resources:</div>
-                <input gui-val="manage.step.move_calc"></input>
-            </div>
+
         </div>
         <div class="popupbuttons">
             <button class="button" gui-click='manage.perform_create_step()'>Create</button>

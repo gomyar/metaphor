@@ -31,28 +31,26 @@ var manage = {
         });
     },
 
-    reload_step: function() {
-        turtlegui.ajax.post('/admin/api/schemas/' + this.mutation.from_schema.id + '/calcs', {'calc_str': this.step.target_calc}, (data) => {
+    reload_from_step: function() {
+        turtlegui.ajax.post('/admin/api/schemas/' + this.mutation.from_schema.id + '/calcs', {'calc_str': this.step.from_path}, (data) => {
             var meta = JSON.parse(data);
-            manage.step.target_spec = manage.mutation.from_schema.specs[meta.meta.spec_name];
-            manage.step.target_is_collection = meta.meta.is_collection;
-            manage.step.target_field_name = manage.target_collection_fields() ? manage.target_collection_fields()[0] : null;
+            manage.step.from_spec = manage.mutation.from_schema.specs[meta.meta.spec_name];
+            manage.step.from_is_collection = meta.meta.is_collection;
+            turtlegui.reload();
+        }, handle_http_error);
+    },
+
+    reload_to_step: function() {
+        turtlegui.ajax.post('/admin/api/schemas/' + this.mutation.to_schema.id + '/calcs', {'calc_str': this.step.to_path}, (data) => {
+            var meta = JSON.parse(data);
+            manage.step.to_spec = manage.mutation.to_schema.specs[meta.meta.spec_name];
+            manage.step.to_is_collection = meta.meta.is_collection;
             turtlegui.reload();
         }, handle_http_error);
     },
 
     enabled_attrs: function() {
-        return manage.step.target_spec != null ? {"disabled": true} : null;
-    },
-
-    target_collection_fields: function() {
-        var field_names = [];
-        for (var name in manage.step.target_spec.fields) {
-            if (manage.step.target_spec.fields[name].type == 'collection') {
-                field_names.push(name);
-            }
-        }
-        return field_names;
+        return manage.step.from_spec != null ? {"disabled": true} : null;
     },
 
     create_diff: function() {
