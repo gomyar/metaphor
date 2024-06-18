@@ -348,6 +348,10 @@ class Schema(object):
     def rename_field(self, spec_name, from_field_name, to_field_name):
         self.db['metaphor_resource'].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
 
+    def rename_spec(self, from_spec_name, to_spec_name):
+        self.db['metaphor_resource'].update_many({"_type": from_spec_name}, {"$set": {"_type": to_spec_name}})
+        self.db['metaphor_resource'].update_many({"_parent_type": from_spec_name}, {"$set": {"_parent_type": to_spec_name}})
+
     def _do_delete_field(self, spec_name, field_name):
         spec = self.specs[spec_name]
         field = spec.fields.pop(field_name)
