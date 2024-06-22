@@ -152,6 +152,10 @@ class User(UserMixin):
 class Schema(object):
     def __init__(self, db):
         self.db = db
+
+        self.name = ""
+        self.description = ""
+
         self.specs = {}
         self.root = Spec('root', self)
         self._id = None
@@ -207,6 +211,8 @@ class Schema(object):
         from metaphor.lrparse.lrparse import parse
 
         self._id = ObjectId(schema_data['id'])
+        self.name = schema_data.get('name', '')
+        self.description = schema_data.get('description', '')
         self.current = schema_data.get('current', False)
         self._build_specs(schema_data)
 
@@ -556,6 +562,9 @@ class Schema(object):
 
         new_resource_id = self.db['metaphor_resource'].insert_one(data).inserted_id
         return self.encodeid(new_resource_id)
+
+    def save_details(self):
+        self.db['metaphor_schema'].update_one({"_id": self._id}, {"$set": {"name": self.name, "description": self.description}})
 
     def mark_resource_deleted(self, spec_name, resource_id):
         return self.db['metaphor_resource'].find_one_and_update({'_id': self.decodeid(resource_id)}, {"$set": {"_deleted": True}})

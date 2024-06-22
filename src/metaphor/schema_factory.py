@@ -71,23 +71,28 @@ class SchemaFactory:
         result = self.db.metaphor_schema.delete_one({"_id": ObjectId(schema_id), "current": {"$ne": True}})
         return result.acknowledged
 
+    def delete_mutation(self, mutation_id):
+        result = self.db.metaphor_mutation.delete_one({"_id": ObjectId(mutation_id), "current": {"$ne": True}})
+        return result.acknowledged
+
     def list_schemas(self):
         return list(self.db.metaphor_schema.aggregate(self._schema_aggregation()))
 
     def create_schema_from_import(self, schema_data):
         saved = {
-            "root": schema_data['root']['fields'],
+            "root": schema_data['root'],
             "specs": schema_data['specs'],
             "version": schema_data['version'],
             "created": schema_data['created'],
         }
         self.db.metaphor_schema.insert_one(saved)
 
-    def copy_schema_from_id(self, schema_id):
+    def copy_schema_from_id(self, schema_id, name):
         to_copy = self.db.metaphor_schema.find_one({"_id": ObjectId(schema_id)})
         to_copy['current'] = False
         to_copy.pop('_id')
         to_copy['created'] = datetime.now().isoformat()
+        to_copy['name'] = name
         self.db.metaphor_schema.insert_one(to_copy)
 
     def load_mutation(self, mutation_id):
@@ -100,18 +105,14 @@ class SchemaFactory:
         mutation = Mutation(from_schema, to_schema)
         mutation._id = mutation_id
         mutation.data_steps = data.get('data_steps') or []
+        mutation.steps = data.get('steps') or []
         return mutation
 
-    def create_mutation(self, mutation):
-        self.db.metaphor_mutation.insert_one({
-            "from_schema_id": mutation.from_schema._id,
-            "to_schema_id": mutation.to_schema._id,
-            "data_steps": [],
-        })
-
-    def save_mutation(self, mutation):
-        self.db.metaphor_mutation.update_one({"_id": ObjectId(mutation.id)}, {
-            "from_schema_id": mutation.from_schema._id,
-            "to_schema_id": mutation.to_schema._id,
-            "data_steps": mutation.data_steps,
-        })
+    def save_mutation(self, mutation, object_id):
+        self.db.metaphor_mutation.update_one({"_id": object_id}, {
+            "$set": {
+                "from_schema_id": mutation.from_schema._id,
+                "to_schema_id": mutation.to_schema._id,
+                "steps": mutation.steps,
+            }
+        }, upsert=True)

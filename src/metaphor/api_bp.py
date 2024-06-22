@@ -10,7 +10,7 @@ from metaphor.login import admin_required
 from metaphor.admin_api import SchemaSerializer
 from metaphor.admin_api import AdminApi
 from metaphor.schema import Schema
-from metaphor.mutation import Mutation
+from metaphor.mutation import Mutation, MutationFactory
 
 from urllib.error import HTTPError
 
@@ -51,6 +51,8 @@ def serialize_spec(spec):
 def serialize_schema(schema):
     return {
         'id': str(schema._id),
+        'name': schema.name,
+        'description': schema.description,
         'specs': {
             name: serialize_spec(spec) for name, spec in schema.specs.items()
         },
@@ -162,7 +164,7 @@ def admin_api_schemas():
     else:
         if request.json:
             if request.json.get('_from_id'):
-                factory.copy_schema_from_id(request.json['_from_id'])
+                factory.copy_schema_from_id(request.json['_from_id'], request.json['name'])
                 return jsonify({'ok': 1})
             else:
                 factory.create_schema_from_import(request.json)
@@ -297,14 +299,14 @@ def mutations():
     factory = current_app.config['schema_factory']
     from_schema = factory.load_schema(data['from_schema_id'])
     to_schema = factory.load_schema(data['to_schema_id'])
-    mutation = Mutation(from_schema, to_schema)
+    mutation = MutationFactory(from_schema, to_schema).create()
 
-    factory.create_mutation(mutation)
+    factory.save_mutation(mutation, ObjectId())
 
     return jsonify({"ok": 1})
 
 
-@admin_bp.route("/api/mutations/<mutation_id>", methods=['GET', 'PATCH'])
+@admin_bp.route("/api/mutations/<mutation_id>", methods=['GET', 'PATCH', 'DELETE'])
 @admin_required
 def single_mutation(mutation_id):
     factory = current_app.config['schema_factory']
@@ -312,6 +314,9 @@ def single_mutation(mutation_id):
 
     if request.method == 'GET':
         return serialize_mutation(mutation)
+    elif request.method == 'DELETE':
+        factory.delete_mutation(mutation_id)
+        return jsonify({"ok": 1})
     else:
         if request.json.get('promote') == True:
             log.info("Promoting mutation %s -> %s", mutation.from_schema.version, mutation.to_schema.version)
@@ -319,6 +324,7 @@ def single_mutation(mutation_id):
             return jsonify({"ok": 1})
         else:
             return jsonify({"error": "Unsupported option"}), 400
+
 
 @admin_bp.route("/api/mutations/<mutation_id>/steps", methods=['GET', 'POST'])
 @admin_required

@@ -36,6 +36,11 @@ var admin = {
         }, handle_http_error);
     },
 
+    get_schema: function(schema_id) {
+        if (schema_id == this.current_schema.id) return this.current_schema;
+        for (schema of this.schemas) if (schema_id == schema.id) return schema;
+    },
+
     create_schema: function() {
         turtlegui.ajax.post('/admin/api/schemas', {}, (response) => {
             admin.load_schemas();
@@ -43,8 +48,9 @@ var admin = {
     },
 
     copy_schema: function(schema) {
-        if (confirm("Copy schema?")) {
-            turtlegui.ajax.post('/admin/api/schemas', {"_from_id": schema.id}, (response) => {
+        var name = prompt("Copy schema with new name:", schema.name);
+        if (name) {
+            turtlegui.ajax.post('/admin/api/schemas', {"_from_id": schema.id, "name": name}, (response) => {
                 admin.load_schemas();
             }, handle_http_error);
         }
@@ -114,6 +120,16 @@ var mutations = {
                 manage.load();
             }, (e) => {
                 alert("Error promoting: " + e);
+            });
+        }
+    },
+
+    delete_mutation: function(mutation) {
+        if (confirm("Delete mutation?")) {
+            turtlegui.ajax.delete('/admin/api/mutations/' + mutation.id, () => {
+                manage.load(); 
+            }, (e) => {
+                alert("Error deleting: " + e);
             });
         }
     }

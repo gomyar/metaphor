@@ -26,6 +26,7 @@ var manage = {
             manage.mutation.to_schema.specs['root'] = {"fields": manage.mutation.to_schema.root};
             manage.mutation.from_schema.specs['root'] = {"fields": manage.mutation.from_schema.root};
             manage.spec_names = manage.all_spec_names();
+            manage.steps = data['steps'];
             manage.create_diff();
             turtlegui.reload();
         });
@@ -61,30 +62,39 @@ var manage = {
         }
     },
 
-    create_diff_for_spec: function(spec_name, target_spec_name) {
-        var diff = {'spec_name': spec_name, 'target_spec_name': target_spec_name, 'fields': [], 'change': 'same'};
-        this.diff.push(diff);
-        var from_spec = this.mutation.from_schema.specs[spec_name];
-        var to_spec = this.mutation.to_schema.specs[target_spec_name];
-        if (spec_name != target_spec_name) {
-            diff['change'] = 'spec_renamed';
-        } else {
-            if (!from_spec) { diff['change'] = 'spec_created'; return; }
-            if (!to_spec) { diff['change'] = 'spec_deleted'; return; }
+    get_step: function(spec_name, field_name) {
+        for (var step of this.mutation.steps) {
+            if (step.params.spec_name == spec_name) {
+                if (!step.params.field_name || field_name == step.params.field_name) {
+                    return step;
+                }
+            }
         }
+        return null;
+    },
 
-        var field_names = this.all_field_names(spec_name, target_spec_name);
-        for (var f=0; f<field_names.length; f++) {
-            var field_name = field_names[f];
-            var from_field = from_spec.fields[field_name];
-            var to_field = to_spec.fields[field_name];
-            var field_diff = {'field_name': field_name};
-            diff['fields'].push(field_diff);
-            if (!from_field) { field_diff['change'] = 'field_created'; continue; }
-            if (!to_field) { field_diff['change'] = 'field_deleted'; continue; }
-            if (from_field.type != to_field.type) { field_diff['change'] = 'field_type_changed'; continue; }
-            if (from_field.calc_str != null && from_field.calc_str != to_field.calc_str) { field_diff['change'] = 'field_calc_changed'; continue; }
-            field_diff['change'] = 'same';
+    create_diff_for_spec: function(spec_name) {
+        console.log('create diff for spec', spec_name);
+        var step = this.get_step(spec_name);
+
+        var diff = {'spec_name': spec_name, 'target_spec_name': spec_name, 'fields': [], 'change': 'same'};
+        if (step) {
+            diff = {'spec_name': spec_name, 'target_spec_name': step.target_spec_name || spec_name, 'fields': [], 'change': step.action};
+        }
+        this.diff.push(diff);
+
+        if (diff.change == 'same' || diff.change == 'rename_spec') {
+            var field_names = this.all_field_names(spec_name, step ? step.target_spec_name || spec_name : spec_name);
+            for (var f=0; f<field_names.length; f++) {
+                var field_name = field_names[f];
+
+                var field_step = this.get_step(spec_name, field_name);
+                var field_diff = {'field_name': field_name, 'change': 'same'};
+                if (field_step) {
+                    field_diff['change'] = field_step.action;
+                }
+                diff['fields'].push(field_diff);
+            }
         }
     },
 
@@ -115,8 +125,8 @@ var manage = {
         var from_spec = this.mutation.from_schema.specs[spec_name];
         var to_spec = this.mutation.to_schema.specs[spec_name];
 
-        if (!from_spec) { return "spec_created"; }
-        if (!to_spec) { return "spec_deleted"; }
+        if (!from_spec) { return "create_spec"; }
+        if (!to_spec) { return "delete_spec"; }
     },
 
     show_create_step: function() {
@@ -160,7 +170,7 @@ var change_spec_delete_popup = {
     list_created_specs: function() {
         var specs = [];
         for (var diff of manage.diff) {
-            if (diff.change == 'spec_created') {
+            if (diff.change == 'create_spec') {
                 specs.push(diff.spec_name);
             }
         }
@@ -227,7 +237,7 @@ var change_field_delete_popup = {
     list_created_fields: function() {
         var fields = [];
         for (var field of this.diff.fields) {
-            if (field.change == 'field_created') {
+            if (field.change == 'create_field') {
                 fields.push(field.field_name);
             }
         }
@@ -247,7 +257,7 @@ var change_field_delete_popup = {
         var target_field = this.find_field(this.target_field_name);
         this.remove_field(this.field);
         this.remove_field(target_field);
-        this.diff.fields.push({"field_name": this.field.field_name, "change": "field_renamed", "target_field_name": target_field.field_name});
+        this.diff.fields.push({"field_name": this.field.field_name, "change": "rename_field", "target_field_name": target_field.field_name});
         this.diff.fields.sort((lhs, rhs) => (lhs.field_name > rhs.field_name) ? 1 : ((rhs.field_name > lhs.field_name) ? -1 : 0));
         this.diff = null;
 
@@ -261,8 +271,8 @@ var change_field_delete_popup = {
     cancel_rename: function(diff, field) {
         if (confirm("Cancel rename for " + field.field_name + "?")) {
             diff.fields.splice(diff.fields.indexOf(field), 1);
-            diff.fields.push({"field_name": field.field_name, "change": "field_deleted"});
-            diff.fields.push({"field_name": field.target_field_name, "change": "field_created"});
+            diff.fields.push({"field_name": field.field_name, "change": "delete_field"});
+            diff.fields.push({"field_name": field.target_field_name, "change": "create_field"});
             diff.fields.sort((lhs, rhs) => (lhs.field_name > rhs.field_name) ? 1 : ((rhs.field_name > lhs.field_name) ? -1 : 0));
             turtlegui.reload();
         }

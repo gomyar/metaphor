@@ -498,7 +498,7 @@ class MutationTest(unittest.TestCase):
         self.assertEqual(1, len(mutation.steps))
 
         self.assertEqual('rename_spec', mutation.steps[0]['action'])
-        self.assertEqual('client', mutation.steps[0]['params']['from_spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('customer', mutation.steps[0]['params']['to_spec_name'])
 
         mutation.mutate()

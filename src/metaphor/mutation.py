@@ -173,7 +173,7 @@ class Mutation:
         self.steps.append({
             "action": "rename_spec",
             "params": {
-                "from_spec_name": from_spec_name,
+                "spec_name": from_spec_name,
                 "to_spec_name": to_spec_name,
             }})
 
@@ -203,7 +203,7 @@ class Mutation:
 
         self.steps.pop(self.steps.index(rename_step))
 
-        from_spec_name = rename_step['params']['from_spec_name']
+        from_spec_name = rename_step['params']['spec_name']
         to_spec_name = rename_step['params']['to_spec_name']
         self.steps.append({
             "action": "create_spec",

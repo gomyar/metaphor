@@ -38,7 +38,7 @@ var mutation_id = "{{ mutation_id }}";
 
     <div class="diff_grid" gui-list="manage.diff" gui-item="diff">
         <div class="diff_item">
-            <div gui-show="diff.change=='spec_deleted'">
+            <div gui-show="diff.change=='delete_spec'">
                 <div class="diff_line">
                     <span class="deleted">
                         <div class="spec_name" gui-text="diff.spec_name"></div>
@@ -67,7 +67,7 @@ var mutation_id = "{{ mutation_id }}";
                 </div>
             </div>
 
-            <div gui-show="diff.change=='spec_created'">
+            <div gui-show="diff.change=='create_spec'">
 
                 <div class="diff_line">
                     <span></span>
@@ -97,22 +97,22 @@ var mutation_id = "{{ mutation_id }}";
 
             </div>
 
-            <div gui-show="diff.change=='same'||diff.change=='spec_renamed'">
+            <div gui-show="diff.change=='same'||diff.change=='rename_spec'">
                 <div class="diff_line" >
-                    <span gui-class="diff.change=='spec_renamed'&&'renamed'">
+                    <span gui-class="diff.change=='rename_spec'&&'renamed'">
                         <div class="spec_name" gui-text="diff.spec_name" ></div>
                     </span>
 
-                    <span class="change" gui-show="diff.change=='spec_renamed'">
+                    <span class="change" gui-show="diff.change=='rename_spec'">
                         <span class="renamed">Renamed</span>
                         <span class="renamed"><a gui-click="change_spec_delete_popup.cancel_rename(diff)">Cancel rename</a></span>
                         <span class="renamed"></span>
                     </span>
 
-                    <span gui-show="diff.change!='spec_renamed'"></span>
+                    <span gui-show="diff.change!='rename_spec'"></span>
 
 
-                    <span gui-class="diff.change=='spec_renamed'&&'renamed'">
+                    <span gui-class="diff.change=='rename_spec'&&'renamed'">
                         <div class="spec_name" gui-text="diff.target_spec_name"></div>
                     </span>
                 </div>
@@ -120,7 +120,7 @@ var mutation_id = "{{ mutation_id }}";
 
                 <div gui-list="diff.fields" gui-item="field" >
                     <div gui-switch="field.change">
-                        <div class="diff_line" gui-case="'field_created'">
+                        <div class="diff_line" gui-case="'create_field'">
                             <span class="spec_fields">
                             </span>
 
@@ -139,7 +139,7 @@ var mutation_id = "{{ mutation_id }}";
                                 <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.field_name].calc_str||''"></div>
                             </span>
                         </div>
-                        <div class="diff_line" gui-case="'field_deleted'">
+                        <div class="diff_line" gui-case="'delete_field'">
                             <span class="spec_fields deleted">
                                 <div class="field">
                                     <span class="name" gui-text="field.field_name"></span>
@@ -227,7 +227,7 @@ var mutation_id = "{{ mutation_id }}";
                                 <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.field_name].calc_str||''"></div>
                             </span>
                         </div>
-                        <div class="diff_line" gui-case="'field_renamed'">
+                        <div class="diff_line" gui-case="'rename_field'">
                             <span class="spec_fields renamed">
                                 <div class="field">
                                     <span class="name" gui-text="field.field_name"></span>

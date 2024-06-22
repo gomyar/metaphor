@@ -22,11 +22,15 @@ class SchemaTest(unittest.TestCase):
         data['current'] = True
         data['version'] = 'test'
         data['root'] = data.get('root', {})
+        data['name'] = data.get('name')
+        data['description'] = data.get('description')
         inserted = self.db.metaphor_schema.insert_one(data)
         self.schema = SchemaFactory(self.db).load_current_schema()
 
     def test_load_basic_spec(self):
         self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
             "specs" : {
                 "employee" : {
                     "fields" : {
@@ -41,9 +45,37 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
+        self.assertEqual("Test 1", self.schema.name)
+        self.assertEqual("A description", self.schema.description)
         self.assertEqual(1, len(self.schema.specs))
         self.assertEqual("str", self.schema.specs['employee'].fields['name'].field_type)
         self.assertEqual("int", self.schema.specs['employee'].fields['age'].field_type)
+
+    def test_save_details(self):
+        self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "age": {
+                            "type": "int"
+                        }
+                    },
+                },
+            }
+        })
+        self.schema.name = "New name"
+        self.schema.description = "New desc"
+
+        self.schema.save_details()
+
+        schema_data = self.schema.db['metaphor_schema'].find_one({"_id": self.schema._id})
+        self.assertEqual("New name", schema_data['name'])
+        self.assertEqual("New desc", schema_data['description'])
 
     def test_load_basic_link_with_reverse_link(self):
         self._create_test_schema({
@@ -589,6 +621,8 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             "current": True,
             "root": {},
+            "description": None,
+            "name": None,
             "_id": self.schema._id,
             "specs" : {
                 "primary" : {

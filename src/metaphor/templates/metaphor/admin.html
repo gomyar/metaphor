@@ -20,37 +20,41 @@
     <input class="button" type="file" gui-change="schema_import.import_schema(this)" ></input>
 </div>
 
-<div class="layer anchortop current_schema">
-    <div class="title">Current Schema</div>
 
+
+<div class="layer anchortop schema_list">
+    <div class="title">Available Schemas</div>
+
+    <div gui-list="admin.schemas" gui-item="schema">
+        <div>
+            <span gui-text="schema.name"></span>
+            <span gui-text="schema.version"></span>
+            <span><a class="button" gui-attrs="href='/admin/schemas/'+schema.id">Edit</a></span>
+            <span class="button" gui-click="admin.copy_schema(schema)"><span>Copy Schema</span></span>
+            <span class="button" gui-click="admin.delete_schema(schema)"><span>Delete Schema</span></span>
+            <span class="button" gui-show="!(schema.current) && schema.mutations.length==0" gui-click="mutations.show_create(schema)">Create Mutation</span>
+        </div>
+        <div>
+            <span gui-list="schema.mutations" gui-item="mutation">
+                <span>Mutate to: </span><span gui-text="admin.get_schema(mutation.to_schema_id).name"></span>&nbsp;<span gui-text="admin.get_schema(mutation.to_schema_id).version"></span> <span><a class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a> <span class="button" gui-click="mutations.delete_mutation(mutation)">Delete Mutation</span> <span class="button" gui-click="mutations.promote_schema(mutation)">Promote Schema</span></span>
+            </span>
+        </div>
+    </div>
+</div>
+
+
+<div class="layer anchorright current_schema">
+    <div class="title">Current Schema: <span gui-text="admin.current_schema.name"></span>&nbsp;<span gui-text="admin.current_schema.version"></span></div>
         <div>
             <span gui-text="admin.current_schema.version"></span>
             <i gui-text="admin.current_schema.created"></i>
             <span><a class="button" gui-attrs="href='/admin/schemas/'+admin.current_schema.id">View</a></span>
-            <span class="button" gui-click="admin.copy_schema(admin.current_schema)"><a href="">Copy</a></span>
+            <span class="button" gui-click="admin.copy_schema(admin.current_schema)">Copy</span>
 
         </div>
 
 </div>
 
-
-
-<div class="layer anchorright schema_list">
-    <div class="title">Schemas</div>
-
-    <div gui-list="admin.schemas" gui-item="schema">
-        <div>
-            <span gui-text="schema.version"></span>
-            <span><a class="button" gui-attrs="href='/admin/schemas/'+schema.id">Edit</a></span>
-            <span class="button" gui-click="admin.copy_schema(schema)"><span>Copy</span></span>
-            <span class="button" gui-click="admin.delete_schema(schema)"><span>Delete</span></span>
-            <span gui-list="schema.mutations" gui-item="mutation">
-                <span>Mutation: </span> <span><a class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a> <span class="button" href="" gui-click="mutations.promote_schema(mutation)">Promote</span></span>
-            </span>
-            <span class="button" gui-show="!(schema.current) && schema.mutations.length==0" gui-click="mutations.show_create(schema)">Create Mutation</span>
-        </div>
-    </div>
-</div>
 
 
 <div id="popup_spec" class="popupwrapper" gui-show="mutations.mutation">
@@ -60,12 +64,12 @@
         </div>
         <div class="popupform">
             <div class="formfield">
-                <div class="label">From Schema: </div>
-                <div class="spec_name" gui-text="mutations.mutation.from_schema.version"></div>
+                <div class="label">From <span gui-show="mutations.mutation.from_schema.current">(current)</span> Schema: </div>
+                <div class="spec_name"><span gui-text="mutations.mutation.from_schema.name"></span>&nbsp;<span gui-text="mutations.mutation.from_schema.version"></span>&nbsp;</div>
             </div>
             <div class="formfield">
                 <div class="label">To Schema: </div>
-                <div class="spec_name" gui-text="mutations.mutation.to_schema.version"></div>
+                <div class="spec_name"><span gui-text="mutations.mutation.to_schema.name"></span>&nbsp;<span gui-text="mutations.mutation.to_schema.version"></span>&nbsp;</div>
             </div>
         </div>
         <div class="popupbuttons">
