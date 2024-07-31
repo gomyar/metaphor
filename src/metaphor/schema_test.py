@@ -572,6 +572,43 @@ class SchemaTest(unittest.TestCase):
         except DependencyException as de:
             self.assertEqual("secondary.primary referenced by ['secondary.primary_name']", str(de))
 
+    def test_delete_root_field(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str')
+        self.schema.create_field('root', 'primaries', 'collection', 'primary')
+
+        self.schema.delete_field('root', 'primaries')
+
+        self.assertEqual(0, len(self.schema.root.fields))
+        self.assertEqual({}, self.db.metaphor_schema.find_one()['root'])
+
+    def test_delete_root_field_with_dependencies(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('primary')
+        self.schema.create_field('primary', 'name', 'str')
+        self.schema.create_field('root', 'primaries', 'collection', 'primary')
+
+        self.schema.create_spec('secondary')
+        self.schema.create_field('secondary', 'name', 'str')
+        self.schema.create_field('secondary', 'primary_name', 'calc', calc_str="primaries.name")
+
+        self.assertEqual({('secondary', 'primary_name'): self.schema.calc_trees[('secondary', 'primary_name')]}, self.schema.all_dependent_calcs_for('primary', 'name'))
+
+        try:
+            self.schema.delete_field('root', 'primaries')
+        except DependencyException as de:
+            self.assertEqual("root.primaries referenced by ['secondary.primary_name']", str(de))
+
+
     def test_delete_spec(self):
         self._create_test_schema({
             "specs" : {
@@ -580,9 +617,11 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.create_spec('primary')
         self.schema.create_field('primary', 'name', 'str')
+        self.schema.create_field('root', 'primaries', 'collection', 'primary')
 
         self.schema.create_spec('secondary')
         self.schema.create_field('secondary', 'name', 'str')
+        self.schema.create_field('root', 'secondaries', 'collection', 'secondary')
 
         self.schema.delete_spec("secondary")
 

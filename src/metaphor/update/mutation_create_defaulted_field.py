@@ -1,20 +1,25 @@
 
 
 class DefaultFieldMutation:
-    def __init__(self, updater, from_schema, to_schema, spec_name, field_name, field_value=None):
+    def __init__(self, updater, from_schema, to_schema, spec_name, field_name, field_type, field_value=None, field_target=None):
         self.updater = updater
         self.to_schema = to_schema
 
         self.spec_name = spec_name
         self.field_name = field_name
         self.field_value = field_value
+        self.field_type = field_type
+        self.field_target = field_target
 
     def __repr__(self):
         return "<DefaultFieldMutation>"
 
     def execute(self):
 
-        spec = self.to_schema.specs[self.spec_name]
+        if self.spec_name == 'root':
+            spec = self.to_schema.root
+        else:
+            spec = self.to_schema.specs[self.spec_name]
         field = spec.fields[self.field_name]
 
         # only action required on a field create is default

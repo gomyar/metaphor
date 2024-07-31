@@ -117,7 +117,7 @@ var mutations = {
     promote_schema: function(mutation) {
         if (confirm("Promote this schema to current?")) {
             turtlegui.ajax.patch('/admin/api/mutations/' + mutation.id, {"promote": true}, (data) => {
-                manage.load();
+                admin.load_schemas(); 
             }, (e) => {
                 alert("Error promoting: " + e);
             });
@@ -127,7 +127,7 @@ var mutations = {
     delete_mutation: function(mutation) {
         if (confirm("Delete mutation?")) {
             turtlegui.ajax.delete('/admin/api/mutations/' + mutation.id, () => {
-                manage.load(); 
+                admin.load_schemas(); 
             }, (e) => {
                 alert("Error deleting: " + e);
             });

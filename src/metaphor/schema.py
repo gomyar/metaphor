@@ -344,12 +344,28 @@ class Schema(object):
     def delete_field(self, spec_name, field_name):
         self._check_field_dependencies(spec_name, field_name)
 
+        if spec_name == 'root':
+            self._delete_root_field(field_name)
+        else:
+            self._delete_spec_field(spec_name, field_name)
+        self.update_version()
+
+    def _delete_root_field(self, field_name):
+        self.root.fields.pop(field_name)
+        dep = ('root', field_name)
+        if dep in self.calc_trees:
+            self.calc_trees.pop(dep)
+
+        self.db['metaphor_schema'].update_one(
+            {'_id': self._id},
+            {"$unset": {'root.%s' % (field_name,): ''}})
+
+    def _delete_spec_field(self, spec_name, field_name):
         self._do_delete_field(spec_name, field_name)
 
         self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
-        self.update_version()
 
     def rename_field(self, spec_name, from_field_name, to_field_name):
         self.db['metaphor_resource'].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})

@@ -11,6 +11,7 @@ from metaphor.admin_api import SchemaSerializer
 from metaphor.admin_api import AdminApi
 from metaphor.schema import Schema
 from metaphor.mutation import Mutation, MutationFactory
+from metaphor.schema import DependencyException
 
 from urllib.error import HTTPError
 
@@ -242,7 +243,6 @@ def schema_editor_create_field(schema_id, spec_name):
     return jsonify({'success': 1})
 
 
-
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_spec(schema_id, spec_name):
@@ -335,6 +335,32 @@ def mutation_steps(mutation_id):
         return jsonify(mutation.steps)
     else:
         data = request.json
-        mutation.add_data_step(data['action'], data['target_calc'], data['target_field_name'], data['move_calc'])
+        if data['action'] == "rename_spec":
+            mutation.convert_delete_spec_to_rename(data['from_spec_name'], data['to_spec_name'])
+            factory.save_mutation(mutation, ObjectId(mutation_id))
+        elif data['action'] == "rename_field":
+            mutation.convert_delete_field_to_rename(data['spec_name'], data['from_field_name'], data['to_field_name'])
+            factory.save_mutation(mutation, ObjectId(mutation_id))
+        else:
+            mutation.add_data_step(data['action'], data['target_calc'], data['target_field_name'], data['move_calc'])
 
         return jsonify(mutation.steps)
+
+@admin_bp.route("/api/mutations/<mutation_id>/steps/<spec_name>", methods=['DELETE'])
+@admin_required
+def cancel_step(mutation_id, spec_name):
+    factory = current_app.config['schema_factory']
+    mutation = factory.load_mutation(mutation_id)
+    mutation.cancel_rename_spec(spec_name)
+    factory.save_mutation(mutation, ObjectId(mutation_id))
+    return jsonify({'ok': 1})
+
+
+@admin_bp.route("/api/mutations/<mutation_id>/steps/<spec_name>/<field_name>", methods=['DELETE'])
+@admin_required
+def cancel_field_step(mutation_id, spec_name, field_name):
+    factory = current_app.config['schema_factory']
+    mutation = factory.load_mutation(mutation_id)
+    mutation.cancel_rename_field(spec_name, field_name)
+    factory.save_mutation(mutation, ObjectId(mutation_id))
+    return jsonify({'ok': 1})

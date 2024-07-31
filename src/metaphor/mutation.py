@@ -36,6 +36,7 @@ class MutationFactory(object):
         self.init_created_defaulted_fields()
         self.init_altered_fields()
         self.init_deleted_fields()
+        self.init_root_fields()
         return self.mutation
 
     def init_created_specs(self):
@@ -74,8 +75,25 @@ class MutationFactory(object):
                                 "spec_name": spec_name,
                                 "field_name": field_name,
                                 "field_value": field.default,
+                                "field_type": field.field_type,
+                                "field_target": field.target_spec_name,
                             }
                         })
+
+    def init_root_fields(self):
+        for field_name, field in self.to_schema.root.fields.items():
+            if field_name not in self.from_schema.root.fields:
+                field = self.to_schema.root.fields[field_name]
+                self.mutation.steps.append({
+                    "action": "create_field",
+                    "params": {
+                        "spec_name": "root",
+                        "field_name": field_name,
+                        "field_value": field.default,
+                        "field_type": field.field_type,
+                        "field_target": field.target_spec_name,
+                    }
+                })
 
     def init_altered_fields(self):
         type_map = {
@@ -138,8 +156,8 @@ class Mutation:
         })
 
     def convert_delete_field_to_rename(self, spec_name, from_field_name, to_field_name):
-        delete_step = self._find_step('delete_field', field_name=from_field_name)
-        create_step = self._find_step('create_field', field_name=to_field_name)
+        delete_step = self._find_step('delete_field', spec_name=spec_name, field_name=from_field_name)
+        create_step = self._find_step('create_field', spec_name=spec_name, field_name=to_field_name)
 
         self.steps.pop(self.steps.index(delete_step))
         self.steps.pop(self.steps.index(create_step))
@@ -170,6 +188,37 @@ class Mutation:
         for create_field_step in self._find_all_steps("create_field", spec_name=to_spec_name):
             self.steps.pop(self.steps.index(create_field_step))
 
+        # find altered fields
+        from_spec = self.from_schema.specs[from_spec_name]
+        to_spec = self.to_schema.specs[to_spec_name]
+
+        # add create field steps
+        for field_name, field in to_spec.fields.items():
+            if field_name not in from_spec.fields:
+                self.steps.append({
+                    "action": "create_field",
+                    "params": {
+                        "spec_name": from_spec_name,
+                        "field_name": field_name,
+                        "field_value": field.default,
+                        "field_type": field.field_type,
+                        "field_target": field.target_spec_name,
+                    }
+                })
+
+        # add delete field steps
+        for field_name, field in from_spec.fields.items():
+            if field_name not in to_spec.fields:
+                self.steps.append({
+                    "action": "delete_field",
+                    "params": {
+                        "spec_name": from_spec_name,
+                        "field_name": field_name,
+                        "field_value": field.default,
+                    }
+                })
+
+        # add rename_spec step
         self.steps.append({
             "action": "rename_spec",
             "params": {
@@ -178,16 +227,21 @@ class Mutation:
             }})
 
 
+
     def cancel_rename_field(self, spec_name, field_name):
         rename_step = self._find_step('rename_field', spec_name=spec_name, from_field_name=field_name)
 
         self.steps.pop(self.steps.index(rename_step))
 
+        field = self.to_schema.specs[spec_name].fields[rename_step['params']['to_field_name']]
+
         self.steps.append({
             "action": "create_field",
             "params": {
                 "spec_name": spec_name,
-                "field_name": rename_step['params']['to_field_name'],
+                "field_name": field.name,
+                "field_type": field.field_type,
+                "field_target": field.target_spec_name,
             }
         })
         self.steps.append({
@@ -198,13 +252,21 @@ class Mutation:
             }
         })
 
+    def _remove_steps_for_spec(self, spec_name):
+        for step in filter(lambda f: f['params'].get('spec_name') == spec_name, self.steps):
+            self.steps.pop(self.steps.index(step))
+
     def cancel_rename_spec(self, spec_name):
-        rename_step = self._find_step('rename_spec', from_spec_name=spec_name)
+        rename_step = self._find_step('rename_spec', spec_name=spec_name)
 
         self.steps.pop(self.steps.index(rename_step))
 
         from_spec_name = rename_step['params']['spec_name']
         to_spec_name = rename_step['params']['to_spec_name']
+
+        self._remove_steps_for_spec(from_spec_name)
+        self._remove_steps_for_spec(to_spec_name)
+
         self.steps.append({
             "action": "create_spec",
             "params": {
@@ -227,6 +289,8 @@ class Mutation:
                     "spec_name": spec.name,
                     "field_name": field_name,
                     "field_value": field.default,
+                    "field_type": field.field_type,
+                    "field_target": field.target_spec_name,
                 }
             })
 
