@@ -170,8 +170,24 @@ class Mutation:
                 "to_field_name": to_field_name,
             }})
 
+    def _sort_steps(self):
+        values = {
+            "create_spec": 0,
+            "delete_spec": 100,
+            "create_field": 20,
+            "delete_field": 60,
+            "rename_spec": 80,
+            "rename_field": 70,
+        }
+        def cmp(lhs):
+            return values[lhs['action']]
+        self.steps = sorted(self.steps, key=cmp)
+
     def _find_step(self, action, **params):
-        return next(self._find_all_steps(action, **params))
+        try:
+            return next(self._find_all_steps(action, **params))
+        except StopIteration as si:
+            return None
 
     def _find_all_steps(self, action, **params):
         for step in self.steps:
@@ -228,32 +244,49 @@ class Mutation:
 
 
 
-    def cancel_rename_field(self, spec_name, field_name):
-        rename_step = self._find_step('rename_field', spec_name=spec_name, from_field_name=field_name)
+    def cancel_rename_field(self, spec_name, from_field_name):
+        rename_step = self._find_step('rename_field', spec_name=spec_name, from_field_name=from_field_name)
 
         self.steps.pop(self.steps.index(rename_step))
 
-        field = self.to_schema.specs[spec_name].fields[rename_step['params']['to_field_name']]
+        rename_spec_step = self._find_step('rename_spec', spec_name=spec_name)
+        if rename_spec_step:
+            field = self.from_schema.specs[spec_name].fields[rename_step['params']['from_field_name']]
+            self.steps.append({
+                "action": "create_field",
+                "params": {
+                    "spec_name": spec_name,
+                    "field_name": rename_step['params']['to_field_name'],
+                    "field_type": field.field_type,
+                    "field_target": field.target_spec_name,
+                }
+            })
+        else:
+            field = self.to_schema.specs[spec_name].fields[rename_step['params']['to_field_name']]
 
-        self.steps.append({
-            "action": "create_field",
-            "params": {
-                "spec_name": spec_name,
-                "field_name": field.name,
-                "field_type": field.field_type,
-                "field_target": field.target_spec_name,
-            }
-        })
+            self.steps.append({
+                "action": "create_field",
+                "params": {
+                    "spec_name": spec_name,
+                    "field_name": field.name,
+                    "field_type": field.field_type,
+                    "field_target": field.target_spec_name,
+                }
+            })
+
         self.steps.append({
             "action": "delete_field",
             "params": {
                 "spec_name": spec_name,
-                "field_name": field_name,
+                "field_name": from_field_name,
             }
         })
 
+        self._sort_steps()
+
     def _remove_steps_for_spec(self, spec_name):
-        for step in filter(lambda f: f['params'].get('spec_name') == spec_name, self.steps):
+        all_steps = list(filter(lambda f: f['params'].get('spec_name') == spec_name, self.steps))
+        for step in all_steps:
             self.steps.pop(self.steps.index(step))
 
     def cancel_rename_spec(self, spec_name):

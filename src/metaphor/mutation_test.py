@@ -552,17 +552,18 @@ class MutationTest(unittest.TestCase):
 
         self.assertEqual(3, len(mutation.steps))
 
+        # create fields on first spec before renaming spec
         self.assertEqual('create_field', mutation.steps[0]['action'])
-        self.assertEqual('customer', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('title', mutation.steps[0]['params']['field_name'])
 
-        self.assertEqual('rename_spec', mutation.steps[1]['action'])
+        self.assertEqual('delete_field', mutation.steps[1]['action'])
         self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
-        self.assertEqual('customer', mutation.steps[1]['params']['to_spec_name'])
+        self.assertEqual('name', mutation.steps[1]['params']['field_name'])
 
-        self.assertEqual('delete_field', mutation.steps[2]['action'])
+        self.assertEqual('rename_spec', mutation.steps[2]['action'])
         self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
-        self.assertEqual('name', mutation.steps[2]['params']['field_name'])
+        self.assertEqual('customer', mutation.steps[2]['params']['to_spec_name'])
 
     def test_cancel_rename_spec(self):
         # given 2 schemas
@@ -649,6 +650,94 @@ class MutationTest(unittest.TestCase):
 
         self.assertEqual('delete_spec', mutation.steps[2]['action'])
         self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
+
+    def test_cancel_rename_spec_with_renamed_field(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('customer')
+        self.schema_2.create_field('customer', 'title', 'str')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'customers')
+
+        # create test data
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        # alter the mutation
+        mutation.convert_delete_spec_to_rename('client', 'customer')
+        mutation.convert_delete_field_to_rename('client', 'name', 'title')
+
+        # cancel it again
+        mutation.cancel_rename_spec('client')
+
+        # creates a delete and a create
+        self.assertEqual(3, len(mutation.steps))
+
+        self.assertEqual('create_spec', mutation.steps[0]['action'])
+        self.assertEqual('customer', mutation.steps[0]['params']['spec_name'])
+
+        self.assertEqual('create_field', mutation.steps[1]['action'])
+        self.assertEqual('customer', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('title', mutation.steps[1]['params']['field_name'])
+
+        self.assertEqual('delete_spec', mutation.steps[2]['action'])
+        self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
+
+    def test_cancel_rename_field_on_renamed_spec(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('customer')
+        self.schema_2.create_field('customer', 'title', 'str')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'customers')
+
+        # create test data
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        # alter the mutation
+        mutation.convert_delete_spec_to_rename('client', 'customer')
+        mutation.convert_delete_field_to_rename('client', 'name', 'title')
+
+        # cancel it again
+        mutation.cancel_rename_field('client', 'name')
+
+        # creates a delete and a create
+        self.assertEqual(3, len(mutation.steps))
+
+        self.assertEqual('create_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('title', mutation.steps[0]['params']['field_name'])
+
+        self.assertEqual('delete_field', mutation.steps[1]['action'])
+        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('name', mutation.steps[1]['params']['field_name'])
+
+        self.assertEqual('rename_spec', mutation.steps[2]['action'])
+        self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
+        self.assertEqual('customer', mutation.steps[2]['params']['to_spec_name'])
+
+
 
     def test_rename_field_add_default(self):
         pass

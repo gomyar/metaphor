@@ -230,11 +230,11 @@ var mutation_id = "{{ mutation_id }}";
                         <div class="diff_line" gui-case="'rename_field'">
                             <span class="spec_fields renamed">
                                 <div class="field">
-                                    <span class="name" gui-text="field.field_name"></span>
-                                    <span class="type" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].type"></span>
-                                    <span class="target" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].spec_name||''"></span>
+                                    <span class="name" gui-text="field.from_field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.from_field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.from_field_name].spec_name||''"></span>
                                 </div>
-                                <div class="calc_str" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.field_name].calc_str||''"></div>
+                                <div class="calc_str" gui-text="manage.mutation.from_schema.specs[diff.spec_name].fields[field.from_field_name].calc_str||''"></div>
                             </span>
 
                             <span class="change renamed">
@@ -246,11 +246,11 @@ var mutation_id = "{{ mutation_id }}";
 
                             <span class="spec_fields renamed">
                                 <div class="field">
-                                    <span class="name" gui-text="field.target_field_name"></span>
-                                    <span class="type" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.target_field_name].type"></span>
-                                    <span class="target" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.target_field_name].spec_name||''"></span>
+                                    <span class="name" gui-text="field.to_field_name"></span>
+                                    <span class="type" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.to_field_name].type"></span>
+                                    <span class="target" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.to_field_name].spec_name||''"></span>
                                 </div>
-                                <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.target_field_name].calc_str||''"></div>
+                                <div class="calc_str" gui-text="manage.mutation.to_schema.specs[diff.target_spec_name].fields[field.to_field_name].calc_str||''"></div>
                             </span>
                         </div>
 

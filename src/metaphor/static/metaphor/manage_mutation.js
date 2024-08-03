@@ -135,16 +135,12 @@ var manage = {
                     field_diff['change'] = field_step.action;
                     diff['fields'].push(field_diff);
                 } else if (from_field_step && to_field_step) {
-                    field_diff['change'] = from_field_step.action;
-                    field_diff['target_spec_name'] = to_field_step.spec_name;
-                    diff['fields'].push(field_diff);
                 } else if (from_field_step) {
-                    field_diff['change'] = from_field_step.action;
-                    field_diff['target_spec_name'] = from_field_step.spec_name;
-                    diff['fields'].push(field_diff);
                 } else if (to_field_step) {
                     field_diff['change'] = to_field_step.action;
-                    field_diff['target_spec_name'] = to_field_step.spec_name;
+                    field_diff['target_spec_name'] = to_field_step.params.spec_name;
+                    field_diff['from_field_name'] = to_field_step.params.from_field_name;
+                    field_diff['to_field_name'] = to_field_step.params.to_field_name;
                     diff['fields'].push(field_diff);
                 } else {
                     diff['fields'].push(field_diff);
@@ -341,12 +337,12 @@ var change_field_delete_popup = {
     },
 
     cancel_rename: function(diff, field) {
-        if (confirm("Cancel rename for " + field.field_name + "?")) {
-            diff.fields.splice(diff.fields.indexOf(field), 1);
-            diff.fields.push({"field_name": field.field_name, "change": "delete_field"});
-            diff.fields.push({"field_name": field.target_field_name, "change": "create_field"});
-            diff.fields.sort((lhs, rhs) => (lhs.field_name > rhs.field_name) ? 1 : ((rhs.field_name > lhs.field_name) ? -1 : 0));
-            turtlegui.reload();
+        if (confirm("Cancel rename for " + field.from_field_name + "?")) {
+            turtlegui.ajax.delete('/admin/api/mutations/' + mutation_id + "/steps/" + diff.spec_name + "/" + field.from_field_name, (data) => {
+                change_field_delete_popup.diff = null;
+                manage.load();
+            });
+
         }
     }
 }
