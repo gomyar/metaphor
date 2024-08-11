@@ -211,6 +211,14 @@ var manage = {
         turtlegui.ajax.post('/admin/api/mutations/' + this.mutation.id + '/steps', this.step, (data) => {
             manage.hide_create_step();
         });
+    },
+
+    perform_mutation: function() {
+        if (confirm("Perform Mutation?")) {
+            turtlegui.ajax.post('/admin/api/mutations/' + mutation_id, (data) => {
+                window.location = '/admin';
+            });
+        }
     }
 }
 
@@ -344,7 +352,8 @@ var change_field_delete_popup = {
             });
 
         }
-    }
+    },
+
 }
 
 

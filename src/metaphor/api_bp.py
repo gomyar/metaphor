@@ -326,6 +326,16 @@ def single_mutation(mutation_id):
             return jsonify({"error": "Unsupported option"}), 400
 
 
+@admin_bp.route("/api/mutations/<mutation_id>", methods=['POST'])
+@admin_required
+def perform_mutation(mutation_id):
+    factory = current_app.config['schema_factory']
+    mutation = factory.load_mutation(mutation_id)
+    mutation.mutate()
+
+    return jsonify({'ok': 1})
+
+
 @admin_bp.route("/api/mutations/<mutation_id>/steps", methods=['GET', 'POST'])
 @admin_required
 def mutation_steps(mutation_id):

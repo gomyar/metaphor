@@ -116,7 +116,7 @@ class MutationTest(unittest.TestCase):
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('convert_field', mutation.steps[0]['action'])
+        self.assertEqual('alter_field', mutation.steps[0]['action'])
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['field_name'])
 
@@ -150,7 +150,7 @@ class MutationTest(unittest.TestCase):
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('convert_field', mutation.steps[0]['action'])
+        self.assertEqual('alter_field', mutation.steps[0]['action'])
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['field_name'])
 
@@ -185,7 +185,7 @@ class MutationTest(unittest.TestCase):
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('convert_field', mutation.steps[0]['action'])
+        self.assertEqual('alter_field', mutation.steps[0]['action'])
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['field_name'])
 
@@ -219,7 +219,7 @@ class MutationTest(unittest.TestCase):
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('convert_field', mutation.steps[0]['action'])
+        self.assertEqual('alter_field', mutation.steps[0]['action'])
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('created', mutation.steps[0]['params']['field_name'])
 
@@ -737,8 +737,6 @@ class MutationTest(unittest.TestCase):
         self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
         self.assertEqual('customer', mutation.steps[2]['params']['to_spec_name'])
 
-
-
     def test_rename_field_add_default(self):
         pass
 
@@ -785,3 +783,47 @@ class MutationTest(unittest.TestCase):
                     'field_target': 'customer',
                     'spec_name': 'root'}},
         ], mutation.steps)
+
+    def test_rename_and_alter_field(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'phone', 'float')
+        self.schema_1.create_field('root', 'users', 'collection', 'client')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'phone_number', 'str')
+        self.schema_2.create_field('root', 'users', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'users')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'users')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+        mutation.convert_delete_field_to_rename('client', 'phone', 'phone_number')
+
+        self.assertEqual(2, len(mutation.steps))
+
+        self.assertEqual('rename_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('phone', mutation.steps[0]['params']['from_field_name'])
+        self.assertEqual('phone_number', mutation.steps[0]['params']['to_field_name'])
+
+        self.assertEqual('alter_field', mutation.steps[1]['action'])
+        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('phone_number', mutation.steps[1]['params']['field_name'])
+        self.assertEqual('string', mutation.steps[1]['params']['new_type'])
+
+        mutation.mutate()
+
+        user_1 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.metaphor_resource.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+
+        self.assertEqual("12345.67", user_1['phone_number'])
+        self.assertEqual("67890.12", user_2['phone_number'])
+
+

@@ -271,10 +271,18 @@ var mutation_id = "{{ mutation_id }}";
     </div>
     
     <div gui-list="manage.mutation.steps" gui-item="step">
-        <span>Move: </span>
-        <span gui-text="step.from_path"></span>
-        <span>To: </span>
-        <span gui-text="step.to_path"></span>
+        <div>
+            <span>Action: </span>
+            <b gui-text="step.action"></b>
+            <span gui-text="step.params.spec_name"></span>
+            <span gui-text="step.params.to_spec_name" gui-show="step.params.to_spec_name"></span>
+            <span gui-text="step.params.field_name" gui-show="step.params.field_name"></span>
+            <span gui-text="step.params.to_field_name" gui-show="step.params.to_field_name"></span>
+        </div>
+    </div>
+
+    <div>
+        <span class="button" gui-click="manage.perform_mutation()">Perform Mutation</span>
     </div>
 </div>
 

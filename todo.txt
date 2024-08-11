@@ -1,5 +1,23 @@
 
+Idea:
+ - one service wants to make a call to another service
+   it sends a request for information about the call it wishes to make ( what does a linguistic abstraction look like ) (what does intent look like)
+   the second service responds with metadata on the call (whether it be REST resource url / required params / dependent resources or a link to an HTML UI)
+
+
 Todo:
+
+ - mutations:
+   - check all field alters (int -> str,float,collection?)
+   - add field_alter to UI
+     - add as part of field rename
+   - add default to field_alter
+   - perform all updates in order
+     - field_alter occurs after field_rename
+     - test 
+
+ - mutation add indexes
+
  - schema: groups/grants as schema
     - add grant view
     - allow linked paths
