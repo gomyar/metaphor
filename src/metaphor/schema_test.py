@@ -689,3 +689,25 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.create_spec('primary')
         self.assertRaises(Exception, self.schema.create_spec, 'primary')
+
+    def test_rename_spec(self):
+        self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                    },
+                },
+            }
+        })
+
+        self.schema.create_spec('organization')
+        self.schema.create_field('organization', 'employees', 'collection', 'employee')
+
+        self.schema.rename_spec('employee', 'user')
+
+        self.schema = SchemaFactory(self.db).load_current_schema()

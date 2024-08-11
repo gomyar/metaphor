@@ -373,6 +373,17 @@ class Schema(object):
     def rename_spec(self, from_spec_name, to_spec_name):
         self.db['metaphor_resource'].update_many({"_type": from_spec_name}, {"$set": {"_type": to_spec_name}})
         self.db['metaphor_resource'].update_many({"_parent_type": from_spec_name}, {"$set": {"_parent_type": to_spec_name}})
+        self.db['metaphor_schema'].update_one(
+            {'_id': self._id},
+            {'$rename': {f'specs.{from_spec_name}': f'specs.{to_spec_name}'}},
+        )
+        for spec_name, spec in self.specs.items():
+            for field_name, field in spec.fields.items():
+                if field.field_type in ['collection', 'link_collection']:
+                    self.db['metaphor_schema'].update_many(
+                        {'_id': self._id},
+                        {"$set": {f"specs.{spec_name}.fields.{field_name}.target_spec_name": to_spec_name}}
+                    )
 
     def _do_delete_field(self, spec_name, field_name):
         spec = self.specs[spec_name]
