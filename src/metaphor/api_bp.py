@@ -66,6 +66,7 @@ def serialize_schema(schema):
 
 def serialize_mutation(mutation):
     return {
+        'id': mutation._id,
         'from_schema': serialize_schema(mutation.from_schema),
         'to_schema': serialize_schema(mutation.to_schema),
         'steps': mutation.steps,
@@ -303,7 +304,7 @@ def mutations():
 
     factory.save_mutation(mutation, ObjectId())
 
-    return jsonify({"ok": 1})
+    return jsonify(serialize_mutation(mutation))
 
 
 @admin_bp.route("/api/mutations/<mutation_id>", methods=['GET', 'PATCH', 'DELETE'])
@@ -320,6 +321,7 @@ def single_mutation(mutation_id):
     else:
         if request.json.get('promote') == True:
             log.info("Promoting mutation %s -> %s", mutation.from_schema.version, mutation.to_schema.version)
+            mutation.mutate()
             mutation.to_schema.set_as_current()
             return jsonify({"ok": 1})
         else:

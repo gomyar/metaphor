@@ -109,10 +109,12 @@ class SchemaFactory:
         return mutation
 
     def save_mutation(self, mutation, object_id):
-        self.db.metaphor_mutation.update_one({"_id": object_id}, {
+        update = self.db.metaphor_mutation.update_one({"_id": object_id}, {
             "$set": {
                 "from_schema_id": mutation.from_schema._id,
                 "to_schema_id": mutation.to_schema._id,
                 "steps": mutation.steps,
             }
         }, upsert=True)
+        mutation._id = str(update.upserted_id)
+        return update.upserted_id

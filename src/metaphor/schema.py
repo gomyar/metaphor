@@ -162,6 +162,10 @@ class Schema(object):
         self.current = None
         self.calc_trees = {}
 
+    @property
+    def schema_id(self):
+        return str(self._id)
+
     @staticmethod
     def create_schema(db):
         inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}, "created": datetime.now().isoformat()})

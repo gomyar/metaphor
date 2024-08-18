@@ -61,7 +61,7 @@ class ApiWatchTest(unittest.TestCase):
         self.client = self.app.test_client()
 
         # login
-        self.client.post('/login', data={
+        self.client.post('/login', json={
             "username": "bob",
             "password": "password",
         }, follow_redirects=True)
