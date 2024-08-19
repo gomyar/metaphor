@@ -138,49 +138,9 @@ class Updater(object):
             if aggregation:
                 self._run_update_merge(calc_spec_name, calc_field_name, calc_tree, aggregation, updated_resource_spec)
 
-    def update_calc_for_local_fields(self, calc_spec_name, calc_field_name, updated_resource_name, updated_resource_id):
-        calc_tree = self.schema.calc_trees[calc_spec_name, calc_field_name]
-        updated_resource_spec = self.schema.specs[calc_spec_name]
-        aggregation = [{"$match": {"_id": self.schema.decodeid(updated_resource_id)}}]
-        self._run_update_merge(calc_spec_name, calc_field_name, calc_tree, aggregation, updated_resource_spec)
-
-
-    def _calculate_aggregated_resource(self, resource_name, field_name, calc_tree, resource_id):
-        match_agg = [{"$match": {"_id": self.schema.decodeid(resource_id)}}]
-        self._run_update_merge(resource_name, field_name, calc_tree, match_agg)
-
     def _run_update_merge(self, calc_spec_name, calc_field_name, calc_tree, match_agg, updated_resource_spec):
         agg = create_update_aggregation(calc_spec_name, calc_field_name, calc_tree, match_agg)
         self.schema.db['metaphor_resource'].aggregate([{"$match": {"_type": updated_resource_spec.name}}] + agg)
-
-    def _perform_updates_for_affected_calcs(self, spec, resource_id, calc_spec_name, calc_field_name):
-        affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
-        for affected_id in affected_ids:
-            affected_id = self.schema.encodeid(affected_id)
-            self.update_calc(calc_spec_name, calc_field_name, affected_id)
-            self._recalc_for_field_update(self.schema.specs[calc_spec_name], calc_spec_name, calc_field_name, affected_id)
-
-    def _recalc_for_field_update(self, spec, field_spec_name, field_name, resource_id):
-        field_dep = "%s.%s" % (field_spec_name, field_name)
-        # find foreign dependencies
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            if field_dep in calc_tree.get_resource_dependencies():
-                self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-            elif spec.fields.get(field_name) and spec.fields[field_name].field_type == 'link':
-                if spec.name in calc_tree.get_resource_dependencies():
-                    self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-            elif spec.fields.get(field_name) and spec.fields[field_name].field_type == 'calc':
-                if not spec.fields[field_name].infer_type().is_primitive():
-                    if spec.name in calc_tree.get_resource_dependencies():
-                        self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-
-        # find local dependencies (other calcs in same resource)
-        for field_name, field in spec.fields.items():
-            if field.field_type == 'calc' and field_dep in field.get_resource_dependencies():
-                self.update_calc(spec.name, field_name, resource_id)
-                self._recalc_for_field_update(spec, spec.name, field_name, resource_id)
-
-        return resource_id
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):
@@ -213,9 +173,6 @@ class Updater(object):
 
     def move_resource_to_root(self, from_path, to_path):
         return MoveResourceUpdate(self, self.schema, from_path, to_path, None, None, to_path).execute_root()
-
-    def remove_spec_field(self, spec_name, field_name):
-        self.schema.remove_spec_field(spec_name, field_name)
 
     def create_user(self, username, password):
         pw_hash = generate_password_hash(password)

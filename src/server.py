@@ -24,7 +24,6 @@ import flask_login
 from flask_login import login_required
 
 from metaphor.api import Api
-from metaphor.admin_api import AdminApi
 from metaphor.schema_factory import SchemaFactory
 from metaphor.api_bp import api_bp
 from metaphor.api_bp import admin_bp

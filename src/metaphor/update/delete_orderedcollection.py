@@ -75,13 +75,11 @@ class DeleteOrderedCollectionUpdate:
             for affected_id in affected_ids:
                 affected_id = self.schema.encodeid(affected_id)
                 self.updater.update_calc(calc_spec_name, calc_field_name, affected_id)
-                self.updater._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
 
         # recalc local calcs
         for field_name, field_spec in parent_spec.fields.items():
             if field_spec.field_type == 'calc':
                 self.updater.update_calc(self.parent_spec_name, field_name, self.link_id)
-                self.updater._recalc_for_field_update(spec, self.parent_spec_name, field_name, self.link_id)
 
 
         # delete any links to resource

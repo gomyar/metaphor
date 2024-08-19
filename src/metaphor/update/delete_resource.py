@@ -90,7 +90,6 @@ class DeleteResourceUpdate:
             for affected_id in affected_ids:
                 affected_id = self.schema.encodeid(affected_id)
                 self.updater.update_calc(calc_spec_name, calc_field_name, affected_id)
-                self.updater._recalc_for_field_update(spec, calc_spec_name, calc_field_name, affected_id)
 
         # delete child resources
         for field_name, field in spec.fields.items():

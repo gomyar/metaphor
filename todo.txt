@@ -10,9 +10,9 @@ Todo:
  - mutations:
    - check all field alters (int -> str,float,collection?)
    - add field_alter to UI
-     - add as part of field rename
-   - add default to field_alter
-   - perform all updates in order
+     - add as part of field rename - dont need this
+   - add default to field_alter - or this
+   - perform all updates in order - done
      - field_alter occurs after field_rename
      - test 
 

@@ -7,8 +7,6 @@ from flask import request
 from flask import jsonify
 from metaphor.login import login_required
 from metaphor.login import admin_required
-from metaphor.admin_api import SchemaSerializer
-from metaphor.admin_api import AdminApi
 from metaphor.schema import Schema
 from metaphor.mutation import Mutation, MutationFactory
 from metaphor.schema import DependencyException
@@ -33,14 +31,6 @@ search_bp = Blueprint('search', __name__, template_folder='templates',
                       static_folder='static', url_prefix='/search')
 
 
-def serialize_field(field):
-    if field.field_type == 'calc':
-        return {'type': 'calc', 'calc_str': field.calc_str, 'is_primitive': field.is_primitive()}
-    elif field.field_type in ('int', 'str', 'float', 'bool'):
-        return {'type': field.field_type}
-    else:
-        return {'type': field.field_type, 'target_spec_name': field.target_spec_name}
-
 def serialize_spec(spec):
     return {
         'name': spec.name,
@@ -58,10 +48,25 @@ def serialize_schema(schema):
             name: serialize_spec(spec) for name, spec in schema.specs.items()
         },
         'root': {
-            name: {'target_spec_name': r.target_spec_name, 'type': 'collection', 'field_name': name} for (name, r) in schema.root.fields.items()
+            name: serialize_field(r) for r in schema.root.fields.items()
         },
         'version': schema.version
     }
+
+
+def serialize_field(self, field):
+    serialized = {
+        'name': field.name,
+        'type': field.field_type,
+        'target_spec_name': field.target_spec_name,
+        'is_collection': field.is_collection(),
+    }
+    if type(field) is CalcField:
+        calc_type = field.infer_type()
+        if not calc_type.is_primitive():
+            serialized['target_spec_name'] = calc_type.name
+        serialized['calc_str'] = field.calc_str
+    return serialized
 
 
 def serialize_mutation(mutation):
@@ -131,8 +136,7 @@ def api(path):
 def schema():
     api = current_app.config['api']
 
-    serializer = SchemaSerializer(flask_login.current_user.is_admin())
-    return jsonify(serializer.serialize(api.schema))
+    return jsonify(serialize_schema(api.schema))
 
 
 @admin_bp.route("/schemas/<schema_id>")
@@ -159,9 +163,8 @@ def admin_api_schemas():
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
         schema_list = factory.list_schemas()
-        serializer = SchemaSerializer(flask_login.current_user.is_admin())
         return jsonify({
-            "schemas": [serializer.serialize(schema) for schema in schema_list]
+            "schemas": [serialize_schema(schema) for schema in schema_list]
         })
     else:
         if request.json:
@@ -181,9 +184,8 @@ def admin_api_schemas():
 def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
-        serializer = SchemaSerializer(flask_login.current_user.is_admin())
         schema = factory.load_schema_data(schema_id, True)
-        return jsonify(serializer.serialize(schema))
+        return jsonify(serialize_schema(schema))
     else:
         if factory.delete_schema(schema_id):
             return jsonify({'ok': 1})
@@ -210,9 +212,8 @@ def schema_editor_calcs(schema_id):
     calc_str = request.json['calc_str']
     spec_name = request.json.get('spec_name', 'root')
 
-    admin_api = AdminApi(schema)
     try:
-        resolved_spec, is_collection = admin_api.resolve_calc_metadata(schema, calc_str, spec_name)
+        resolved_spec, is_collection = schema.resolve_calc_metadata(calc_str, spec_name)
 
         return jsonify({"meta": {
             "spec_name": resolved_spec.name,

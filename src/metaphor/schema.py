@@ -666,6 +666,15 @@ class Schema(object):
         self.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, resource_id)
         return resource_id
 
+    def resolve_calc_metadata(self, calc_str, spec_name=None):
+        if spec_name is None or spec_name == 'root':
+            spec = self.root
+        else:
+            spec = self.specs[spec_name]
+        from metaphor.lrparse.lrparse import parse
+        parsed = parse(calc_str, spec)
+
+        return parsed.infer_type(), parsed.is_collection()
 
     def validate_spec(self, spec_name, data):
         spec = self.specs[spec_name]
@@ -691,8 +700,8 @@ class Schema(object):
                 errors.append({"error": "Missing required field: '%s'" % field_name})
         return errors
 
-    def remove_spec_field(self, spec_name, field_name):
-        self.db['metaphor_resource'].update_many({'_type': spec_name}, {'$unset': {field_name: ''}})
+#    def remove_spec_field(self, spec_name, field_name):
+#        self.db['metaphor_resource'].update_many({'_type': spec_name}, {'$unset': {field_name: ''}})
 
     def load_user_by_username(self, username, load_hash=False):
         return self._load_user_with_aggregate({'username': username, '_type': 'user'}, load_hash)
