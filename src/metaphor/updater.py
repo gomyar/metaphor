@@ -144,35 +144,58 @@ class Updater(object):
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):
-        return CreateResourceUpdate(self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
+        update_id = str(self.schema.create_update())
+        return_val = CreateResourceUpdate(update_id, self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
                  parent_id, grants).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        CreateLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        update_id = str(self.schema.create_update())
+        CreateLinkCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        self.schema.cleanup_update(update_id)
 
     def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
-        return CreateOrderedCollectionUpdate(self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
-
-
+        update_id = str(self.schema.create_update())
+        return_val = CreateOrderedCollectionUpdate(update_id, self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
-        return DeleteResourceUpdate(self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()
+        update_id = str(self.schema.create_update())
+        return_val = DeleteResourceUpdate(update_id, self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def delete_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        return DeleteLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        update_id = str(self.schema.create_update())
+        return_val = DeleteLinkCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def delete_orderedcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        return DeleteOrderedCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
-
+        update_id = str(self.schema.create_update())
+        return_val = DeleteOrderedCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def update_fields(self, spec_name, resource_id, fields):
-        return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()
+        update_id = str(self.schema.create_update())
+        return_val = FieldsUpdate(update_id, self, self.schema, spec_name, resource_id, fields).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def move_resource(self, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
-        return MoveResourceUpdate(self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
+        update_id = str(self.schema.create_update())
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def move_resource_to_root(self, from_path, to_path):
-        return MoveResourceUpdate(self, self.schema, from_path, to_path, None, None, to_path).execute_root()
+        update_id = str(self.schema.create_update())
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, None, None, to_path).execute_root()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def create_user(self, username, password):
         pw_hash = generate_password_hash(password)
