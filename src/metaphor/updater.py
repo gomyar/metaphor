@@ -1,4 +1,6 @@
 
+import gevent
+
 from werkzeug.security import generate_password_hash
 
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
@@ -17,6 +19,11 @@ from metaphor.update_aggregation import create_update_aggregation
 import logging
 
 log = logging.getLogger('metaphor')
+
+
+def schedule(func, *args):
+    gthread = gevent.spawn(func, *args)
+    gthread.join()
 
 
 class Updater(object):
@@ -52,6 +59,18 @@ class Updater(object):
                 self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
 
     def perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
+        gthread = gevent.spawn(self._caught_single_update_aggregation, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+        if not self.schema.specs[calc_spec_name].fields[calc_field_name].background:
+            gthread.join()
+
+    def _caught_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
+        try:
+            self._perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+        except Exception as e:
+            self.schema.update_error(update_id, str(e))
+            raise
+
+    def _perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
         # run reverse_agg + update_agg + calc_field_dirty_agg
             # run update for altered calc
         update_agg = calc.create_aggregation()
@@ -146,7 +165,7 @@ class Updater(object):
                         parent_id, fields, grants=None):
         update_id = str(self.schema.create_update())
         return_val = CreateResourceUpdate(update_id, self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
-                 parent_id, grants).execute()
+                parent_id, grants).execute()
         self.schema.cleanup_update(update_id)
         return return_val
 

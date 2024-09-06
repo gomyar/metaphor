@@ -58,13 +58,14 @@ class Field(object):
 
 
 class CalcField(Field):
-    def __init__(self, field_name, calc_str):
+    def __init__(self, field_name, calc_str, background):
         super().__init__(field_name, 'calc')
         self.name = field_name
         self.calc_str = calc_str
         self.field_type = 'calc'
         self.spec = None
         self.default = None
+        self.background = background
 
     def __repr__(self):
         return "<Calc %s = %s>" % (self.name, self.calc_str)
@@ -253,7 +254,7 @@ class Schema(object):
         self.update_version()
         return self.add_spec(spec_name)
 
-    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None):
+    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None, background=None):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:
             raise MalformedFieldException('Field already exists: %s' % field_name)
         self._check_field_name(field_name)
@@ -263,7 +264,7 @@ class Schema(object):
         else:
             spec = self.specs[spec_name]
         if field_type == 'calc':
-            self.add_calc(spec, field_name, calc_str)
+            self.add_calc(spec, field_name, calc_str, background)
         else:
             self.add_field(spec, field_name, field_type, field_target, default, required)
 
@@ -438,14 +439,14 @@ class Schema(object):
         self._add_reverse_link_for_field(field, spec)
         return field
 
-    def add_calc(self, spec, field_name, calc_str):
+    def add_calc(self, spec, field_name, calc_str, background=False):
         from metaphor.lrparse.lrparse import parse
-        calc_field = self._add_calc(spec, field_name, calc_str)
+        calc_field = self._add_calc(spec, field_name, calc_str, background)
         self.calc_trees[(spec.name, field_name)] = parse(calc_str, spec)
         return calc_field
 
-    def _add_calc(self, spec, field_name, calc_str):
-        calc_field = CalcField(field_name, calc_str=calc_str)
+    def _add_calc(self, spec, field_name, calc_str, background=False):
+        calc_field = CalcField(field_name, calc_str=calc_str, background=background)
         spec.fields[field_name] = calc_field
         spec.fields[field_name].spec = spec
         return calc_field
@@ -564,6 +565,11 @@ class Schema(object):
             {"$unset": {"_dirty.%s" % update_id: ""}}
         )
         return self.db['metaphor_updates'].delete_one({"_id": ObjectId(update_id)})
+
+    def update_error(self, update_id, message):
+        self.db["metaphor_resource"].update_one(
+            {"_id": ObjectId(update_id)},
+            {"$set": {"error": message}})
 
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None, extra_fields=None):
         data = self._parse_fields(spec_name, data)

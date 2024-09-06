@@ -233,12 +233,13 @@ def schema_editor_create_field(schema_id, spec_name):
     field_type = request.json['field_type']
     field_target = request.json['field_target']
     calc_str = request.json['calc_str']
+    background = request.json.get('background') or False
 
     if spec_name != 'root' and spec_name not in schema.specs:
         return jsonify({"error": "Not Found"}), 404
 
     try:
-        schema.create_field(spec_name, field_name, field_type, field_target, calc_str)
+        schema.create_field(spec_name, field_name, field_type, field_target, calc_str, background)
     except MalformedFieldException as me:
         return jsonify({"error": str(me)}), 400
 
