@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import json
 import atexit
 import pymongo
@@ -34,9 +35,15 @@ from metaphor.client_bp import client_bp
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log = logging.getLogger()
+log.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
 
 def create_app(db):
     schema_factory = SchemaFactory(db)

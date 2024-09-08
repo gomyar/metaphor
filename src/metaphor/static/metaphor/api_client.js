@@ -130,7 +130,10 @@ class Resource {
     _construct(data) {
         Object.assign(this, data);
         if (data._meta.spec.name == 'root') {
-            this._meta.spec = Schema.root;
+            this._meta.spec = {
+                "name": "root",
+                "fields": Schema.root,
+            }
         } else {
             this._meta.spec = Schema.specs[data._meta.spec.name];
         }

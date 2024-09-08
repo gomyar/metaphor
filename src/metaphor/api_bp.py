@@ -7,7 +7,7 @@ from flask import request
 from flask import jsonify
 from metaphor.login import login_required
 from metaphor.login import admin_required
-from metaphor.schema import Schema
+from metaphor.schema import Schema, CalcField
 from metaphor.mutation import Mutation, MutationFactory
 from metaphor.schema import DependencyException
 
@@ -48,13 +48,13 @@ def serialize_schema(schema):
             name: serialize_spec(spec) for name, spec in schema.specs.items()
         },
         'root': {
-            name: serialize_field(r) for r in schema.root.fields.items()
+            name: serialize_field(root) for name, root in schema.root.fields.items()
         },
         'version': schema.version
     }
 
 
-def serialize_field(self, field):
+def serialize_field(field):
     serialized = {
         'name': field.name,
         'type': field.field_type,

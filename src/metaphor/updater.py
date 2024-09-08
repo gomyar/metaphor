@@ -1,5 +1,6 @@
 
 import gevent
+import time
 
 from werkzeug.security import generate_password_hash
 
@@ -65,7 +66,10 @@ class Updater(object):
 
     def _caught_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
         try:
+            start = time.time()
             self._perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+            end = time.time()
+            log.debug("Update agg %s.%s took %s secs", calc_spec_name, calc_field_name, end - start)
         except Exception as e:
             self.schema.update_error(update_id, str(e))
             raise
