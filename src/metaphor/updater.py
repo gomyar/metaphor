@@ -33,6 +33,7 @@ class Updater(object):
 
     def update_for(self, spec_name, field_names, update_id, start_agg):
         dependent_calcs = self.schema.all_dependent_calcs_for(spec_name, field_names)
+        print("  update dep calcs: %s", dependent_calcs)
         self._perform_aggregation_for_dependent_calcs(dependent_calcs, start_agg, spec_name, update_id)
 
     def update_for_field(self, spec_name, field_name, update_id, start_agg):
@@ -57,6 +58,7 @@ class Updater(object):
                 if reverse_agg not in unique_aggs:
                     unique_aggs.append(reverse_agg)
             for reverse_agg in unique_aggs:
+                print("    perforam agg from %s for %s.%s:  %s" % (spec_name, calc_spec_name, calc_field_name, reverse_agg))
                 self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
 
     def perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):

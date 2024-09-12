@@ -50,7 +50,8 @@ def serialize_schema(schema):
         'root': {
             name: serialize_field(root) for name, root in schema.root.fields.items()
         },
-        'version': schema.version
+        'version': schema.version,
+        'current': schema.current,
     }
 
 
@@ -184,7 +185,7 @@ def admin_api_schemas():
 def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
-        schema = factory.load_schema_data(schema_id, True)
+        schema = factory.load_schema(schema_id, True)
         return jsonify(serialize_schema(schema))
     else:
         if factory.delete_schema(schema_id):

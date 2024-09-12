@@ -76,7 +76,10 @@ class SchemaFactory:
         return result.acknowledged
 
     def list_schemas(self):
-        return list(self.db.metaphor_schema.aggregate(self._schema_aggregation()))
+        for data in self.db.metaphor_schema.aggregate(self._schema_aggregation()):
+            schema = Schema(self.db)
+            schema._build_schema(data)
+            yield schema
 
     def create_schema_from_import(self, schema_data):
         saved = {
