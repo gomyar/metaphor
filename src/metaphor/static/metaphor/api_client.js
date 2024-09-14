@@ -458,6 +458,7 @@ class ApiClient {
                 if (api.creating_collection) {
                     api.creating_collection._fetch();
                 }
+                turtlegui.reload();
             },
             (error) => {
                 handle_http_error(error, 'Error creating ');
