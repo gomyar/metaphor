@@ -127,10 +127,10 @@ class RootResourceRef(ResourceRef):
         return [
             {"$lookup": {
                 "from": "metaphor_resource",
-                "as": "_field_%s" % (calc_field_name,),
+                "as": "_field_calc",
                 "pipeline": [{"$match": {"_type": calc_spec_name}}],
             }},
-            {'$group': {'_id': '$_field_%s' % (calc_field_name,)}},
+            {'$group': {'_id': '$_field_calc'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
