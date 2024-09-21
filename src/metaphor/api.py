@@ -777,7 +777,7 @@ class Api(object):
             ]
 
         # if collection
-        elif isinstance(tree, CollectionResourceRef) or isinstance(tree, RootResourceRef):
+        elif isinstance(tree, CollectionResourceRef) or isinstance(tree, RootResourceRef) or isinstance(tree, OrderedCollectionResourceRef):
             log.debug("Watching collection (root)")
             if '/' in path:
                 parent_path, field_name = path.rsplit('/', 1)

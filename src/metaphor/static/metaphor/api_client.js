@@ -591,6 +591,7 @@ class ListenClient {
     constructor() {
         this.socket = null;
         this.resources = {};
+        this.connected = false;
     }
 
     init() {
@@ -600,13 +601,15 @@ class ListenClient {
 
         this.socket.on('connect', () => {
             console.log('Connected');
+            this.connected = true;
             for (var url in this.resources) {
                 console.log('Listening to ' + url);
-                this.socket.emit('add_resource', {'url': url});
+                this.add_resource(this.resources[url]);
             }
         });
         this.socket.on('disconnect', () => {
             console.log('Disconnected');
+            this.connected = false;
         });
 
     }
@@ -641,6 +644,9 @@ class ListenClient {
         if (!(this.resources[url])) {
             console.log('Add resource', resource);
             this.resources[url] = resource;
+        }
+        if (this.connected) {
+            this.socket.emit('add_resource', {'url': url});
         }
         resource._fetch();
     }

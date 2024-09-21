@@ -58,7 +58,7 @@ class Updater(object):
                 if reverse_agg not in unique_aggs:
                     unique_aggs.append(reverse_agg)
             for reverse_agg in unique_aggs:
-                print("    perforam agg from %s for %s.%s:  %s" % (spec_name, calc_spec_name, calc_field_name, reverse_agg))
+#                print("    perforam agg from %s for %s.%s:  %s" % (spec_name, calc_spec_name, calc_field_name, reverse_agg))
                 self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
 
     def perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
@@ -71,7 +71,7 @@ class Updater(object):
             start = time.time()
             self._perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
             end = time.time()
-            log.debug("Update agg %s.%s took %s secs", calc_spec_name, calc_field_name, end - start)
+#            log.debug("Update agg %s.%s took %s secs", calc_spec_name, calc_field_name, end - start)
         except Exception as e:
             self.schema.update_error(update_id, str(e))
             raise
