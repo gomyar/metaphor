@@ -39,7 +39,7 @@ log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
+handler.setLevel(os.environ.get("LOGLEVEL", logging.DEBUG))
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 log.addHandler(handler)
@@ -51,7 +51,7 @@ def create_app(db):
     api = Api(db)
 
     app = Flask(__name__)
-    app.secret_key = 'keepitsecretkeepitsafe'
+    app.secret_key = os.environ.get("SECRET_KEY", 'keepitsecretkeepitsafe')
     app.config['api'] = api
     app.config['schema_factory'] = schema_factory
     app.register_blueprint(api_bp)
