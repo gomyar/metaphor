@@ -327,3 +327,6 @@ class ServerTest(TestCase):
             ],
             'self': '/organizations/%s' % organization_id_1}
         , response.json)
+
+        api_schema = self.client.get('/api/schema').json
+        self.assertEqual({}, api_schema)

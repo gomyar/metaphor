@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import json
 import atexit
 import pymongo
@@ -24,7 +25,6 @@ import flask_login
 from flask_login import login_required
 
 from metaphor.api import Api
-from metaphor.admin_api import AdminApi
 from metaphor.schema_factory import SchemaFactory
 from metaphor.api_bp import api_bp
 from metaphor.api_bp import admin_bp
@@ -35,9 +35,15 @@ from metaphor.client_bp import client_bp
 
 import logging
 
-logging.basicConfig(level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log = logging.getLogger()
+log.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(os.environ.get("LOGLEVEL", logging.DEBUG))
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
 
 def create_app(db):
     schema_factory = SchemaFactory(db)
@@ -45,7 +51,7 @@ def create_app(db):
     api = Api(db)
 
     app = Flask(__name__)
-    app.secret_key = 'keepitsecretkeepitsafe'
+    app.secret_key = os.environ.get("SECRET_KEY", 'keepitsecretkeepitsafe')
     app.config['api'] = api
     app.config['schema_factory'] = schema_factory
     app.register_blueprint(api_bp)
@@ -94,7 +100,7 @@ def watch_resource(watch, sid, url):
     log.debug("Listening to watch for %s: %s", sid, url)
     try:
         for change in watch:
-            log.debug("Change occured: %s", change)
+            log.debug("Change occured: %s: %s", url, change)
             change.pop('_id')
             socketio.emit("resource_update", {"url": url, "change": json.loads(dumps(change))}, room=sid)
     except pymongo.errors.OperationFailure as of:

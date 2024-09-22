@@ -33,4 +33,4 @@ class SchemaFactoryTest(unittest.TestCase):
 
         schemas = self.factory.list_schemas()
 
-        self.assertEqual(2, len(schemas))
+        self.assertEqual(2, len(list(schemas)))

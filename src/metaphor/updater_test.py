@@ -38,7 +38,7 @@ class UpdaterTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource(
             'employee', {'name': 'bob', 'age': 31}, 'employees', 'division', division_id_1)
 
-        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', employee_id_1)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', None)
 
         division_data = self.db.metaphor_resource.find_one({'_type': 'division'})
         self.assertEqual({
@@ -60,7 +60,7 @@ class UpdaterTest(unittest.TestCase):
 
         # check again
         #self.updater.update_calc('division', 'older_employees', division_id_1)
-        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', employee_id_2)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'employee', None)
         division_data = self.db.metaphor_resource.find_one({'_type': 'division'})
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
@@ -190,10 +190,10 @@ class UpdaterTest(unittest.TestCase):
         employee_id_5 = self.schema.insert_resource(
             'employee', {'name': 'ned', 'age': 35}, 'employees', 'division', division_id_2)
 
-        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'division', division_id_1)
-        self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', division_id_1)
-        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'division', division_id_2)
-        self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', division_id_2)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'division', None)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', None)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees', 'division', None)
+        self.updater.update_calc_for_single_resource_change('division', 'older_employees_called_ned', 'division', None)
 
         agg = self.updater.build_reverse_aggregations_to_calc('division', 'older_employees_called_ned', self.employee_spec, employee_id_2)
         self.assertEqual([
@@ -534,12 +534,16 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual(True, employee_1['is_old'])
 
     def test_create_switch_with_collections(self):
+        print("Create calc")
         self.schema.add_calc(self.division_spec, 'older_employees', 'self.name -> ("sales": (self.employees[age>20]), "marketting": (self.employees[age>30]))')
 
+        print("Create division")
         division_id_1 = self.schema.insert_resource(
             'division', {'name': 'sales'}, 'divisions')
+        print("Create employee 1")
         employee_id_1 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
             'name': 'bob', 'age': 25})
+        print("Create employee 2")
         employee_id_2 = self.updater.create_resource('employee', 'division', 'employees', division_id_1, {
             'name': 'ned', 'age': 35})
 
@@ -547,10 +551,9 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual(2, len(division['older_employees']))
 
         # change field
+        print("Update division")
         self.updater.update_fields("division", division_id_1, {'name': 'marketting'})
         #self.updater.update_fields("employee", employee_id_1, {'age': 15})
 
         division = self.schema.db['metaphor_resource'].find_one()
         self.assertEqual(1, len(division['older_employees']))
-
-

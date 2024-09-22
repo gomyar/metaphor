@@ -8,7 +8,8 @@ from metaphor.lrparse.reverse_aggregator import ReverseAggregator
 
 
 class MoveResourceUpdate:
-    def __init__(self, updater, schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
+    def __init__(self, update_id, updater, schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
+        self.update_id = update_id
         self.updater = updater
         self.schema = schema
 
@@ -20,8 +21,6 @@ class MoveResourceUpdate:
         self.target_spec_name = target_spec_name
 
     def execute(self):
-        self.update_id = str(self.schema.create_update())
-
         self.mark_update_delete()
         self.run_update_for_marked()
 
@@ -34,8 +33,6 @@ class MoveResourceUpdate:
         self.run_update_for_marked()
 
         self.remove_moving_flag()
-
-        self.schema.cleanup_update(self.update_id)
 
     def mark_update_delete(self):
         from_tree = parse_url(self.from_path, self.schema.root)

@@ -1,4 +1,7 @@
 
+import gevent
+import time
+
 from werkzeug.security import generate_password_hash
 
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
@@ -19,12 +22,18 @@ import logging
 log = logging.getLogger('metaphor')
 
 
+def schedule(func, *args):
+    gthread = gevent.spawn(func, *args)
+    gthread.join()
+
+
 class Updater(object):
     def __init__(self, schema):
         self.schema = schema
 
     def update_for(self, spec_name, field_names, update_id, start_agg):
         dependent_calcs = self.schema.all_dependent_calcs_for(spec_name, field_names)
+        print("  update dep calcs: %s", dependent_calcs)
         self._perform_aggregation_for_dependent_calcs(dependent_calcs, start_agg, spec_name, update_id)
 
     def update_for_field(self, spec_name, field_name, update_id, start_agg):
@@ -49,9 +58,25 @@ class Updater(object):
                 if reverse_agg not in unique_aggs:
                     unique_aggs.append(reverse_agg)
             for reverse_agg in unique_aggs:
+#                print("    perforam agg from %s for %s.%s:  %s" % (spec_name, calc_spec_name, calc_field_name, reverse_agg))
                 self.perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
 
     def perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
+        gthread = gevent.spawn(self._caught_single_update_aggregation, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+        if not self.schema.specs[calc_spec_name].fields[calc_field_name].background:
+            gthread.join()
+
+    def _caught_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
+        try:
+            start = time.time()
+            self._perform_single_update_aggregation(spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id)
+            end = time.time()
+#            log.debug("Update agg %s.%s took %s secs", calc_spec_name, calc_field_name, end - start)
+        except Exception as e:
+            self.schema.update_error(update_id, str(e))
+            raise
+
+    def _perform_single_update_aggregation(self, spec_name, calc_spec_name, calc_field_name, calc, start_agg, reverse_agg, update_id):
         # run reverse_agg + update_agg + calc_field_dirty_agg
             # run update for altered calc
         update_agg = calc.create_aggregation()
@@ -138,84 +163,64 @@ class Updater(object):
             if aggregation:
                 self._run_update_merge(calc_spec_name, calc_field_name, calc_tree, aggregation, updated_resource_spec)
 
-    def update_calc_for_local_fields(self, calc_spec_name, calc_field_name, updated_resource_name, updated_resource_id):
-        calc_tree = self.schema.calc_trees[calc_spec_name, calc_field_name]
-        updated_resource_spec = self.schema.specs[calc_spec_name]
-        aggregation = [{"$match": {"_id": self.schema.decodeid(updated_resource_id)}}]
-        self._run_update_merge(calc_spec_name, calc_field_name, calc_tree, aggregation, updated_resource_spec)
-
-
-    def _calculate_aggregated_resource(self, resource_name, field_name, calc_tree, resource_id):
-        match_agg = [{"$match": {"_id": self.schema.decodeid(resource_id)}}]
-        self._run_update_merge(resource_name, field_name, calc_tree, match_agg)
-
     def _run_update_merge(self, calc_spec_name, calc_field_name, calc_tree, match_agg, updated_resource_spec):
         agg = create_update_aggregation(calc_spec_name, calc_field_name, calc_tree, match_agg)
         self.schema.db['metaphor_resource'].aggregate([{"$match": {"_type": updated_resource_spec.name}}] + agg)
 
-    def _perform_updates_for_affected_calcs(self, spec, resource_id, calc_spec_name, calc_field_name):
-        affected_ids = self.get_affected_ids_for_resource(calc_spec_name, calc_field_name, spec, resource_id)
-        for affected_id in affected_ids:
-            affected_id = self.schema.encodeid(affected_id)
-            self.update_calc(calc_spec_name, calc_field_name, affected_id)
-            self._recalc_for_field_update(self.schema.specs[calc_spec_name], calc_spec_name, calc_field_name, affected_id)
-
-    def _recalc_for_field_update(self, spec, field_spec_name, field_name, resource_id):
-        field_dep = "%s.%s" % (field_spec_name, field_name)
-        # find foreign dependencies
-        for (calc_spec_name, calc_field_name), calc_tree in self.schema.calc_trees.items():
-            if field_dep in calc_tree.get_resource_dependencies():
-                self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-            elif spec.fields.get(field_name) and spec.fields[field_name].field_type == 'link':
-                if spec.name in calc_tree.get_resource_dependencies():
-                    self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-            elif spec.fields.get(field_name) and spec.fields[field_name].field_type == 'calc':
-                if not spec.fields[field_name].infer_type().is_primitive():
-                    if spec.name in calc_tree.get_resource_dependencies():
-                        self._perform_updates_for_affected_calcs(spec, resource_id, calc_spec_name, calc_field_name)
-
-        # find local dependencies (other calcs in same resource)
-        for field_name, field in spec.fields.items():
-            if field.field_type == 'calc' and field_dep in field.get_resource_dependencies():
-                self.update_calc(spec.name, field_name, resource_id)
-                self._recalc_for_field_update(spec, spec.name, field_name, resource_id)
-
-        return resource_id
-
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):
-        return CreateResourceUpdate(self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
-                 parent_id, grants).execute()
+        update_id = str(self.schema.create_update())
+        return_val = CreateResourceUpdate(update_id, self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
+                parent_id, grants).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        CreateLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        update_id = str(self.schema.create_update())
+        CreateLinkCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        self.schema.cleanup_update(update_id)
 
     def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
-        return CreateOrderedCollectionUpdate(self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
-
-
+        update_id = str(self.schema.create_update())
+        return_val = CreateOrderedCollectionUpdate(update_id, self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def delete_resource(self, spec_name, resource_id, parent_spec_name, parent_field_name):
-        return DeleteResourceUpdate(self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()
+        update_id = str(self.schema.create_update())
+        return_val = DeleteResourceUpdate(update_id, self, self.schema, spec_name, resource_id, parent_spec_name, parent_field_name).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def delete_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        return DeleteLinkCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        update_id = str(self.schema.create_update())
+        return_val = DeleteLinkCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def delete_orderedcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
-        return DeleteOrderedCollectionUpdate(self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
-
+        update_id = str(self.schema.create_update())
+        return_val = DeleteOrderedCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def update_fields(self, spec_name, resource_id, fields):
-        return FieldsUpdate(self, self.schema, spec_name, resource_id, fields).execute()
+        update_id = str(self.schema.create_update())
+        return_val = FieldsUpdate(update_id, self, self.schema, spec_name, resource_id, fields).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def move_resource(self, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
-        return MoveResourceUpdate(self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
+        update_id = str(self.schema.create_update())
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def move_resource_to_root(self, from_path, to_path):
-        return MoveResourceUpdate(self, self.schema, from_path, to_path, None, None, to_path).execute_root()
-
-    def remove_spec_field(self, spec_name, field_name):
-        self.schema.remove_spec_field(spec_name, field_name)
+        update_id = str(self.schema.create_update())
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, None, None, to_path).execute_root()
+        self.schema.cleanup_update(update_id)
+        return return_val
 
     def create_user(self, username, password):
         pw_hash = generate_password_hash(password)

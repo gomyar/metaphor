@@ -116,7 +116,9 @@ class RootResourceRef(ResourceRef):
         if self.resource_name == "ego":
             raise Exception("Unexpected ego reference in reverse aggregation")
         if self.resource_name in ["self"]:
+            #return [[], []]
             return [[], [{"$match": {"_type": calc_spec_name}}]]
+            #return [[]]
         else:
             # assuming root / collection
             return [[], self.create_reverse(calc_spec_name, calc_field_name)]
@@ -125,10 +127,10 @@ class RootResourceRef(ResourceRef):
         return [
             {"$lookup": {
                 "from": "metaphor_resource",
-                "as": "_field_%s" % (calc_field_name,),
+                "as": "_field_calc",
                 "pipeline": [{"$match": {"_type": calc_spec_name}}],
             }},
-            {'$group': {'_id': '$_field_%s' % (calc_field_name,)}},
+            {'$group': {'_id': '$_field_calc'}},
             {"$unwind": "$_id"},
             {"$replaceRoot": {"newRoot": "$_id"}},
         ]
