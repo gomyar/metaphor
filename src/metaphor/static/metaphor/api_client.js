@@ -342,16 +342,12 @@ class ApiClient {
         return field.type=='reverse_link_collection' || field.type=='reverse_link';
     }
 
-    is_linkcollection(resource, field_name) {
-        if (resource != null && field_name != null) {
-            return resource._meta.can_link && resource._meta.is_collection;
-        }
+    is_linkcollection(resource) {
+        return resource._meta.can_link && resource._meta.is_collection;
     }
 
-    is_parent_collection(resource, field_name) {
-        if (resource != null && field_name != null) {
-            return !resource._meta.can_link && resource._meta.is_collection;
-        }
+    is_parent_collection(resource) {
+        return !resource._meta.can_link && resource._meta.is_collection;
     }
 
     expand_collection(element, resource, field_name, field, ego_path) {

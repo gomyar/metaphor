@@ -80,8 +80,8 @@
                             <div class="field_value id">
                                 <a class="resource_link" gui-attrs="href='/client'+resource.self" gui-text="resource.id"></a>
                             </div>
-                            <span class="control create_button" gui-show="api.is_parent_collection(parent_resource, parent_field_name)" gui-click="api.perform_delete_resource(resource, parent_resource, ego_path&&(ego_path))" gui-text="'>> delete ' + resource._meta.spec.name"></span>
-                            <span class="control create_button" gui-show="api.is_linkcollection(parent_resource, parent_field_name)"  gui-click="api.unlink_from_collection(resource, parent_resource, parent_field_name, ego_path&&(ego_path+'.'+parent_field_name))" gui-text="'>> unlink ' + resource._meta.spec.name"></span>
+                            <span class="control create_button" gui-show="api.is_parent_collection(parent_resource)" gui-click="api.perform_delete_resource(resource, parent_resource, ego_path&&(ego_path))" gui-text="'>> delete ' + resource._meta.spec.name"></span>
+                            <span class="control create_button" gui-show="api.is_linkcollection(parent_resource)"  gui-click="api.unlink_from_collection(resource, parent_resource, parent_field_name, ego_path&&(ego_path+'.'+parent_field_name))" gui-text="'>> unlink ' + resource._meta.spec.name"></span>
                         </div>
                         <div class="field" gui-show="(resource._meta.spec.name != 'root') && api.show_self_links">
                             <div class="field_name">self</div>
