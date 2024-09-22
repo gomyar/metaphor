@@ -100,7 +100,7 @@ def watch_resource(watch, sid, url):
     log.debug("Listening to watch for %s: %s", sid, url)
     try:
         for change in watch:
-            log.debug("Change occured: %s", change)
+            log.debug("Change occured: %s: %s", url, change)
             change.pop('_id')
             socketio.emit("resource_update", {"url": url, "change": json.loads(dumps(change))}, room=sid)
     except pymongo.errors.OperationFailure as of:

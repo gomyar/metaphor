@@ -802,7 +802,7 @@ class Api(object):
                 if user:
                     # TODO: also need to check read access to target if link
                     # checking for /ego paths first, then all other paths
-                    self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+                    self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.read_grants)
 
                 # listen for changes to children of given parent
                 watch_agg = [
@@ -860,7 +860,7 @@ class Api(object):
             if user:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.read_grants)
 
             # only sending back updated signal, no way to get more details yet, client must reload collection
             watch_agg = [
@@ -872,6 +872,17 @@ class Api(object):
                     "type": "updated",
                 }},
             ]
+
+            project_fields = dict()
+            project_fields['document.self'] = '$fullDocument._canonical_url'
+            project_fields['type'] = "updated"
+            project_fields['diff'] = "$updateDescription.updatedFields"
+            watch_agg = [
+                {"$match": {"documentKey._id": parent_resource['_id']}},
+                {"$project": project_fields},
+            ]
+
+
 
         return self.schema.db['metaphor_resource'].watch(watch_agg, full_document='updateLookup')
 

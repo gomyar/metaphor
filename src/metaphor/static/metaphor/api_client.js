@@ -81,8 +81,11 @@ class Search {
 
     show_linkcollection_field_search_and_save(resource, field) {
         this.search = new ResourceSearch(field.target_spec_name, (selected_resource) => {
-            api.perform_post_link_to_url(api.api_root + resource[field.name], selected_resource.id);
-            resource._fetch();
+            api.perform_post_link_to_url(api.api_root + resource[field.name], selected_resource.id, () => {
+                if (resource._expanded != null && resource._expanded[field.name]) {
+                    resource._expanded[field.name]._fetch();
+                }
+            });
             this.hide();
         });
         turtlegui.reload();
@@ -488,11 +491,12 @@ class ApiClient {
             });
     }
 
-    perform_post_link_to_url(collection_url, link_id) {
+    perform_post_link_to_url(collection_url, link_id, callback) {
         turtlegui.ajax.post(
             collection_url,
             {id: link_id},
             (success) => {
+                callback(success);
             },
             (error) => {
                 handle_http_error(error, "Error updating " + resource.self);
