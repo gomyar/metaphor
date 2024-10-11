@@ -1,4 +1,7 @@
 
+from datetime import datetime
+import traceback
+
 from .update.mutation_create_defaulted_field import DefaultFieldMutation
 from .update.mutation_delete_field import DeleteFieldMutation
 from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
@@ -11,6 +14,9 @@ from .updater import Updater
 
 from metaphor.lrparse.lrparse import parse_canonical_url
 from metaphor.lrparse.lrparse import parse_url
+
+import logging
+log = logging.getLogger(__name__)
 
 
 ACTIONS = {
@@ -129,12 +135,26 @@ class Mutation:
         self.updater = Updater(to_schema)
         self.steps = []
         self.move_steps = []
+        self.data_steps = []
+        self.state = None
+        self.error = None
 
     def mutate(self):
-        for step in self.steps:
-            ACTIONS[step['action']](self.updater, self.from_schema, self.to_schema, **step['params']).execute()
-        for step in self.move_steps:
-            self.execute_data_step(step)
+        try:
+            self.set_mutation_state(self, state="running", updated=datetime.now(), run_datetime=datetime.now())
+
+            for step in self.steps:
+                ACTIONS[step['action']](self.updater, self.from_schema, self.to_schema, **step['params']).execute()
+            for step in self.move_steps:
+                self.execute_data_step(step)
+
+            self.set_mutation_state(self, state="complete", updated=datetime.now(), complete_datetime=datetime.now())
+        except Exception as e:
+            log.exception("Exception mutating schema")
+            self.set_mutation_state(self, state="error", updated=datetime.now(), error=traceback.format_exc())
+
+    def set_mutation_state(self, mutation, **state):
+        self.from_schema.db.metaphor_mutation.find_one_and_update({"_id": mutation._id}, {"$set": state})
 
     def add_move_step(self, from_path, to_path):
         self.move_steps.append({

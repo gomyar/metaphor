@@ -23,33 +23,65 @@
 
 
 <div class="layer anchortop schema_list">
-    <div class="title">Available Schemas</div>
+    <div class="title"><i>Available Schemas:</i></div>
+
+    <div gui-show="admin.schemas.length==0" style="margin-top: 12px"><i>None</i></div>
 
     <div gui-list="admin.schemas" gui-item="schema">
-        <div>
+        <div class="schematitle">
             <span gui-text="schema.name"></span>
             <span gui-text="schema.version"></span>
-            <span><a class="button" gui-attrs="href='/admin/schemas/'+schema.id">Edit</a></span>
-            <span class="button" gui-click="admin.copy_schema(schema)"><span>Copy Schema</span></span>
-            <span class="button" gui-click="admin.delete_schema(schema)"><span>Delete Schema</span></span>
-            <span class="button" gui-show="!(schema.current) && schema.mutations.length==0" gui-click="mutations.show_create(schema)">Create Mutation</span>
         </div>
         <div>
-            <span gui-list="schema.mutations" gui-item="mutation">
-                <span>Mutate to: </span><span gui-text="admin.get_schema(mutation.to_schema_id).name"></span>&nbsp;<span gui-text="admin.get_schema(mutation.to_schema_id).version"></span> <span><a class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a> <span class="button" gui-click="mutations.delete_mutation(mutation)">Delete Mutation</span> <span class="button" gui-click="mutations.promote_schema(mutation)">Promote Schema</span></span>
-            </span>
+            <span><a class="button" gui-attrs="href='/admin/schemas/'+schema.id">Edit Schema</a></span>
+            <span class="button" gui-click="admin.copy_schema(schema)"><span>Copy Schema</span></span>
+            <span class="button" gui-click="admin.delete_schema(schema)"><span>Delete Schema</span></span>
+            <span class="button" gui-click="mutations.show_create(schema)">Create Mutation</span>
         </div>
     </div>
 </div>
 
+<div class="layer mutation_list">
+    <div class="title"><i>Mutations:</i></div>
+
+    <div gui-show="mutations.mutations.length==0" style="margin-top: 12px"><i>None</i></div>
+
+    <div gui-list="mutations.mutations" gui-item="mutation">
+        <div>&nbsp;</div>
+        <div>
+            <span><i>Mutate from: </i></span>
+            <span gui-text="mutation.from_schema.name"></span>
+            <span gui-text="mutation.from_schema.version"></span>
+        </div>
+        <div>
+            <span><i>Mutate to: </i></span>
+            <span gui-text="mutation.to_schema.name"></span>
+            <span gui-text="mutation.to_schema.version"></span>
+        </div>
+        <div>
+            <span>
+                <a gui-show="mutation.state=='ready'" class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a>
+                <span class="button" gui-click="mutations.delete_mutation(mutation)">Delete Mutation</span>
+                <span gui-show="mutation.state=='ready'" class="button" gui-click="mutations.promote_schema(mutation)">Promote Schema</span>
+            </span>
+        </div>
+    </div>
+
+
+    </div>
+</div>
 
 <div class="layer anchorright current_schema">
-    <div class="title">Current Schema: <span gui-text="admin.current_schema.name"></span>&nbsp;<span gui-text="admin.current_schema.version"></span></div>
-        <div>
+    <div class="title"><i>Current Schema:</i></div>
+        <div class="schematitle">
+            <span gui-text="admin.current_schema.name"></span>
             <span gui-text="admin.current_schema.version"></span>
-            <i gui-text="admin.current_schema.created"></i>
-            <span><a class="button" gui-attrs="href='/admin/schemas/'+admin.current_schema.id">View</a></span>
-            <span class="button" gui-click="admin.copy_schema(admin.current_schema)">Copy</span>
+        </div>
+ 
+        <div>
+            <i gui-text="admin.current_schema.updated"></i>
+            <span><a class="button" gui-attrs="href='/admin/schemas/'+admin.current_schema.id">View Schema</a></span>
+            <span class="button" gui-click="admin.copy_schema(admin.current_schema)">Copy Schema</span>
 
         </div>
 

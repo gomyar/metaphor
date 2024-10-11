@@ -9,5 +9,4 @@ export METAPHOR_MONGO_HOST=localhost
 export FLASK_RUN_HOST=127.0.0.1
 export FLASK_RUN_PORT=8000
 
-#gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker server:app --timeout 6000
-python src/server.py
+gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker server:app --timeout 6000

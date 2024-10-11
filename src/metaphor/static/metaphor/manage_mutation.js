@@ -215,7 +215,7 @@ var manage = {
 
     perform_mutation: function() {
         if (confirm("Perform Mutation?")) {
-            turtlegui.ajax.post('/admin/api/mutations/' + mutation_id, (data) => {
+            turtlegui.ajax.patch('/admin/api/mutations/' + this.mutation.id, {"promote": true}, (data) => {
                 window.location = '/admin';
             });
         }

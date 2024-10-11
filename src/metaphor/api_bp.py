@@ -72,11 +72,13 @@ def serialize_field(field):
 
 def serialize_mutation(mutation):
     return {
-        'id': mutation._id,
+        'id': str(mutation._id),
         'from_schema': serialize_schema(mutation.from_schema),
         'to_schema': serialize_schema(mutation.to_schema),
         'steps': mutation.steps,
         'data_steps': mutation.data_steps,
+        'state': mutation.state,
+        'error': mutation.error,
     }
 
 
@@ -185,7 +187,7 @@ def admin_api_schemas():
 def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
-        schema = factory.load_schema(schema_id, True)
+        schema = factory.load_schema(schema_id)
         return jsonify(serialize_schema(schema))
     else:
         if factory.delete_schema(schema_id):
@@ -295,19 +297,24 @@ def schema_editor_delete_field(schema_id, spec_name, field_name):
     return jsonify({'success': 1})
 
 
-@admin_bp.route("/api/mutations", methods=['POST'])
+@admin_bp.route("/api/mutations", methods=['GET', 'POST'])
 @admin_required
 def mutations():
-    data = request.json
-
     factory = current_app.config['schema_factory']
-    from_schema = factory.load_schema(data['from_schema_id'])
-    to_schema = factory.load_schema(data['to_schema_id'])
-    mutation = MutationFactory(from_schema, to_schema).create()
 
-    factory.save_mutation(mutation, ObjectId())
+    if request.method == 'GET':
+        return jsonify([serialize_mutation(m) for m in factory.list_ready_mutations()])
 
-    return jsonify(serialize_mutation(mutation))
+    elif request.method == 'POST':
+        data = request.json
+
+        from_schema = factory.load_schema(data['from_schema_id'])
+        to_schema = factory.load_schema(data['to_schema_id'])
+        mutation = MutationFactory(from_schema, to_schema).create()
+
+        factory.save_mutation(mutation, ObjectId())
+
+        return jsonify(serialize_mutation(mutation))
 
 
 @admin_bp.route("/api/mutations/<mutation_id>", methods=['GET', 'PATCH', 'DELETE'])

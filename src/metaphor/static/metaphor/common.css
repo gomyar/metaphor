@@ -10,7 +10,8 @@
     cursor : pointer;
     display : inline-block;
     text-transform: uppercase;
-    height : 20px;
+    text-decoration: none;
+/*    height : 20px;*/
 }
 
 .button:focus {
@@ -82,11 +83,11 @@ div.popupform div.formfield div {
     min-width : 200px;
 }
 
-div.popupform div.formfield div.label {
+.label {
     font-size : 12px;
 }
 
-div.popupform div.formfield div.label.api {
+div.popupform div.formfield .label.api {
     font-size : 12px;
     width : 250px;
 }

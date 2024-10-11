@@ -779,6 +779,9 @@ class Schema(object):
             return None
 
     def create_initial_schema(self):
+        self.name = "Default"
+        self.description = "Default Schema"
+
         self.create_spec('user')
         self.create_field('user', 'username', 'str')
         self.create_field('user', 'password', 'str')

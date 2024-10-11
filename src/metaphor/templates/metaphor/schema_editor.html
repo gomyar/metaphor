@@ -18,7 +18,7 @@ var schema_id = "{{ schema_id }}";
 
 
 <div class="layer anchortop title_version">
-    <div class="title">Edit Schema: <span class="version" gui-text="schema.name"></span>&nbsp;<span class="version" gui-text="schema.version"></span></div>
+    <div class="title"><span class="title"><a href='/admin'>Admin</a></span> &gt; </span>Edit Schema: <span class="version" gui-text="schema.name"></span>&nbsp;<span class="version" gui-text="schema.version"></span></div>
     <a class="button" gui-attrs="href='/admin/api/schemas/'+schema_id; download='schema.json'">Export</a>
 </div>
 
@@ -95,13 +95,12 @@ var schema_id = "{{ schema_id }}";
 <div id="popup_field" class="popupwrapper" gui-show="create_field.show_popup">
     <div class="popup">
         <div class="title">
-            <span gu-show="!create_field.is_editing">Create Field:</span>
-            <span gu-show="create_field.is_editing">Edit Field:</span>
+            <span gui-show="!create_field.is_editing">Create Field:</span>
+            <span gui-show="create_field.is_editing">Edit Field:</span>
         </div>
         <div class="popupform">
             <div class="formfield"><div class="label">Name:</div>
                 <input type="text" gui-show="!create_field.is_editing" gui-val="create_field.field_name"></input>
-                <span gui-text="create_field.field_name"></span>
                 <div class="spec_type">
                     <select gui-val="create_field.field_type" gui-list="create_field.all_field_types" gui-item="spec_type" gui-change="turtlegui.reload()">
                         <option gui-text="spec_type" gui-val="spec_type"></option>
@@ -140,7 +139,7 @@ var schema_id = "{{ schema_id }}";
 
             </div>
             <div gui-show="create_field.is_primitive()">
-                <div class="label">Required:</div>
+                <span class="label">Required:</span>
                 <input type="checkbox" gui-val="create_field.is_required"></input>
             </div>
         </div>

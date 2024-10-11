@@ -92,9 +92,17 @@ var schema_import = {
 
 
 var mutations = {
+    mutations: [],
     mutation: null,
     to_schema_index: null,
     from_schema_index: null,
+
+    load_mutations: function() {
+        turtlegui.ajax.get('/admin/api/mutations', (data) => {
+            mutations.mutations = JSON.parse(data);
+            turtlegui.reload();
+        });
+    },
 
     show_create: function(schema) {
         this.mutation = new Mutation(schema, admin.current_schema);
@@ -111,13 +119,14 @@ var mutations = {
             '/admin/api/mutations',
             {"to_schema_id": this.mutation.to_schema.id,
              "from_schema_id": this.mutation.from_schema.id},
-            (d) => {mutations.mutation = null; admin.load_schemas()});
+            (d) => {mutations.mutation = null; mutations.load_mutations()});
     },
 
     promote_schema: function(mutation) {
         if (confirm("Promote this schema to current?")) {
             turtlegui.ajax.patch('/admin/api/mutations/' + mutation.id, {"promote": true}, (data) => {
                 admin.load_schemas(); 
+                mutations.load_mutations();
             }, (e) => {
                 alert("Error promoting: " + e);
             });
@@ -127,7 +136,7 @@ var mutations = {
     delete_mutation: function(mutation) {
         if (confirm("Delete mutation?")) {
             turtlegui.ajax.delete('/admin/api/mutations/' + mutation.id, () => {
-                admin.load_schemas(); 
+                mutations.load_mutations(); 
             }, (e) => {
                 alert("Error deleting: " + e);
             });
@@ -140,5 +149,6 @@ var login = new Login();
 document.addEventListener("DOMContentLoaded", function(){
     // call turtlegui.reload() when the page loads
     admin.load_schemas();
+    mutations.load_mutations();
 });
 

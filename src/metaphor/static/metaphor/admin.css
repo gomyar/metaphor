@@ -41,6 +41,9 @@ div.current_schema {
     border-top : 2px solid black;
     top : 60px;
     width: 48%;
+    bottom: 50%;
+    width: 48%;
+    overflow-y: auto;
 }
 
 
@@ -48,8 +51,21 @@ div.schema_list {
     margin : 10px;
     border-top : 2px solid black;
     top : 60px;
+    bottom: 50%;
     width: 48%;
+    overflow-y: auto;
 }
+
+
+div.mutation_list {
+    margin : 10px;
+    border-top : 2px solid black;
+    top : 52%;
+    bottom: 2%;
+    width: 48%;
+    overflow-y: auto;
+}
+
 
 div.schema_diff {
     margin : 10px;
@@ -197,4 +213,9 @@ div.title {
     display : inline-block;
 }
 
+div.schematitle {
+
+    font-weight : bold;
+    margin-top: 12px;
+}
 

@@ -19,31 +19,13 @@ class SchemaFactory:
         schema._build_schema(data)
         return schema
 
-    def load_schema(self, schema_id, include_mutations=False):
+    def load_schema(self, schema_id):
         schema = Schema(self.db)
-        schema._build_schema(self.load_schema_data(schema_id, include_mutations))
+        schema._build_schema(self.load_schema_data(schema_id))
         return schema
 
     def _schema_aggregation(self):
         return [
-            {"$lookup": {
-                "from": "metaphor_mutation",
-                "as": "mutations",
-                "let": {"id": "$_id"},
-                "pipeline": [
-                    {"$match": {"$expr": {
-                        "$eq": ["$to_schema_id", "$$id"],
-                    }}},
-                    {"$addFields": {
-                        "id": {"$toString": "$_id"},
-                        "from_schema_id": {"$toString": "$from_schema_id"},
-                        "to_schema_id": {"$toString": "$to_schema_id"},
-                    }},
-                    {"$project": {
-                        "_id": 0,
-                    }},
-                ]
-            }},
             {"$addFields": {
                 "id": {"$toString": "$_id"},
             }},
@@ -55,7 +37,7 @@ class SchemaFactory:
             }},
         ]
 
-    def load_schema_data(self, schema_id, include_mutations=False):
+    def load_schema_data(self, schema_id):
         aggregate = [
             {"$match": {"_id": ObjectId(schema_id)}},
         ] + self._schema_aggregation()
@@ -103,13 +85,22 @@ class SchemaFactory:
         data = self.db.metaphor_mutation.find_one({
             "_id": mutation_id
         })
+        return self._create_mutation(data)
+
+    def _create_mutation(self, data):
         from_schema = self.load_schema(data['from_schema_id'])
         to_schema = self.load_schema(data['to_schema_id'])
         mutation = Mutation(from_schema, to_schema)
-        mutation._id = mutation_id
+        mutation._id = data['_id']
         mutation.data_steps = data.get('data_steps') or []
         mutation.steps = data.get('steps') or []
+        mutation.state = data.get('state') or 'ready'
+        mutation.error = data.get('error')
         return mutation
+
+    def list_ready_mutations(self):
+        data = self.db.metaphor_mutation.find()#{"$or": [{"state": "ready"}, {"state": "running"}]})
+        return [self._create_mutation(m) for m in data]
 
     def save_mutation(self, mutation, object_id):
         update = self.db.metaphor_mutation.update_one({"_id": object_id}, {
@@ -121,3 +112,4 @@ class SchemaFactory:
         }, upsert=True)
         mutation._id = str(update.upserted_id)
         return update.upserted_id
+
