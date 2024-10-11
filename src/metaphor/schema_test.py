@@ -551,7 +551,7 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual({}, self.schema.all_dependent_calcs_for('primary', 'name'))
 
-    def test_delete_spec_field_with_dependencies(self):
+    def test_delete_spec_in_collection(self):
         self._create_test_schema({
             "specs" : {
             }
@@ -562,15 +562,13 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.create_spec('secondary')
         self.schema.create_field('secondary', 'name', 'str')
-        self.schema.create_field('secondary', 'primary', 'link', 'primary')
-        self.schema.create_field('secondary', 'primary_name', 'calc', calc_str="self.primary.name")
 
-        self.assertEqual({('secondary', 'primary_name'): self.schema.calc_trees[('secondary', 'primary_name')]}, self.schema.all_dependent_calcs_for('primary', 'name'))
+        self.schema.create_field('primary', 'secondaries', 'collection', 'secondary')
 
         try:
             self.schema.delete_spec('secondary')
         except DependencyException as de:
-            self.assertEqual("secondary.primary referenced by ['secondary.primary_name']", str(de))
+            self.assertEqual("secondary is linked from primary.secondaries", str(de))
 
     def test_delete_root_field(self):
         self._create_test_schema({

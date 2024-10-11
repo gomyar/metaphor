@@ -40,8 +40,11 @@ class SchemaFactory:
     def load_schema_data(self, schema_id):
         aggregate = [
             {"$match": {"_id": ObjectId(schema_id)}},
-        ] + self._schema_aggregation()
-        return next(self.db.metaphor_schema.aggregate(aggregate))
+        ] + self._schema_aggregation() + [
+            {"$limit": 1},
+        ]
+        results = list(self.db.metaphor_schema.aggregate(aggregate))
+        return results[0] if results else None
 
     def create_schema(self):
         schema = Schema.create_schema(self.db)

@@ -127,6 +127,15 @@ class Spec(object):
     def is_field(self):
         return False
 
+    def linked_from(self):
+        parents = []
+        for ref_spec_name, ref_spec in self.schema.specs.items():
+            if ref_spec_name != self.name:
+                for ref_field_name, ref_field in ref_spec.fields.items():
+                    if ref_field.target_spec_name == self.name:
+                        parents.append("%s.%s" % (ref_spec_name, ref_field_name))
+        return parents
+
 
 class User(UserMixin):
     def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, put_grants, user_hash, admin=False):
@@ -403,6 +412,10 @@ class Schema(object):
 
         for field_name in spec.fields:
             self._check_field_dependencies(spec_name, field_name)
+
+        links = spec.linked_from()
+        if links:
+            raise DependencyException("%s is linked from %s" % (spec_name, ", ".join(links)))
 
         for field_name in list(spec.fields):
             self._do_delete_field(spec_name, field_name)

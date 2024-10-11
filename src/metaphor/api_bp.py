@@ -5,6 +5,7 @@ from flask import render_template
 from flask import current_app
 from flask import request
 from flask import jsonify
+from flask import abort
 from metaphor.login import login_required
 from metaphor.login import admin_required
 from metaphor.schema import Schema, CalcField
@@ -188,7 +189,10 @@ def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     if request.method == 'GET':
         schema = factory.load_schema(schema_id)
-        return jsonify(serialize_schema(schema))
+        if schema:
+            return jsonify(serialize_schema(schema))
+        else:
+            abort(404)
     else:
         if factory.delete_schema(schema_id):
             return jsonify({'ok': 1})
