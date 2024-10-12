@@ -267,7 +267,7 @@ def schema_editor_delete_spec(schema_id, spec_name):
         schema.delete_spec(spec_name)
     except DependencyException as de:
         log.exception("DependencyException on DELETE for %s %s", schema_id, spec_name)
-        return jsonify({"error": str(me)}), 400
+        return jsonify({"error": str(de)}), 400
     return jsonify({'success': 1})
 
 

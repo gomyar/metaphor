@@ -329,4 +329,10 @@ class ServerTest(TestCase):
         , response.json)
 
         api_schema = self.client.get('/api/schema').json
-        self.assertEqual({}, api_schema)
+        self.assertEqual([
+           'employees',
+            'groups',
+            'organizations',
+            'sections',
+            'users',
+        ], list(api_schema['root'].keys()))

@@ -130,6 +130,7 @@ class MutationFactory(object):
 
 class Mutation:
     def __init__(self, from_schema, to_schema):
+        self._id = None
         self.from_schema = from_schema
         self.to_schema = to_schema
         self.updater = Updater(to_schema)

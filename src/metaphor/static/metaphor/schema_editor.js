@@ -44,7 +44,7 @@ var schema = {
                 },
                 function(data) {
                     loading.dec_loading();
-                    alert("Error deleting spec: " + data.error);
+                    alert("Error deleting field: " + JSON.parse(data.response).error);
                 }
             );
         }
@@ -59,7 +59,7 @@ var schema = {
                 },
                 function(data) {
                     loading.dec_loading();
-                    alert("Error deleting spec: " + data.error);
+                    alert("Error deleting spec: " + JSON.parse(data.response).error);
                 }
             );
         }
