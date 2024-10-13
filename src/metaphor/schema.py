@@ -695,6 +695,18 @@ class Schema(object):
 
         return parsed.infer_type(), parsed.is_collection()
 
+    def resolve_url(self, url):
+        from metaphor.lrparse.lrparse import parse_url
+        parsed = parse_url(url, self.root)
+
+        return parsed.infer_type(), parsed.is_collection()
+
+    def resolve_canonical_url(self, url):
+        from metaphor.lrparse.lrparse import parse_canonical_url
+        parsed = parse_canonical_url(url, self.root)
+
+        return parsed.infer_type(), parsed.is_collection()
+
     def validate_spec(self, spec_name, data):
         spec = self.specs[spec_name]
         errors = []

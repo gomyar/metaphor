@@ -158,6 +158,15 @@ class Mutation:
         self.from_schema.db.metaphor_mutation.find_one_and_update({"_id": mutation._id}, {"$set": state})
 
     def add_move_step(self, from_path, to_path):
+        from_spec, from_is_collection = self.from_schema.resolve_url(from_path)
+        to_spec, to_is_collection = self.to_schema.resolve_canonical_url(to_path)
+
+        if from_spec.name != to_spec.name:
+            raise Exception("Must move to same spec type")
+
+        if not to_is_collection:
+            raise Exception("Target must be collection")
+
         self.move_steps.append({
             "from_path": from_path,
             "to_path": to_path,

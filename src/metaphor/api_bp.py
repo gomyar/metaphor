@@ -367,8 +367,11 @@ def mutation_steps(mutation_id):
         elif data['action'] == "rename_field":
             mutation.convert_delete_field_to_rename(data['spec_name'], data['from_field_name'], data['to_field_name'])
             factory.save_mutation(mutation, ObjectId(mutation_id))
+        elif data['action'] == "move":
+            mutation.add_move_step(data['from_path'], data['to_path'])
+            factory.save_mutation(mutation, ObjectId(mutation_id))
         else:
-            mutation.add_data_step(data['action'], data['target_calc'], data['target_field_name'], data['move_calc'])
+            return jsonify({"error": "Unknown step type"}), 400
 
         return jsonify(mutation.steps)
 

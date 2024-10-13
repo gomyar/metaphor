@@ -307,6 +307,51 @@ class MutationTest(unittest.TestCase):
         self.assertEqual(0, self.db.metaphor_resource.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_1_id)}))
         self.assertEqual(2, self.db.metaphor_resource.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_2_id)}))
 
+    def test_validate_move_steps(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        # create schema 1
+        self.schema_1.create_spec('job')
+        self.schema_1.create_field('job', 'description', 'str')
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+        self.schema_1.create_field('client', 'jobs', 'collection', 'job')
+
+        self.schema_1.create_field('root', 'primary_clients', 'collection', 'client')
+        self.schema_1.create_field('root', 'secondary_clients', 'collection', 'client')
+
+        # create schema 2
+        self.schema_2.create_spec('job')
+        self.schema_2.create_field('job', 'description', 'str')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'jobs', 'collection', 'job')
+        self.schema_2.create_field('root', 'primary_clients', 'collection', 'client')
+        self.schema_2.create_field('root', 'secondary_clients', 'collection', 'client')
+
+        # insert test data
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'primary_clients')
+        client_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'secondary_clients')
+
+        job_1_id = self.schema_1.insert_resource('job', {'description': 'Job 1'}, 'jobs', 'client', client_1_id)
+        job_2_id = self.schema_1.insert_resource('job', {'description': 'Job 2'}, 'jobs', 'client', client_2_id)
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        with self.assertRaises(Exception):
+            # must be same type
+            mutation.add_move_step(f"primary_clients/{client_1_id}", f"secondary_clients/{client_2_id}/jobs")
+
+        with self.assertRaises(Exception):
+            # target must be collection
+            mutation.add_move_step(f"primary_clients/{client_1_id}", f"secondary_clients/{client_2_id}")
+
     def test_create_spec(self):
         # given 2 schemas
         self.schema_1 = SchemaFactory(self.db).create_schema()

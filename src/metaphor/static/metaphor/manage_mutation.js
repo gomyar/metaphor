@@ -33,19 +33,29 @@ var manage = {
     },
 
     reload_from_step: function() {
-        turtlegui.ajax.post('/admin/api/schemas/' + this.mutation.from_schema.id + '/calcs', {'calc_str': this.step.from_path}, (data) => {
-            var meta = JSON.parse(data);
-            manage.step.from_spec = manage.mutation.from_schema.specs[meta.meta.spec_name];
-            manage.step.from_is_collection = meta.meta.is_collection;
+        turtlegui.ajax.get('/api' + this.step.from_path + '?page_size=1', (data) => {
+            var result = JSON.parse(data);
+            if (result._meta.is_collection) {
+                manage.step.from_spec = manage.mutation.from_schema.specs[result._meta.spec.name];
+                manage.step.from_is_collection = true;
+            } else {
+                manage.step.from_spec = manage.mutation.from_schema.specs[result._meta.spec.name];
+                manage.step.from_is_collection = true;
+            }
             turtlegui.reload();
         }, handle_http_error);
     },
 
     reload_to_step: function() {
-        turtlegui.ajax.post('/admin/api/schemas/' + this.mutation.to_schema.id + '/calcs', {'calc_str': this.step.to_path}, (data) => {
-            var meta = JSON.parse(data);
-            manage.step.to_spec = manage.mutation.to_schema.specs[meta.meta.spec_name];
-            manage.step.to_is_collection = meta.meta.is_collection;
+        turtlegui.ajax.get('/api' + this.step.to_path + '?page_size=1', (data) => {
+            var result = JSON.parse(data);
+            if (result._meta.is_collection) {
+                manage.step.to_spec = manage.mutation.to_schema.specs[result._meta.spec.name];
+                manage.step.to_is_collection = true;
+            } else {
+                manage.step.to_spec = manage.mutation.to_schema.specs[result._meta.spec.name];
+                manage.step.to_is_collection = true;
+            }
             turtlegui.reload();
         }, handle_http_error);
     },
