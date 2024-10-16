@@ -219,6 +219,7 @@ var manage = {
 
     perform_create_step: function() {
         turtlegui.ajax.post('/admin/api/mutations/' + this.mutation.id + '/steps', this.step, (data) => {
+            manage.load();
             manage.hide_create_step();
         });
     },

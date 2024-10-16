@@ -22,7 +22,7 @@
 
         </span>
 
-        <span class="control create_button" gui-click="api.show_create_resource(api.root_resource, api.root_resource._meta.spec.name, api.path)"  gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
+        <span class="control create_button" gui-click="api.show_create_resource(api.root_resource, api.root_resource._meta.spec.name, api.path, api.root_resource)"  gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
         <span class="control create_button" gui-click="search.show_create_linkcollection_search(api.root_resource)" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
 
         <div class="viewcontrols">

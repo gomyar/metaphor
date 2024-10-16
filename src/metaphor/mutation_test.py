@@ -602,13 +602,13 @@ class MutationTest(unittest.TestCase):
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('title', mutation.steps[0]['params']['field_name'])
 
-        self.assertEqual('delete_field', mutation.steps[1]['action'])
+        self.assertEqual('rename_spec', mutation.steps[1]['action'])
         self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
-        self.assertEqual('name', mutation.steps[1]['params']['field_name'])
+        self.assertEqual('customer', mutation.steps[1]['params']['to_spec_name'])
 
-        self.assertEqual('rename_spec', mutation.steps[2]['action'])
+        self.assertEqual('delete_field', mutation.steps[2]['action'])
         self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
-        self.assertEqual('customer', mutation.steps[2]['params']['to_spec_name'])
+        self.assertEqual('name', mutation.steps[2]['params']['field_name'])
 
     def test_cancel_rename_spec(self):
         # given 2 schemas
@@ -774,13 +774,13 @@ class MutationTest(unittest.TestCase):
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('title', mutation.steps[0]['params']['field_name'])
 
-        self.assertEqual('delete_field', mutation.steps[1]['action'])
+        self.assertEqual('rename_spec', mutation.steps[1]['action'])
         self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
-        self.assertEqual('name', mutation.steps[1]['params']['field_name'])
+        self.assertEqual('customer', mutation.steps[1]['params']['to_spec_name'])
 
-        self.assertEqual('rename_spec', mutation.steps[2]['action'])
+        self.assertEqual('delete_field', mutation.steps[2]['action'])
         self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
-        self.assertEqual('customer', mutation.steps[2]['params']['to_spec_name'])
+        self.assertEqual('name', mutation.steps[2]['params']['field_name'])
 
     def test_rename_field_add_default(self):
         pass

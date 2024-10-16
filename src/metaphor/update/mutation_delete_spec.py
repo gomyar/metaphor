@@ -14,8 +14,6 @@ class DeleteSpecMutation:
     def execute(self):
         update_id = str(self.from_schema.create_update())
 
-        self.from_schema.delete_spec(self.spec_name)
-
         self.from_schema.delete_resources_of_type(self.spec_name)
 
         self.from_schema.cleanup_update(update_id)

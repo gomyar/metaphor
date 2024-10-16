@@ -66,6 +66,18 @@ div.mutation_list {
     overflow-y: auto;
 }
 
+div.mutation_details {
+    margin-left: 20px;
+}
+
+
+div.complete {
+    text-decoration: line-through;
+}
+
+div.error {
+    color: red;
+}
 
 div.schema_diff {
     margin : 10px;

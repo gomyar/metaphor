@@ -33,7 +33,6 @@ class Updater(object):
 
     def update_for(self, spec_name, field_names, update_id, start_agg):
         dependent_calcs = self.schema.all_dependent_calcs_for(spec_name, field_names)
-        print("  update dep calcs: %s", dependent_calcs)
         self._perform_aggregation_for_dependent_calcs(dependent_calcs, start_agg, spec_name, update_id)
 
     def update_for_field(self, spec_name, field_name, update_id, start_agg):
@@ -211,6 +210,7 @@ class Updater(object):
         return return_val
 
     def move_resource(self, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
+        log.debug("Move resource from %s to %s", from_path, to_path)
         update_id = str(self.schema.create_update())
         return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
         self.schema.cleanup_update(update_id)
@@ -235,3 +235,20 @@ class Updater(object):
     def delete_user(self, username):
         user = self.schema.db['metaphor_resource'].find_one({'_type': 'user', 'username': username})
         self.delete_resource('user', self.schema.encodeid(user['_id']), user['_parent_type'], user['_parent_field_name'])
+
+    def delete_links_to_resource(self, spec_name, resource_id):
+        spec = self.schema.specs[spec_name]
+        for linked_spec_name, spec in self.schema.specs.items():
+            for field_name, field in spec.fields.items():
+                if field.field_type == 'link' and field.target_spec_name == spec_name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['metaphor_resource'].find({"_type": linked_spec_name, field_name: self.schema.decodeid(resource_id)}):
+                        # call update_resource on resource
+                        self.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
+
+                if field.field_type == 'linkcollection' and field.target_spec_name == spec_name:
+                    # find all resources with link to target id
+                    for resource_data in self.schema.db['metaphor_resource'].find({"_type": linked_spec_name, '%s._id' % field_name: self.schema.decodeid(resource_id)}):
+                        # call update_resource on resource
+                        self.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, resource_id)
+

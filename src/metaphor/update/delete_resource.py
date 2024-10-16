@@ -30,26 +30,16 @@ class DeleteResourceUpdate:
         self.schema.delete_resource(self.spec_name, self.resource_id)
 
         # delete any links to resource
-        for linked_spec_name, spec in self.schema.specs.items():
-            for field_name, field in spec.fields.items():
-                if field.field_type == 'link' and field.target_spec_name == self.spec_name:
-                    # find all resources with link to target id
-                    for resource_data in self.schema.db['metaphor_resource'].find({"_type": linked_spec_name, field_name: self.schema.decodeid(self.resource_id)}):
-                        # call update_resource on resource
-                        self.updater.update_fields(linked_spec_name, self.schema.encodeid(resource_data['_id']), {field_name: None})
-
-                if field.field_type == 'linkcollection' and field.target_spec_name == self.spec_name:
-                    # find all resources with link to target id
-                    for resource_data in self.schema.db['metaphor_resource'].find({"_type": linked_spec_name, '%s._id' % field_name: self.schema.decodeid(self.resource_id)}):
-                        # call update_resource on resource
-                        self.updater.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, self.resource_id)
+        self.updater.delete_links_to_resource(self.spec_name, self.resource_id)
 
         # check if resource is read grant
         if self.spec_name == 'grant':
             self.updater._remove_grants(self.resource_id, original_resource['url'])
 
         # delete child resources
+        spec = self.schema.specs[self.spec_name]
         for field_name, field in spec.fields.items():
             if field.field_type == 'collection':
                 for child_resource in self.schema.db['metaphor_resource'].find({"_type": field.target_spec_name, '_parent_id': self.schema.decodeid(self.resource_id)}, {'_id': 1}):
                     self.updater.delete_resource(field.target_spec_name, self.schema.encodeid(child_resource['_id']), self.spec_name, field_name)
+

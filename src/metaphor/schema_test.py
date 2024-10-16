@@ -709,3 +709,4 @@ class SchemaTest(unittest.TestCase):
         self.schema.rename_spec('employee', 'user')
 
         self.schema = SchemaFactory(self.db).load_current_schema()
+

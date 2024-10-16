@@ -47,23 +47,25 @@
     <div gui-show="mutations.mutations.length==0" style="margin-top: 12px"><i>None</i></div>
 
     <div gui-list="mutations.mutations" gui-item="mutation">
-        <div>&nbsp;</div>
-        <div>
-            <span><i>Mutate from: </i></span>
-            <span gui-text="mutation.from_schema.name"></span>
-            <span gui-text="mutation.from_schema.version"></span>
-        </div>
-        <div>
-            <span><i>Mutate to: </i></span>
-            <span gui-text="mutation.to_schema.name"></span>
-            <span gui-text="mutation.to_schema.version"></span>
-        </div>
-        <div>
-            <span>
-                <a gui-show="mutation.state=='ready'" class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a>
-                <span class="button" gui-click="mutations.delete_mutation(mutation)">Delete Mutation</span>
-                <span gui-show="mutation.state=='ready'" class="button" gui-click="mutations.promote_schema(mutation)">Promote Schema</span>
-            </span>
+        <div gui-class="mutation.state">
+            <div>&nbsp;</div>
+            <div>
+                <span><i>Mutate from: </i></span>
+                <span gui-text="mutation.from_schema.name"></span>
+                <span gui-text="mutation.from_schema.version"></span>
+            </div>
+            <div>
+                <span><i>Mutate to: </i></span>
+                <span gui-text="mutation.to_schema.name"></span>
+                <span gui-text="mutation.to_schema.version"></span>
+            </div>
+            <div>
+                <span>
+                    <a gui-show="mutation.state=='ready'" class="button" gui-attrs="href='/admin/mutations/'+mutation.id">Manage</a>
+                    <span class="button" gui-click="mutations.delete_mutation(mutation)">Delete Mutation</span>
+                    <span gui-show="mutation.state=='ready'" class="button" gui-click="mutations.promote_schema(mutation)">Promote Schema</span>
+                </span>
+            </div>
         </div>
     </div>
 

@@ -16,6 +16,7 @@ class DeleteFieldMutation:
 
         spec = self.from_schema.specs[self.spec_name]
         self.from_schema.delete_field_value(self.spec_name, self.field_name)
+        self.from_schema._do_delete_field(self.spec_name, self.field_name)
 
         # find and update dependent calcs
         start_agg = []

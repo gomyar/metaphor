@@ -265,25 +265,50 @@ var mutation_id = "{{ mutation_id }}";
 
 
 <div class="layer fullscreen steps" gui-show="manage.tab=='steps'">
+    <div>&nbsp;</div>
     <div class="title">Steps</div>
 
-    <div>
-        <span class="button" gui-click="manage.show_create_step()">Create Step</span>
-    </div>
+    <div>&nbsp;</div>
     
     <div gui-list="manage.mutation.steps" gui-item="step">
         <div>
             <span>Action: </span>
-            <b gui-text="step.action"></b>
-            <span gui-text="step.params.spec_name"></span>
-            <span gui-text="step.params.to_spec_name" gui-show="step.params.to_spec_name"></span>
-            <span gui-text="step.params.field_name" gui-show="step.params.field_name"></span>
-            <span gui-text="step.params.to_field_name" gui-show="step.params.to_field_name"></span>
+            <span>
+                <b gui-text="step.action"></b>
+                <span gui-text="step.params.spec_name"></span>
+                <span gui-text="step.params.to_spec_name" gui-show="step.params.to_spec_name"></span>
+                <span gui-text="step.params.field_name" gui-show="step.params.field_name"></span>
+                <span gui-text="step.params.to_field_name" gui-show="step.params.to_field_name"></span>
+            </span>
         </div>
     </div>
 
+    <div gui-list="manage.mutation.move_steps" gui-item="step">
+        <div>
+            <span>Action: </span>
+            <span>
+                <b>Move</b>
+                <div class="mutation_details">
+                    <div>
+                        <span>from: </span><span gui-text="step.from_path"></span>
+                    </div>
+                    <div>
+                        <span>to: &nbsp;&nbsp;</span><span gui-text="step.to_path"></span>
+                    </div>
+                </div>
+            </span>
+        </div>
+    </div>
+
+
+    <div>&nbsp;</div>
+
     <div>
-        <span class="button" gui-click="manage.perform_mutation()">Perform Mutation</span>
+        <span class="button large" gui-click="manage.show_create_step()">Create Move Step</span>
+    </div>
+    <div>&nbsp;</div>
+    <div>
+        <span class="button large" gui-click="manage.perform_mutation()">Perform Mutation</span>
     </div>
 </div>
 

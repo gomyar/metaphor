@@ -136,7 +136,6 @@ class Mutation:
         self.updater = Updater(to_schema)
         self.steps = []
         self.move_steps = []
-        self.data_steps = []
         self.state = None
         self.error = None
 
@@ -145,8 +144,10 @@ class Mutation:
             self.set_mutation_state(self, state="running", updated=datetime.now(), run_datetime=datetime.now())
 
             for step in self.steps:
+                log.debug("Running Mutation step: %s", step)
                 ACTIONS[step['action']](self.updater, self.from_schema, self.to_schema, **step['params']).execute()
             for step in self.move_steps:
+                log.debug("Running Move step: %s", step)
                 self.execute_data_step(step)
 
             self.set_mutation_state(self, state="complete", updated=datetime.now(), complete_datetime=datetime.now())
@@ -158,6 +159,8 @@ class Mutation:
         self.from_schema.db.metaphor_mutation.find_one_and_update({"_id": mutation._id}, {"$set": state})
 
     def add_move_step(self, from_path, to_path):
+        from_path = from_path.strip('/')
+        to_path = to_path.strip('/')
         from_spec, from_is_collection = self.from_schema.resolve_url(from_path)
         to_spec, to_is_collection = self.to_schema.resolve_canonical_url(to_path)
 
@@ -216,13 +219,14 @@ class Mutation:
 
     def _sort_steps(self):
         values = {
-            "create_spec": 0,
+            "create_spec": 10,
             "create_field": 20,
-            "delete_field": 50,
-            "rename_spec": 60,
-            "rename_field": 70,
-            "alter_field": 80,
-            "delete_spec": 100,
+            "rename_spec": 30,
+            "rename_field": 40,
+            "alter_field": 50,
+            "move": 60,
+            "delete_field": 70,
+            "delete_spec": 80,
         }
         def cmp(lhs):
             return values[lhs['action']]
