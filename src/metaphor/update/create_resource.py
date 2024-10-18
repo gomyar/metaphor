@@ -38,12 +38,10 @@ class CreateResourceUpdate:
 
         # TODO: collate all affected calcs together
         # update local resource calcs
-        print("up local resource calcs for %s" % self.spec_name)
         for field_name, field in self.spec.fields.items():
             if field.field_type == 'calc':
                 self.updater.perform_single_update_aggregation(self.spec_name, self.spec_name, field_name, self.schema.calc_trees[self.spec_name, field_name], start_agg, [], self.update_id)
 
-        print("up for: %s" % (self.spec_name))
         self.updater.update_for(self.spec_name, dependent_fields, self.update_id, start_agg)
 
         return resource_id

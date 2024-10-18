@@ -210,6 +210,7 @@ class Updater(object):
         return return_val
 
     def move_resource(self, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
+        import ipdb; ipdb.set_trace()
         log.debug("Move resource from %s to %s", from_path, to_path)
         update_id = str(self.schema.create_update())
         return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
