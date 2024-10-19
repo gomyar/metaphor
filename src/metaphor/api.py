@@ -87,6 +87,43 @@ class Api(object):
                     return True
         return False
 
+    def _url_to_path(self, url):
+        url = url.strip('/')
+        no_filters = re.sub(r'\[.*?]', '', url)
+        no_trailing_ids = re.sub(r'\/ID[0-9a-f]*$', '', no_filters)
+        ids_to_dots = re.sub(r'\/(ID[0-9a-f]*\/)?', '.', no_trailing_ids)
+        return ids_to_dots
+
+    def _read_grants(self, user_id, method):
+        results = self.db.metaphor_resource.aggregate([
+            {"$match": {"_id": user_id}},
+            {"$lookup": {
+                "foreignField": "_id",
+                "localField": "groups._id",
+                "as": "groups",
+                "from": "metaphor_resource",
+            }},
+            {"$lookup": {
+                "foreignField": "_parent_id",
+                "localField": "groups._id",
+                "as": "group_grants",
+                "from": "metaphor_resource",
+            }},
+            {"$limit": 1},
+            {"$unwind": "$group_grants"},
+            {"$match": {"group_grants.type": method}},
+            {"$project": {
+                "grants": "$group_grants.url",
+            }},
+        ])
+        return [r['grants'] for r in results]
+
+    def can_access(self, user_id, method, url):
+        schema = self.schema
+        path = self._url_to_path(url)
+        grants = self._read_grants(schema.decodeid(user_id), method)
+        return path in grants
+
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
         tree = self._parse_canonical_url(path)
