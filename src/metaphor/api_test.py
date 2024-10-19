@@ -1129,20 +1129,17 @@ class ApiTest(unittest.TestCase):
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
 
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/users'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/users/%s/references' % user_id})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': '/users/%s/references' % user_id})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users.references'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'users.references'})
 
 
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
         user = self.schema.load_user_by_username('bob')
-        user.grants = user.create_grants
 
         # post with grants
         self.api.post('/users/%s/references' % user_id, {'name': 'fred'}, user=user)
-
-        user.grants = user.read_grants
 
         employees = self.api.get('/users/%s/references' % user_id, user=user)
         self.assertEqual('fred', employees['results'][0]['name'])
@@ -1153,21 +1150,18 @@ class ApiTest(unittest.TestCase):
         user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/users/%s' % user_id})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': '/users/%s' % user_id})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'users'})
 
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
         user = self.schema.load_user_by_username('bob')
-        user.grants = user.update_grants
 
         # patch with grants
         employee_id = self.api.post('/employees', {'name': 'fred'})
 
         # actually should have given a 403 as no read access to /employees/
         self.api.patch('/users/%s' % user_id, {'reference': employee_id}, user=user)
-
-        user.grants = user.read_grants
 
         get_user = self.api.get('/users/%s' % user_id, user=user)
         self.assertEqual('bob', get_user['username'])
@@ -1176,18 +1170,15 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('user', 'references', 'collection', 'employee')
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/ego/references'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': '/ego/references'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.references'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'ego.references'})
 
         user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
         user = self.schema.load_user_by_username('bob')
-        user.grants = user.create_grants
 
         self.api.post('/ego/references', {'name': 'fred'}, user=user)
-
-        user.grants = user.read_grants
 
         employees = self.api.get('/ego/references', user=user)
         self.assertEqual('fred', employees['results'][0]['name'])
@@ -1196,8 +1187,8 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('user', 'reference', 'link', 'employee')
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': '/ego/reference'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': '/ego'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.reference'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'ego'})
 
         user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
@@ -1205,55 +1196,11 @@ class ApiTest(unittest.TestCase):
         employee_id = self.api.post('/employees', {'name': 'Fred'})
 
         user = self.schema.load_user_by_username('bob')
-        user.grants = user.update_grants
 
         self.api.patch('/ego', {'reference': employee_id}, user=user)
 
-        user.grants = user.read_grants
-
         employee = self.api.get('/ego/reference', user=user)
         self.assertEqual('Fred', employee['name'])
-
-    def test_grants(self):
-        # url path and resource path starts with grant url
-        self.assertTrue(Api._has_grants('/something/me', '/something/me', [{'url': '/something'}]))
-        # url path and resource path doesn't start with grant url
-        self.assertFalse(Api._has_grants('/something/me', '/something/me', [{'url': '/something/me/you'}]))
-        # canonical url doesn't start with grant url
-        self.assertFalse(Api._has_grants('/else/me', '/else/me', [{'url': '/something/me'}]))
-        # canonical url starts with grant url
-        self.assertTrue(Api._has_grants('/else/me', '/something/me', [{'url': '/something/me'}]))
-
-        # wildcards in url
-        self.assertTrue(Api._has_grants('/else/me', '/something/ID12345/me', [{'url': '/something/*/me'}]))
-        self.assertTrue(Api._has_grants('/else/me', '/something/ID12345', [{'url': '/something/*'}]))
-
-        # filters in url (still only uses the canonical url)
-        self.assertTrue(Api._has_grants('/else[name="bob"]/me', '/something/ID12345/me', [{'url': '/something/*/me'}]))
-        self.assertTrue(Api._has_grants('/else[name="bob"&&age<24]/me', '/something/ID12345', [{'url': '/something/*'}]))
-
-        # combination (still only uses the canonical url)
-        self.assertTrue(Api._has_grants('/else[name="bob"]/me/ID12345', '/something/ID12345/me/ID98765', [{'url': '/something/*/me/*'}]))
-
-
-        # path url starts with ego and starts with grant url (canonical url different)
-        self.assertTrue(Api._has_grants('/ego/me', '/something/me', [{'url': '/ego/me'}]))
-        self.assertFalse(Api._has_grants('/ego/me', '/ego', [{'url': '/ego'}]))
-
-        self.assertTrue(Api._has_grants('/ego/me/ID12345/inner', '/something/inner/ID98765', [{'url': '/ego/me/*/inner'}]))
-        self.assertTrue(Api._has_grants('/ego/me/inner', '/something/inner/ID98765', [{'url': '/ego/me/inner'}]))
-
-        # filters in ego url
-        self.assertTrue(Api._has_grants('/ego/me[age=12&&name="sales"]/inner', '/something/inners/ID98765', [{'url': '/ego/me/inner'}]))
-
-        # can mix and match ids and wildcards
-        self.assertTrue(Api._has_grants('/something/ID12345/me/ID98765/inner', '/something/ID12345/me/ID98765/inner', [{'url': '/something/ID12345/me/*/inner'}]))
-        self.assertTrue(Api._has_grants('/ego/somethings/ID12345/me/ID98765/inner', '/something/ID12345/me/ID98765/inner', [{'url': '/ego/somethings/ID12345/me/*/inner'}]))
-
-        # nested ids
-        self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/groups'}]))
-        self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/groups/*/grants'}]))
-        self.assertTrue(Api._has_grants('/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', '/groups/ID621d36160452da3eb71d178b/grants/ID621d36160452da3eb71d178c', [{'url': '/'}]))
 
     def test_expand_further(self):
         self.assertEqual({

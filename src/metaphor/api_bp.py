@@ -109,27 +109,18 @@ def api(path):
         api = current_app.config['api']
         user = flask_login.current_user
         if request.method == 'POST':
-            user.grants = [g['_id'] for g in user.create_grants]
-
             return jsonify(api.post(path, request.json, user)), 201
         if request.method == 'PATCH':
-            user.grants = [g['_id'] for g in user.update_grants]
-
             return jsonify(api.patch(path, request.json, user))
         if request.method == 'GET':
-            user.grants = [g['_id'] for g in user.read_grants]
             result = api.get(path, request.args, user)
             if result is not None:
                 return jsonify(result)
             else:
                 return "Not Found", 404
         if request.method == 'DELETE':
-            user.grants = [g['_id'] for g in user.delete_grants]
-
             return jsonify(api.delete(path, user))
         if request.method == 'PUT':
-            user.grants = [g['_id'] for g in user.put_grants]
-
             return jsonify(api.put(path, request.json, user)), 201
     except HTTPError as he:
         return jsonify({"error": he.reason}), he.getcode()

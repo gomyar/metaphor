@@ -49,6 +49,7 @@ def create_expand_dict(expand_str):
 class Api(object):
     def __init__(self, db):
         self.db = db
+        self._schema = None
 
     @property
     def schema(self):
@@ -118,11 +119,9 @@ class Api(object):
         ])
         return [r['grants'] for r in results]
 
-    def can_access(self, user_id, method, url):
-        schema = self.schema
+    def can_access(self, user, method, url):
         path = self._url_to_path(url)
-        grants = self._read_grants(schema.decodeid(user_id), method)
-        return path in grants
+        return path in user.grants[method]
 
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
@@ -142,7 +141,8 @@ class Api(object):
         if user:
             # TODO: also need to check read access to target if link
             # checking for /ego paths first, then all other paths
-            self._check_grants(path, resource['_canonical_url'], user.update_grants)
+            if not self.can_access(user, "update", path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
 
         if spec.name == 'user' and data.get('password'):
             data['password'] = generate_password_hash(data['password'])
@@ -174,9 +174,12 @@ class Api(object):
             # check permissions
             if user:
                 # TODO: Change to target_path url instead of resource canonical
-                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.put_grants)
-                self._check_grants(from_path, from_path, user.read_grants)
-                self._check_grants(from_path, from_path, user.delete_grants)
+                if not self.can_access(user, "put", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
+                if not self.can_access(user, "read", from_path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
+                if not self.can_access(user, "delete", from_path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             # do put update
             try:
@@ -198,9 +201,12 @@ class Api(object):
 
             # check permissions
             if user:
-                self._check_grants(path, path, user.put_grants)
-                self._check_grants(from_path, from_path, user.read_grants)
-                self._check_grants(from_path, from_path, user.delete_grants)
+                if not self.can_access(user, "put", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
+                if not self.can_access(user, "read", from_path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
+                if not self.can_access(user, "delete", from_path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             if root_field_spec.target_spec_name == 'user':
                 data['password'] = generate_password_hash(data['password'])
@@ -235,7 +241,8 @@ class Api(object):
             if user:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.create_grants)
+                if not self.can_access(user, "create", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
@@ -274,7 +281,8 @@ class Api(object):
 
             # check permissions
             if user:
-                self._check_grants(path, path, user.create_grants)
+                if not self.can_access(user, "create", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             if root_field_spec.target_spec_name == 'user':
                 data['password'] = generate_password_hash(data['password'])
@@ -315,7 +323,8 @@ class Api(object):
 
                 if user:
                     # checking for /ego paths first, then all other paths
-                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
+                    if not self.can_access(user, "delete", path):
+                        raise HTTPError('', 403, "Not Allowed", None, None)
 
                 return self.updater.delete_linkcollection_entry(
                     spec.name,
@@ -339,7 +348,8 @@ class Api(object):
                 parent_resource = next(cursor)
 
                 if user:
-                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
+                    if not self.can_access(user, "delete", path):
+                        raise HTTPError('', 403, "Not Allowed", None, None)
 
                 return self.updater.delete_orderedcollection_entry(
                     spec.name,
@@ -356,7 +366,8 @@ class Api(object):
                 parent_resource = next(cursor)
 
                 if user:
-                    self._check_grants(parent_field_path, parent_resource['_canonical_url'], user.delete_grants)
+                    if not self.can_access(user, "delete", path):
+                        raise HTTPError('', 403, "Not Allowed", None, None)
 
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
@@ -419,7 +430,8 @@ class Api(object):
             if user and count:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                self._check_grants(path, results[0]['_canonical_url'], user.read_grants)
+                if not self.can_access(user, "read", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             return {
                 "results": [self.encode_resource(spec, row, expand_dict) for row in results],
@@ -452,7 +464,8 @@ class Api(object):
             if user and result:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                self._check_grants(path, result['_canonical_url'], user.read_grants)
+                if not self.can_access(user, "read", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             if result:
                 return self.encode_resource(spec, result, expand_dict)
@@ -801,7 +814,8 @@ class Api(object):
             if user:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                self._check_grants(path, resource['_canonical_url'], user.read_grants)
+                if not self.can_access(user, "read", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             spec_fields = spec.fields.keys()
             project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
@@ -839,7 +853,8 @@ class Api(object):
                 if user:
                     # TODO: also need to check read access to target if link
                     # checking for /ego paths first, then all other paths
-                    self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.read_grants)
+                    if not self.can_access(user, "read", path):
+                        raise HTTPError('', 403, "Not Allowed", None, None)
 
                 # listen for changes to children of given parent
                 watch_agg = [
@@ -897,7 +912,8 @@ class Api(object):
             if user:
                 # TODO: also need to check read access to target if link
                 # checking for /ego paths first, then all other paths
-                self._check_grants(path, os.path.join(parent_resource['_canonical_url'], field_name), user.read_grants)
+                if not self.can_access(user, "read", path):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             # only sending back updated signal, no way to get more details yet, client must reload collection
             watch_agg = [

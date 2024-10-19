@@ -138,14 +138,10 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, password, read_grants, create_grants, update_grants, delete_grants, put_grants, user_hash, admin=False):
+    def __init__(self, username, password, grants, user_hash, admin=False):
         self.username = username
         self.password = password
-        self.read_grants = read_grants
-        self.create_grants = create_grants
-        self.update_grants = update_grants
-        self.delete_grants = delete_grants
-        self.put_grants = put_grants
+        self.grants = grants
         self.admin = admin
         self.user_hash = user_hash
 
@@ -744,30 +740,20 @@ class Schema(object):
         user_data = self.db['metaphor_resource'].aggregate([
             {"$match": match},
             {"$limit": 1},
-             {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'read_grants',
-                'localField': 'read_grants._id',
-                'foreignField': '_id',
+
+            {"$lookup": {
+                "foreignField": "_id",
+                "localField": "groups._id",
+                "as": "groups",
+                "from": "metaphor_resource",
             }},
             {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'create_grants',
-                'localField': 'create_grants._id',
-                'foreignField': '_id',
+                "foreignField": "_parent_id",
+                "localField": "groups._id",
+                "as": "group_grants",
+                "from": "metaphor_resource",
             }},
-            {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'update_grants',
-                'localField': 'update_grants._id',
-                'foreignField': '_id',
-            }},
-            {"$lookup": {
-                'from': "metaphor_resource",
-                'as': 'delete_grants',
-                'localField': 'delete_grants._id',
-                'foreignField': '_id',
-            }},
+            {"$limit": 1},
             {"$project": {
                 'username': 1,
                 'password': 1,
@@ -783,18 +769,23 @@ class Schema(object):
                 'put_grants.url': 1,
                 '_user_hash': 1,
                 'admin': 1,
+                'group_grants.type': 1,
+                'group_grants.url': 1,
             }},
         ])
         user_data = list(user_data)
         if user_data:
             user_data = user_data[0]
+            grants = {
+                'read': [g['url'] for g in user_data['group_grants'] if g['type'] == 'read'],
+                'create': [g['url'] for g in user_data['group_grants'] if g['type'] == 'create'],
+                'update': [g['url'] for g in user_data['group_grants'] if g['type'] == 'update'],
+                'delete': [g['url'] for g in user_data['group_grants'] if g['type'] == 'delete'],
+                'put': [g['url'] for g in user_data['group_grants'] if g['type'] == 'put'],
+            }
             user = User(user_data['username'],
                         user_data['password'],
-                        user_data['read_grants'],
-                        user_data['create_grants'],
-                        user_data['update_grants'],
-                        user_data['delete_grants'],
-                        user_data['put_grants'],
+                        grants,
                         user_data['_user_hash'],
                         user_data.get('admin'))
             if load_hash:

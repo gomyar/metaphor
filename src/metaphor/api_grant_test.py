@@ -42,68 +42,74 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('root', 'jobs', 'collection', 'job')
 
         self.api = Api(self.db)
+        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+
 
     def test_grants(self):
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
-
         group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+        self.api.post('/users/%s/groups' % self.user_id, {'id': group_id_1})
 
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.laptops'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.laptops.harddrives'})
 
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees/ID1234'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/jobs'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/jobs/ID7890'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees/ID1234/laptops'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees/ID1234/laptops/ID4567/harddrives'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
+        self.user = self.schema.load_user_by_username("bob")
+
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/jobs'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/jobs/ID7890'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234/laptops'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234/laptops/ID4567/harddrives'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
 
         # add linkcollection grant
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.jobs'})
 
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs/ID7890'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/jobs'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/jobs/ID7890'))
+        self.user = self.schema.load_user_by_username("bob")
+
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/jobs'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/jobs/ID7890'))
 
         # add collection grant
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'jobs'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'jobs.tasks'})
 
-        self.assertTrue(self.api.can_access(user_id, 'read', '/jobs'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/jobs/ID7890'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/jobs/ID7890/tasks'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/jobs/ID7890/tasks/ID4321'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/employees/ID1234/jobs/ID7890/tasks/ID4321'))
+        self.user = self.schema.load_user_by_username("bob")
+
+        self.assertTrue(self.api.can_access(self.user, 'read', '/jobs'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/jobs/ID7890'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/jobs/ID7890/tasks'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/jobs/ID7890/tasks/ID4321'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890/tasks/ID4321'))
 
     def test_grant_methods(self):
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
-
         group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+        self.api.post('/users/%s/groups' % self.user_id, {'id': group_id_1})
 
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'jobs'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'employees'})
 
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees'))
-        self.assertTrue(self.api.can_access(user_id, 'read', '/employees/ID1234'))
-        self.assertFalse(self.api.can_access(user_id, 'create', '/employees'))
-        self.assertFalse(self.api.can_access(user_id, 'create', '/employees/ID1234'))
-        self.assertTrue(self.api.can_access(user_id, 'update', '/employees'))
-        self.assertTrue(self.api.can_access(user_id, 'update', '/employees/ID1234'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/jobs'))
-        self.assertFalse(self.api.can_access(user_id, 'read', '/jobs/ID7890'))
-        self.assertTrue(self.api.can_access(user_id, 'create', '/jobs'))
-        self.assertTrue(self.api.can_access(user_id, 'create', '/jobs/ID7890'))
-        self.assertFalse(self.api.can_access(user_id, 'update', '/jobs'))
-        self.assertFalse(self.api.can_access(user_id, 'update', '/jobs/ID7890'))
+        self.user = self.schema.load_user_by_username("bob")
+
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees'))
+        self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234'))
+        self.assertFalse(self.api.can_access(self.user, 'create', '/employees'))
+        self.assertFalse(self.api.can_access(self.user, 'create', '/employees/ID1234'))
+        self.assertTrue(self.api.can_access(self.user, 'update', '/employees'))
+        self.assertTrue(self.api.can_access(self.user, 'update', '/employees/ID1234'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/jobs'))
+        self.assertFalse(self.api.can_access(self.user, 'read', '/jobs/ID7890'))
+        self.assertTrue(self.api.can_access(self.user, 'create', '/jobs'))
+        self.assertTrue(self.api.can_access(self.user, 'create', '/jobs/ID7890'))
+        self.assertFalse(self.api.can_access(self.user, 'update', '/jobs'))
+        self.assertFalse(self.api.can_access(self.user, 'update', '/jobs/ID7890'))
 
     def test_url_to_path(self):
         self.assertEqual(self.api._url_to_path('/employees'),
