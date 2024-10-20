@@ -7,6 +7,20 @@ Idea:
 
 Todo:
 
+ - client ui - 
+   - collection fields as "self" urls - change to just null, and infer url from field name
+
+ - add collection pagination fields to client js collections
+   - also filter / sort / etc
+
+ - expand with page size / offset - may also include other fields like filter sort
+   - expand=parents[page=1,size=5].children[page=2,size=10]
+
+ - add iterator js collection for looping through entire collections
+   - async
+
+ - remove canonical url
+
  - mutations:
    - check all field alters (int -> str,float,collection?)
    - add field_alter to UI

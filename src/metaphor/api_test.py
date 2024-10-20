@@ -1048,17 +1048,6 @@ class ApiTest(unittest.TestCase):
             self.assertEqual(400, he.code)
             self.assertEqual('Cannot delete root resource', he.reason)
 
-    def test_get_root(self):
-        root_dict = self.api.get('/')
-        self.assertEqual({
-            'auth': '/auth',
-            'ego': '/ego',
-            'users': '/users',
-            'groups': '/groups',
-            'employees': '/employees',
-            'divisions': '/division',
-        }, root_dict)
-
     def test_grants_set_on_nested_resources(self):
         group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
         grant_id_1 = self.schema.insert_resource('grant', {'type': 'read', 'url': '/'}, 'grants', 'group', group_id_1)

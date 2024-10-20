@@ -59,35 +59,6 @@ class Api(object):
     def updater(self):
         return Updater(self.schema)
 
-    @staticmethod
-    def _has_grants(url_path, canonical_url, grants):
-        url_path = re.sub(r'\[.*?]', '', url_path.strip('/'))
-        canonical_url = canonical_url.strip('/')
-        def match_grant(url, grant, recurse=False):
-            match_re = grant['url'].replace('/*', '\/ID[0-9a-f]*')
-            if recurse and match_re != '/': # allow for root (admin) grant
-                match_re = match_re + r'(/.*)?$'
-            if not recurse:
-                match_re = match_re + r'$'
-            return re.match(match_re, url)
-
-        if url_path.split('/')[0] == 'ego':
-            return any(match_grant('/'+url_path, grant) for grant in grants)
-        else:
-            return any(match_grant('/'+canonical_url, grant, True) for grant in grants)
-
-    def _check_grants(self, path, canonical_path, grants):
-        if not Api._has_grants(path, canonical_path, grants):
-            raise HTTPError('', 403, "Not Allowed", None, None)
-
-    def _check_expand_ego_grants(self, path, expand_dict, grants):
-        if expand_dict:
-            for field_name, nested in expand_dict.items():
-                nested_url = os.path.join(path, field_name)
-                if Api._has_grants(nested_url, '', grants) or self._check_expand_ego_grants(nested_url, expand_dict[field_name], grants):
-                    return True
-        return False
-
     def _url_to_path(self, url):
         url = url.strip('/')
         no_filters = re.sub(r'\[.*?]', '', url)
@@ -121,7 +92,15 @@ class Api(object):
 
     def can_access(self, user, method, url):
         path = self._url_to_path(url)
-        return path in user.grants[method]
+        return path in user.grants[method] or '/' in user.grants[method]
+
+    def can_access_expand(self, user, method, url, expand_dict):
+        for field_name in expand_dict:
+            if not self.can_access(user, method, os.path.join(url, field_name)):
+                return False
+            if expand_dict[field_name]:
+                return self.can_access_expand(user, method, url, expand_dict[field_name])
+        return True
 
     def patch(self, path, data, user=None):
         path = path.strip().strip('/')
@@ -139,8 +118,6 @@ class Api(object):
         resource = next(cursor)
 
         if user:
-            # TODO: also need to check read access to target if link
-            # checking for /ego paths first, then all other paths
             if not self.can_access(user, "update", path):
                 raise HTTPError('', 403, "Not Allowed", None, None)
 
@@ -157,6 +134,15 @@ class Api(object):
         from_path = data['_from'].strip('/') if data.get('_from') else None
         at_index = data.get('_at')
 
+        # check permissions
+        if user:
+            if not self.can_access(user, "put", path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
+            if not self.can_access(user, "read", from_path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
+            if not self.can_access(user, "delete", from_path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
+
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
@@ -171,15 +157,6 @@ class Api(object):
             cursor = tree.root_collection().aggregate(aggregate_query)
             parent_resource = next(cursor)
 
-            # check permissions
-            if user:
-                # TODO: Change to target_path url instead of resource canonical
-                if not self.can_access(user, "put", path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
-                if not self.can_access(user, "read", from_path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
-                if not self.can_access(user, "delete", from_path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             # do put update
             try:
@@ -199,15 +176,6 @@ class Api(object):
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
-            # check permissions
-            if user:
-                if not self.can_access(user, "put", path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
-                if not self.can_access(user, "read", from_path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
-                if not self.can_access(user, "delete", from_path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
-
             if root_field_spec.target_spec_name == 'user':
                 data['password'] = generate_password_hash(data['password'])
 
@@ -223,6 +191,11 @@ class Api(object):
     def post(self, path, data, user=None):
         path = path.strip().strip('/')
 
+        # check permissions
+        if user:
+            if not self.can_access(user, "create", path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
+
         if '/' in path:
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
@@ -236,13 +209,6 @@ class Api(object):
             # if we're using a simplified parser we can probably just pull the id off the path
             cursor = tree.root_collection().aggregate(aggregate_query)
             parent_resource = next(cursor)
-
-            # check permissions
-            if user:
-                # TODO: also need to check read access to target if link
-                # checking for /ego paths first, then all other paths
-                if not self.can_access(user, "create", path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
@@ -279,11 +245,6 @@ class Api(object):
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
-            # check permissions
-            if user:
-                if not self.can_access(user, "create", path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
-
             if root_field_spec.target_spec_name == 'user':
                 data['password'] = generate_password_hash(data['password'])
 
@@ -298,6 +259,10 @@ class Api(object):
 
     def delete(self, path, user=None):
         path = path.strip().strip('/')
+
+        if user:
+            if not self.can_access(user, "delete", path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
 
         if '/' in path:
             parent_field_path = '/'.join(path.split('/')[:-1])
@@ -321,11 +286,6 @@ class Api(object):
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
 
-                if user:
-                    # checking for /ego paths first, then all other paths
-                    if not self.can_access(user, "delete", path):
-                        raise HTTPError('', 403, "Not Allowed", None, None)
-
                 return self.updater.delete_linkcollection_entry(
                     spec.name,
                     parent_resource['_id'],
@@ -338,18 +298,9 @@ class Api(object):
                 spec = parent_tree.infer_type()
                 is_aggregate = parent_tree.is_collection()
 
-                #if path.split('/')[0] == 'ego':
-                #    aggregate_query = [
-                #        {"$match": {"username": user.username}}
-                #    ] + aggregate_query
-
                 # if we're using a simplified parser we can probably just pull the id off the path
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
-
-                if user:
-                    if not self.can_access(user, "delete", path):
-                        raise HTTPError('', 403, "Not Allowed", None, None)
 
                 return self.updater.delete_orderedcollection_entry(
                     spec.name,
@@ -365,25 +316,10 @@ class Api(object):
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
 
-                if user:
-                    if not self.can_access(user, "delete", path):
-                        raise HTTPError('', 403, "Not Allowed", None, None)
-
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)
         else:
             raise HTTPError('', 400, "Cannot delete root resource", None, None)
-
-    def _get_root(self):
-        root_resource = {
-            'auth': '/auth',
-            'ego': '/ego',
-            'users': '/users',
-            'groups': '/groups',
-            'employees': '/employees',
-            'divisions': '/division',
-        }
-        return root_resource
 
     def get(self, path, args=None, user=None):
         args = args or {}
@@ -394,8 +330,6 @@ class Api(object):
         expand_dict = create_expand_dict(expand)
 
         path = path.strip().strip('/')
-        if not path:
-            return self._get_root()
 
         try:
             tree = parse_url(path, self.schema.root)
@@ -406,15 +340,19 @@ class Api(object):
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
 
+        if user:
+            if not self.can_access(user, "read", path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
+            if expand:
+                if not self.can_access_expand(user, "read", path, expand_dict):
+                    raise HTTPError('', 403, "Not Allowed", None, None)
+
         if is_aggregate:
 
             page_agg = self.create_pagination_aggregations(page, page_size)
 
             if expand:
-                if user and self._check_expand_ego_grants(path, expand_dict, user.read_grants):
-                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict)
-                else:
-                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict, user)
+                expand_agg = self.create_field_expansion_aggregations(spec, expand_dict)
                 page_agg['$facet']["results"].extend(expand_agg)
 
             aggregate_query.append(page_agg)
@@ -426,12 +364,6 @@ class Api(object):
 
             results = list(page_results['results'])
             count = page_results['count'][0]['total'] if page_results['count'] else 0
-
-            if user and count:
-                # TODO: also need to check read access to target if link
-                # checking for /ego paths first, then all other paths
-                if not self.can_access(user, "read", path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             return {
                 "results": [self.encode_resource(spec, row, expand_dict) for row in results],
@@ -451,21 +383,12 @@ class Api(object):
 
         else:
             if expand:
-                if user and self._check_expand_ego_grants(path, expand_dict, user.read_grants):
-                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict)
-                else:
-                    expand_agg = self.create_field_expansion_aggregations(spec, expand_dict, user)
+                expand_agg = self.create_field_expansion_aggregations(spec, expand_dict)
                 aggregate_query.extend(expand_agg)
 
             # run mongo query from from root_resource collection
             cursor = tree.root_collection().aggregate(aggregate_query)
             result = next(cursor, None)
-
-            if user and result:
-                # TODO: also need to check read access to target if link
-                # checking for /ego paths first, then all other paths
-                if not self.can_access(user, "read", path):
-                    raise HTTPError('', 403, "Not Allowed", None, None)
 
             if result:
                 return self.encode_resource(spec, result, expand_dict)
@@ -934,8 +857,6 @@ class Api(object):
                 {"$match": {"documentKey._id": parent_resource['_id']}},
                 {"$project": project_fields},
             ]
-
-
 
         return self.schema.db['metaphor_resource'].watch(watch_agg, full_document='updateLookup')
 
