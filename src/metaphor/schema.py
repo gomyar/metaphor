@@ -138,7 +138,8 @@ class Spec(object):
 
 
 class User(UserMixin):
-    def __init__(self, username, password, grants, user_hash, admin=False):
+    def __init__(self, user_id, username, password, grants, user_hash, admin=False):
+        self._id = user_id
         self.username = username
         self.password = password
         self.grants = grants
@@ -755,6 +756,7 @@ class Schema(object):
             }},
             {"$limit": 1},
             {"$project": {
+                '_id': 1,
                 'username': 1,
                 'password': 1,
                 'read_grants._id': 1,
@@ -783,7 +785,8 @@ class Schema(object):
                 'delete': [g['url'] for g in user_data['group_grants'] if g['type'] == 'delete'],
                 'put': [g['url'] for g in user_data['group_grants'] if g['type'] == 'put'],
             }
-            user = User(user_data['username'],
+            user = User(user_data['_id'],
+                        user_data['username'],
                         user_data['password'],
                         grants,
                         user_data['_user_hash'],

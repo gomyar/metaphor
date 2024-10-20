@@ -174,11 +174,7 @@ class RootResourceRef(ResourceRef):
         if self.resource_name == 'self':
             return []
         elif self.resource_name == 'ego':
-            if user is None:
-                raise Exception("Invalid ego reference - no user set")
-            return [
-                {"$match": {"username": user.username}}
-            ]
+            return []
         else:
             return [
                 {"$lookup": {

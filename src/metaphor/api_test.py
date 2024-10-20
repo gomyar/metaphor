@@ -1191,6 +1191,26 @@ class ApiTest(unittest.TestCase):
         employee = self.api.get('/ego/reference', user=user)
         self.assertEqual('Fred', employee['name'])
 
+    def test_cannot_post_or_put_ego(self):
+        self.schema.create_field('user', 'reference', 'link', 'employee')
+
+        group_id_1 = self.api.post('/groups', {'name': 'test'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.reference'})
+        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'ego'})
+
+        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+
+        employee_id = self.api.post('/employees', {'name': 'Fred'})
+
+        user = self.schema.load_user_by_username('bob')
+
+        with self.assertRaises(HTTPError):
+            self.api.post('/ego', {'username': 'Ned'})
+
+        with self.assertRaises(HTTPError):
+            self.api.put('/ego', {'username': 'Ned'})
+
     def test_expand_further(self):
         self.assertEqual({
             'a': {

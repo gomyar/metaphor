@@ -106,7 +106,10 @@ class Api(object):
         path = path.strip().strip('/')
         tree = self._parse_canonical_url(path)
 
-        aggregate_query = tree.create_aggregation(user)
+        aggregate_query = tree.create_aggregation()
+        if path[:4] == 'ego/' or path == 'ego':
+            aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
 
@@ -147,7 +150,10 @@ class Api(object):
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
 
-            aggregate_query = tree.create_aggregation(user)
+            aggregate_query = tree.create_aggregation()
+            if path[:4] == 'ego/':
+                aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
             spec = tree.infer_type()
             is_aggregate = tree.is_collection()
 
@@ -200,7 +206,10 @@ class Api(object):
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
 
-            aggregate_query = tree.create_aggregation(user)
+            aggregate_query = tree.create_aggregation()
+            if path[:4] == 'ego/':
+                aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
             spec = tree.infer_type()
             is_aggregate = tree.is_collection()
 
@@ -278,7 +287,10 @@ class Api(object):
             if type(parent_field_tree) == LinkCollectionResourceRef:
                 parent_tree = self._parse_canonical_url(parent_path)
 
-                aggregate_query = parent_tree.create_aggregation(user)
+                aggregate_query = parent_tree.create_aggregation()
+                if path[:4] == 'ego/':
+                    aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
                 spec = parent_tree.infer_type()
                 is_aggregate = parent_tree.is_collection()
 
@@ -294,7 +306,10 @@ class Api(object):
             elif type(parent_field_tree) == OrderedCollectionResourceRef:
                 parent_tree = self._parse_canonical_url(parent_path)
 
-                aggregate_query = parent_tree.create_aggregation(user)
+                aggregate_query = parent_tree.create_aggregation()
+                if path[:4] == 'ego/':
+                    aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
                 spec = parent_tree.infer_type()
                 is_aggregate = parent_tree.is_collection()
 
@@ -309,7 +324,10 @@ class Api(object):
                     resource_id)
 
             else:
-                aggregate_query = parent_field_tree.create_aggregation(user)
+                aggregate_query = parent_field_tree.create_aggregation()
+                if path[:4] == 'ego/':
+                    aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
                 spec = parent_field_tree.infer_type()
                 is_aggregate = parent_field_tree.is_collection()
 
@@ -336,7 +354,10 @@ class Api(object):
         except SyntaxError as te:
             return None
 
-        aggregate_query = tree.create_aggregation(user)
+        aggregate_query = tree.create_aggregation()
+        if path[:4] == 'ego/':
+            aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
 
@@ -428,6 +449,9 @@ class Api(object):
         tree = parse_url(path, self.schema.root)
 
         aggregate_query = tree.create_aggregation(None)
+        if path[:4] == 'ego/':
+            aggregate_query.insert(0, {"$match": {"_id": user._id}})
+
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
         return (
@@ -447,7 +471,7 @@ class Api(object):
             }
         }
 
-    def create_field_expansion_aggregations(self, spec, expand_dict, user=None):
+    def create_field_expansion_aggregations(self, spec, expand_dict):
 
         def lookup_agg(from_field, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
@@ -471,7 +495,7 @@ class Api(object):
             }}
             for inner_field_name in expand_further:
                 inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
-                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name]))
             return agg
 
         def lookup_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
@@ -496,7 +520,7 @@ class Api(object):
             }}
             for inner_field_name in expand_further:
                 inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
-                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name]))
             return agg
 
         def lookup_reverse_link_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
@@ -522,7 +546,7 @@ class Api(object):
             }}
             for inner_field_name in expand_further:
                 inner_spec = spec.schema.specs[spec.fields[inner_field_name].target_spec_name]
-                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name], user))
+                agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name]))
             return agg
 
         aggregate_query = []
@@ -611,10 +635,6 @@ class Api(object):
                 )
             else:
                 raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
-        if user:
-            aggregate_query.append(
-                {"$match": {"_grants": {"$in": user.grants}}}
-            )
         return aggregate_query
 
     def encode_resource(self, spec, resource_data, expand_dict):
@@ -717,13 +737,13 @@ class Api(object):
         path = url.strip().strip('/')
         tree = self._parse_canonical_url(path)
 
-        aggregate_query = tree.create_aggregation(user)
+        aggregate_query = tree.create_aggregation()
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
 
         if path.split('/')[0] == 'ego':
             aggregate_query = [
-                {"$match": {"username": user.username}}
+                {"$match": {"_id": user._id}}
             ] + aggregate_query
 
         # establish watch
@@ -757,7 +777,7 @@ class Api(object):
                 parent_path, field_name = path.rsplit('/', 1)
                 tree = self._parse_canonical_url(parent_path)
 
-                aggregate_query = tree.create_aggregation(user)
+                aggregate_query = tree.create_aggregation()
                 spec = tree.infer_type()
                 is_aggregate = tree.is_collection()
 
@@ -765,7 +785,7 @@ class Api(object):
 
                 if path.split('/')[0] == 'ego':
                     aggregate_query = [
-                        {"$match": {"username": user.username}}
+                        {"$match": {"_id": user._id}}
                     ] + aggregate_query
 
                 # if we're using a simplified parser we can probably just pull the id off the path
@@ -816,7 +836,7 @@ class Api(object):
             parent_path, field_name = path.rsplit('/', 1)
             tree = self._parse_canonical_url(parent_path)
 
-            aggregate_query = tree.create_aggregation(user)
+            aggregate_query = tree.create_aggregation()
             spec = tree.infer_type()
             is_aggregate = tree.is_collection()
 
@@ -824,7 +844,7 @@ class Api(object):
 
             if path.split('/')[0] == 'ego':
                 aggregate_query = [
-                    {"$match": {"username": user.username}}
+                    {"$match": {"_id": user._id}}
                 ] + aggregate_query
 
             # if we're using a simplified parser we can probably just pull the id off the path
