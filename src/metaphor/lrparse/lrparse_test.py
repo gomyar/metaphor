@@ -203,7 +203,7 @@ class LRParseTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
 
         tree = parse("self.name", self.schema.specs['employee'])
-        aggregation = tree.create_aggregation(None)
+        aggregation = tree.create_aggregation()
         # unsure how this guy fits in exactly
 
         self.assertEqual([
@@ -276,7 +276,7 @@ class LRParseTest(unittest.TestCase):
         self.schema.update_resource_fields('employee', employee_id, {'division': division_id})
         tree = parse("employees[age>40].division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
-        aggregation = tree.create_aggregation(None)
+        aggregation = tree.create_aggregation()
         self.assertEqual([
             {'$lookup': {'as': '_val',
                         'from': 'metaphor_resource',
@@ -310,7 +310,7 @@ class LRParseTest(unittest.TestCase):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'salary': 100}, 'employees')
         tree = parse("employees[age>40 & salary>99].name", self.schema.specs['employee'])
 
-        aggregation = tree.create_aggregation(None)
+        aggregation = tree.create_aggregation()
         self.assertEqual([
             {'$lookup': {'as': '_val',
                         'from': 'metaphor_resource',
@@ -332,7 +332,7 @@ class LRParseTest(unittest.TestCase):
         employee_id = self.schema.insert_resource('employee', {'name': 'sailor', 'age': 41, 'salary': 100}, 'employees')
         tree = parse("employees[age>40 | salary>99].name", self.schema.specs['employee'])
 
-        aggregation = tree.create_aggregation(None)
+        aggregation = tree.create_aggregation()
         self.assertEqual([
             {'$lookup': {'as': '_val',
                         'from': 'metaphor_resource',
@@ -354,7 +354,7 @@ class LRParseTest(unittest.TestCase):
 
         tree = parse("self.division[name='sales'].yearly_sales", self.schema.specs['employee'])
 
-        aggregation = tree.create_aggregation(None)
+        aggregation = tree.create_aggregation()
         self.assertEqual([
             {'$lookup': {'as': '_val',
                         'from': 'metaphor_resource',

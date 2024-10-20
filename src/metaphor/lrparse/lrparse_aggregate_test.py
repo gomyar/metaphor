@@ -41,7 +41,7 @@ class LRParseTest(unittest.TestCase):
     def test_field(self):
         tree = parse("self.name", self.employee_spec)
 
-        self.assertEqual([{'$addFields': {'_val': '$name'}}], tree.create_aggregation(None))
+        self.assertEqual([{'$addFields': {'_val': '$name'}}], tree.create_aggregation())
 
     def test_calc(self):
         tree = parse("self.age + self.duration", self.employee_spec)
@@ -52,7 +52,7 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_v_self_duration': '$_val'}},
             {'$addFields': {'_val': {'$add': [{'$ifNull': ['$_v_self_age', 0]},
                                             {'$ifNull': ['$_v_self_duration', 0]}]}}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_linked_resource(self):
         tree = parse("self.boss", self.employee_spec)
@@ -69,7 +69,7 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_linked_calc(self):
         tree = parse("self.age + (self.boss.duration)", self.employee_spec)
@@ -98,7 +98,7 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_val': {'$add': [{'$ifNull': ['$_v_self_age', 0]},
                                             {'$ifNull': ['$_v_self_boss_duration',
                                                             0]}]}}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_root_collection(self):
         tree = parse("employees", self.employee_spec)
@@ -112,7 +112,7 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_root_collection_filtered(self):
         tree = parse("employees[age>4]", self.employee_spec)
@@ -127,7 +127,7 @@ class LRParseTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
             {'$match': {'age': {'$gt': 4}}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_ternary(self):
         tree = parse("self.name = 'Bob' -> 12 : 14", self.employee_spec)
@@ -151,7 +151,7 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_val': '$_id'}},
         ]
 
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_ternary_calcs(self):
         tree = parse("self.boss.name = 'Bob' -> (self.boss.duration) : 99", self.employee_spec)
@@ -203,7 +203,7 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$addFields': {'_val': '$_id'}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_switch(self):
         tree = parse("self.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
@@ -229,7 +229,7 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$addFields': {'_val': '$_id'}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_switch_calc(self):
         tree = parse("self.boss.name -> ('Bob': 22, 'Ned': 11, 'Fred': 4)", self.employee_spec)
@@ -272,7 +272,7 @@ class LRParseTest(unittest.TestCase):
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$addFields': {'_val': '$_id'}}]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())
 
     def test_switch_calc_fields(self):
         tree = parse("self.boss.name -> ('Bob': (self.boss.duration), 'Ned': (self.duration), 'Ted': (self.age))", self.employee_spec)
@@ -329,7 +329,7 @@ class LRParseTest(unittest.TestCase):
                                                 'default': None}}}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
-            {'$addFields': {'_val': '$_id'}}], tree.create_aggregation(None))
+            {'$addFields': {'_val': '$_id'}}], tree.create_aggregation())
 
     def test_function(self):
         tree = parse("first(employees.age)", self.employee_spec)
@@ -356,4 +356,4 @@ class LRParseTest(unittest.TestCase):
 
             {"$set": {"_val": {"$arrayElemAt": ["$_val", 0]}}},
         ]
-        self.assertEqual(expected, tree.create_aggregation(None))
+        self.assertEqual(expected, tree.create_aggregation())

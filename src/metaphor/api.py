@@ -448,7 +448,7 @@ class Api(object):
         path = path.strip().strip('/')
         tree = parse_url(path, self.schema.root)
 
-        aggregate_query = tree.create_aggregation(None)
+        aggregate_query = tree.create_aggregation()
         if path[:4] == 'ego/':
             aggregate_query.insert(0, {"$match": {"_id": user._id}})
 

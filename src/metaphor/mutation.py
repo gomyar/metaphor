@@ -386,7 +386,7 @@ class Mutation:
             parent_path, field_name = to_path.rsplit('/', 1)
             tree = parse_canonical_url(parent_path, self.from_schema.root)  # "from_schema" or "to_schema" depending?
 
-            aggregate_query = tree.create_aggregation(None)
+            aggregate_query = tree.create_aggregation()
             spec = tree.infer_type()
 
             field_spec = spec.fields[field_name]

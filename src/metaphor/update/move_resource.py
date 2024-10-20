@@ -37,7 +37,7 @@ class MoveResourceUpdate:
     def mark_update_delete(self):
         from_tree = parse_url(self.from_path, self.schema.root)
 
-        aggregate_query = from_tree.create_aggregation(None)
+        aggregate_query = from_tree.create_aggregation()
         from_spec = from_tree.infer_type()
         is_aggregate = from_tree.is_collection()
 

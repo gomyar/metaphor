@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.0.0-experimental
   
-FROM alpine:3.13
+FROM alpine:3.20.3
 
 RUN apk add --update \
     python3 \
@@ -15,7 +15,9 @@ RUN apk add --update \
 
 COPY ./requirements.txt /requirements.txt
 
-RUN pip install -r /requirements.txt
+RUN python3 -m venv /opt/venv
+
+RUN /opt/venv/bin/pip install -r /requirements.txt
 
 COPY ./src/metaphor/ /app/metaphor/
 COPY ./src/server.py /app/
