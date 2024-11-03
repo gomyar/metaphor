@@ -49,7 +49,7 @@ class MutationFactory(object):
     def init_created_specs(self):
         for spec_name, to_spec in self.to_schema.specs.items():
             if spec_name not in self.from_schema.specs:
-                spec = self.to_schema.specs[spec_name]
+                spec = self.to_schema.get_spec(spec_name)
                 self.mutation.steps.append({
                     "action": "create_spec",
                     "params": {
@@ -61,7 +61,7 @@ class MutationFactory(object):
     def init_deleted_specs(self):
         for spec_name, to_spec in self.from_schema.specs.items():
             if spec_name not in self.to_schema.specs:
-                spec = self.from_schema.specs[spec_name]
+                spec = self.from_schema.get_spec(spec_name)
                 self.mutation.steps.append({
                     "action": "delete_spec",
                     "params": {
@@ -72,10 +72,10 @@ class MutationFactory(object):
     def init_created_defaulted_fields(self):
         for spec_name, to_spec in self.to_schema.specs.items():
             if spec_name in self.from_schema.specs:
-                from_spec = self.from_schema.specs[spec_name]
+                from_spec = self.from_schema.get_spec(spec_name)
                 for field_name, field in to_spec.fields.items():
                     if field_name not in from_spec.fields:
-                        field = self.to_schema.specs[spec_name].fields[field_name]
+                        field = self.to_schema.get_spec(spec_name).fields[field_name]
                         self.mutation.steps.append({
                             "action": "create_field",
                             "params": {
@@ -102,10 +102,21 @@ class MutationFactory(object):
                     }
                 })
 
+        for field_name, field in self.from_schema.root.fields.items():
+            if field_name not in self.to_schema.root.fields:
+                field = self.from_schema.root.fields[field_name]
+                self.mutation.steps.append({
+                    "action": "delete_field",
+                    "params": {
+                        "spec_name": "root",
+                        "field_name": field_name,
+                    }
+                })
+
     def init_altered_fields(self):
         for spec_name, to_spec in self.to_schema.specs.items():
             if spec_name in self.from_schema.specs:
-                from_spec = self.from_schema.specs[spec_name]
+                from_spec = self.from_schema.get_spec(spec_name)
                 for field_name, field in to_spec.fields.items():
                     if field_name in from_spec.fields and field.field_type != from_spec.fields[field_name].field_type:
                         new_type = to_spec.fields[field_name].field_type
@@ -115,10 +126,10 @@ class MutationFactory(object):
     def init_deleted_fields(self):
         for spec_name, to_spec in self.to_schema.specs.items():
             if spec_name in self.from_schema.specs:
-                from_spec = self.from_schema.specs[spec_name]
+                from_spec = self.from_schema.get_spec(spec_name)
                 for field_name, field in from_spec.fields.items():
                     if field_name not in to_spec.fields:
-                        field = self.from_schema.specs[spec_name].fields[field_name]
+                        field = self.from_schema.get_spec(spec_name).fields[field_name]
                         self.mutation.steps.append({
                             "action": "delete_field",
                             "params": {
@@ -190,7 +201,7 @@ class Mutation:
                 "to_field_name": to_field_name,
             }})
 
-        from_field = self.from_schema.specs[spec_name].fields[from_field_name]
+        from_field = self.from_schema.get_spec(spec_name).fields[from_field_name]
         to_field = self._corresponding_field(spec_name, from_field_name, to_field_name)
 
         if from_field.field_type != to_field.field_type:
@@ -200,12 +211,12 @@ class Mutation:
 
     def _corresponding_field(self, spec_name, field_name, to_field_name):
         try:
-            return self.to_schema.specs[spec_name].fields[field_name]
+            return self.to_schema.get_spec(spec_name).fields[field_name]
         except KeyError as ke:
             rename_spec_step = self._find_step('rename_spec', spec_name=spec_name)
             if rename_spec_step:
                 spec_name = rename_spec_step['params']['to_spec_name']
-                return self.to_schema.specs[spec_name].fields[to_field_name]
+                return self.to_schema.get_spec(spec_name).fields[to_field_name]
 
             rename_field_step = self._find_step('rename_field', spec_name=spec_name, from_field_name=field_name)
             if rename_field_step:
@@ -215,7 +226,7 @@ class Mutation:
             if rename_field_step:
                 field_name = rename_field_step['params']['to_field_name']
 
-            return self.to_schema.specs[spec_name].fields[to_field_name]
+            return self.to_schema.get_spec(spec_name).fields[to_field_name]
 
     def _sort_steps(self):
         values = {
@@ -301,7 +312,7 @@ class Mutation:
 
         rename_spec_step = self._find_step('rename_spec', spec_name=spec_name)
         if rename_spec_step:
-            field = self.from_schema.specs[spec_name].fields[rename_step['params']['from_field_name']]
+            field = self.from_schema.get_spec(spec_name).fields[rename_step['params']['from_field_name']]
             self.steps.append({
                 "action": "create_field",
                 "params": {
@@ -312,7 +323,7 @@ class Mutation:
                 }
             })
         else:
-            field = self.to_schema.specs[spec_name].fields[rename_step['params']['to_field_name']]
+            field = self.to_schema.get_spec(spec_name).fields[rename_step['params']['to_field_name']]
 
             self.steps.append({
                 "action": "create_field",

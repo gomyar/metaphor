@@ -149,6 +149,115 @@ class MutationTest(unittest.TestCase):
         self.assertEqual("partner", user_1['_type'])
         self.assertEqual("partner", user_2['_type'])
 
+    def test_rename_field(self):
+        # setup schema 1
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        # setup schema 2
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'title', 'str')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": self.schema_2.schema_id})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+        # check mutations
+        mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
+        self.assertEqual([
+            {'action': 'create_field',
+             'params': {'spec_name': 'client', 'field_name': 'title', 'field_type': 'str', 'field_value': None, 'field_target': None}},
+            {'action': 'delete_field',
+             'params': {'spec_name': 'client', 'field_name': 'name'}},
+             ], mutations)
+
+        # alter mutation to rename field
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "rename_field",
+            "spec_name": "client",
+            "from_field_name": "name",
+            "to_field_name": "title",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # check mutations
+        mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
+        self.assertEqual([
+            {'action': 'rename_field',
+             'params': {'spec_name': 'client', 'from_field_name': 'name', 'to_field_name': 'title'}},
+             ], mutations)
+
+    def test_rename_root_field(self):
+        # setup schema 1
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        # setup schema 2
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+
+        self.schema_2.create_field('root', 'partners', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": self.schema_2.schema_id})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+        # check mutations
+        mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
+        self.assertEqual([
+            {'action': 'create_field',
+             'params': {'spec_name': 'root', 'field_name': 'partners', 'field_type': 'collection', 'field_value': None, 'field_target': 'client'}},
+            {'action': 'delete_field',
+             'params': {'spec_name': 'root', 'field_name': 'clients'}},
+             ], mutations)
+
+        # alter mutation to rename field
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "rename_field",
+            "spec_name": "root",
+            "from_field_name": "clients",
+            "to_field_name": "partners",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # check mutations
+        mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
+        self.assertEqual([
+            {'action': 'rename_field',
+             'params': {'spec_name': 'root', 'from_field_name': 'clients', 'to_field_name': 'partners'}},
+             ], mutations)
+
+        # cancel rename
+        response = self.client.delete(f"/admin/api/mutations/{mutation_id}/steps/root/clients")
+        self.assertEqual(200, response.status_code)
+
+        # check mutations
+        mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
+        self.assertEqual([
+            {'action': 'create_field',
+             'params': {'spec_name': 'root', 'field_name': 'partners', 'field_type': 'collection', 'field_target': 'client'}},
+            {'action': 'delete_field',
+             'params': {'spec_name': 'root', 'field_name': 'clients'}},
+             ], mutations)
+
     def test_move_step(self):
         # setup schema 1
         self.schema_1.create_spec('job')
@@ -296,7 +405,56 @@ class MutationTest(unittest.TestCase):
         self.assertEqual(2, self.client.get("/api/partners").json['count'])
 
     def test_move_from_renamed_collection(self):
-        pass
+        # setup schema 1
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+        self.schema_1.create_field('root', 'archived', 'collection', 'client')
+
+        # setup schema 2
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+
+        self.schema_2.create_field('root', 'partners', 'collection', 'client')
+        self.schema_2.create_field('root', 'archived', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": self.schema_2.schema_id})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+        # alter mutation to rename field
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "rename_field",
+            "spec_name": "root",
+            "from_field_name": "clients",
+            "to_field_name": "partners",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # add move step
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "move",
+            "from_path": "clients",
+            "to_path": "archived",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # run / promote mutation
+        response = self.client.patch(f"/admin/api/mutations/{mutation_id}", json={
+            "promote": True
+        })
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual(1, self.client.get("/api/partners").json['count'])
+        self.assertEqual(1, self.client.get("/api/archived").json['count'])
+
 
     def test_alter_field_to_required_include_default(self):
         pass

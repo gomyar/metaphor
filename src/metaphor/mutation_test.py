@@ -407,9 +407,11 @@ class MutationTest(unittest.TestCase):
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
-        self.assertEqual(1, len(mutation.steps))
-        self.assertEqual('delete_spec', mutation.steps[0]['action'])
-        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual(2, len(mutation.steps))
+        self.assertEqual([{'action': 'delete_field',
+          'params': {'field_name': 'clients', 'spec_name': 'root'}},
+           {'action': 'delete_spec', 'params': {'spec_name': 'client'}}
+           ], mutation.steps)
 
         mutation.mutate()
 

@@ -181,6 +181,9 @@ class Schema(object):
         schema.update_version()
         return schema
 
+    def get_spec(self, spec_name):
+        return self.root if spec_name == 'root' else self.specs[spec_name]
+
     def update_version(self):
         self.db.metaphor_schema.find_one_and_update({'_id': self._id}, {"$set": {"version": self.calculate_short_hash()}})
 

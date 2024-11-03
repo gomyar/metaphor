@@ -14,7 +14,7 @@ class RenameFieldMutation:
         return "<RenameFieldMutation>"
 
     def execute(self):
-        spec = self.from_schema.specs[self.spec_name]
+        spec = self.from_schema.get_spec(self.spec_name)
         field = spec.fields[self.from_field_name]
 
         update_id = str(self.to_schema.create_update())
