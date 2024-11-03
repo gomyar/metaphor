@@ -29,4 +29,6 @@ ENV PYTHONPATH=/app/
 
 EXPOSE 8000
 
+ENV PATH="/opt/venv/bin:$PATH"
+
 ENTRYPOINT ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "server:app", "--timeout", "6000", "--bind=0.0.0.0:8000", "--access-logfile=-"]

@@ -26,8 +26,8 @@ class ServerTest(TestCase):
 
         self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
-        self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego'})
+        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
+        self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'ego'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         self.client.post('/login', json={
@@ -55,7 +55,7 @@ class ServerTest(TestCase):
         response = self.client.get('/api/clients/%s' % client_id_1)
         self.assertEqual(403, response.status_code)
 
-        grant_id = self.api.post('/groups/%s/grants' % self.group_id, {'url': '/clients', 'type': 'read'})
+        grant_id = self.api.post('/groups/%s/grants' % self.group_id, {'url': 'clients', 'type': 'read'})
 
         response = self.client.get('/api/clients/%s' % client_id_1)
         self.assertEqual(200, response.status_code)
@@ -69,7 +69,7 @@ class ServerTest(TestCase):
 
         employee_id_1 = self.api.post('/employees', {'name': 'fred'})
 
-        grant_id = self.api.post('/groups/%s/grants' % self.group_id, {'url': '/employees', 'type': 'read'})
+        grant_id = self.api.post('/groups/%s/grants' % self.group_id, {'url': 'employees', 'type': 'read'})
 
         response = self.client.get('/api/employees/%s' % employee_id_1)
         self.assertEqual(200, response.status_code)
@@ -85,7 +85,7 @@ class ServerTest(TestCase):
         no_response = self.client.post('/api/employees', data=json.dumps({'name': 'wontblend'}), content_type='application/json')
         self.assertEqual(403, no_response.status_code)
 
-        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/employees'})
+        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'employees'})
 
         yes_response = self.client.post('/api/employees', data=json.dumps({'name': 'willblend'}), content_type='application/json')
         self.assertEqual(201, yes_response.status_code)
@@ -101,33 +101,10 @@ class ServerTest(TestCase):
         no_response = self.client.patch('/api/employees/%s' % employee_id_1, data=json.dumps({'name': 'wontblend'}), content_type='application/json')
         self.assertEqual(403, no_response.status_code)
 
-        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': '/employees'})
+        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': 'employees'})
 
         yes_response = self.client.patch('/api/employees/%s' % employee_id_1, data=json.dumps({'name': 'willblend'}), content_type='application/json')
         self.assertEqual(200, yes_response.status_code)
-
-    def test_create_subresource_inherits_grants(self):
-        employee_spec = self.schema.create_spec('employee')
-        self.schema.create_field('employee', 'name', 'str')
-        skill_spec = self.schema.create_spec('skill')
-        self.schema.create_field('skill', 'name', 'str')
-
-        self.schema.create_field('employee', 'skills', 'collection', 'skill')
-
-        self.schema.create_field('root', 'employees', 'collection', 'employee')
-
-        grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/employees'})
-
-        employee_id_1 = self.api.post('/employees', {'name': 'fred'})
-
-        employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
-        self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], employee['_grants'])
-
-        skill_id_1 = self.api.post('/employees/%s/skills' % employee_id_1, {'name': 'basket'})
-
-        skill = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(skill_id_1)})
-        # note: only read grants are cached in the resource
-        self.assertEqual([self.schema.decodeid(self.grant_id_1), self.schema.decodeid(grant_id_2)], skill['_grants'])
 
     def test_delete_grant_updates_user_grants(self):
         company_spec = self.schema.create_spec('company')
@@ -135,7 +112,7 @@ class ServerTest(TestCase):
 
         self.schema.create_field('root', 'companies', 'collection', 'company')
 
-        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/companies'})
+        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'companies'})
 
         user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
 
@@ -154,7 +131,7 @@ class ServerTest(TestCase):
 
         self.schema.create_field('root', 'companies', 'collection', 'company')
 
-        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/companies'})
+        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'companies'})
 
         user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
 
@@ -200,7 +177,7 @@ class ServerTest(TestCase):
         self.assertTrue(check_password_hash(user['password'], 'secret'))
 
     def test_patch_to_collection_returns_400(self):
-        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': '/'})
+        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': ''})
 
         no_response = self.client.patch('/api/users', data=json.dumps({'name': 'fred'}), content_type='application/json')
         self.assertEqual(400, no_response.status_code)
@@ -224,7 +201,7 @@ class ServerTest(TestCase):
         self.assertEqual(403, no_response.status_code)
 
         # add grant for /ego/employee
-        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/employee', 'type': 'update'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': 'ego.employee', 'type': 'update'})
 
         no_response = self.client.patch('/api/ego/employee', data=json.dumps({'name': 'bob'}), content_type='application/json')
         self.assertEqual(200, no_response.status_code)
@@ -279,9 +256,9 @@ class ServerTest(TestCase):
         self.schema.create_field('root', 'sections', 'collection', 'section')
         self.schema.create_field('root', 'employees', 'collection', 'employee')
 
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization/sections'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/ego/organization/sections/employees'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'ego.organization'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'ego.organization.sections'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'ego.organization.sections.employees'})
 
         organization_id_1 = self.api.post('/organizations', {'name': 'fred'})
         section_id_1 = self.api.post('/sections', {'name': 'fred'})
@@ -298,9 +275,9 @@ class ServerTest(TestCase):
         self.api.patch('/users/%s' % self.user_id, {'organization': organization_id_1})
 
         # add grant for /ego/employee
-        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/organization', 'type': 'get'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/organization/*/sections', 'type': 'get'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'url': '/ego/organization/*/sections/*/employees', 'type': 'get'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': 'ego.organization', 'type': 'get'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': 'ego.organization.sections', 'type': 'get'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'url': 'ego.organization.sections.employees', 'type': 'get'})
 
         # request expand
         response = self.client.get('/api/ego/organization?expand=sections.employees')

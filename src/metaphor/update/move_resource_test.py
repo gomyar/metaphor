@@ -131,17 +131,19 @@ class MoveResourceTest(unittest.TestCase):
 
         # add source grant
         self.group_id_1 = self.api.post('/groups', {'name': 'source'})
-        self.grant_id_1 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': '/current_childs'})
-        self.grant_id_2 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': '/current_grandparents'})
+        self.grant_id_1 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': 'current_childs.referenced_childs'})
+        self.grant_id_2 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': 'current_grandparents'})
         self.api.post(f'/users/{self.user_id_1}/groups', {'id': self.group_id_1})
 
         user1 = self.schema.load_user_by_username("bob")
 
-        self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
+        child_1 = self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
+        self.assertEqual("vacuums", child_1['name'])
 
         # move resource
         self.api.put(f"/former_grandparents", {"_from": f"/current_grandparents/{grandparent_id_1}"})
 
-        # check acces removed
-        with self.assertRaises(HTTPError):
-            self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
+        # check access remains
+        child_1 = self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
+        self.assertEqual("vacuums", child_1['name'])
+

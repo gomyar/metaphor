@@ -44,7 +44,6 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
@@ -65,7 +64,6 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_grants': [],
             '_canonical_url': '/divisions/%s' % division_id_1,
             'name': 'sales',
             '_parent_canonical_url': '/',
@@ -372,7 +370,6 @@ class UpdaterTest(unittest.TestCase):
         self.assertEqual({
             '_canonical_url': '/divisions/%s' % division_id_1,
             '_canonical_url_manager': '/employees/%s' % employee_id_1,
-            '_grants': [],
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_parent_canonical_url': '/',

@@ -26,7 +26,6 @@ class MoveResourceUpdate:
 
         self.move_and_mark_undeleted()
         self.rebuild_child_canonical_urls()
-        self.rebuild_grants()
 
         self.mark_undeleted()
 
@@ -95,7 +94,7 @@ class MoveResourceUpdate:
         aggregation = [
             {"$match": {
                 "_moving": self.update_id,
-                "_moving_child": True,
+#                "_moving_child": True,
             }},
             {"$graphLookup": {
                 "from": "metaphor_resource",
@@ -133,13 +132,15 @@ class MoveResourceUpdate:
             {"$addFields": {
                 '_canonical_url': {
                     "$concat": ["$_parent_canonical_url", "/", "$_parent_field_name", "/ID", {"$toString": "$_id"}]
+                },
+                '_parent_canonical_url': {
+                    "$cond": {"if": {"$eq": ["$_parent_canonical_url", ""]}, "then": "/", "else": "$_parent_canonical_url"}
                 }
             }},
             {"$project": {
                 "_canonical_url": 1,
                 "_parent_canonical_url": 1,
                 "_deleted": {"$toBool": False},
-                "_grants": [],
             }},
             {"$merge": {
                 "into": "metaphor_resource",
@@ -206,8 +207,5 @@ class MoveResourceUpdate:
             }},
         ]
         self.updater.update_for(spec_name, dependent_fields, self.update_id, start_agg)
-
-    def rebuild_grants(self):
-        pass
 
 

@@ -414,7 +414,6 @@ class ApiClient {
         turtlegui.reload();
     }
 
-
     hide_create_popup() {
         this.creating_resource = null;
         turtlegui.reload();

@@ -262,7 +262,9 @@ class Schema(object):
 
     def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None, background=None):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:
-            raise MalformedFieldException('Field already exists: %s' % field_name)
+            raise MalformedFieldException('Field already exists: %s.%s' % (spec_name, field_name))
+        if spec_name == 'root' and field_name in self.root.fields:
+            raise MalformedFieldException('Field already exists: root.%s' % field_name)
         self._check_field_name(field_name)
         self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required)
         if spec_name == 'root':
@@ -599,7 +601,6 @@ class Schema(object):
         data['_parent_field_name'] = parent_field_name
         data['_parent_canonical_url'] = parent_canonical_url
         data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
-        data['_grants'] = grants or []
 
         if extra_fields:
             data.update(extra_fields)

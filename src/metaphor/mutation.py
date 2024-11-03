@@ -399,7 +399,7 @@ class Mutation:
         else:
             field_name = to_path
             root_field_spec = self.from_schema.root.fields[to_path]
-            return self.updater.move_resource(from_path, to_path, None, '/', field_name, 'root')
+            return self.updater.move_resource_to_root(from_path, to_path, root_field_spec.target_spec_name)
 
         # if filtered non-root resources
         #   for each resource in filter

@@ -30,17 +30,17 @@ class MutationTest(unittest.TestCase):
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'name', 'str')
 
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'name', 'str')
         self.schema_2.create_field('client', 'address', 'str', default="42 ironside")
 
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -68,16 +68,16 @@ class MutationTest(unittest.TestCase):
         self.schema_1.create_field('client', 'name', 'str')
         self.schema_1.create_field('client', 'address', 'str')
 
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'name', 'str')
 
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob", "address": "here"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned", "address": "there"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob", "address": "here"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned", "address": "there"}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -103,15 +103,15 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'phone', 'int')
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'phone', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -137,15 +137,15 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'phone', 'float')
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'phone', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -172,15 +172,15 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'phone', 'bool')
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'phone', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"phone": True}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"phone": False}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": True}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": False}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -206,15 +206,15 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'created', 'datetime')
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'created', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"created": "2023-01-02T10:11:22.000Z"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"created": None}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"created": "2023-01-02T10:11:22.000Z"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"created": None}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -402,8 +402,8 @@ class MutationTest(unittest.TestCase):
         self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         # create test data
-        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
@@ -838,15 +838,15 @@ class MutationTest(unittest.TestCase):
 
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'phone', 'float')
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'phone_number', 'str')
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
         mutation.convert_delete_field_to_rename('client', 'phone', 'phone_number')

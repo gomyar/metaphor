@@ -99,7 +99,7 @@ class Api(object):
             if not self.can_access(user, method, os.path.join(url, field_name)):
                 return False
             if expand_dict[field_name]:
-                return self.can_access_expand(user, method, url, expand_dict[field_name])
+                return self.can_access_expand(user, method, os.path.join(url, field_name), expand_dict[field_name])
         return True
 
     def patch(self, path, data, user=None):

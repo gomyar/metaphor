@@ -26,8 +26,8 @@ class ServerTest(TestCase):
 
         self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': '/employees'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'employees'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         # add test data

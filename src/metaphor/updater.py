@@ -216,9 +216,9 @@ class Updater(object):
         self.schema.cleanup_update(update_id)
         return return_val
 
-    def move_resource_to_root(self, from_path, to_path):
+    def move_resource_to_root(self, from_path, to_path, target_spec_name):
         update_id = str(self.schema.create_update())
-        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, None, None, to_path).execute_root()
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, None, None, to_path, target_spec_name).execute()
         self.schema.cleanup_update(update_id)
         return return_val
 

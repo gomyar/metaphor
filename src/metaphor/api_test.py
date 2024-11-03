@@ -278,7 +278,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
@@ -291,7 +290,6 @@ class ApiTest(unittest.TestCase):
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/employees/%s' % employee_id_2,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
@@ -307,7 +305,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
@@ -324,7 +321,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
@@ -344,7 +340,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
@@ -366,7 +361,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/employees/%s' % employee_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
@@ -382,7 +376,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-             '_grants': [],
              '_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'divisions',
@@ -410,7 +403,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_grants': [],
              '_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_canonical_url': '/',
              '_parent_field_name': 'divisions',
@@ -425,7 +417,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(section_id_1),
             '_schema_id': self.schema._id,
-            '_grants': [],
              '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
              '_parent_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_field_name': 'sections',
@@ -916,7 +907,6 @@ class ApiTest(unittest.TestCase):
         contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1), {'name': 'Angus'})
         self.assertEqual({
             '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
-            '_grants': [],
             '_id': self.schema.decodeid(section_id_1),
             '_schema_id': self.schema._id,
             '_parent_canonical_url': '/divisions/%s' % division_id_1,
@@ -928,7 +918,6 @@ class ApiTest(unittest.TestCase):
             'name': 'engineering'}, self.db.metaphor_resource.find_one({'_id': self.schema.decodeid(section_id_1)}))
         self.assertEqual({
             '_canonical_url': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),
-            '_grants': [],
             '_id': self.schema.decodeid(contractor_id),
             '_schema_id': self.schema._id,
             '_parent_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
@@ -1047,40 +1036,6 @@ class ApiTest(unittest.TestCase):
         except HTTPError as he:
             self.assertEqual(400, he.code)
             self.assertEqual('Cannot delete root resource', he.reason)
-
-    def test_grants_set_on_nested_resources(self):
-        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
-        grant_id_1 = self.schema.insert_resource('grant', {'type': 'read', 'url': '/'}, 'grants', 'group', group_id_1)
-
-        division_id = self.api.post('/divisions', {'name': 'EU'})
-        section_id = self.api.post('/divisions/%s/sections' % division_id, {'name': 'Sales'})
-        contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id, section_id), {'name': 'Bob'})
-
-        division_data = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(division_id)})
-        section_data = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(section_id)})
-        employee_data = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(contractor_id)})
-
-        self.assertEqual([self.schema.decodeid(grant_id_1)], division_data['_grants'])
-        self.assertEqual([self.schema.decodeid(grant_id_1)], section_data['_grants'])
-        self.assertEqual([self.schema.decodeid(grant_id_1)], employee_data['_grants'])
-
-    def test_grants_set_on_nested_resources_2(self):
-        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
-
-        division_id = self.api.post('/divisions', {'name': 'EU'})
-
-        grant_id_1 = self.schema.insert_resource('grant', {'type': 'read', 'url': '/divisions/%s' % division_id}, 'grants', 'group', group_id_1)
-
-        section_id = self.api.post('/divisions/%s/sections' % division_id, {'name': 'Sales'})
-        contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id, section_id), {'name': 'Bob'})
-
-        division_data = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(division_id)})
-        section_data = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(section_id)})
-        employee_data = self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(contractor_id)})
-
-        self.assertEqual([], division_data['_grants'])
-        self.assertEqual([self.schema.decodeid(grant_id_1)], section_data['_grants'])
-        self.assertEqual([self.schema.decodeid(grant_id_1)], employee_data['_grants'])
 
     def test_filter(self):
         self.schema.create_field('employee', 'retirement_age', 'calc', calc_str='self.age + 20')

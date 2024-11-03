@@ -32,10 +32,6 @@ class DeleteResourceUpdate:
         # delete any links to resource
         self.updater.delete_links_to_resource(self.spec_name, self.resource_id)
 
-        # check if resource is read grant
-        if self.spec_name == 'grant':
-            self.updater._remove_grants(self.resource_id, original_resource['url'])
-
         # delete child resources
         spec = self.schema.specs[self.spec_name]
         for field_name, field in spec.fields.items():

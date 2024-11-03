@@ -33,8 +33,9 @@ class MutationTest(unittest.TestCase):
         # create initial data
         self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password', 'admin': True})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
-        self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/partners'})
+        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
+        self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners'})
+        self.grant_id_3 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         # create test clients
@@ -58,7 +59,7 @@ class MutationTest(unittest.TestCase):
         self.schema_1.create_field('job', 'description', 'str')
         self.schema_1.create_field('job', 'salary', 'int')
 
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         # setup schema 2
         self.schema_2.create_spec('client')
@@ -70,11 +71,11 @@ class MutationTest(unittest.TestCase):
         self.schema_2.create_field('contract', 'description', 'str')
         self.schema_2.create_field('contract', 'salary', 'int')
 
-        self.schema_2.create_field('root', 'users', 'collection', 'client')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob", "phone": "123456"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned", "phone": "789654"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob", "phone": "123456"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned", "phone": "789654"}, 'clients')
 
         # create mutation
         response = self.client.post('/admin/api/mutations', json={
@@ -99,17 +100,17 @@ class MutationTest(unittest.TestCase):
         self.schema_1.create_spec('client')
         self.schema_1.create_field('client', 'name', 'str')
 
-        self.schema_1.create_field('root', 'users', 'collection', 'client')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
 
         # setup schema 2
         self.schema_2.create_spec('partner')
         self.schema_2.create_field('partner', 'name', 'str')
 
-        self.schema_2.create_field('root', 'users', 'collection', 'partner')
+        self.schema_2.create_field('root', 'clients', 'collection', 'partner')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'users')
-        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'users')
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
 
         # create mutation
         response = self.client.post('/admin/api/mutations', json={
