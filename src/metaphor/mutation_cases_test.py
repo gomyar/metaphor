@@ -33,9 +33,11 @@ class MutationTest(unittest.TestCase):
         # create initial data
         self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password', 'admin': True})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
-        self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners'})
-        self.grant_id_3 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners.jobs'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients.jobs'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         # create test clients
@@ -147,6 +149,110 @@ class MutationTest(unittest.TestCase):
         self.assertEqual("partner", user_1['_type'])
         self.assertEqual("partner", user_2['_type'])
 
+    def test_move_step(self):
+        # setup schema 1
+        self.schema_1.create_spec('job')
+        self.schema_1.create_field('job', 'name', 'str')
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+        self.schema_1.create_field('client', 'jobs', 'collection', 'job')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+        self.schema_1.create_field('root', 'partners', 'collection', 'client')
+
+        # setup schema 2
+        self.schema_2.create_spec('job')
+        self.schema_2.create_field('job', 'name', 'str')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'jobs', 'collection', 'job')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+        self.schema_2.create_field('root', 'partners', 'collection', 'client')
+
+        # insert test data
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        job_1_id = self.schema_1.insert_resource('job', {"name": "Sweeping"}, 'jobs', 'client', client_1_id)
+        client_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'partners')
+        self.assertEqual("Sweeping", self.client.get(f"/api/clients/{client_1_id}/jobs/{job_1_id}").json['name'])
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": self.schema_2.schema_id})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+        # add move step
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "move",
+            "from_path": "clients/jobs",
+            "to_path": f"partners/{client_2_id}/jobs",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # run / promote mutation
+        response = self.client.patch(f"/admin/api/mutations/{mutation_id}", json={
+            "promote": True
+        })
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual("Sweeping", self.client.get(f"/api/partners/{client_2_id}/jobs/{job_1_id}").json['name'])
+
+    def test_move_step_filter(self):
+        # setup schema 1
+        self.schema_1.create_spec('job')
+        self.schema_1.create_field('job', 'name', 'str')
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+        self.schema_1.create_field('client', 'jobs', 'collection', 'job')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+        self.schema_1.create_field('root', 'partners', 'collection', 'client')
+
+        # setup schema 2
+        self.schema_2.create_spec('job')
+        self.schema_2.create_field('job', 'name', 'str')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'jobs', 'collection', 'job')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+        self.schema_2.create_field('root', 'partners', 'collection', 'client')
+
+        # insert test data
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        job_1_id = self.schema_1.insert_resource('job', {"name": "Sweeping"}, 'jobs', 'client', client_1_id)
+        job_2_id = self.schema_1.insert_resource('job', {"name": "Washing"}, 'jobs', 'client', client_1_id)
+        client_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'partners')
+        self.assertEqual("Sweeping", self.client.get(f"/api/clients/{client_1_id}/jobs/{job_1_id}").json['name'])
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": self.schema_2.schema_id})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+        # add move step
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "move",
+            "from_path": "clients/jobs[name~'wash']",
+            "to_path": f"partners/{client_2_id}/jobs",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # run / promote mutation
+        response = self.client.patch(f"/admin/api/mutations/{mutation_id}", json={
+            "promote": True
+        })
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual("Sweeping", self.client.get(f"/api/clients/{client_1_id}/jobs/{job_1_id}").json['name'])
+        self.assertEqual("Washing", self.client.get(f"/api/partners/{client_2_id}/jobs/{job_2_id}").json['name'])
+
     def test_move_root_collections(self):
         # setup schema 1
         self.schema_1.create_spec('client')
@@ -163,8 +269,8 @@ class MutationTest(unittest.TestCase):
         self.schema_2.create_field('root', 'partners', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
-        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+        client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        client_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
 
         # create mutation
         response = self.client.post('/admin/api/mutations', json={

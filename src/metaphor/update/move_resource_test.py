@@ -147,3 +147,22 @@ class MoveResourceTest(unittest.TestCase):
         child_1 = self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
         self.assertEqual("vacuums", child_1['name'])
 
+    def test_move_filter(self):
+        user1 = self.schema.load_user_by_username("bob")
+
+        grandparent_id_1 = self.api.post("/current_grandparents", {"name": "Bob", "age": 40})
+        parent_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "salesman"})
+        child_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs", {"name": "vacuums", "age": 1})
+        parent_id_2 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "workman"})
+        child_id_2 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_2}/childs", {"name": "building", "age": 1})
+
+        grandparent_id_2 = self.api.post("/current_grandparents", {"name": "Ned", "age": 40})
+
+        # move resource
+        self.api.put(f"/current_grandparents/{grandparent_id_2}/parents", {"_from": f"/current_grandparents/{grandparent_id_1}/parents[name='workman']"})
+
+        # test only one parent moved
+        moved_parents = self.api.get(f'/current_grandparents/{grandparent_id_2}/parents', user=user1)
+        self.assertEqual(1, moved_parents['count'])
+        self.assertEqual("workman", moved_parents['results'][0]['name'])
+
