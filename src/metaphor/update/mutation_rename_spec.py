@@ -12,10 +12,15 @@ class RenameSpecMutation:
     def __repr__(self):
         return "<RenameSpecMutation>"
 
-    def execute(self):
+    def actions(self):
+        return ["create_spec", "move", "delete_spec"]
+
+    def execute(self, action=None):
         spec = self.from_schema.specs[self.spec_name]
 
         update_id = str(self.to_schema.create_update())
-        self.from_schema.rename_spec(self.spec_name, self.to_spec_name)
+
+        if action == "create_spec":
+            self.from_schema.rename_spec(self.spec_name, self.to_spec_name)
 
         self.to_schema.cleanup_update(update_id)

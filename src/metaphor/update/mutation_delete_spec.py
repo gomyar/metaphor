@@ -11,7 +11,10 @@ class DeleteSpecMutation:
     def __repr__(self):
         return "<DeleteSpecMutation>"
 
-    def execute(self):
+    def actions(self):
+        return None
+
+    def execute(self, action=None):
         update_id = str(self.from_schema.create_update())
 
         self.from_schema.delete_resources_of_type(self.spec_name)

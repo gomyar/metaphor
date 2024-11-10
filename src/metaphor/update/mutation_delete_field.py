@@ -11,7 +11,10 @@ class DeleteFieldMutation:
     def __repr__(self):
         return "<DeleteFieldMutation>"
 
-    def execute(self):
+    def actions(self):
+        return None
+
+    def execute(self, action=None):
         update_id = str(self.from_schema.create_update())
 
         if self.spec_name != 'root':

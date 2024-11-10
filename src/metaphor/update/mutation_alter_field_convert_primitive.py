@@ -12,7 +12,10 @@ class AlterFieldConvertPrimitiveMutation:
     def __repr__(self):
         return "<AlterFieldTypeConvertPrimitiveMutation>"
 
-    def execute(self):
+    def actions(self):
+        return None
+
+    def execute(self, action=None):
         update_id = str(self.to_schema.create_update())
 
         spec = self.to_schema.specs[self.spec_name]

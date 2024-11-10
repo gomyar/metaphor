@@ -9,11 +9,11 @@ from .update.mutation_create_spec import CreateSpecMutation
 from .update.mutation_delete_spec import DeleteSpecMutation
 from .update.mutation_rename_field import RenameFieldMutation
 from .update.mutation_rename_spec import RenameSpecMutation
+from .update.mutation_move import MoveMutation
 
 from .updater import Updater
 
 from metaphor.lrparse.lrparse import parse_canonical_url
-from metaphor.lrparse.lrparse import parse_url
 
 import logging
 log = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ ACTIONS = {
     "alter_field": AlterFieldConvertPrimitiveMutation,
     "delete_field": DeleteFieldMutation,
     "create_spec": CreateSpecMutation,
+    "move": MoveMutation,
     "delete_spec": DeleteSpecMutation,
     "rename_field": RenameFieldMutation,
     "rename_spec": RenameSpecMutation,
@@ -146,7 +147,6 @@ class Mutation:
         self.to_schema = to_schema
         self.updater = Updater(to_schema)
         self.steps = []
-        self.move_steps = []
         self.state = None
         self.error = None
 
@@ -154,17 +154,34 @@ class Mutation:
         try:
             self.set_mutation_state(self, state="running", updated=datetime.now(), run_datetime=datetime.now())
 
+            values = {
+                "create_spec": 10,
+                "create_field": 20,
+                "rename_spec": 30,
+                "rename_field": 40,
+                "alter_field": 50,
+                "move": 60,
+                "delete_field": 70,
+                "delete_spec": 80,
+            }
+
+            actions = []
             for step in self.steps:
-                log.debug("Running Mutation step: %s", step)
-                ACTIONS[step['action']](self.updater, self.from_schema, self.to_schema, **step['params']).execute()
-            for step in self.move_steps:
-                log.debug("Running Move step: %s", step)
-                self.execute_data_step(step)
+                mutation = ACTIONS[step['action']](self.updater, self.from_schema, self.to_schema, **step['params'])
+                mutation_actions = mutation.actions() or [step['action']]
+                actions.extend([(action, mutation) for action in mutation_actions])
+
+            actions = sorted(actions, key=lambda lhs: values[lhs[0]])
+
+            for action_id, mutation in actions:
+                log.debug("Running Mutation: %s, %s", action_id, mutation)
+                mutation.execute(action_id)
 
             self.set_mutation_state(self, state="complete", updated=datetime.now(), complete_datetime=datetime.now())
         except Exception as e:
             log.exception("Exception mutating schema")
             self.set_mutation_state(self, state="error", updated=datetime.now(), error=traceback.format_exc())
+            raise
 
     def set_mutation_state(self, mutation, **state):
         self.from_schema.db.metaphor_mutation.find_one_and_update({"_id": mutation._id}, {"$set": state})
@@ -181,10 +198,12 @@ class Mutation:
         if not to_is_collection:
             raise Exception("Target must be collection")
 
-        self.move_steps.append({
-            "from_path": from_path,
-            "to_path": to_path,
-        })
+        self.steps.append({
+            "action": "move",
+            "params": {
+                "from_path": from_path,
+                "to_path": to_path,
+            }})
 
     def convert_delete_field_to_rename(self, spec_name, from_field_name, to_field_name):
         delete_step = self._find_step('delete_field', spec_name=spec_name, field_name=from_field_name)
@@ -388,34 +407,6 @@ class Mutation:
                     "field_target": field.target_spec_name,
                 }
             })
-
-    def execute_data_step(self, step):
-        self.execute_move_data(**step)
-
-    def execute_move_data(self, from_path, to_path):
-        if '/' in to_path:
-            parent_path, field_name = to_path.rsplit('/', 1)
-            tree = parse_canonical_url(parent_path, self.from_schema.root)  # "from_schema" or "to_schema" depending?
-
-            aggregate_query = tree.create_aggregation()
-            spec = tree.infer_type()
-
-            field_spec = spec.fields[field_name]
-
-            # if we're using a simplified parser we can probably just pull the id off the path
-            cursor = tree.root_collection().aggregate(aggregate_query)
-            parent_resource = next(cursor)
-
-            return self.updater.move_resource(from_path, to_path, parent_resource['_id'], parent_resource['_canonical_url'], field_name, spec.name)
-        else:
-            field_name = to_path
-            root_field_spec = self.from_schema.root.fields[to_path]
-            return self.updater.move_resource_to_root(from_path, to_path, root_field_spec.target_spec_name)
-
-        # if filtered non-root resources
-        #   for each resource in filter
-        #   nested agg using filter
-        #   alter parent info
 
     def _create_alter_field_step(self, spec_name, field_name, new_type):
         type_map = {

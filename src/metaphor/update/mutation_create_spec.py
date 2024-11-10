@@ -10,5 +10,8 @@ class CreateSpecMutation:
     def __repr__(self):
         return "<CreateSpecMutation>"
 
-    def execute(self):
+    def actions(self):
+        return None
+
+    def execute(self, action=None):
         pass

@@ -13,11 +13,16 @@ class RenameFieldMutation:
     def __repr__(self):
         return "<RenameFieldMutation>"
 
-    def execute(self):
+    def actions(self):
+        return ["create_field", "move", "delete_field"]
+
+    def execute(self, action=None):
         spec = self.from_schema.get_spec(self.spec_name)
         field = spec.fields[self.from_field_name]
 
         update_id = str(self.to_schema.create_update())
-        self.from_schema.rename_field(self.spec_name, self.from_field_name, self.to_field_name)
+
+        if action == 'delete_field':
+            self.from_schema.rename_field(self.spec_name, self.from_field_name, self.to_field_name)
 
         self.to_schema.cleanup_update(update_id)

@@ -77,7 +77,6 @@ def serialize_mutation(mutation):
         'from_schema': serialize_schema(mutation.from_schema),
         'to_schema': serialize_schema(mutation.to_schema),
         'steps': mutation.steps,
-        'move_steps': mutation.move_steps,
         'state': mutation.state,
         'error': mutation.error,
     }

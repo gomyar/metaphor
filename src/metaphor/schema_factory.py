@@ -95,7 +95,6 @@ class SchemaFactory:
         to_schema = self.load_schema(data['to_schema_id'])
         mutation = Mutation(from_schema, to_schema)
         mutation._id = data['_id']
-        mutation.move_steps = data.get('move_steps') or []
         mutation.steps = data.get('steps') or []
         mutation.state = data.get('state') or 'ready'
         mutation.error = data.get('error')
@@ -111,7 +110,6 @@ class SchemaFactory:
                 "from_schema_id": mutation.from_schema._id,
                 "to_schema_id": mutation.to_schema._id,
                 "steps": mutation.steps,
-                "move_steps": mutation.move_steps,
             }
         }, upsert=True)
         mutation._id = str(update.upserted_id)

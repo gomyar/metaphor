@@ -14,12 +14,11 @@ class DefaultFieldMutation:
     def __repr__(self):
         return "<DefaultFieldMutation>"
 
-    def execute(self):
+    def actions(self):
+        return None
 
-        if self.spec_name == 'root':
-            spec = self.to_schema.root
-        else:
-            spec = self.to_schema.specs[self.spec_name]
+    def execute(self, action=None):
+        spec = self.to_schema.get_spec(self.spec_name)
         field = spec.fields[self.field_name]
 
         # only action required on a field create is default
