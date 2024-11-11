@@ -389,6 +389,8 @@ class Api(object):
             return {
                 "results": [self.encode_resource(spec, row, expand_dict) for row in results],
                 "count": count,
+                "page": page,
+                "page_size": page_size,
                 "next": self._next_link(path, args, count, page, page_size),
                 "previous": self._previous_link(path, args, count, page, page_size),
                 '_meta': {
