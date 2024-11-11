@@ -7,12 +7,28 @@ var resources_loading = 0;
 class MResource {
     constructor(m, spec, url, data, params) {
         this._m = m;
-        Object.assign(this, data);
-
         this._spec = spec;
         this._url = url;
         this._params = params;
+
+        this._assign_data(data);
         this._loading = 0;
+    }
+
+    _assign_data(data) {
+        var collection_data = {};
+        for (var field_name in this._spec.fields) {
+            if (field_name in data && this._spec.fields[field_name].is_collection) {
+                var spec = this._m.schema.specs[this._spec.fields[field_name].target_spec_name];
+                collection_data[field_name] = new MCollection(this._m, spec, this._url + "/" + field_name);
+                collection_data[field_name]._apply_resource_list(data[field_name]);
+                collection_data[field_name]._count = data[field_name].length;
+            }
+        }
+        Object.assign(this, collection_data);
+ 
+        var field_data = this._m.extract_field_data(this._spec, data);
+        Object.assign(this, field_data);
     }
 
     _get() {
@@ -83,15 +99,11 @@ class MCollection {
         var params = new URLSearchParams(this._params);
         if (this._page) params.set('page', this._page);
         if (this._page_size) params.set('page_size', this._page_size);
-        var stripped_url = this._url.replace(/\[.*?\]/g, '');;
         this._loading += 1;
         this._m.fire_event({method: 'GET', type: "get_started", resource: this})
         this._m.net.get(this._url + "?" + params.toString(), (data) => {
             this._loading -= 1;
-            this.items = [];
-            for (var r of data.results) {
-                this.items.push(new MResource(this._m.schema, this._spec, stripped_url + "/" + r['id'], r));
-            }
+            this._apply_resource_list(data.results);
             this._page_size = data.page_size;
             this._page = data.page;
             this._count = data.count;
@@ -101,6 +113,14 @@ class MCollection {
             console.log("Error loading", this, error);
             this._m.fire_event({method: 'GET', type: "get_error", resource: this, error: error})
         }) 
+    }
+
+    _apply_resource_list(resources) {
+        this.items = [];
+        var stripped_url = this._url.replace(/\[.*?\]/g, '');;
+        for (var r of resources) {
+            this.items.push(new MResource(this._m, this._spec, stripped_url + "/" + r['id'], r));
+        }
     }
 
     _post(data) {
@@ -126,16 +146,6 @@ class Net {
 
     handle_http_error(error, msg) {
         alert(error.status + ": " + msg);    
-    }
-
-    extract_field_data(spec, data) {
-        var field_data = {};
-        for (var field_name in this._spec.fields) {
-            if (field_name in data && !this._spec.fields[field_name].is_collection) {
-                field_data[field_name] = data[field_name];
-            }
-        }
-        return field_data;
     }
 
     _fetch(url, data, callback, error_callback) {
@@ -212,6 +222,16 @@ class Metaphor {
                 console.log('Error firing event', e);
             }
         }
+    }
+
+    extract_field_data(spec, data) {
+        var field_data = {};
+        for (var field_name in spec.fields) {
+            if (field_name in data && !spec.fields[field_name].is_collection) {
+                field_data[field_name] = data[field_name];
+            }
+        }
+        return field_data;
     }
 }
 

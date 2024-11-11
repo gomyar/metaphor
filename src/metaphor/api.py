@@ -661,26 +661,15 @@ class Api(object):
                 if field_value:
                     if field_name in expand_dict:
                         encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
-                    else:
-                        encoded[field_name] = resource_data['_canonical_url_%s' % field_name]
-                else:
-                    encoded[field_name] = None
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
                 if field_name in expand_dict:
                     encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
-                else:
-                    encoded[field_name] = resource_data['_parent_canonical_url']
             elif field.field_type in ('reverse_link',):
                 if field_name in expand_dict:
                     encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
-                else:
-                    # TODO: A canonical link would be better
-                    encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type in ('linkcollection', 'orderedcollection', 'collection', 'reverse_link_collection',):
                 if field_name in expand_dict:
                     encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
-                else:
-                    encoded[field_name] = os.path.join(self_url, field_name)
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 res_type = tree.infer_type()
@@ -692,7 +681,7 @@ class Api(object):
                     else:
                         encoded[field_name] = calc_result
                 elif tree.is_collection():
-                    encoded[field_name] = os.path.join(self_url, field_name)
+                    pass
                 else:
                     encoded[field_name] = calc_result
             elif spec.name == 'user' and field_name == 'password':
