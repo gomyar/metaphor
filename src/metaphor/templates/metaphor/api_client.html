@@ -20,16 +20,12 @@
         <span><b>Location:</b></span>
         <span class="breadcrumbs" gui-list="api.get_breadcrumbs()" gui-item="crumb">
             <span>/<a gui-attrs="href='/client'+crumb.url" gui-text="crumb.name"></a></span>
-
         </span>
 
-        <span class="control create_button" gui-click="api.show_create_resource(api.root_resource, api.root_resource._meta.spec.name, api.path, api.root_resource)"  gui-show="api.root_resource._meta.can_create" gui-text="'>> create ' + api.root_resource._meta.spec.name"></span>
-        <span class="control create_button" gui-click="search.show_create_linkcollection_search(api.root_resource)" gui-show="api.root_resource._meta.can_link" gui-text="'>> link ' + api.root_resource._meta.spec.name"></span>
+        <span class="control create_button" gui-click="api.show_create_resource(metaphor.root)"  gui-show="api.can_create(metaphor.root)" gui-text="'>> create ' + metaphor.root._spec.name"></span>
+        <span class="control create_button" gui-click="search.show_create_linkcollection_search(metaphor.root)" gui-show="api.can_link(metaphor.root)" gui-text="'>> link ' + metaphor.root._spec.name"></span>
 
         <div class="viewcontrols">
-            <span class="viewcontrol"><input type=checkbox gui-val="api.show_reverse_links" gui-click="api.toggle_show_reverse_links()">Show reverse links</input></span>
-            <span class="viewcontrol"><input type=checkbox gui-val="api.show_parents" gui-click="api.toggle_show_parents()">Show parents</input></span>
-            <span class="viewcontrol"><input type=checkbox gui-val="api.show_self_links" gui-click="api.toggle_show_self_links()">Show self urls</input></span>
             <span class="viewcontrol">
                 <span class="listencontrol" gui-class="Object.keys(listen_client.resources).length && 'is_listening'" gui-click="listen_dropdown.toggle()"><span>listening (<span gui-text="Object.keys(listen_client.resources).length"></span>):</span><span gui-show="!listen_dropdown.is_open">&#x3e;</span><span gui-show="listen_dropdown.is_open">&#8964;</span></div>
             </span>
@@ -38,128 +34,106 @@
     </div>
 
     <div class="fullscreen resource_view">
-        <div class="resource_template" gui-tree="api.root_resource" gui-nodeitem="resource">
+        <div class="resource_template" gui-tree="metaphor.root" gui-nodeitem="resource">
             <div>
-                <div class="collection" gui-show="api.is_collection(resource)">
+                <div class="collection" gui-show="resource._meta.is_collection" -gui-reload-event="resource">
                     <div class="pagination">
                         <span class="pages" gui-class="(resource._total_pages() > 1) && 'enabled'">
                             <span gui-text="resource._page + 1"></span> of <span gui-text="resource._total_pages()"></span>
                         </span>
-                        <span class="control" gui-click="resource._first()" gui-class="resource.previous && 'enabled'" title="First Page">&#171;</span>&nbsp;
-                        <span class="control" gui-click="resource._previous()" gui-class="resource.previous && 'enabled'" title="Previous">&#8249;</span>&nbsp;
-                        <span class="control" gui-click="resource._next()" gui-class="resource.next && 'enabled'" title="Next">&#8250;</span>&nbsp;
-                        <span class="control" gui-click="resource._last()" gui-class="resource.next && 'enabled'" title="Last Page">&#187;</span>
-                        <span class="control enabled" gui-click="resource._fetch()" title="reload">&#x21bb;</span>
+                        <span class="control" gui-click="resource._first()" gui-class="resource._has_previous() && 'enabled'" title="First Page">&#171;</span>&nbsp;
+                        <span class="control" gui-click="resource._previous()" gui-class="resource._has_previous() && 'enabled'" title="Previous">&#8249;</span>&nbsp;
+                        <span class="control" gui-click="resource._next()" gui-class="resource._has_next() && 'enabled'" title="Next">&#8250;</span>&nbsp;
+                        <span class="control" gui-click="resource._last()" gui-class="resource._has_next() && 'enabled'" title="Last Page">&#187;</span>
+                        <span class="control enabled" gui-click="resource._get()" title="reload">&#x21bb;</span>
 
                             <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
                             <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
                     </div>
-                    <div class="collection_results" gui-list="resource.results" gui-item="item">
+                    <div class="collection_results" gui-list="resource.items" gui-item="item">
                         <div gui-node="item" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name+'.'+item.id)"></div>
                     </div>
                 </div>
-                <div class="resource" gui-show="api.is_resource(resource)">
+                <div class="resource" gui-show="resource._meta.is_collection==false" -gui-reload-event="resource">
 
                     <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
                     <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
                     <div class="fields">
-                        <div class="field" gui-show="resource._meta.spec.name == 'root'">
-                            <div class="field_name">ego</div>
-                            <div class="field_value">
-                                <span class="expand_button" gui-show="!api.is_expanded(resource, 'ego')" gui-click="api.expand_link(this.parentElement, resource, 'ego', Schema.specs.user, '/ego')">+</span>
-                                <span class="expand_button" gui-show="api.is_expanded(resource, 'ego')" gui-click="api.collapse_link(this.parentElement, resource, 'ego', Schema.specs.user)">-</span>
-                                <!-- possible expansion to resource -->
-                                <span class="link_url">
-                                    <a class="resource_link" gui-attrs="href='/client/ego'">/ego</a>
-                                </span>
-                                <div class="expanded_link" gui-show="api.is_expanded(resource, 'ego')" gui-node="resource._expanded.ego" gui-node-params="parent_resource=resource;ego_path='/ego'"></div>
-                            </div>
 
-                        </div>
-                        <div class="field" gui-show="resource._meta.spec.name != 'root'">
+                        <div class="field" gui-show="resource.id">
                             <div class="field_name">id</div>
                             <div class="field_value id">
-                                <a class="resource_link" gui-attrs="href='/client'+resource.self" gui-text="resource.id"></a>
+                                <a class="resource_link" gui-attrs="href=api.build_client_url(resource)" gui-text="resource.id"></a>
                             </div>
-                            <span class="control create_button" gui-show="api.is_parent_collection(parent_resource)" gui-click="api.perform_delete_resource(resource, parent_resource, ego_path&&(ego_path))" gui-text="'>> delete ' + resource._meta.spec.name"></span>
-                            <span class="control create_button" gui-show="api.is_linkcollection(parent_resource)"  gui-click="api.unlink_from_collection(resource, parent_resource, parent_field_name, ego_path&&(ego_path+'.'+parent_field_name))" gui-text="'>> unlink ' + resource._meta.spec.name"></span>
-                        </div>
-                        <div class="field" gui-show="(resource._meta.spec.name != 'root') && api.show_self_links">
-                            <div class="field_name">self</div>
-                            <div class="field_value">
-                                <div class="link_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
-                                </div>
-                            </div>
+                            <span class="control create_button" gui-show="resource.id&&resource._meta.resource_type=='resource'" gui-click="api.perform_delete_resource(resource)" gui-text="'>> delete ' + resource._spec.name"></span>
                         </div>
                     </div>
-                    <div class="fields" gui-list="resource._meta.spec.fields" gui-key="field_name" gui-item="field">
+                    <div class="fields" gui-list="resource._spec.fields" gui-key="field_name" gui-item="field">
                         <div class="field" gui-show="api.is_field_collection(field)" >
                             <div class="field_name" gui-text="field_name"></div>
-                            <div class="field_value">
-                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field, ego_path&&(ego_path+'.'+field_name))">+</span>
-                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
+                            <div class="field_value" -gui-reload-event="resource">
+                                <span class="expand_button" gui-show="resource[field_name] == null" gui-click="api.expand_collection(resource, field_name)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name] != null" gui-click="api.collapse_collection(resource, field_name)">-</span>
                                 <!-- possible expansion to collection -->
                                 <span class="collection_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
                                 </span>
 
 
-                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name], resource._expanded[field_name])" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="api.show_create_resource_from_field(resource, field_name)" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
                                 <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
 
-                                <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path"></div>
+                                <div class="expanded_collection" gui-show="resource[field_name]!=null" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
                         </div>
 
-                        <div class="field" gui-show="api.is_field_reverse_link_collection(field) && api.show_reverse_links" >
+                        <div class="field" gui-show="field.type=='reverse_link_collection'" >
                             <div class="field_name" gui-text="field_name"></div>
-                            <div class="field_value">
-                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
-                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
+                            <div class="field_value" -gui-reload-event="resource">
+                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="api.expand_collection(resource, field_name)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name]" gui-click="api.collapse_collection(resource, field_name)">-</span>
                                 <!-- possible expansion to collection -->
                                 <span class="collection_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
                                 </span>
 
 
-                                <span class="control create_button" gui-click="api.show_create_resource(resource, field.target_spec_name, resource[field_name], resource._expanded[field_name])" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
+                                <span class="control create_button" gui-click="api.show_create_resource_from_field(resource, field_name)" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
                                 <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
 
-                                <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                                <div class="expanded_collection" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
                         </div>
-                        <div class="field" gui-show="api.is_field_link(field)">
+                        <div class="field" gui-show="field.type=='link'">
                             <div class="field_name" gui-text="field_name"></div>
 
-                            <div class="field_value">
-                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field, ego_path&&(ego_path+'.'+field_name))">+</span>
-                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
+                            <div class="field_value" -gui-reload-event="resource">
+                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_link(field_name)">-</span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
                                 </span>
 
                                 <span class="control create_button" gui-click="search.show_link_field_search_and_save(resource, field)" gui-text="'>> link ' + field.target_spec_name"></span>
 
                                 <span class="control create_button" gui-show="resource[field.name]" gui-click="api.unlink_field(resource, field)" gui-text="'>> unlink ' + field.target_spec_name"></span>
 
-                                <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                                <div class="expanded_link" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
                         </div>
-                        <div class="field" gui-show="api.is_field_parent_collection(field) && api.show_parents">
+                        <div class="field" gui-show="field.type=='parent_collection'">
                             <div class="field_name" gui-text="field_name"></div>
 
-                            <div class="field_value">
-                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field, ego_path&&(ego_path+'.'+field_name))">+</span>
-                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
+                            <div class="field_value" -gui-reload-event="resource">
+                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_field(field_name)">-</span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
                                 </span>
 
-
-                                <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                                <div class="expanded_link" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
  
                         </div>
@@ -193,14 +167,14 @@
 
                             <div class="field_name" gui-text="field_name"></div>
                             <div class="field_value">
-                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_collection(this.parentElement, resource, field_name, field)">+</span>
-                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_collection(this.parentElement, resource, field_name, field)">-</span>
+                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_collection(field_name)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_field(field_name)">-</span>
                                 <!-- possible expansion to collection -->
                                 <span class="collection_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
                                 </span>
 
-                                <div class="expanded_collection" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                                <div class="expanded_collection" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
 
                         </div>
@@ -208,14 +182,14 @@
                             <div class="field_name" gui-text="field_name"></div>
 
                             <div class="field_value">
-                                <span class="expand_button" gui-show="resource[field_name] && !api.is_expanded(resource, field_name)" gui-click="api.expand_link(this.parentElement, resource, field_name, field, ego_path&&(ego_path+'.'+field_name))">+</span>
-                                <span class="expand_button" gui-show="resource[field_name] && api.is_expanded(resource, field_name)" gui-click="api.collapse_link(this.parentElement, resource, field_name, field)">-</span>
+                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
+                                <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_field(field_name)">-</span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a class="resource_link" gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
                                 </span>
 
-                                <div class="expanded_link" gui-show="api.is_expanded(resource, field_name)" gui-node="resource._expanded[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name)"></div>
+                                <div class="expanded_link" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
  
                         </div>
@@ -236,12 +210,12 @@
     <div id="create_resource" class="popupwrapper" gui-show="api.creating_resource" tabIndex="0">
         <div class="popup create_popup">
             <div class="title">
-                <div>Create</div>&nbsp;<div gui-text="api.creating_resource._meta.spec.name"></div>
+                <div>Create</div>&nbsp;<div gui-text="api.creating_resource._spec.name"></div>
                 <div>at</div>
-                <div gui-text="api.creating_resource_url"></div>
+                <div gui-text="api.creating_resource._url"></div>
             </div>
 
-            <div gui-list="api.creating_resource._meta.spec.fields" gui-item="field" gui-key="field_name" gui-index="index">
+            <div gui-list="api.creating_resource._spec.fields" gui-item="field" gui-key="field_name" gui-index="index">
                 <div class="field" gui-show="api.can_edit_field(field)">
                     <div class="field_name" gui-text="field_name"></div>
                     <div class="field_value" gui-switch="field.type">
@@ -313,13 +287,13 @@
                 <input type=text gui-val="search.search.search_text"></input>
                 <button class="button" gui-click="search.search.perform_search()">&#128270;</button>
             </div>
-            <div class="search_results" gui-list="search.search.result_page.results" gui-item="resource">
+            <div class="search_results" gui-list="search.search.result_page.items" gui-item="resource">
                 <div>
                     <span class="expand_button" gui-show="!search.is_expanded(resource)" gui-click="search.expand(resource)">+</span>
                     <span class="expand_button" gui-show="search.is_expanded(resource)" gui-click="search.collapse(resource)">-</span>
 
                     <span class="collection_url">
-                        <a gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
+                        <a gui-attrs="href=api.build_client_url(resource)" gui-text="resource._url"></a>
                     </span>
 
                     <span>
@@ -330,30 +304,30 @@
 
                         <div class="fields">
                             <div class="field">
-                                <div class="field_name">ID</div>
+                                <div class="field_name">id</div>
                                 <div class="field_value id" gui-text="resource.id"></div>
                             </div>
                             <div class="field">
                                 <div class="field_name">self</div>
                                 <div class="field_value">
                                     <div class="link_url">
-                                        <a gui-attrs="href='/client'+resource.self" gui-text="resource.self"></a>
+                                        <a gui-attrs="href=api.build_client_url(resource)" gui-text="resource._url"></a>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="fields" gui-list="resource._meta.spec.fields" gui-key="field_name" gui-item="field">
+                        <div class="fields" gui-list="resource._spec.fields" gui-key="field_name" gui-item="field">
                             <div class="field">
                                 <div class="field_name" gui-text="field_name"></div>
                                 <div class="field_value" gui-show="api.is_field_array(field) && (field.target_spec_name != null)" >
                                     <span class="collection_url">
-                                        <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                        <a gui-attrs="href=api.build_client_url(resource[field_name])" gui-text="resource[field_name]"></a>
                                     </span>
                                 </div>
                                 <div class="field_value" gui-show="api.is_field_link(field)">
                                     <span class="link_url">
-                                        <a gui-attrs="href='/client'+resource[field_name]" gui-text="resource[field_name]"></a>
+                                        <a gui-attrs="href=api.build_client_url(resource[field_name])" gui-text="resource[field_name]"></a>
                                     </span>
                                 </div>
                                 <div class="field_value simple" gui-class="field.type" gui-show="api.is_simple(field)">
@@ -384,7 +358,7 @@
     <div class="fullscreen listen_popup" gui-show="listen_dropdown.is_open" gui-click="listen_dropdown.toggle()">
         <span class="listening_resources"  gui-list="listen_client.resources" gui-item="resource" gui-key="url">
             <div>
-                <a class="listen_link" gui-attrs="href='/client'+resource.self" gui-text="url"></a>
+                <a class="listen_link" gui-attrs="href=api.build_client_url(resource)" gui-text="url"></a>
             <span gui-click="listen_client.remove_resource(resource)" class="listen_button listening">stop</span></div>
         </span>
     </div>

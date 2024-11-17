@@ -355,7 +355,7 @@ class Api(object):
             return None
 
         aggregate_query = tree.create_aggregation()
-        if path[:4] == 'ego/':
+        if path.split('/')[0] == 'ego':
             aggregate_query.insert(0, {"$match": {"_id": user._id}})
 
         spec = tree.infer_type()
@@ -387,7 +387,7 @@ class Api(object):
             count = page_results['count'][0]['total'] if page_results['count'] else 0
 
             return {
-                "results": [self.encode_resource(spec, row, expand_dict) for row in results],
+                "results": [self.encode_resource(spec, row, expand_dict, "resource") for row in results],
                 "count": count,
                 "page": page,
                 "page_size": page_size,
@@ -398,9 +398,7 @@ class Api(object):
                         'name': spec.name,
                     },
                     'is_collection': True,
-                    'can_create': type(tree) in (CollectionResourceRef,
-                                               RootResourceRef),
-                    'can_link': type(tree) in (LinkCollectionResourceRef,),
+                    'resource_type': tree.resource_type(),
                 }
             }
 
@@ -414,7 +412,7 @@ class Api(object):
             result = next(cursor, None)
 
             if result:
-                return self.encode_resource(spec, result, expand_dict)
+                return self.encode_resource(spec, result, expand_dict, "resource")
             else:
                 return None
 
@@ -639,20 +637,16 @@ class Api(object):
                 raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
         return aggregate_query
 
-    def encode_resource(self, spec, resource_data, expand_dict):
+    def encode_resource(self, spec, resource_data, expand_dict, resource_type):
 
-        self_url = os.path.join(
-            resource_data['_parent_canonical_url'],
-            resource_data['_parent_field_name'],
-            self.schema.encodeid(resource_data['_id']))
         encoded = {
             'id': self.schema.encodeid(resource_data['_id']),
-            'self': self_url,
             '_meta': {
                 'spec': {
                     'name': spec.name,
                 },
                 'is_collection': False,
+                'resource_type': resource_type,
             }
         }
         for field_name, field in spec.fields.items():
@@ -660,16 +654,16 @@ class Api(object):
             if field.field_type == 'link':
                 if field_value:
                     if field_name in expand_dict:
-                        encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                        encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'link')
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
                 if field_name in expand_dict:
-                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name])
+                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'collection')
             elif field.field_type in ('reverse_link',):
                 if field_name in expand_dict:
-                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
+                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name], 'reverse_link') for citem in resource_data[field_name]]
             elif field.field_type in ('linkcollection', 'orderedcollection', 'collection', 'reverse_link_collection',):
                 if field_name in expand_dict:
-                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name]) for citem in resource_data[field_name]]
+                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name], field.field_type) for citem in resource_data[field_name]]
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 res_type = tree.infer_type()
@@ -711,7 +705,7 @@ class Api(object):
         count = page_results['count'][0]['total'] if page_results['count'] else 0
 
         return {
-            "results": [self.encode_resource(spec, row, {}) for row in results],
+            "results": [self.encode_resource(spec, row, {}, 'resource') for row in results],
             "count": count,
             "next": self._next_link(None, {}, count, page, page_size),
             "previous": self._previous_link(None, {}, count, page, page_size),
@@ -720,6 +714,7 @@ class Api(object):
                     'name': spec.name,
                 },
                 'is_collection': True,
+                'resource_type': 'collection',
             }
         }
 

@@ -41,16 +41,29 @@ def serialize_spec(spec):
     }
 
 def serialize_schema(schema):
+    root_spec = {
+        "name": "root",
+        "fields": {
+            name: serialize_field(root) for name, root in schema.root.fields.items()
+        },
+        "type": "resource",
+    }
+    root_spec["fields"]["ego"] = {
+        'name': "ego",
+        'type': "calc",
+        'target_spec_name': "user",
+        'is_collection': False,
+    }
+    specs = {
+        name: serialize_spec(spec) for name, spec in schema.specs.items()
+    }
+    specs['root'] = root_spec
     return {
         'id': str(schema._id),
         'name': schema.name,
         'description': schema.description,
-        'specs': {
-            name: serialize_spec(spec) for name, spec in schema.specs.items()
-        },
-        'root': {
-            name: serialize_field(root) for name, root in schema.root.fields.items()
-        },
+        'specs': specs,
+        'root': root_spec,
         'version': schema.version,
         'current': schema.current,
     }
@@ -95,9 +108,8 @@ def search(spec_name):
 def api_root():
     api = current_app.config['api']
     if request.method == 'GET':
-        root_data = dict((key, '/'+ key) for key in api.schema.root.fields.keys())
-        root_data['ego'] = '/ego'
-        root_data['_meta'] = {'spec': {'name': 'root'}}
+        root_data = {}
+        root_data['_meta'] = {'spec': {'name': 'root'}, 'resource_type': 'resource', 'is_collection': False}
         return jsonify(root_data)
 
 

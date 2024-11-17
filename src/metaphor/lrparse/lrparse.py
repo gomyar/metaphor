@@ -41,6 +41,9 @@ class ResourceRef(Operable):
     def is_collection(self):
         return self.resource_ref.is_collection()
 
+    def resource_type(self):
+        return self.resource_ref.resource_type()
+
     def is_primitive(self):
         return self.spec.is_primitive()
 
@@ -161,6 +164,12 @@ class RootResourceRef(ResourceRef):
         else:
             return True
 
+    def resource_type(self):
+        if self.resource_name in ('self', 'ego'):
+            return "resource"
+        else:
+            return "collection"
+
     def __repr__(self):
         return "T[%s]" % (self.resource_name,)
 
@@ -230,6 +239,9 @@ class CollectionResourceRef(ResourceRef):
 
     def is_collection(self):
         return True
+
+    def resource_type(self):
+        return "collection"
 
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
@@ -310,6 +322,9 @@ class LinkCollectionResourceRef(ResourceRef):
     def is_collection(self):
         return True
 
+    def resource_type(self):
+        return "linkcollection"
+
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
 
@@ -340,7 +355,8 @@ class LinkCollectionResourceRef(ResourceRef):
 
 
 class OrderedCollectionResourceRef(LinkCollectionResourceRef):
-    pass
+    def resource_type(self):
+        return "orderedcollection"
 
 
 class LinkResourceRef(ResourceRef):
@@ -371,6 +387,9 @@ class LinkResourceRef(ResourceRef):
 
     def _is_lookup(self):
         return True
+
+    def resource_type(self):
+        return "link"
 
     def create_aggregation(self):
         return self.resource_ref.create_aggregation() + [
@@ -403,6 +422,9 @@ class CalcResourceRef(ResourceRef, Calc):
         spec = self.resource_ref.infer_type()
         calc_tree = spec.schema.calc_trees[spec.name, self.field_name]
         return calc_tree.is_collection()
+
+    def resource_type(self):
+        return calc_tree.resource_type()
 
     def get_resource_dependencies(self):
         return {"%s.%s" % (self.resource_ref.spec.name, self.field_name)} | self.resource_ref.get_resource_dependencies()
@@ -460,6 +482,9 @@ class CalcResourceRef(ResourceRef, Calc):
 class ReverseLinkResourceRef(ResourceRef):
     def is_collection(self):
         return True
+
+    def resource_type(self):
+        return "reverse_link"
 
     def get_resource_dependencies(self):
         #_, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
@@ -520,6 +545,9 @@ class ParentCollectionResourceRef(ResourceRef):
     def is_collection(self):
         return False
 
+    def resource_type(self):
+        return "parent_collection"
+
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
@@ -572,6 +600,9 @@ class ParentCollectionResourceRef(ResourceRef):
 class ReverseLinkCollectionResourceRef(ResourceRef):
     def is_collection(self):
         return True
+
+    def resource_type(self):
+        return "reverse_link_collection"
 
     def get_resource_dependencies(self):
         _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
@@ -642,6 +673,9 @@ class FilteredResourceRef(ResourceRef):
 
     def is_collection(self):
         return True
+
+    def resource_type(self):
+        return "collection"
 
     def resource_ref_snippet(self):
         field_snippets = self.filter_ref.resource_ref_fields()
@@ -1026,6 +1060,9 @@ class ResourceRefTernary(ResourceRef):
 
     def is_collection(self):
         return self.then_clause.is_collection()
+
+    def resource_type(self):
+        return self.then_clause.resource_type()
 
     def __repr__(self):
         return "%s => %s : %s" % (self.condition, self.then_clause, self.else_clause)

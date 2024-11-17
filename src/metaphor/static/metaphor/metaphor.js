@@ -5,22 +5,25 @@ var resources_loading = 0;
 
 
 class MResource {
-    constructor(m, spec, url, data, params) {
+    constructor(m, spec, url, data, params, parent) {
         this._m = m;
         this._spec = spec;
         this._url = url;
         this._params = params;
+        this._parent = parent;
 
-        this._assign_data(data);
+        if (data != null) {
+            this._assign_data(data);
+        }
         this._loading = 0;
     }
 
     _assign_data(data) {
+        this._meta = data._meta;
         var collection_data = {};
         for (var field_name in this._spec.fields) {
             if (field_name in data && this._spec.fields[field_name].is_collection) {
-                var spec = this._m.schema.specs[this._spec.fields[field_name].target_spec_name];
-                collection_data[field_name] = new MCollection(this._m, spec, this._url + "/" + field_name);
+                collection_data[field_name] = this._create_collection(field_name);
                 collection_data[field_name]._apply_resource_list(data[field_name]);
                 collection_data[field_name]._count = data[field_name].length;
             }
@@ -31,11 +34,15 @@ class MResource {
         Object.assign(this, field_data);
     }
 
-    _get() {
+    _get(callback) {
         this._loading += 1;
         this._m.fire_event({method: 'GET', type: "get_started", resource: this})
         this._m.net.get(this._url, (data) => {
             this._loading -= 1;
+            this._assign_data(data);
+            if (callback) {
+                callback(data);
+            }
             this._m.fire_event({method: 'GET', type: "get_completed", resource: this})
         }, (error) => {
             this._loading -= 1;
@@ -44,10 +51,25 @@ class MResource {
         })
     }
 
-    _get_collection(field_name, params) {
+    _get_link(field_name, params) {
         var spec = this._m.schema.specs[this._spec.fields[field_name].target_spec_name];
-        this[field_name] = new MCollection(this._m, spec, this._url + "/" + field_name, params);
+        this[field_name] = new MResource(this._m, spec, this._url + "/" + field_name, null, null, this);
         this[field_name]._get();
+    }
+
+    _unset_field(field_name) {
+        delete this[field_name];
+        this._m.fire_event({method: 'DELETE', type: "unset_field", resource: this})
+    }
+
+    _get_collection(field_name, params) {
+        this[field_name] = this._create_collection(field_name, params);
+        this[field_name]._get();
+    }
+
+    _create_collection(field_name, params) {
+        var spec = this._m.schema.specs[this._spec.fields[field_name].target_spec_name];
+        return new MCollection(this._m, spec, this._url + "/" + field_name, params, this);
     }
 
     _patch(data) {
@@ -71,6 +93,9 @@ class MResource {
         this._m.net.delete(this._url, (data) => {
             this._loading -= 1;
             this._m.fire_event({method: 'DELETE', type: "delete_completed", resource: this})
+            if (this._parent) {
+                this._parent._get();
+            }
         }, (error) => {
             this._loading -= 1;
             console.log("Error deleting ", this, error);
@@ -81,11 +106,12 @@ class MResource {
 
 
 class MCollection {
-    constructor(m, spec, url, params) {
+    constructor(m, spec, url, params, parent) {
         this._m = m;
         this._spec = spec;
         this._url = url;
         this._params = params || '';
+        this._parent = parent;
 
         this._page = null;
         this._page_size = null;
@@ -95,7 +121,7 @@ class MCollection {
         this._loading = 0;
     }
 
-    _get() {
+    _get(callback) {
         var params = new URLSearchParams(this._params);
         if (this._page) params.set('page', this._page);
         if (this._page_size) params.set('page_size', this._page_size);
@@ -104,9 +130,13 @@ class MCollection {
         this._m.net.get(this._url + "?" + params.toString(), (data) => {
             this._loading -= 1;
             this._apply_resource_list(data.results);
+            this._meta = data._meta;
             this._page_size = data.page_size;
             this._page = data.page;
             this._count = data.count;
+            if (callback) {
+                callback(data);
+            }
             this._m.fire_event({method: 'GET', type: "get_completed", resource: this})
         }, (error) => {
             this._loading -= 1;
@@ -119,22 +149,66 @@ class MCollection {
         this.items = [];
         var stripped_url = this._url.replace(/\[.*?\]/g, '');;
         for (var r of resources) {
-            this.items.push(new MResource(this._m, this._spec, stripped_url + "/" + r['id'], r));
+            this.items.push(new MResource(this._m, this._spec, stripped_url + "/" + r['id'], r, null, this));
         }
     }
 
-    _post(data) {
+    _post(data, callback) {
         var post_data = this._m.extract_field_data(this._spec, data);
         this._loading += 1;
         this._m.fire_event({method: 'POST', type: "post_started", resource: this})
         this._m.net.post(this._url, post_data, (response) => {
             this._loading -= 1;
+            if (callback) {
+                callback(response);
+            }
+            this._m.fire_event({method: 'POST', type: "post_completed", resource: this})
             this._get();
         }, (error) => {
             this._loading -= 1;
             console.log("Error posting ", this, error);
             this._m.fire_event({method: 'POST', type: "post_error", resource: this, error: error})
         });
+    }
+
+    _total_pages() {
+        return this._page_size != null ? Math.ceil(this._count / this._page_size): 1;
+    }
+
+    _next() {
+        if (this._page + 1 < this._total_pages()) {
+            this._page += 1;
+            this._get();
+        }
+    }
+
+    _previous() {
+        if (this._page > 0) {
+            this._page -= 1;
+            this._get();
+        }
+    }
+
+    _last() {
+        if (this._page + 1 < this._total_pages()) {
+            this._page = this._total_pages() - 1;
+            this._get();
+        }
+    }
+
+    _first() {
+        if (this._page > 0) {
+            this._page = 0;
+            this._get();
+        }
+    }
+
+    _has_previous() {
+        return this._page > 0;
+    }
+
+    _has_next() {
+        return this._page < this._total_pages() - 1;
     }
 }
 
@@ -150,7 +224,14 @@ class Net {
 
     _fetch(url, data, callback, error_callback) {
         this.loading += 1;
-        fetch(url).then((response) => {
+        data['headers'] = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        };
+        fetch(
+            this._m.api_root + url,
+            data
+        ).then((response) => {
             if (response.ok) {
                 return response.json();
             } else {
@@ -180,11 +261,11 @@ class Net {
         this._fetch(url, {method: 'GET'}, callback, error_callback);
     }
 
-    post(url, callback, error_callback) {
+    post(url, data, callback, error_callback) {
         this._fetch(url, {method: 'POST', body: JSON.stringify(data)}, callback, error_callback);
     }
 
-    patch(url, callback, error_callback) {
+    patch(url, data, callback, error_callback) {
         this._fetch(url, {method: 'PATCH', body: JSON.stringify(data)}, callback, error_callback);
     }
 
@@ -195,8 +276,9 @@ class Net {
 
 
 class Metaphor {
-    constructor(api_url) {
-        this.api_url = api_url || "/api";
+    constructor(api_root, path) {
+        this.api_root = api_root || '/api';
+        this.path = path || '';
         this.root = {};
         this.schema = {};
         this.net = new Net(this);
@@ -204,9 +286,25 @@ class Metaphor {
     }
 
     load_schema() {
-        this.net.get(this.api_url + "/schema", (schema_data) => {
+        this.net.get('/schema', (schema_data) => {
             this.schema = schema_data;
-            this.root = new MResource(this, {"fields": this.schema.root, "name": "root"}, this.api_url, {});
+            this.load_root_resource();
+        });
+    }
+
+    load_root_resource() {
+        this.net.get(this.path, (data) => {
+            var params = {};
+            var spec = this.schema.specs[data._meta.spec.name]
+
+            if (data._meta.is_collection) {
+                this.root = new MCollection(this, spec, this.path, params);
+            } else {
+                this.root = new MResource(this, spec, this.path, null, params);
+            }
+            this.root._get((response) => {
+                turtlegui.reload();
+            })
         });
     }
 
@@ -231,12 +329,9 @@ class Metaphor {
                 field_data[field_name] = data[field_name];
             }
         }
+        field_data['id'] = data['id'];
         return field_data;
     }
 }
 
-metaphor = new Metaphor("/api");
-metaphor.register_listener((event_data) => {
-    console.log(event_data);
-});
-metaphor.load_schema();
+
