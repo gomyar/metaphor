@@ -663,7 +663,7 @@ class Api(object):
                     encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name], 'reverse_link') for citem in resource_data[field_name]]
             elif field.field_type in ('linkcollection', 'orderedcollection', 'collection', 'reverse_link_collection',):
                 if field_name in expand_dict:
-                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name], field.field_type) for citem in resource_data[field_name]]
+                    encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name], "resource") for citem in resource_data[field_name]]
             elif field.field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 res_type = tree.infer_type()

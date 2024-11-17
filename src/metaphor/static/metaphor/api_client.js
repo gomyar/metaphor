@@ -213,26 +213,6 @@ class ApiClient {
         return crumbs;
     }
 
-    load() {
-        turtlegui.ajax.get(
-            this.full_path(),
-            (success) => {
-                var resource_data = JSON.parse(success);
-                if (this.is_resource(resource_data)) {
-                    this.root_resource = new Resource(resource_data);
-                } else {
-                    this.root_resource = new Collection(resource_data, this.api_root, this.path);
-                }
-                if (api.path.startsWith('/ego')) {
-                    ego_path = api.path;
-                }
-                turtlegui.reload();
-            },
-            (error) => {
-                handle_http_error(error, "Error getting api " + this.full_path() + ": " + error.status); 
-            });
-    }
-
     is_simple(field) {
         return ['str', 'int', 'float'].includes(field.type);
     }
@@ -241,9 +221,8 @@ class ApiClient {
         return resource._meta.is_collection;
     }
 
-    is_resource(resource) {
-        //return !resource._meta.is_collection;
-        return !resource._meta.can_link && !resource._meta.is_collection;
+    is_not_collection(resource) {
+        return !resource._meta.is_collection;
     }
 
     is_field_array(field) {
@@ -552,7 +531,7 @@ function load_initial_api() {
 document.addEventListener("DOMContentLoaded", function(){
     var path = window.location.pathname.replace(/^\/client\//, '/');
     path = path == '/' ? '' : path;
-    metaphor = new Metaphor('/api', path);
+    metaphor = new Metaphor('/api', path, window.location.search);
     metaphor.register_listener((event_data) => {
         turtlegui.reload();
     });

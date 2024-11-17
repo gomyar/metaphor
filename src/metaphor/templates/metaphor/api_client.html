@@ -36,7 +36,7 @@
     <div class="fullscreen resource_view">
         <div class="resource_template" gui-tree="metaphor.root" gui-nodeitem="resource">
             <div>
-                <div class="collection" gui-show="resource._meta.is_collection" -gui-reload-event="resource">
+                <div class="collection" gui-show="api.is_collection(resource)" -gui-reload-event="resource">
                     <div class="pagination">
                         <span class="pages" gui-class="(resource._total_pages() > 1) && 'enabled'">
                             <span gui-text="resource._page + 1"></span> of <span gui-text="resource._total_pages()"></span>
@@ -54,7 +54,7 @@
                         <div gui-node="item" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name+'.'+item.id)"></div>
                     </div>
                 </div>
-                <div class="resource" gui-show="resource._meta.is_collection==false" -gui-reload-event="resource">
+                <div class="resource" gui-show="api.is_not_collection(resource)" -gui-reload-event="resource">
 
                     <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
                     <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>

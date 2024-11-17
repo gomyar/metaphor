@@ -16,6 +16,10 @@ class MResource {
             this._assign_data(data);
         }
         this._loading = 0;
+        this._meta = {
+            is_collection: false,
+            spec: { name: spec.name }
+        }
     }
 
     _assign_data(data) {
@@ -119,6 +123,10 @@ class MCollection {
 
         this.items = [];
         this._loading = 0;
+        this._meta = {
+            is_collection: true,
+            spec: { name: spec.name }
+        }
     }
 
     _get(callback) {
@@ -276,9 +284,10 @@ class Net {
 
 
 class Metaphor {
-    constructor(api_root, path) {
+    constructor(api_root, path, params) {
         this.api_root = api_root || '/api';
         this.path = path || '';
+        this.params = params;
         this.root = {};
         this.schema = {};
         this.net = new Net(this);
@@ -294,13 +303,12 @@ class Metaphor {
 
     load_root_resource() {
         this.net.get(this.path, (data) => {
-            var params = {};
             var spec = this.schema.specs[data._meta.spec.name]
 
             if (data._meta.is_collection) {
-                this.root = new MCollection(this, spec, this.path, params);
+                this.root = new MCollection(this, spec, this.path, this.params);
             } else {
-                this.root = new MResource(this, spec, this.path, null, params);
+                this.root = new MResource(this, spec, this.path, null, this.params);
             }
             this.root._get((response) => {
                 turtlegui.reload();
