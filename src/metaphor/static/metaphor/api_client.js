@@ -25,7 +25,6 @@ class ResourceSearch {
         this.result_page = {results: []};
         this.search_metaphor = new Metaphor("/search", '/' + this.spec.name);
         this.search_metaphor.register_listener((event_data) => {
-            console.log(event_data);
             if (event_data.type == 'get_completed') {
                 turtlegui.reload();
             }
@@ -44,7 +43,6 @@ class ResourceSearch {
             }
         }
         this.result_page = new MCollection(this.search_metaphor, this.spec, "/" + this.spec.name, {query: query_str});
-
         this.result_page._get();
     }
 
@@ -76,15 +74,16 @@ class Search {
 
     show_create_linkcollection_search(collection) {
         this.search = new ResourceSearch(collection._meta.spec.name, (selected_resource) => {
-            api.perform_post_link_to_collection(collection, selected_resource.id);
-            this.hide();
+            collection._post({"id": selected_resource.id}, (data) => {
+                this.hide();
+            });
         });
         turtlegui.reload();
     }
 
     show_linkcollection_field_search_and_save(resource, field) {
         this.search = new ResourceSearch(field.target_spec_name, (selected_resource) => {
-            var collection = resource._create_collection(field.name);
+            var collection = resource[field.name] ? resource[field.name] : resource._create_collection(field.name);
             collection._post({"id": selected_resource.id}, (data) => {
                 this.hide();
             });
@@ -372,41 +371,9 @@ class ApiClient {
     }
 
     perform_update_resource(resource, field_name, field_value) {
-        var data = {};
-        data[field_name] = field_value;
-        turtlegui.ajax.patch(
-            this.api_root + resource._url,
-            data,
-            (success) => {
-                resource._fetch();
-            },
-            (error) => {
-                handle_http_error(error, 'Error updating' + resource._url);
-            });
-    }
-
-    perform_post_link_to_collection(collection, link_id) {
-        turtlegui.ajax.post(
-            collection._api_root + collection._url(),
-            {id: link_id},
-            (success) => {
-                collection._fetch();
-            },
-            (error) => {
-                handle_http_error(error, "Error updating " + resource._url);
-            });
-    }
-
-    perform_post_link_to_url(collection_url, link_id, callback) {
-        turtlegui.ajax.post(
-            collection_url,
-            {id: link_id},
-            (success) => {
-                callback(success);
-            },
-            (error) => {
-                handle_http_error(error, "Error updating " + resource._url);
-            });
+        var patch_data = {};
+        patch_data[field_name] = field_value;
+        resource._patch(patch_data);
     }
 
     set_editing_field(element, resource, field) {
@@ -587,7 +554,6 @@ document.addEventListener("DOMContentLoaded", function(){
     path = path == '/' ? '' : path;
     metaphor = new Metaphor('/api', path);
     metaphor.register_listener((event_data) => {
-        console.log(event_data);
         turtlegui.reload();
     });
     metaphor.load_schema();

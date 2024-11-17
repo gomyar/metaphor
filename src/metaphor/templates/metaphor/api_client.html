@@ -69,7 +69,7 @@
                         </div>
                     </div>
                     <div class="fields" gui-list="resource._spec.fields" gui-key="field_name" gui-item="field">
-                        <div class="field" gui-show="api.is_field_collection(field)" >
+                        <div class="field" gui-show="field.is_collection && (field.type != 'calc')" >
                             <div class="field_name" gui-text="field_name"></div>
                             <div class="field_value" -gui-reload-event="resource">
                                 <span class="expand_button" gui-show="resource[field_name] == null" gui-click="api.expand_collection(resource, field_name)">+</span>
@@ -87,23 +87,6 @@
                             </div>
                         </div>
 
-                        <div class="field" gui-show="field.type=='reverse_link_collection'" >
-                            <div class="field_name" gui-text="field_name"></div>
-                            <div class="field_value" -gui-reload-event="resource">
-                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="api.expand_collection(resource, field_name)">+</span>
-                                <span class="expand_button" gui-show="resource[field_name]" gui-click="api.collapse_collection(resource, field_name)">-</span>
-                                <!-- possible expansion to collection -->
-                                <span class="collection_url">
-                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
-                                </span>
-
-
-                                <span class="control create_button" gui-click="api.show_create_resource_from_field(resource, field_name)" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
-                                <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
-
-                                <div class="expanded_collection" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
-                            </div>
-                        </div>
                         <div class="field" gui-show="field.type=='link'">
                             <div class="field_name" gui-text="field_name"></div>
 
@@ -122,27 +105,12 @@
                                 <div class="expanded_link" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
                         </div>
-                        <div class="field" gui-show="field.type=='parent_collection'">
-                            <div class="field_name" gui-text="field_name"></div>
-
-                            <div class="field_value" -gui-reload-event="resource">
-                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
-                                <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_field(field_name)">-</span>
-                                <!-- possible expansion to resource -->
-                                <span class="link_url">
-                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
-                                </span>
-
-                                <div class="expanded_link" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
-                            </div>
- 
-                        </div>
                         <div class="field" gui-show="api.is_simple(field)">
                             <div class="field_name" gui-text="field_name"></div>
 
                             <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type">
                                 <!-- int / str / float -->
-                                <span class="simple_field_val" gui-text="resource[field_name]"></span>
+                                <span class="simple_field_val" gui-text="resource[field.name]"></span>
                                 <input gui-show="api.is_editing_field(resource, field)" gui-val="api.editing_value" gui-bind="keyup" gui-event="api.field_updated(this)" gui-parse-func="api.parse_funcs[field.type]"></input>
                             </div>
 
@@ -151,7 +119,7 @@
                             <div class="field_name" gui-text="field_name"></div>
 
                             <div class="field_value simple" gui-click="api.set_editing_field(this, resource, field)" gui-class="field.type">
-                                <span class="simple_field_val" gui-text="resource[field_name]"></span>
+                                <span class="simple_field_val" gui-text="resource[field.name]"></span>
                                 <input type="datetime-local" gui-show="api.is_editing_field(resource, field)" gui-val="api.editing_value" gui-bind="keyup" gui-event="api.field_updated(this)" gui-parse-func="api.parse_funcs[field.type]"></input>
                             </div>
 

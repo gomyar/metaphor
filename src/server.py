@@ -110,18 +110,21 @@ def watch_resource(watch, sid, url):
 def add_resource(event):
     log.debug("add resource %s %s", flask_login.current_user.username, event)
 
-    if event['url'] in socket_map[request.sid]:
-        log.debug("Add resource already added: %s", event['url'])
-        return
+    try:
+        if event['url'] in socket_map[request.sid]:
+            log.debug("Add resource already added: %s", event['url'])
+            return
 
-    # establish watch
-    api = current_app.config['api']
-    watch = api.watch(event['url'], flask_login.current_user)
+        # establish watch
+        api = current_app.config['api']
+        watch = api.watch(event['url'], flask_login.current_user)
 
-    # start gthread
-    gthread = gevent.spawn(watch_resource, watch, request.sid, event['url'])
+        # start gthread
+        gthread = gevent.spawn(watch_resource, watch, request.sid, event['url'])
 
-    socket_map[request.sid][event['url']] = {"watch": watch, "gthread": gthread}
+        socket_map[request.sid][event['url']] = {"watch": watch, "gthread": gthread}
+    except Exception as e:
+        log.exception("error")
 
 
 @login_required

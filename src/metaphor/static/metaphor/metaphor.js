@@ -76,10 +76,10 @@ class MResource {
         var patch_data = this._m.extract_field_data(this._spec, data);
         this._loading += 1;
         this._m.fire_event({method: 'PATCH', type: "patch_started", resource: this})
-        this._m.net.patch(this._url + "/" + field_name, patch_data, (data) => {
+        this._m.net.patch(this._url, patch_data, (data) => {
             this._loading -= 1;
-            Object.assign(this, patch_data);
             this._m.fire_event({method: 'PATCH', type: "patch_completed", resource: this})
+            this._get();
         }, (error) => {
             this._loading -= 1;
             console.log("Error patching ", this, error);
