@@ -129,9 +129,6 @@ div.field div.field_name {
     overflow: hidden;
     margin-left: 10px;
 }
-div.field div.field_name:after {
-    content: ':';
-}
 
 div.field div.marginfiller{
     display: inline-block;

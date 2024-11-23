@@ -36,7 +36,7 @@
     <div class="fullscreen resource_view">
         <div class="resource_template" gui-tree="metaphor.root" gui-nodeitem="resource">
             <div>
-                <div class="collection" gui-show="api.is_collection(resource)" -gui-reload-event="resource">
+                <div class="collection" gui-show="api.is_collection(resource)">
                     <div class="pagination">
                         <span class="pages" gui-class="(resource._total_pages() > 1) && 'enabled'">
                             <span gui-text="resource._page + 1"></span> of <span gui-text="resource._total_pages()"></span>
@@ -51,13 +51,11 @@
                             <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
                     </div>
                     <div class="collection_results" gui-list="resource.items" gui-item="item">
-                        <div gui-node="item" gui-node-params="parent_resource=resource;parent_field_name=field_name;ego_path=ego_path&&(ego_path+'.'+field_name+'.'+item.id)"></div>
+                        <div gui-node="item" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                     </div>
                 </div>
-                <div class="resource" gui-show="api.is_not_collection(resource)" -gui-reload-event="resource">
+                <div class="resource" gui-show="api.is_not_collection(resource)">
 
-                    <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
-                    <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
                     <div class="fields">
 
                         <div class="field" gui-show="resource.id">
@@ -66,19 +64,23 @@
                                 <a class="resource_link" gui-attrs="href=api.build_client_url(resource)" gui-text="resource.id"></a>
                             </div>
                             <span class="control create_button" gui-show="resource.id&&resource._meta.resource_type=='resource'" gui-click="api.perform_delete_resource(resource)" gui-text="'>> delete ' + resource._spec.name"></span>
+                            <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
+                            <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
+
                         </div>
                     </div>
                     <div class="fields" gui-list="resource._spec.fields" gui-key="field_name" gui-item="field">
                         <div class="field" gui-show="field.is_collection && (field.type != 'calc')" >
-                            <div class="field_name" gui-text="field_name"></div>
-                            <div class="field_value" -gui-reload-event="resource">
+
                                 <span class="expand_button" gui-show="resource[field_name] == null" gui-click="api.expand_collection(resource, field_name)">+</span>
                                 <span class="expand_button" gui-show="resource[field_name] != null" gui-click="api.collapse_collection(resource, field_name)">-</span>
-                                <!-- possible expansion to collection -->
-                                <span class="collection_url">
-                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
-                                </span>
 
+                            <div class="field_name">
+                                <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
+                            </div>
+
+
+                            <div class="field_value">
 
                                 <span class="control create_button" gui-click="api.show_create_resource_from_field(resource, field_name)" gui-show="field.type=='collection' || field.type=='orderedcollection'" gui-text="'>> create ' + field.target_spec_name"></span>
                                 <span class="control create_button" gui-click="search.show_linkcollection_field_search_and_save(resource, field)" gui-show="field.type=='linkcollection'" gui-text="'>> link ' + field.target_spec_name"></span>
@@ -90,7 +92,7 @@
                         <div class="field" gui-show="field.type=='link'">
                             <div class="field_name" gui-text="field_name"></div>
 
-                            <div class="field_value" -gui-reload-event="resource">
+                            <div class="field_value">
                                 <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
                                 <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_link(field_name)">-</span>
                                 <!-- possible expansion to resource -->
@@ -147,7 +149,7 @@
 
                         </div>
                         <div class="field" gui-show="(field.type=='calc') && (field.target_spec_name!=null) && (!field.is_collection)">
-                            <div class="field_name" gui-text="field_name"></div>
+<!--                            <div class="field_name" gui-text="field_name"></div>-->
 
                             <div class="field_value">
                                 <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
