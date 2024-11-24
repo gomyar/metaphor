@@ -657,7 +657,7 @@ class Api(object):
                         encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'link')
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
                 if field_name in expand_dict:
-                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'collection')
+                    encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'resource')
             elif field.field_type in ('reverse_link',):
                 if field_name in expand_dict:
                     encoded[field_name] = [self.encode_resource(self.schema.specs[field.target_spec_name], citem, expand_dict[field_name], 'reverse_link') for citem in resource_data[field_name]]
@@ -709,6 +709,8 @@ class Api(object):
             "count": count,
             "next": self._next_link(None, {}, count, page, page_size),
             "previous": self._previous_link(None, {}, count, page, page_size),
+            "page": page,
+            "page_size": page_size,
             '_meta': {
                 'spec': {
                     'name': spec.name,

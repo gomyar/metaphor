@@ -134,16 +134,11 @@ class ApiTest(unittest.TestCase):
         # test resource type
         division_1 = self.api.get('/divisions/%s' % division_id_1)
         self.assertEqual({
-            '_meta': {'is_collection': False, 'spec': {'name': 'division'}},
+            '_meta': {'is_collection': False, 'spec': {'name': 'division'}, 'resource_type': 'resource'},
             'id': division_id_1,
-            'link_employee_division': '/divisions/%s/link_employee_division' % division_id_1,
             'name': 'sales',
             'average_section_total': 105.0,
             'average_bracket_calc': 149.0,
-            'older_employees': '/divisions/%s/older_employees' % division_id_1,
-            'primary_sections': '/divisions/%s/primary_sections' % division_id_1,
-            'sections': '/divisions/%s/sections' % division_id_1,
-            'self': '/divisions/%s' % division_id_1,
             'yearly_sales': 100}, division_1)
 
         # test calculated resource collection endpoint
@@ -158,15 +153,14 @@ class ApiTest(unittest.TestCase):
         employee_id_1 = self.api.post('employees', {'name': 'ned', 'age': 41, 'division': division_id_1})
 
         self.assertEqual({
-            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+            '_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
             'age': 41,
-            'division': '/divisions/%s' % division_id_1,
             'division_link': {"_id": self.schema.decodeid(division_id_1)},
             'id': employee_id_1,
             'name': 'ned',
             'parent_section_parttimers': None,
             'parttime_division_name': 'ned',
-            'self': '/employees/%s' % employee_id_1}
+            }
             , self.api.get('/employees/%s' % employee_id_1))
 
     def test_calc_parent_links(self):

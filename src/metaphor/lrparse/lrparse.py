@@ -424,6 +424,8 @@ class CalcResourceRef(ResourceRef, Calc):
         return calc_tree.is_collection()
 
     def resource_type(self):
+        spec = self.resource_ref.infer_type()
+        calc_tree = spec.schema.calc_trees[spec.name, self.field_name]
         return calc_tree.resource_type()
 
     def get_resource_dependencies(self):

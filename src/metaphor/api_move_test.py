@@ -121,9 +121,6 @@ class ApiTest(unittest.TestCase):
         employee = self.api.get(f'/former_divisions/{division_id_1}/employees/{employee_id_1}')
         self.assertEqual('bob', employee['name'])
 
-        # check parent url for child is correct
-        self.assertEqual(f"/former_divisions/{division_id_1}/employees/{employee_id_1}", employee['self'])
-
     def test_move_all_children(self):
         division_id_1 = self.api.post('/divisions', {'name': 'sales', 'amount': 1})
         division_id_2 = self.api.post('/divisions', {'name': 'marketting', 'amount': 1})
@@ -182,7 +179,6 @@ class ApiTest(unittest.TestCase):
         result = self.api.get(f'/employees/{employee_id_1}/divisions/{division_id_1}/employees')
 
         self.assertEqual("ned", result['results'][0]['name'])
-        self.assertEqual(f"/employees/{employee_id_1}/divisions/{division_id_1}/employees/{employee_id_2}", result['results'][0]['self'])
 
     def test_children_tree(self):
         self.schema = SchemaFactory(self.db).create_schema()
@@ -205,6 +201,5 @@ class ApiTest(unittest.TestCase):
         result = self.api.get(f'/employees/{employee_id_1}/employees/{employee_id_2}/employees')
 
         self.assertEqual("ned", result['results'][0]['name'])
-        self.assertEqual(f"/employees/{employee_id_1}/employees/{employee_id_2}/employees/{employee_id_3}", result['results'][0]['self'])
 
 

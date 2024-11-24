@@ -37,7 +37,8 @@ class ServerTest(TestCase):
 
     def test_get(self):
         response = self.client.get('/api/')
-        self.assertEqual({'_meta': {'spec': {'name': 'root'}}, 'groups': '/groups', 'users': '/users', 'ego': '/ego'}, response.json)
+        self.assertEqual({
+            '_meta': {'is_collection': False, 'spec': {'name': 'root'}, 'resource_type': 'resource'}}, response.json)
 
     def test_ego(self):
         response = self.client.get('/api/ego/')
@@ -153,17 +154,10 @@ class ServerTest(TestCase):
     def test_serialize_password(self):
         user = self.api.get('/users/%s' % self.user_id)
         self.assertEqual({
-            '_meta': {'is_collection': False, 'spec': {'name': 'user'}},
+            '_meta': {'is_collection': False, 'spec': {'name': 'user'}, 'resource_type': 'resource'},
             'admin': None,
-            'create_grants': '/users/%s/create_grants' % self.user_id,
-            'delete_grants': '/users/%s/delete_grants' % self.user_id,
-            'groups': '/users/%s/groups' % self.user_id,
             'id': self.user_id,
             'password': '<password>',
-            'read_grants': '/users/%s/read_grants' % self.user_id,
-            'self': '/users/%s' % self.user_id,
-            'update_grants': '/users/%s/update_grants' % self.user_id,
-            'put_grants': '/users/%s/put_grants' % self.user_id,
             'username': 'bob'}, user)
 
     def test_create_password(self):
@@ -230,11 +224,12 @@ class ServerTest(TestCase):
         # assert user can access through link
         response = self.api.get('/employees/%s/contracts' % employee_id_1)
         self.assertEqual({
-            '_meta': {'can_create': False,
-            'can_link': True,
-            'is_collection': True,
-            'spec': {'name': 'employee'}},
+            '_meta': {'is_collection': True,
+                'resource_type': 'linkcollection',
+                'spec': {'name': 'employee'}},
             'count': 0,
+            'page': 0,
+            'page_size': 10,
             'next': None,
             'previous': None,
             'results': []}, response)
@@ -284,32 +279,20 @@ class ServerTest(TestCase):
         self.assertEqual(200, response.status_code)
 
         self.assertEqual({
-            '_meta': {'is_collection': False, 'spec': {'name': 'organization'}},
+            '_meta': {'is_collection': False, 'spec': {'name': 'organization'}, 'resource_type': 'resource'},
             'id': organization_id_1,
-            'link_user_organization': '/organizations/%s/link_user_organization' % organization_id_1,
             'name': 'fred',
             'sections': [
-                {'_meta': {'is_collection': False, 'spec': {'name': 'section'}},
+                {'_meta': {'is_collection': False, 'spec': {'name': 'section'}, 'resource_type': 'resource'},
                  'employees': [
-                    {'_meta': {'is_collection': False, 'spec': {'name': 'employee'}},
+                    {'_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
                      'id': employee_id_1,
-                     'link_section_employees': '/employees/%s/link_section_employees' % employee_id_1,
-                     'name': 'fred',
-                     'self': '/employees/%s' % employee_id_1}
+                     'name': 'fred',}
                 ],
                 'id': section_id_1,
-                'link_organization_sections': '/sections/%s/link_organization_sections' % section_id_1,
-                'name': 'fred',
-                'self': '/sections/%s' % section_id_1}
-            ],
-            'self': '/organizations/%s' % organization_id_1}
+                'name': 'fred',}
+            ],}
         , response.json)
 
         api_schema = self.client.get('/api/schema').json
-        self.assertEqual([
-           'employees',
-            'groups',
-            'organizations',
-            'sections',
-            'users',
-        ], list(api_schema['root'].keys()))
+        self.assertEqual(['fields', 'name', 'type'], list(api_schema['root'].keys()))
