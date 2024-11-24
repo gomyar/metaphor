@@ -396,7 +396,7 @@ class Schema(object):
         for spec_name, spec in self.specs.items():
             for field_name, field in spec.fields.items():
                 if field.field_type in ['collection', 'link_collection']:
-                    self.db['metaphor_schema'].update_many(
+                    self.db['metaphor_schema'].update_one(
                         {'_id': self._id},
                         {"$set": {f"specs.{spec_name}.fields.{field_name}.target_spec_name": to_spec_name}}
                     )

@@ -2,6 +2,7 @@
 from datetime import datetime
 import traceback
 
+from metaphor.schema import Schema
 from .update.mutation_create_defaulted_field import DefaultFieldMutation
 from .update.mutation_delete_field import DeleteFieldMutation
 from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
@@ -32,12 +33,14 @@ ACTIONS = {
 
 
 class MutationFactory(object):
-    def __init__(self, from_schema, to_schema):
+    def __init__(self, from_schema, to_schema, db):
         self.from_schema = from_schema
         self.to_schema = to_schema
-        self.mutation = Mutation(from_schema, to_schema)
+        self.db = db
 
     def create(self):
+        self._save_mutation()
+
         self.init_created_specs()
         self.init_deleted_specs()
         self.init_created_defaulted_fields()
@@ -46,6 +49,28 @@ class MutationFactory(object):
         self.init_root_fields()
         self.mutation._sort_steps()
         return self.mutation
+
+    def _copy_initial_schema(self):
+        schema_data = self.db.metaphor_schema.find_one({"_id": self.from_schema._id})
+        schema_data.pop('_id')
+        schema_data['name'] = f"Mutating from {self.from_schema.name} to {self.to_schema.name}"
+        inserted = self.db.metaphor_schema.insert_one(schema_data)
+        schema_data['id'] = inserted.inserted_id
+        return schema_data
+
+    def _save_mutation(self):
+        schema_data = self._copy_initial_schema()
+        schema = Schema(self.db)
+        schema._build_schema(schema_data)
+
+        self.mutation = Mutation(self.from_schema, self.to_schema, schema)
+        inserted = self.db.metaphor_mutation.insert_one({
+            "from_schema_id": self.mutation.from_schema._id,
+            "to_schema_id": self.mutation.to_schema._id,
+            "schema_id": schema_data["_id"],
+            "steps": self.mutation.steps,
+        })
+        self.mutation._id = inserted.inserted_id
 
     def init_created_specs(self):
         for spec_name, to_spec in self.to_schema.specs.items():
@@ -141,11 +166,12 @@ class MutationFactory(object):
 
 
 class Mutation:
-    def __init__(self, from_schema, to_schema):
+    def __init__(self, from_schema, to_schema, schema):
         self._id = None
         self.from_schema = from_schema
         self.to_schema = to_schema
-        self.updater = Updater(to_schema)
+        self.schema = schema
+        self.updater = Updater(schema)
         self.steps = []
         self.state = None
         self.error = None
@@ -167,7 +193,7 @@ class Mutation:
 
             actions = []
             for step in self.steps:
-                mutation = ACTIONS[step['action']](self.updater, self.from_schema, self.to_schema, **step['params'])
+                mutation = ACTIONS[step['action']](self.updater, self.schema, self.schema, **step['params'])
                 mutation_actions = mutation.actions() or [step['action']]
                 actions.extend([(action, mutation) for action in mutation_actions])
 
@@ -184,7 +210,7 @@ class Mutation:
             raise
 
     def set_mutation_state(self, mutation, **state):
-        self.from_schema.db.metaphor_mutation.find_one_and_update({"_id": mutation._id}, {"$set": state})
+        self.schema.db.metaphor_mutation.find_one_and_update({"_id": mutation._id}, {"$set": state})
 
     def add_move_step(self, from_path, to_path):
         from_path = from_path.strip('/')

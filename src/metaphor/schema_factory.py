@@ -93,8 +93,12 @@ class SchemaFactory:
     def _create_mutation(self, data):
         from_schema = self.load_schema(data['from_schema_id'])
         to_schema = self.load_schema(data['to_schema_id'])
-        mutation = Mutation(from_schema, to_schema)
+        schema = self.load_schema(data['schema_id'])
+
+        mutation = Mutation(from_schema, to_schema, schema)
         mutation._id = data['_id']
+        mutation.from_schema_id = data['from_schema_id']
+        mutation.to_schema_id = data['to_schema_id']
         mutation.steps = data.get('steps') or []
         mutation.state = data.get('state') or 'ready'
         mutation.error = data.get('error')
@@ -104,14 +108,9 @@ class SchemaFactory:
         data = self.db.metaphor_mutation.find()
         return [self._create_mutation(m) for m in data]
 
-    def save_mutation(self, mutation, object_id):
-        update = self.db.metaphor_mutation.update_one({"_id": object_id}, {
+    def save_mutation(self, mutation):
+        update = self.db.metaphor_mutation.update_one({"_id": mutation._id}, {
             "$set": {
-                "from_schema_id": mutation.from_schema._id,
-                "to_schema_id": mutation.to_schema._id,
                 "steps": mutation.steps,
             }
-        }, upsert=True)
-        mutation._id = str(update.upserted_id)
-        return update.upserted_id
-
+        })

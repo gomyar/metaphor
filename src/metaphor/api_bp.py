@@ -316,9 +316,9 @@ def mutations():
 
         from_schema = factory.load_schema(data['from_schema_id'])
         to_schema = factory.load_schema(data['to_schema_id'])
-        mutation = MutationFactory(from_schema, to_schema).create()
+        mutation = MutationFactory(from_schema, to_schema, from_schema.db).create()
 
-        factory.save_mutation(mutation, ObjectId())
+        factory.save_new_mutation(mutation)
 
         return jsonify(serialize_mutation(mutation))
 
@@ -365,13 +365,13 @@ def mutation_steps(mutation_id):
         data = request.json
         if data['action'] == "rename_spec":
             mutation.convert_delete_spec_to_rename(data['from_spec_name'], data['to_spec_name'])
-            factory.save_mutation(mutation, ObjectId(mutation_id))
+            factory.save_mutation(mutation)
         elif data['action'] == "rename_field":
             mutation.convert_delete_field_to_rename(data['spec_name'], data['from_field_name'], data['to_field_name'])
-            factory.save_mutation(mutation, ObjectId(mutation_id))
+            factory.save_mutation(mutation)
         elif data['action'] == "move":
             mutation.add_move_step(data['from_path'], data['to_path'])
-            factory.save_mutation(mutation, ObjectId(mutation_id))
+            factory.save_mutation(mutation)
         else:
             return jsonify({"error": "Unknown step type"}), 400
 
@@ -383,7 +383,7 @@ def cancel_step(mutation_id, spec_name):
     factory = current_app.config['schema_factory']
     mutation = factory.load_mutation(mutation_id)
     mutation.cancel_rename_spec(spec_name)
-    factory.save_mutation(mutation, ObjectId(mutation_id))
+    factory.save_mutation(mutation)
     return jsonify({'ok': 1})
 
 
@@ -393,5 +393,5 @@ def cancel_field_step(mutation_id, spec_name, field_name):
     factory = current_app.config['schema_factory']
     mutation = factory.load_mutation(mutation_id)
     mutation.cancel_rename_field(spec_name, field_name)
-    factory.save_mutation(mutation, ObjectId(mutation_id))
+    factory.save_mutation(mutation)
     return jsonify({'ok': 1})
