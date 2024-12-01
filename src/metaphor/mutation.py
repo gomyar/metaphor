@@ -246,7 +246,7 @@ class Mutation:
         self.steps.pop(self.steps.index(delete_step))
         self.steps.pop(self.steps.index(create_step))
 
-        field = self.to_schema.specs[spec_name].fields[to_field_name]
+        field = self._corresponding_field(spec_name, from_field_name, to_field_name)
 
         self.steps.append({
             "action": "rename_field",
