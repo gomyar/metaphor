@@ -1,6 +1,7 @@
 
 class Login {
-    constructor() {
+    constructor(metaphor) {
+        this.metaphor = metaphor;
         this.username = null;
         this.password = null;
         this.is_shown = false;
@@ -21,7 +22,7 @@ class Login {
             {"username": this.username, "password": this.password},
             (response) => {
                 this.cancel_login();
-                load_initial_api();                
+                this.metaphor.load_schema();                
             },
             (err) => {
                 if (err.status == 401) {

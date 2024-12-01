@@ -506,7 +506,6 @@ class ListenClient {
 
 var api = new ApiClient();
 var listen_client = new ListenClient();
-var login = new Login();
 
 var listen_dropdown = {
     is_open: false,
@@ -532,8 +531,13 @@ document.addEventListener("DOMContentLoaded", function(){
     var path = window.location.pathname.replace(/^\/client\//, '/');
     path = path == '/' ? '' : path;
     metaphor = new Metaphor('/api', path, window.location.search);
+    login = new Login(metaphor);
     metaphor.register_listener((event_data) => {
-        turtlegui.reload();
+        if (event_data.type == "unauthorized") {
+            login.show_login();
+        } else {
+            turtlegui.reload();
+        }
     });
     metaphor.load_schema();
 });

@@ -227,7 +227,11 @@ class Net {
     }
 
     handle_http_error(error, msg) {
-        alert(error.status + ": " + msg);    
+        if (error.status == 401) {
+            this._m.fire_event({type: "unauthorized", error: "unauthorized"})
+        } else {
+            alert(error.status + ": " + msg);    
+        }
     }
 
     _fetch(url, data, callback, error_callback) {

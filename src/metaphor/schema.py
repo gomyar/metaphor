@@ -661,12 +661,22 @@ class Schema(object):
             {"$unset": {field_name: ""}})
 
     def alter_field_convert_type(self, spec_name, field_name, new_type):
+
+        type_map = {
+            'str': 'string',
+            'int': 'int',
+            'float': 'double',
+            'bool': 'bool',
+            'datetime': 'date',
+        }
+
+
         self.db['metaphor_resource'].aggregate([
             {"$match": {'_type': spec_name, field_name: {"$exists": True}}},
             {"$addFields": {
                 field_name: {"$convert": {
                     "input": "$%s"%field_name,
-                    "to": new_type,
+                    "to": type_map[new_type],
                     "onError": None,
                     "onNull": None,
                 }},

@@ -1,9 +1,9 @@
 
 
 class CreateSpecMutation:
-    def __init__(self, updater, from_schema, to_schema, spec_name):
+    def __init__(self, updater, schema, spec_name):
         self.updater = updater
-        self.to_schema = to_schema
+        self.schema = schema
 
         self.spec_name = spec_name
 
@@ -14,4 +14,6 @@ class CreateSpecMutation:
         return None
 
     def execute(self, action=None):
-        pass
+        update_id = str(self.schema.create_update())
+        self.schema.create_spec(self.spec_name)
+        self.schema.cleanup_update(update_id)

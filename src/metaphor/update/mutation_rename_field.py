@@ -1,28 +1,36 @@
 
 
 class RenameFieldMutation:
-    def __init__(self, updater, from_schema, to_schema, spec_name, from_field_name, to_field_name):
+    def __init__(self, updater, schema, spec_name, from_field_name, to_field_name, field_name, field_type, default=None, field_target=None, calc_str=None):
         self.updater = updater
-        self.to_schema = to_schema
-        self.from_schema = from_schema
+        self.schema = schema
 
         self.spec_name = spec_name
         self.from_field_name = from_field_name
         self.to_field_name = to_field_name
 
+        self.field_name = field_name
+        self.field_type = field_type
+        self.default = default
+        self.field_target = field_target
+        self.calc_str = calc_str
+
     def __repr__(self):
         return "<RenameFieldMutation>"
 
     def actions(self):
-        return ["create_field", "move", "delete_field"]
+#        return ["create_field", "move", "delete_field"]
+        return None
 
     def execute(self, action=None):
-        spec = self.from_schema.get_spec(self.spec_name)
+        spec = self.schema.get_spec(self.spec_name)
         field = spec.fields[self.from_field_name]
 
-        update_id = str(self.to_schema.create_update())
+        update_id = str(self.schema.create_update())
 
-        if action == 'delete_field':
-            self.from_schema.rename_field(self.spec_name, self.from_field_name, self.to_field_name)
+        self.schema.rename_field(self.spec_name, self.from_field_name, self.to_field_name)
 
-        self.to_schema.cleanup_update(update_id)
+        if self.schema.specs[self.spec_name].fields[self.from_field_name].field_type != self.field_type:
+            self.schema.alter_field_convert_type(self.spec_name, self.field_name, self.field_type)
+
+        self.schema.cleanup_update(update_id)

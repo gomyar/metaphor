@@ -74,7 +74,7 @@ var manage = {
 
     get_step: function(spec_name) {
         for (var step of this.mutation.steps) {
-            if (step.params.spec_name == spec_name && !step.params.field_name) {
+            if (step.params.spec_name == spec_name && (!step.params.to_field_name) && (!step.params.field_name)) {
                 return step;
             }
         }

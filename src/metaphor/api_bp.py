@@ -318,7 +318,7 @@ def mutations():
         to_schema = factory.load_schema(data['to_schema_id'])
         mutation = MutationFactory(from_schema, to_schema, from_schema.db).create()
 
-        factory.save_new_mutation(mutation)
+        factory.save_mutation(mutation)
 
         return jsonify(serialize_mutation(mutation))
 

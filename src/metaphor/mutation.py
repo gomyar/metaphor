@@ -2,8 +2,8 @@
 from datetime import datetime
 import traceback
 
-from metaphor.schema import Schema
-from .update.mutation_create_defaulted_field import DefaultFieldMutation
+from metaphor.schema import Schema, CalcField
+from .update.mutation_create_field import CreateFieldMutation
 from .update.mutation_delete_field import DeleteFieldMutation
 from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
 from .update.mutation_create_spec import CreateSpecMutation
@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 ACTIONS = {
-    "create_field": DefaultFieldMutation,
+    "create_field": CreateFieldMutation,
     "alter_field": AlterFieldConvertPrimitiveMutation,
     "delete_field": DeleteFieldMutation,
     "create_spec": CreateSpecMutation,
@@ -30,6 +30,31 @@ ACTIONS = {
     "rename_field": RenameFieldMutation,
     "rename_spec": RenameSpecMutation,
 }
+
+
+def _create_create_field_step(spec_name, field_name, field):
+    if type(field) is CalcField:
+        return {
+            "action": "create_field",
+            "params": {
+                "spec_name": spec_name,
+                "field_name": field_name,
+                "default": field.default,
+                "field_type": field.field_type,
+                "calc_str": field.calc_str,
+            }
+        }
+    else:
+        return {
+            "action": "create_field",
+            "params": {
+                "spec_name": spec_name,
+                "field_name": field_name,
+                "default": field.default,
+                "field_type": field.field_type,
+                "field_target": field.target_spec_name,
+            }
+        }
 
 
 class MutationFactory(object):
@@ -102,31 +127,14 @@ class MutationFactory(object):
                 for field_name, field in to_spec.fields.items():
                     if field_name not in from_spec.fields:
                         field = self.to_schema.get_spec(spec_name).fields[field_name]
-                        self.mutation.steps.append({
-                            "action": "create_field",
-                            "params": {
-                                "spec_name": spec_name,
-                                "field_name": field_name,
-                                "field_value": field.default,
-                                "field_type": field.field_type,
-                                "field_target": field.target_spec_name,
-                            }
-                        })
+                        self.mutation.steps.append(_create_create_field_step(spec_name, field_name, field))
+
 
     def init_root_fields(self):
         for field_name, field in self.to_schema.root.fields.items():
             if field_name not in self.from_schema.root.fields:
                 field = self.to_schema.root.fields[field_name]
-                self.mutation.steps.append({
-                    "action": "create_field",
-                    "params": {
-                        "spec_name": "root",
-                        "field_name": field_name,
-                        "field_value": field.default,
-                        "field_type": field.field_type,
-                        "field_target": field.target_spec_name,
-                    }
-                })
+                self.mutation.steps.append(_create_create_field_step("root", field_name, field))
 
         for field_name, field in self.from_schema.root.fields.items():
             if field_name not in self.to_schema.root.fields:
@@ -193,7 +201,7 @@ class Mutation:
 
             actions = []
             for step in self.steps:
-                mutation = ACTIONS[step['action']](self.updater, self.schema, self.schema, **step['params'])
+                mutation = ACTIONS[step['action']](self.updater, self.schema, **step['params'])
                 mutation_actions = mutation.actions() or [step['action']]
                 actions.extend([(action, mutation) for action in mutation_actions])
 
@@ -238,19 +246,27 @@ class Mutation:
         self.steps.pop(self.steps.index(delete_step))
         self.steps.pop(self.steps.index(create_step))
 
+        field = self.to_schema.specs[spec_name].fields[to_field_name]
+
         self.steps.append({
             "action": "rename_field",
             "params": {
                 "spec_name": spec_name,
                 "from_field_name": from_field_name,
                 "to_field_name": to_field_name,
+
+                "field_name": to_field_name,
+                "default": field.default,
+                "field_type": field.field_type,
+                "calc_str": field.calc_str if type(field) is CalcField else None,
+                "field_target": field.target_spec_name,
             }})
 
         from_field = self.from_schema.get_spec(spec_name).fields[from_field_name]
         to_field = self._corresponding_field(spec_name, from_field_name, to_field_name)
 
-        if from_field.field_type != to_field.field_type:
-            self._create_alter_field_step(spec_name, to_field_name, to_field.field_type)
+#        if from_field.field_type != to_field.field_type:
+#            self._create_alter_field_step(spec_name, to_field_name, to_field.field_type)
 
         self._sort_steps()
 
@@ -316,16 +332,7 @@ class Mutation:
         # add create field steps
         for field_name, field in to_spec.fields.items():
             if field_name not in from_spec.fields:
-                self.steps.append({
-                    "action": "create_field",
-                    "params": {
-                        "spec_name": from_spec_name,
-                        "field_name": field_name,
-                        "field_value": field.default,
-                        "field_type": field.field_type,
-                        "field_target": field.target_spec_name,
-                    }
-                })
+                self.steps.append(_create_create_field_step(from_spec_name, field_name, field))
 
         # add delete field steps
         for field_name, field in from_spec.fields.items():
@@ -335,7 +342,7 @@ class Mutation:
                     "params": {
                         "spec_name": from_spec_name,
                         "field_name": field_name,
-                        "field_value": field.default,
+                        "default": field.default,
                     }
                 })
 
@@ -358,27 +365,10 @@ class Mutation:
         rename_spec_step = self._find_step('rename_spec', spec_name=spec_name)
         if rename_spec_step:
             field = self.from_schema.get_spec(spec_name).fields[rename_step['params']['from_field_name']]
-            self.steps.append({
-                "action": "create_field",
-                "params": {
-                    "spec_name": spec_name,
-                    "field_name": rename_step['params']['to_field_name'],
-                    "field_type": field.field_type,
-                    "field_target": field.target_spec_name,
-                }
-            })
+            self.steps.append(_create_create_field_step(spec_name, rename_step['params']['to_field_name'], field))
         else:
             field = self.to_schema.get_spec(spec_name).fields[rename_step['params']['to_field_name']]
-
-            self.steps.append({
-                "action": "create_field",
-                "params": {
-                    "spec_name": spec_name,
-                    "field_name": field.name,
-                    "field_type": field.field_type,
-                    "field_target": field.target_spec_name,
-                }
-            })
+            self.steps.append(_create_create_field_step(spec_name, field.name, field))
 
         self.steps.append({
             "action": "delete_field",
@@ -423,32 +413,15 @@ class Mutation:
 
     def _create_fields_for(self, spec):
         for field_name, field in spec.fields.items():
-            self.steps.append({
-                "action": "create_field",
-                "params": {
-                    "spec_name": spec.name,
-                    "field_name": field_name,
-                    "field_value": field.default,
-                    "field_type": field.field_type,
-                    "field_target": field.target_spec_name,
-                }
-            })
+            self.steps.append(_create_create_field_step(spec.name, field_name, field))
 
     def _create_alter_field_step(self, spec_name, field_name, new_type):
-        type_map = {
-            'str': 'string',
-            'int': 'int',
-            'float': 'double',
-            'bool': 'bool',
-            'datetime': 'date',
-        }
-
         self.steps.append({
             "action": "alter_field",
             "params": {
                 "spec_name": spec_name,
                 "field_name": field_name,
-                "new_type": type_map[new_type],
+                "new_type": new_type,
             }
         })
 

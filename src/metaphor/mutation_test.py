@@ -48,6 +48,7 @@ class MutationTest(unittest.TestCase):
         self.assertEqual('create_field', mutation.steps[0]['action'])
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('address', mutation.steps[0]['params']['field_name'])
+        self.assertEqual('42 ironside', mutation.steps[0]['params']['default'])
 
         mutation.mutate()
 
@@ -378,7 +379,7 @@ class MutationTest(unittest.TestCase):
         self.assertEqual('create_field', mutation.steps[2]['action'])
         self.assertEqual('client', mutation.steps[2]['params']['spec_name'])
         self.assertEqual('address', mutation.steps[2]['params']['field_name'])
-        self.assertEqual('42 ironside', mutation.steps[2]['params']['field_value'])
+        self.assertEqual('42 ironside', mutation.steps[2]['params']['default'])
 
         self.assertEqual('create_field', mutation.steps[3]['action'])
         self.assertEqual('root', mutation.steps[3]['params']['spec_name'])
@@ -819,13 +820,13 @@ class MutationTest(unittest.TestCase):
             {'action': 'create_spec', 'params': {'spec_name': 'customer'}},
             {'action': 'create_field',
                 'params': {'field_name': 'name',
-                    'field_value': None,
+                    'default': None,
                     'field_type': 'str',
                     'field_target': None,
                     'spec_name': 'customer'}},
             {'action': 'create_field',
                 'params': {'field_name': 'customers',
-                    'field_value': None,
+                    'default': None,
                     'field_type': 'collection',
                     'field_target': 'customer',
                     'spec_name': 'root'}},
@@ -853,17 +854,18 @@ class MutationTest(unittest.TestCase):
         mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
         mutation.convert_delete_field_to_rename('client', 'phone', 'phone_number')
 
-        self.assertEqual(2, len(mutation.steps))
+        self.assertEqual(1, len(mutation.steps))
 
         self.assertEqual('rename_field', mutation.steps[0]['action'])
         self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
         self.assertEqual('phone', mutation.steps[0]['params']['from_field_name'])
         self.assertEqual('phone_number', mutation.steps[0]['params']['to_field_name'])
 
-        self.assertEqual('alter_field', mutation.steps[1]['action'])
-        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
-        self.assertEqual('phone_number', mutation.steps[1]['params']['field_name'])
-        self.assertEqual('string', mutation.steps[1]['params']['new_type'])
+        self.assertEqual("phone_number", mutation.steps[0]["params"]["field_name"])
+        self.assertEqual(None, mutation.steps[0]["params"]["default"])
+        self.assertEqual("str", mutation.steps[0]["params"]["field_type"])
+        self.assertEqual(None, mutation.steps[0]["params"]["calc_str"])
+        self.assertEqual(None, mutation.steps[0]["params"]["field_target"])
 
         mutation.mutate()
 
