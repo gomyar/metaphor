@@ -58,13 +58,12 @@ def _create_create_field_step(spec_name, field_name, field):
 
 
 class MutationFactory(object):
-    def __init__(self, from_schema, to_schema, db):
+    def __init__(self, from_schema, to_schema):
         self.from_schema = from_schema
         self.to_schema = to_schema
-        self.db = db
 
     def create(self):
-        self._save_mutation()
+        self._create_initial_mutation()
 
         self.init_created_specs()
         self.init_deleted_specs()
@@ -75,27 +74,12 @@ class MutationFactory(object):
         self.mutation._sort_steps()
         return self.mutation
 
-    def _copy_initial_schema(self):
-        schema_data = self.db.metaphor_schema.find_one({"_id": self.from_schema._id})
-        schema_data.pop('_id')
-        schema_data['name'] = f"Mutating from {self.from_schema.name} to {self.to_schema.name}"
-        inserted = self.db.metaphor_schema.insert_one(schema_data)
-        schema_data['id'] = inserted.inserted_id
-        return schema_data
-
-    def _save_mutation(self):
-        schema_data = self._copy_initial_schema()
-        schema = Schema(self.db)
+    def _create_initial_mutation(self):
+        schema_data = self.from_schema.db.metaphor_schema.find_one({"_id": self.from_schema._id})
+        schema = Schema(self.from_schema.db)
         schema._build_schema(schema_data)
 
         self.mutation = Mutation(self.from_schema, self.to_schema, schema)
-        inserted = self.db.metaphor_mutation.insert_one({
-            "from_schema_id": self.mutation.from_schema._id,
-            "to_schema_id": self.mutation.to_schema._id,
-            "schema_id": schema_data["_id"],
-            "steps": self.mutation.steps,
-        })
-        self.mutation._id = inserted.inserted_id
 
     def init_created_specs(self):
         for spec_name, to_spec in self.to_schema.specs.items():
@@ -223,7 +207,8 @@ class Mutation:
     def add_move_step(self, from_path, to_path):
         from_path = from_path.strip('/')
         to_path = to_path.strip('/')
-        from_spec, from_is_collection = self.from_schema.resolve_url(from_path)
+        # both paths must be on target schema
+        from_spec, from_is_collection = self.to_schema.resolve_url(from_path)
         to_spec, to_is_collection = self.to_schema.resolve_canonical_url(to_path)
 
         if from_spec.name != to_spec.name:

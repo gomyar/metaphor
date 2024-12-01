@@ -316,9 +316,9 @@ def mutations():
 
         from_schema = factory.load_schema(data['from_schema_id'])
         to_schema = factory.load_schema(data['to_schema_id'])
-        mutation = MutationFactory(from_schema, to_schema, from_schema.db).create()
+        mutation = MutationFactory(from_schema, to_schema).create()
 
-        factory.save_mutation(mutation)
+        factory.create_mutation(mutation)
 
         return jsonify(serialize_mutation(mutation))
 
@@ -337,6 +337,7 @@ def single_mutation(mutation_id):
     else:
         if request.json.get('promote') == True:
             log.info("Promoting mutation %s -> %s", mutation.from_schema.version, mutation.to_schema.version)
+            mutation.schema.set_as_current()
             mutation.mutate()
             mutation.to_schema.set_as_current()
             return jsonify({"ok": 1})

@@ -224,7 +224,7 @@ class Schema(object):
     def _build_schema(self, schema_data):
         from metaphor.lrparse.lrparse import parse
 
-        self._id = ObjectId(schema_data['id'])
+        self._id = schema_data.get('_id') or ObjectId(schema_data['id'])
         self.name = schema_data.get('name', '')
         self.description = schema_data.get('description', '')
         self.current = schema_data.get('current', False)
@@ -252,6 +252,7 @@ class Schema(object):
                     self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
 
         self.version = schema_data['version']
+        self.name = self.name or self.version
 
     def create_spec(self, spec_name):
         if spec_name in self.specs:
@@ -384,11 +385,24 @@ class Schema(object):
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
 
     def rename_field(self, spec_name, from_field_name, to_field_name):
-        field = self.get_spec(spec_name).fields[from_field_name]
+        spec = self.get_spec(spec_name)
+        field = spec.fields[from_field_name]
         if field.field_type == 'collection':
             self.db['metaphor_resource'].update_many({"_type": field.target_spec_name, "_parent_field_name": from_field_name}, {"$set": {"_parent_field_name": to_field_name}})
         else:
             self.db['metaphor_resource'].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
+        if spec_name == 'root':
+            self.db['metaphor_schema'].update_one(
+                {'_id': self._id},
+                {'$rename': {f'root.{from_field_name}': f'root.{to_field_name}'}},
+            )
+        else:
+            self.db['metaphor_schema'].update_one(
+                {'_id': self._id},
+                {'$rename': {f'specs.{spec_name}.{from_field_name}': f'specs.{spec_name}.{to_field_name}'}},
+            )
+        spec.fields[to_field_name] = spec.fields[from_field_name]
+        spec.fields.pop(from_field_name)
 
     def rename_spec(self, from_spec_name, to_spec_name):
         self.db['metaphor_resource'].update_many({"_type": from_spec_name}, {"$set": {"_type": to_spec_name}})

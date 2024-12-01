@@ -38,6 +38,8 @@ class MutationTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners.jobs'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients.jobs'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'archived'})
+        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'archived.jobs'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
         # create test clients
@@ -464,7 +466,7 @@ class MutationTest(unittest.TestCase):
         # add move step
         response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
             "action": "move",
-            "from_path": "clients",
+            "from_path": "partners",   # use target schema field name (the renamed field)
             "to_path": "archived",
         })
         self.assertEqual(200, response.status_code)

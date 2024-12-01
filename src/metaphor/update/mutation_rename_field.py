@@ -30,7 +30,7 @@ class RenameFieldMutation:
 
         self.schema.rename_field(self.spec_name, self.from_field_name, self.to_field_name)
 
-        if self.schema.get_spec(self.spec_name).fields[self.from_field_name].field_type != self.field_type:
+        if self.schema.get_spec(self.spec_name).fields[self.to_field_name].field_type != self.field_type:
             self.schema.alter_field_convert_type(self.spec_name, self.field_name, self.field_type)
 
         self.schema.cleanup_update(update_id)

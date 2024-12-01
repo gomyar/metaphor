@@ -42,7 +42,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('create_field', mutation.steps[0]['action'])
@@ -80,7 +80,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"name": "Bob", "address": "here"}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"name": "Ned", "address": "there"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('delete_field', mutation.steps[0]['action'])
@@ -114,7 +114,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"phone": 12345}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"phone": 67890}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('alter_field', mutation.steps[0]['action'])
@@ -148,7 +148,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('alter_field', mutation.steps[0]['action'])
@@ -183,7 +183,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"phone": True}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"phone": False}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('alter_field', mutation.steps[0]['action'])
@@ -217,7 +217,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"created": "2023-01-02T10:11:22.000Z"}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"created": None}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(1, len(mutation.steps))
         self.assertEqual('alter_field', mutation.steps[0]['action'])
@@ -253,7 +253,7 @@ class MutationTest(unittest.TestCase):
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'primary_clients')
         client_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'primary_clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         mutation.add_move_step("primary_clients", "secondary_clients")
 
@@ -298,7 +298,7 @@ class MutationTest(unittest.TestCase):
         job_1_id = self.schema_1.insert_resource('job', {'description': 'Job 1'}, 'jobs', 'client', client_1_id)
         job_2_id = self.schema_1.insert_resource('job', {'description': 'Job 2'}, 'jobs', 'client', client_2_id)
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         mutation.add_move_step(f"primary_clients/{client_1_id}/jobs", f"secondary_clients/{client_2_id}/jobs")
 
@@ -343,7 +343,7 @@ class MutationTest(unittest.TestCase):
         job_1_id = self.schema_1.insert_resource('job', {'description': 'Job 1'}, 'jobs', 'client', client_1_id)
         job_2_id = self.schema_1.insert_resource('job', {'description': 'Job 2'}, 'jobs', 'client', client_2_id)
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         with self.assertRaises(Exception):
             # must be same type
@@ -366,7 +366,7 @@ class MutationTest(unittest.TestCase):
 
         self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(4, len(mutation.steps))
         self.assertEqual('create_spec', mutation.steps[0]['action'])
@@ -406,7 +406,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual(2, len(mutation.steps))
         self.assertEqual([{'action': 'delete_field',
@@ -438,7 +438,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"username": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # creates a delete and a create
         self.assertEqual(2, len(mutation.steps))
@@ -487,7 +487,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"username": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # alter the mutation
         mutation.convert_delete_field_to_rename('client', 'username', 'name')
@@ -532,7 +532,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # creates a delete and a create
         self.assertEqual(3, len(mutation.steps))
@@ -581,7 +581,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # creates a delete and a create
         self.assertEqual(3, len(mutation.steps))
@@ -633,7 +633,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # alter the mutation
         mutation.convert_delete_spec_to_rename('client', 'customer')
@@ -678,7 +678,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # alter the mutation
         mutation.convert_delete_spec_to_rename('client', 'customer')
@@ -719,7 +719,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # alter the mutation
         mutation.convert_delete_spec_to_rename('client', 'customer')
@@ -761,7 +761,7 @@ class MutationTest(unittest.TestCase):
         # create test data
         client_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         # alter the mutation
         mutation.convert_delete_spec_to_rename('client', 'customer')
@@ -814,7 +814,7 @@ class MutationTest(unittest.TestCase):
         self.schema_2.create_field('root', 'clients', 'collection', 'client')
         self.schema_2.create_field('root', 'customers', 'collection', 'customer')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
 
         self.assertEqual([
             {'action': 'create_spec', 'params': {'spec_name': 'customer'}},
@@ -851,7 +851,7 @@ class MutationTest(unittest.TestCase):
         user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'clients')
         user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'clients')
 
-        mutation = MutationFactory(self.schema_1, self.schema_2, self.db).create()
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
         mutation.convert_delete_field_to_rename('client', 'phone', 'phone_number')
 
         self.assertEqual(1, len(mutation.steps))
