@@ -1,8 +1,8 @@
 
 
 class CreateFieldMutation:
-    def __init__(self, updater, schema, spec_name, field_name, field_type, default=None, field_target=None, calc_str=None):
-        self.updater = updater
+    def __init__(self, mutation, schema, spec_name, field_name, field_type, default=None, field_target=None, calc_str=None):
+        self.mutation = mutation
         self.schema = schema
 
         self.spec_name = spec_name
@@ -28,6 +28,6 @@ class CreateFieldMutation:
             self.schema.default_field_value(self.spec_name, self.field_name, self.default)
 
         if self.default or self.calc_str:
-            self.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
+            self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
 
         self.schema.cleanup_update(update_id)

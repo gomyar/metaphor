@@ -384,7 +384,11 @@ class Schema(object):
             {"$unset": {'specs.%s.fields.%s' % (spec_name, field_name): ''}})
 
     def rename_field(self, spec_name, from_field_name, to_field_name):
-        self.db['metaphor_resource'].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
+        field = self.get_spec(spec_name).fields[from_field_name]
+        if field.field_type == 'collection':
+            self.db['metaphor_resource'].update_many({"_type": field.target_spec_name, "_parent_field_name": from_field_name}, {"$set": {"_parent_field_name": to_field_name}})
+        else:
+            self.db['metaphor_resource'].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
 
     def rename_spec(self, from_spec_name, to_spec_name):
         self.db['metaphor_resource'].update_many({"_type": from_spec_name}, {"$set": {"_type": to_spec_name}})

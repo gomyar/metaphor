@@ -1,8 +1,8 @@
 
 
 class CreateSpecMutation:
-    def __init__(self, updater, schema, spec_name):
-        self.updater = updater
+    def __init__(self, mutation, schema, spec_name):
+        self.mutation = mutation
         self.schema = schema
 
         self.spec_name = spec_name

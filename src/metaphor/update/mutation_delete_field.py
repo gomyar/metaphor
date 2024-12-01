@@ -1,8 +1,8 @@
 
 
 class DeleteFieldMutation:
-    def __init__(self, updater, schema, spec_name, field_name):
-        self.updater = updater
+    def __init__(self, mutation, schema, spec_name, field_name):
+        self.mutation = mutation
         self.schema = schema
 
         self.spec_name = spec_name
@@ -24,6 +24,6 @@ class DeleteFieldMutation:
         # find and update dependent calcs
         start_agg = []
 
-        self.updater.update_for_field(self.spec_name, self.field_name, update_id, start_agg)
+        self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, start_agg)
 
         self.schema.cleanup_update(update_id)

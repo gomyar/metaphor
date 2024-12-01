@@ -201,7 +201,7 @@ class Mutation:
 
             actions = []
             for step in self.steps:
-                mutation = ACTIONS[step['action']](self.updater, self.schema, **step['params'])
+                mutation = ACTIONS[step['action']](self, self.schema, **step['params'])
                 mutation_actions = mutation.actions() or [step['action']]
                 actions.extend([(action, mutation) for action in mutation_actions])
 

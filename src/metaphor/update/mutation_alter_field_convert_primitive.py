@@ -1,8 +1,8 @@
 
 
 class AlterFieldConvertPrimitiveMutation:
-    def __init__(self, updater, schema, spec_name, field_name, new_type):
-        self.updater = updater
+    def __init__(self, mutation, schema, spec_name, field_name, new_type):
+        self.mutation = mutation
         self.schema = schema
 
         self.spec_name = spec_name
@@ -21,6 +21,6 @@ class AlterFieldConvertPrimitiveMutation:
         spec = self.schema.specs[self.spec_name]
         self.schema.alter_field_convert_type(self.spec_name, self.field_name, self.new_type)
 
-        self.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
+        self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
 
         self.schema.cleanup_update(update_id)

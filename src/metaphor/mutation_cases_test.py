@@ -176,7 +176,7 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'create_field',
-             'params': {'spec_name': 'client', 'field_name': 'title', 'field_type': 'str', 'field_value': None, 'field_target': None}},
+             'params': {'spec_name': 'client', 'field_name': 'title', 'field_type': 'str', 'default': None, 'field_target': None}},
             {'action': 'delete_field',
              'params': {'spec_name': 'client', 'field_name': 'name'}},
              ], mutations)
@@ -194,7 +194,16 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'rename_field',
-             'params': {'spec_name': 'client', 'from_field_name': 'name', 'to_field_name': 'title'}},
+             'params': {
+                'spec_name': 'client',
+                'from_field_name': 'name',
+                'to_field_name': 'title',
+                'calc_str': None,
+                'default': None,
+                'field_name': 'title',
+                'field_target': None,
+                'field_type': 'str',
+             }},
              ], mutations)
 
     def test_rename_root_field(self):
@@ -224,7 +233,7 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'create_field',
-             'params': {'spec_name': 'root', 'field_name': 'partners', 'field_type': 'collection', 'field_value': None, 'field_target': 'client'}},
+             'params': {'spec_name': 'root', 'field_name': 'partners', 'field_type': 'collection', 'field_target': 'client', 'default': None}},
             {'action': 'delete_field',
              'params': {'spec_name': 'root', 'field_name': 'clients'}},
              ], mutations)
@@ -242,7 +251,16 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'rename_field',
-             'params': {'spec_name': 'root', 'from_field_name': 'clients', 'to_field_name': 'partners'}},
+             'params': {
+                'spec_name': 'root',
+                'from_field_name': 'clients',
+                'to_field_name': 'partners',
+                'calc_str': None,
+                'default': None,
+                'field_name': 'partners',
+                'field_target': 'client',
+                'field_type': 'collection',
+             }},
              ], mutations)
 
         # cancel rename
@@ -253,7 +271,12 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'create_field',
-             'params': {'spec_name': 'root', 'field_name': 'partners', 'field_type': 'collection', 'field_target': 'client'}},
+             'params': {
+                'spec_name': 'root',
+                'default': None,
+                'field_name': 'partners',
+                'field_type': 'collection',
+                'field_target': 'client'}},
             {'action': 'delete_field',
              'params': {'spec_name': 'root', 'field_name': 'clients'}},
              ], mutations)
@@ -452,8 +475,8 @@ class MutationTest(unittest.TestCase):
         })
         self.assertEqual(200, response.status_code)
 
-        self.assertEqual(1, self.client.get("/api/partners").json['count'])
-        self.assertEqual(1, self.client.get("/api/archived").json['count'])
+        self.assertEqual(0, self.client.get("/api/partners").json['count'])
+        self.assertEqual(2, self.client.get("/api/archived").json['count'])
 
 
     def test_alter_field_to_required_include_default(self):

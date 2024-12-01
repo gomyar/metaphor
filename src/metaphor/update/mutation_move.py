@@ -3,8 +3,8 @@ from metaphor.lrparse.lrparse import parse_canonical_url
 
 
 class MoveMutation:
-    def __init__(self, updater, schema, from_path, to_path):
-        self.updater = updater
+    def __init__(self, mutation, schema, from_path, to_path):
+        self.mutation = mutation
         self.schema = schema
 
         self.from_path = from_path
@@ -30,11 +30,11 @@ class MoveMutation:
             cursor = tree.root_collection().aggregate(aggregate_query)
             parent_resource = next(cursor)
 
-            return self.updater.move_resource(self.from_path, self.to_path, parent_resource['_id'], parent_resource['_canonical_url'], field_name, spec.name)
+            return self.mutation.updater.move_resource(self.from_path, self.to_path, parent_resource['_id'], parent_resource['_canonical_url'], field_name, spec.name)
         else:
             field_name = self.to_path
             root_field_spec = self.schema.root.fields[self.to_path]
-            return self.updater.move_resource_to_root(self.from_path, self.to_path, root_field_spec.target_spec_name)
+            return self.mutation.updater.move_resource_to_root(self.from_path, self.to_path, root_field_spec.target_spec_name)
 
         # if filtered non-root resources
         #   for each resource in filter
