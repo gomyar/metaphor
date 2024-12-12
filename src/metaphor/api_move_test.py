@@ -111,10 +111,8 @@ class ApiTest(unittest.TestCase):
 
     def test_move_children(self):
         division_id_1 = self.api.post('/divisions', {'name': 'sales'})
-#        division_id_2 = self.api.post('/divisions', {'name': 'marketting'})
 
         employee_id_1 = self.api.post(f'/divisions/{division_id_1}/employees', {'name': 'bob'})
-#        employee_id_2 = self.api.post(f'/divisions/{division_id_2}/employees', {'name': 'ned'})
 
         self.api.put('/former_divisions', {'_from': f'/divisions/{division_id_1}'})
 

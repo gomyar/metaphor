@@ -25,7 +25,6 @@ class MoveResourceUpdate:
         self.run_update_for_marked()
 
         self.move_and_mark_undeleted()
-#        self.rebuild_child_canonical_urls()
 
         self.mark_undeleted()
 
@@ -60,19 +59,15 @@ class MoveResourceUpdate:
         # mark all children
         child_query = [
             {"$match": {"_moving": self.update_id}},
-            {"$lookup": {
+            {"$graphLookup": {
                 "from": "metaphor_resource",
                 "as": "_all_children",
-                "let": {"id": {"$concat": ["^", "$_canonical_url"]}},
-                "pipeline": [
-                    {"$match": { "$expr": {
-                        "$regexMatch": {
-                            "input": "$_parent_canonical_url",
-                            "regex": "$$id",
-                        }
-                    }}}
-                ]
+                "startWith": "$_parent_id",
+                "connectFromField": "_parent_id",
+                "connectToField": "_id",
+                "depthField": "_depth",
             }},
+
             {"$unwind": "$_all_children"},
             {"$replaceRoot": {"newRoot": "$_all_children"}},
             {"$project": {
@@ -89,67 +84,6 @@ class MoveResourceUpdate:
         ]
 
         self.schema.db.metaphor_resource.aggregate(child_query)
-
-    def rebuild_child_canonical_urls(self):
-        aggregation = [
-            {"$match": {
-                "_moving": self.update_id,
-#                "_moving_child": True,
-            }},
-            {"$graphLookup": {
-                "from": "metaphor_resource",
-                "as": "_parent_canonical_url",
-                "startWith": "$_parent_id",
-                "connectFromField": "_parent_id",
-                "connectToField": "_id",
-                "depthField": "_depth",
-            }},
-            {"$addFields": {
-                "_parent_canonical_url": {
-                    "$sortArray": {
-                        "input": "$_parent_canonical_url",
-                        "sortBy": {"_depth": 1},
-                    }
-                }
-            }},
-            {"$addFields": {
-                '_parent_canonical_url': {
-                    '$reduce': {
-                        'input': '$_parent_canonical_url',
-                        'initialValue': '',
-                        'in': {
-                            '$concat': [
-                                '/',
-                                '$$this._parent_field_name',
-                                '/ID',
-                                {"$toString": '$$this._id'},
-                                '$$value',
-                                ]
-                        }
-                    }
-                }
-            }},
-            {"$addFields": {
-                '_canonical_url': {
-                    "$concat": ["$_parent_canonical_url", "/", "$_parent_field_name", "/ID", {"$toString": "$_id"}]
-                },
-                '_parent_canonical_url': {
-                    "$cond": {"if": {"$eq": ["$_parent_canonical_url", ""]}, "then": "/", "else": "$_parent_canonical_url"}
-                }
-            }},
-            {"$project": {
-                "_canonical_url": 1,
-                "_parent_canonical_url": 1,
-                "_deleted": {"$toBool": False},
-            }},
-            {"$merge": {
-                "into": "metaphor_resource",
-                "on": "_id",
-                "whenMatched": "merge",
-                "whenNotMatched": "discard",
-            }},
-        ]
-        self.schema.db.metaphor_resource.aggregate(aggregation)
 
     def run_update_for_marked(self):
         from_tree = parse_url(self.from_path, self.schema.root)
