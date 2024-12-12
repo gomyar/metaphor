@@ -25,7 +25,7 @@ class MoveResourceUpdate:
         self.run_update_for_marked()
 
         self.move_and_mark_undeleted()
-        self.rebuild_child_canonical_urls()
+#        self.rebuild_child_canonical_urls()
 
         self.mark_undeleted()
 

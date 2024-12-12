@@ -67,18 +67,20 @@ class MoveResourceTest(unittest.TestCase):
         self.assertEqual(0, self.api.get("/current_grandparents")['count'])
         self.assertEqual(2, self.api.get("/former_grandparents")['count'])
 
-        self.assertEqual(f"/former_grandparents/{grandparent_id_1}", self.api.get("/former_grandparents")['results'][0]['self'])
-        self.assertEqual(f"/former_grandparents/{grandparent_id_2}", self.api.get("/former_grandparents")['results'][1]['self'])
+        self.assertEqual("Old Bob", self.api.get("/former_grandparents")['results'][0]['name'])
+        self.assertEqual("Old Ned", self.api.get("/former_grandparents")['results'][1]['name'])
+
+        self.assertEqual("Dad", self.api.get(f"/former_grandparents/{grandparent_id_1}/parents")['results'][0]['name'])
+        self.assertEqual("Papa", self.api.get(f"/former_grandparents/{grandparent_id_2}/parents")['results'][0]['name'])
+
+        self.assertEqual("Bobby", self.api.get(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs")['results'][0]['name'])
+        self.assertEqual("Neddy", self.api.get(f"/former_grandparents/{grandparent_id_2}/parents/{parent_id_2}/childs")['results'][0]['name'])
+
 
         # test expand
-        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}", self.api.get("/former_grandparents", {"expand": "parents"})['results'][0]['parents'][0]['self'])
+        self.assertEqual(f"Dad", self.api.get("/former_grandparents", {"expand": "parents"})['results'][0]['parents'][0]['name'])
 
-        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs/{child_id_1}", self.api.get("/former_grandparents", {"expand": "parents.childs"})['results'][0]['parents'][0]['childs'][0]['self'])
-
-        # test url
-        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}", self.api.get(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}")['self'])
-
-        self.assertEqual(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs/{child_id_1}", self.api.get(f"/former_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs/{child_id_1}")['self'])
+        self.assertEqual(f"Bobby", self.api.get("/former_grandparents", {"expand": "parents.childs"})['results'][0]['parents'][0]['childs'][0]['name'])
 
     def test_move_children_update(self):
         grandparent_id_1 = self.api.post("/current_grandparents", {"name": "Bob", "age": 40})

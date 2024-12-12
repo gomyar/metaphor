@@ -142,10 +142,14 @@ class ApiTest(unittest.TestCase):
 
         # check parent url for child is correct
         employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
-        self.assertEqual("/former_divisions/%s" % division_id_1, employee['_parent_canonical_url'])
+        self.assertEqual("employees", employee['_parent_field_name'])
+        division_1 = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(division_id_1)})
+        self.assertEqual("former_divisions", division_1['_parent_field_name'])
 
         employee = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_2)})
-        self.assertEqual("/former_divisions/%s" % division_id_2, employee['_parent_canonical_url'])
+        self.assertEqual("employees", employee['_parent_field_name'])
+        division_2 = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(division_id_2)})
+        self.assertEqual("former_divisions", division_2['_parent_field_name'])
 
         # check after calcs
         self.assertEqual(None, self.api.get('/calcs/%s' % self.calcs_id)['total_divisions'])
