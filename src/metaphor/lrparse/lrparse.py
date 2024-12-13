@@ -193,7 +193,6 @@ class RootResourceRef(ResourceRef):
                         {"$match": {
                             "_type": self.spec.name,
                             "_parent_field_name": self.resource_name,
-                            "_parent_canonical_url": '/',
                             "_deleted": {"$exists": False},
                         }}
                     ]

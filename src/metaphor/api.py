@@ -171,7 +171,7 @@ class Api(object):
                 raise HTTPError('', 400, from_path, None, None)
 
             if field_spec.field_type == 'collection':
-                return self.updater.move_resource(from_path, path, parent_resource['_id'], parent_resource['_canonical_url'], field_name, spec.name)
+                return self.updater.move_resource(from_path, path, parent_resource['_id'], field_name, spec.name)
             else:
                 raise HTTPError('', 400, from_path, None, None)
 
@@ -192,7 +192,7 @@ class Api(object):
             except SyntaxError as te:
                 raise HTTPError('', 400, from_path, None, None)
 
-            return self.updater.move_resource(from_path, path, None, '/', path, 'root')
+            return self.updater.move_resource(from_path, path, None, path, 'root')
 
     def post(self, path, data, user=None):
         path = path.strip().strip('/')
@@ -750,7 +750,6 @@ class Api(object):
 
             spec_fields = spec.fields.keys()
             project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
-            project_fields['document.self'] = '$fullDocument._canonical_url'
             project_fields['type'] = {"$cond": {"if": {"$not": ["$fullDocument._deleted"]}, "then": "updated", "else": "deleted"}}
             project_fields['diff'] = "$updateDescription.updatedFields"
             watch_agg = [
@@ -802,7 +801,6 @@ class Api(object):
             # send back type of change (update / delete / create) and details of change + diff
             spec_fields = spec.fields.keys()
             project_fields = dict([('document.%s' % f, '$fullDocument.%s' % f) for f in spec_fields])
-            project_fields['document.self'] = '$fullDocument._canonical_url'
             project_fields['type'] = {
                 "$cond": {
                     "if": {
@@ -858,7 +856,6 @@ class Api(object):
             ]
 
             project_fields = dict()
-            project_fields['document.self'] = '$fullDocument._canonical_url'
             project_fields['type'] = "updated"
             project_fields['diff'] = "$updateDescription.updatedFields"
             watch_agg = [

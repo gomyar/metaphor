@@ -188,20 +188,15 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/employees/%s' % employee_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
              '_type': 'employee',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
-             '_canonical_url_division': '/divisions/%s' % division_id_1,
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/employees/%s' % employee_id_2,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -215,8 +210,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/employees/%s' % employee_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -231,8 +224,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/employees/%s' % employee_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -250,15 +241,12 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/employees/%s' % employee_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
              '_type': 'employee',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
-             '_canonical_url_division': '/divisions/%s' % division_id_1,
              'name': 'ned'}], new_employees)
 
     def test_patch(self):
@@ -271,23 +259,18 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/employees/%s' % employee_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
              '_type': 'employee',
              'age': 41,
              'division': self.schema.decodeid(division_id_1),
-             '_canonical_url_division': '/divisions/%s' % division_id_1,
              'name': 'ned'}], employees)
 
         divisions = list(self.db['metaphor_resource'].find({'_type': 'division'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/divisions/%s' % division_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'divisions',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -310,8 +293,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/divisions/%s' % division_id_1,
-             '_parent_canonical_url': '/',
              '_parent_field_name': 'divisions',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -324,8 +305,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual([
             {'_id': self.schema.decodeid(section_id_1),
             '_schema_id': self.schema._id,
-             '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
-             '_parent_canonical_url': '/divisions/%s' % division_id_1,
              '_parent_field_name': 'sections',
              '_parent_id': self.schema.decodeid(division_id_1),
              '_parent_type': 'division',
@@ -751,10 +730,8 @@ class ApiTest(unittest.TestCase):
         # test creation
         contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1), {'name': 'Angus'})
         self.assertEqual({
-            '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_id': self.schema.decodeid(section_id_1),
             '_schema_id': self.schema._id,
-            '_parent_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_field_name': 'sections',
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
@@ -762,10 +739,8 @@ class ApiTest(unittest.TestCase):
             'contractors': [{'_id': self.schema.decodeid(contractor_id)}],
             'name': 'engineering'}, self.db.metaphor_resource.find_one({'_id': self.schema.decodeid(section_id_1)}))
         self.assertEqual({
-            '_canonical_url': '/divisions/%s/sections/%s/contractors/%s' % (division_id_1, section_id_1, contractor_id),
             '_id': self.schema.decodeid(contractor_id),
             '_schema_id': self.schema._id,
-            '_parent_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_parent_field_name': 'contractors',
             '_parent_id': self.schema.decodeid(section_id_1),
             '_parent_type': 'section',

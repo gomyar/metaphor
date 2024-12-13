@@ -209,16 +209,16 @@ class Updater(object):
         self.schema.cleanup_update(update_id)
         return return_val
 
-    def move_resource(self, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name):
+    def move_resource(self, from_path, to_path, target_id, target_field_name, target_spec_name):
         log.debug("Move resource from %s to %s", from_path, to_path)
         update_id = str(self.schema.create_update())
-        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, target_id, target_canonical_url, target_field_name, target_spec_name).execute()
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, target_id, target_field_name, target_spec_name).execute()
         self.schema.cleanup_update(update_id)
         return return_val
 
     def move_resource_to_root(self, from_path, to_path, target_spec_name):
         update_id = str(self.schema.create_update())
-        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, None, None, to_path, target_spec_name).execute()
+        return_val = MoveResourceUpdate(update_id, self, self.schema, from_path, to_path, None, to_path, target_spec_name).execute()
         self.schema.cleanup_update(update_id)
         return return_val
 

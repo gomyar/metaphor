@@ -193,10 +193,8 @@ class AggregatorTest(unittest.TestCase):
 
         result = self.schema.db['metaphor_resource'].aggregate(aggregations[0])
         self.assertEqual({
-            '_canonical_url': '/divisions/%s' % division_id_1,
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -219,10 +217,8 @@ class AggregatorTest(unittest.TestCase):
 
         result = self.schema.db['metaphor_resource'].aggregate(aggregations[0])
         self.assertEqual({
-            '_canonical_url': '/divisions/%s' % division_id_1,
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_parent_canonical_url': '/',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',

@@ -187,9 +187,7 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             '_id': self.schema.decodeid(employee_id),
             '_schema_id': self.schema._id,
-            '_canonical_url': '/employees/%s' % employee_id,
             'name': 'Bob',
-            '_parent_canonical_url': '/',
             '_parent_field_name': 'employees',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -312,11 +310,9 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
-            '_parent_canonical_url': '/',
             '_type': 'division',
             'name': 'sales',
             'yearly_sales': 100,
@@ -327,11 +323,9 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
-            '_canonical_url': '/divisions/%s' % division_id_1,
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
-            '_parent_canonical_url': '/',
             '_type': 'division',
             'name': 'sales',
             'yearly_sales': 100,
@@ -341,11 +335,9 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             '_id': self.schema.decodeid(section_id_1),
             '_schema_id': self.schema._id,
-            '_canonical_url': '/divisions/%s/sections/%s' % (division_id_1, section_id_1),
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
             '_parent_field_name': 'sections',
-            '_parent_canonical_url': '/divisions/%s' % division_id_1,
             '_type': 'section',
             'name': 'appropriation',
         }, self.db['metaphor_resource'].find_one({'_id': self.schema.decodeid(section_id_1)}))

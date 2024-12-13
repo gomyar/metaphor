@@ -106,7 +106,6 @@ class LRParseTest(unittest.TestCase):
         expected = [{'$lookup': {'as': '_val',
                         'from': 'metaphor_resource',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_canonical_url': '/',
                                                 '_parent_field_name': 'employees',
                                                 '_type': 'employee'}}]}},
             {'$group': {'_id': '$_val'}},
@@ -120,7 +119,6 @@ class LRParseTest(unittest.TestCase):
         expected = [{'$lookup': {'as': '_val',
                         'from': 'metaphor_resource',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_canonical_url': '/',
                                                 '_parent_field_name': 'employees',
                                                 '_type': 'employee'}}]}},
             {'$group': {'_id': '$_val'}},
@@ -341,7 +339,6 @@ class LRParseTest(unittest.TestCase):
                 "pipeline":[
                     {"$match": {
                         "_parent_field_name": "employees",
-                        "_parent_canonical_url": "/",
                         "_type": "employee",
                         '_deleted': {'$exists': False},
                     }},

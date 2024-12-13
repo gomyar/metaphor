@@ -30,7 +30,7 @@ class MoveMutation:
             cursor = tree.root_collection().aggregate(aggregate_query)
             parent_resource = next(cursor)
 
-            return self.mutation.updater.move_resource(self.from_path, self.to_path, parent_resource['_id'], parent_resource['_canonical_url'], field_name, spec.name)
+            return self.mutation.updater.move_resource(self.from_path, self.to_path, parent_resource['_id'], field_name, spec.name)
         else:
             field_name = self.to_path
             root_field_spec = self.schema.root.fields[self.to_path]

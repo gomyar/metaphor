@@ -521,13 +521,6 @@ class Schema(object):
     def decodeid(self, str_id):
         return ObjectId(str_id[2:])
 
-    def load_canonical_parent_url(self, parent_type, parent_id):
-        if parent_id:
-            parent_data = self.load_parent_data(parent_type, parent_id)
-            return os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
-        else:
-            return '/'
-
     def load_parent_data(self, parent_type, parent_id):
         return self.db['metaphor_resource'].find_one({'_id': self.decodeid(parent_id)})
 
@@ -541,7 +534,6 @@ class Schema(object):
             field = spec.fields[field_name]
             if field.field_type == 'link' and field_value is not None:
                 parsed_data[field_name] = self.decodeid(field_value)
-                parsed_data['_canonical_url_%s' % field_name] = self.load_canonical_parent_url(field.target_spec_name, field_value)
             elif field.field_type == 'linkcollection' and field_value is not None:
                 raise Exception("Do this")
             elif field.field_type == 'datetime' and field_value is not None:
@@ -608,20 +600,12 @@ class Schema(object):
         data = self._parse_fields(spec_name, data)
 
         new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
-        if parent_id:
-            parent_data = self.load_parent_data(parent_type, parent_id)
-            parent_canonical_url = os.path.join(parent_data['_parent_canonical_url'], parent_data['_parent_field_name'], parent_id)
-        else:
-            # assume grants taken from root
-            parent_canonical_url = '/'
         data['_id'] = new_id
         data['_schema_id'] = self._id
         data['_type'] = spec_name
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
         data['_parent_field_name'] = parent_field_name
-        data['_parent_canonical_url'] = parent_canonical_url
-        data['_canonical_url'] = os.path.join(parent_canonical_url, parent_field_name, self.encodeid(new_id))
 
         if extra_fields:
             data.update(extra_fields)
