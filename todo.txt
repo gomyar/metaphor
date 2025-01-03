@@ -8,7 +8,7 @@ Idea:
 Todo:
 
  - client ui - 
-   - collection fields as "self" urls - change to just null, and infer url from field name
+   - collection fields as "self" urls - change to just null, and infer url from field name - done
 
  - add collection pagination fields to client js collections
    - also filter / sort / etc
@@ -19,7 +19,7 @@ Todo:
  - add iterator js collection for looping through entire collections
    - async
 
- - remove canonical url
+ - remove canonical url - done
 
  - mutations:
    - check all field alters (int -> str,float,collection?)
