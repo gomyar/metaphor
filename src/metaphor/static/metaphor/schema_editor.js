@@ -121,6 +121,7 @@ var create_field = {
     field_target: null,
     calc_str: null,
     is_required: false,
+    indexed: false,
 
     is_editing: false,
 
@@ -141,7 +142,8 @@ var create_field = {
              'field_type': create_field.field_type,
              'field_target': create_field.field_target,
              'calc_str': create_field.calc_str,
-             'required': create_field.is_required
+             'required': create_field.is_required,
+             'indexed': create_field.indexed
             },
             function(data) {
                 create_field.hide_popup();
@@ -160,7 +162,8 @@ var create_field = {
             {'field_type': create_field.field_type,
              'field_target': create_field.field_target,
              'calc_str': create_field.calc_str,
-             'required': create_field.is_required
+             'required': create_field.is_required,
+             'indexed': create_field.indexed
             },
             function(data) {
                 create_field.hide_popup();
@@ -183,6 +186,7 @@ var create_field = {
         create_field.calc_str = null;
         create_field.is_editing = false;
         create_field.is_required = false;
+        create_field.indexed = false;
         turtlegui.reload();
     },
 
@@ -195,7 +199,8 @@ var create_field = {
         create_field.field_target = field.target_spec_name;
         create_field.calc_str = field.calc_str;
         create_field.is_editing = true;
-        create_field.is_required = field.required;
+        create_field.is_required = field.required || false;
+        create_field.indexed = field.indexed || false;
         turtlegui.reload();
     },
 

@@ -1,7 +1,7 @@
 <html>
 <head>
 
-<script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.23.2/turtlegui.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.24/turtlegui.js" crossorigin="anonymous"></script>
 <script src="/admin/static/metaphor/login.js"></script>
 <script src="/admin/static/metaphor/admin.js"></script>
 
@@ -76,13 +76,13 @@
 <div class="layer anchorright current_schema">
     <div class="title"><i>Current Schema:</i></div>
         <div class="schematitle">
-            <span gui-text="admin.current_schema.name"></span>
-            <span gui-text="admin.current_schema.version"></span>
+            <span gui-text="admin.current_schema?.name"></span>
+            <span gui-text="admin.current_schema?.version"></span>
         </div>
  
         <div>
-            <i gui-text="admin.current_schema.updated"></i>
-            <span><a class="button" gui-attrs="href='/admin/schemas/'+admin.current_schema.id">View Schema</a></span>
+            <i gui-text="admin.current_schema?.updated"></i>
+            <span><a class="button" gui-attrs="href='/admin/schemas/'+admin.current_schema?.id">View Schema</a></span>
             <span class="button" gui-click="admin.copy_schema(admin.current_schema)">Copy Schema</span>
 
         </div>
