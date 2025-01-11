@@ -47,7 +47,7 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([
             [{'$lookup': {'as': '_field_employees',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -66,7 +66,7 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([
             [{'$lookup': {'as': '_field_sections',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -76,7 +76,7 @@ class AggregatorTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_all_ages',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'pipeline': [{'$match': {'_type': 'division'}}]}},
             {'$group': {'_id': '$_field_all_ages'}},
             {'$unwind': '$_id'},
@@ -90,7 +90,7 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([
             [{'$lookup': {'as': '_field_members',
-                        'from': 'metaphor_section',
+                        'from': 'resource_section',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
                                                                                 {'$ifNull': ['$members',
@@ -101,7 +101,7 @@ class AggregatorTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
             {'$lookup': {'as': '_field_sections',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -111,7 +111,7 @@ class AggregatorTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
             {'$lookup': {'as': '_field_parent_division_employees',
-                        'from': 'metaphor_employee',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_parent_id',
                                                                                 '$$id']},
@@ -121,7 +121,7 @@ class AggregatorTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
             {'$lookup': {'as': '_field_employees',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -131,7 +131,7 @@ class AggregatorTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_employees',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -150,7 +150,7 @@ class AggregatorTest(unittest.TestCase):
 
         self.assertEqual([
             [{'$lookup': {'as': '_field_employees',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -161,7 +161,7 @@ class AggregatorTest(unittest.TestCase):
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$match': {'_type': 'section'}}],
             [{'$lookup': {'as': '_field_employees',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_parent_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                 '$$id']},
@@ -171,7 +171,7 @@ class AggregatorTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_age_calc',
-                        'from': 'metaphor_section',
+                        'from': 'resource_section',
                         'pipeline': [{'$match': {'_type': 'section'}}]}},
             {'$group': {'_id': '$_field_age_calc'}},
             {'$unwind': '$_id'},
@@ -191,7 +191,7 @@ class AggregatorTest(unittest.TestCase):
 
         aggregations = self.aggregator.get_for_resource(tree, 'employee', self.schema.decodeid(employee_id_1))
 
-        result = self.schema.db['metaphor_employee'].aggregate(aggregations[0])
+        result = self.schema.db['resource_employee'].aggregate(aggregations[0])
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
@@ -234,7 +234,7 @@ class AggregatorTest(unittest.TestCase):
         aggregations = self.aggregator.get_for_resource(tree, 'division', self.schema.decodeid(division_id_1), 'division', 'max_divisions_name')
 
         self.assertEqual([[{'$lookup': {'as': '_field_max_divisions_name',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'pipeline': [{'$match': {'_type': 'division'}}]}},
             {'$group': {'_id': '$_field_max_divisions_name'}},
             {'$unwind': '$_id'},

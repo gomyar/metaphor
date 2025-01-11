@@ -36,6 +36,6 @@ class DeleteResourceUpdate:
         spec = self.schema.specs[self.spec_name]
         for field_name, field in spec.fields.items():
             if field.field_type == 'collection':
-                for child_resource in self.schema.db['metaphor_%s' % field.target_spec_name].find({"_type": field.target_spec_name, '_parent_id': self.schema.decodeid(self.resource_id)}, {'_id': 1}):
+                for child_resource in self.schema.db['resource_%s' % field.target_spec_name].find({"_type": field.target_spec_name, '_parent_id': self.schema.decodeid(self.resource_id)}, {'_id': 1}):
                     self.updater.delete_resource(field.target_spec_name, self.schema.encodeid(child_resource['_id']), self.spec_name, field_name)
 

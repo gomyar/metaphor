@@ -184,7 +184,7 @@ class ApiTest(unittest.TestCase):
         employee_id_2 = self.api.post('/employees', {'name': 'bob', 'age': 31})
 
         self.assertEqual(2, self.api.get('/employees')['count'])
-        new_employees = list(self.db['metaphor_resource'].find({'_type': 'employee'}))
+        new_employees = list(self.db['resource_employee'].find({}))
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
@@ -206,7 +206,7 @@ class ApiTest(unittest.TestCase):
 
     def test_post_datetime(self):
         employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 31, 'created': '2021-12-11'})
-        new_employees = list(self.db['metaphor_resource'].find())
+        new_employees = list(self.db['resource_employee'].find())
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
@@ -220,7 +220,7 @@ class ApiTest(unittest.TestCase):
 
     def test_post_datetime_with_z(self):
         employee_id_1 = self.api.post('/employees', {'name': 'bob', 'age': 31, 'created': '2021-12-11T12:11:10.123Z'})
-        new_employees = list(self.db['metaphor_resource'].find())
+        new_employees = list(self.db['resource_employee'].find())
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
@@ -237,7 +237,7 @@ class ApiTest(unittest.TestCase):
         employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
 
         self.assertEqual(1, len(self.api.get('/employees')['results']))
-        new_employees = list(self.db['metaphor_resource'].find({'_type': 'employee'}))
+        new_employees = list(self.db['resource_employee'].find({}))
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
@@ -255,7 +255,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.patch('employees/%s' % employee_id_1, {'division': division_id_1})
 
-        employees = list(self.db['metaphor_resource'].find({'_type': 'employee'}))
+        employees = list(self.db['resource_employee'].find({}))
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
@@ -267,7 +267,7 @@ class ApiTest(unittest.TestCase):
              'division': self.schema.decodeid(division_id_1),
              'name': 'ned'}], employees)
 
-        divisions = list(self.db['metaphor_resource'].find({'_type': 'division'}))
+        divisions = list(self.db['resource_division'].find({'_type': 'division'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
@@ -289,7 +289,7 @@ class ApiTest(unittest.TestCase):
             'id': section_id_1,
         }], self.api.get('/divisions/%s/sections' % division_id_1)['results'])
 
-        new_divisions = list(self.db['metaphor_resource'].find({'_type': 'division'}))
+        new_divisions = list(self.db['resource_division'].find({'_type': 'division'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
@@ -301,7 +301,7 @@ class ApiTest(unittest.TestCase):
              'yearly_sales': 100,
              }], new_divisions)
 
-        new_sections = list(self.db['metaphor_resource'].find({'_type': 'section'}))
+        new_sections = list(self.db['resource_section'].find({'_type': 'section'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(section_id_1),
             '_schema_id': self.schema._id,
@@ -737,7 +737,7 @@ class ApiTest(unittest.TestCase):
             '_parent_type': 'division',
             '_type': 'section',
             'contractors': [{'_id': self.schema.decodeid(contractor_id)}],
-            'name': 'engineering'}, self.db.metaphor_resource.find_one({'_id': self.schema.decodeid(section_id_1)}))
+            'name': 'engineering'}, self.db.resource_section.find_one({'_id': self.schema.decodeid(section_id_1)}))
         self.assertEqual({
             '_id': self.schema.decodeid(contractor_id),
             '_schema_id': self.schema._id,
@@ -745,7 +745,7 @@ class ApiTest(unittest.TestCase):
             '_parent_id': self.schema.decodeid(section_id_1),
             '_parent_type': 'section',
             '_type': 'employee',
-            'name': 'Angus'}, self.db.metaphor_resource.find_one({'_id': self.schema.decodeid(contractor_id)}))
+            'name': 'Angus'}, self.db.resource_contractor.find_one({'_id': self.schema.decodeid(contractor_id)}))
 
         # test calc update
         self.assertEqual([

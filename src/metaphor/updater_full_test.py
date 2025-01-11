@@ -44,7 +44,7 @@ class UpdaterTest(unittest.TestCase):
         })
 
         division_data = self.db.resource_division.find_one()
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_dirty': {},
@@ -59,7 +59,7 @@ class UpdaterTest(unittest.TestCase):
         self.updater.update_fields('employee', employee_id_1, {"age": 20})
 
         division_data = self.db.resource_division.find_one()
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_dirty': {},
@@ -78,7 +78,7 @@ class UpdaterTest(unittest.TestCase):
             'division', None, 'divisions', None, {'name': 'sales'})
 
         division_data = self.db.resource_division.find_one()
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_dirty': {},
@@ -96,7 +96,7 @@ class UpdaterTest(unittest.TestCase):
         })
 
         division_data = self.db.resource_division.find_one()
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
             '_schema_id': self.schema._id,
             '_dirty': {},
@@ -109,7 +109,7 @@ class UpdaterTest(unittest.TestCase):
         }, division_data)
 
         employee_data = self.db.resource_employee.find_one()
-        self.assertEquals({
+        self.assertEqual({
             '_id': self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
             '_dirty': {},
@@ -155,8 +155,8 @@ class UpdaterTest(unittest.TestCase):
         log.debug("created entry 3")
 
         division_data = self.db.resource_division.find_one()
-        self.assertEquals("sales", division_data['name'])
-        self.assertEquals(3, len(division_data['managers']))
+        self.assertEqual("sales", division_data['name'])
+        self.assertEqual(3, len(division_data['managers']))
         self.assertTrue({"_id" : self.schema.decodeid(employee_id_1)} in division_data['managers'])
         self.assertTrue({"_id" : self.schema.decodeid(employee_id_2)} in division_data['managers'])
         self.assertTrue({"_id" : self.schema.decodeid(employee_id_3)} in division_data['managers'])
@@ -218,7 +218,7 @@ class UpdaterTest(unittest.TestCase):
         self.updater.create_linkcollection_entry('division', division_id_1, 'managers', employee_id_1)
 
         employee_data = self.db.resource_employee.find_one()
-        self.assertEquals({
+        self.assertEqual({
             "_id" : self.schema.decodeid(employee_id_1),
             '_schema_id': self.schema._id,
             '_dirty': {},

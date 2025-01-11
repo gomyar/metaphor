@@ -67,19 +67,19 @@ class Api(object):
         return ids_to_dots
 
     def _read_grants(self, user_id, method):
-        results = self.db.metaphor_user.aggregate([
+        results = self.db.resource_user.aggregate([
             {"$match": {"_id": user_id}},
             {"$lookup": {
                 "foreignField": "_id",
                 "localField": "groups._id",
                 "as": "groups",
-                "from": "metaphor_user",
+                "from": "resource_user",
             }},
             {"$lookup": {
                 "foreignField": "_parent_id",
                 "localField": "groups._id",
                 "as": "group_grants",
-                "from": "metaphor_user",
+                "from": "resource_user",
             }},
             {"$limit": 1},
             {"$unwind": "$group_grants"},
@@ -475,7 +475,7 @@ class Api(object):
 
         def lookup_agg(spec_name, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": "metaphor_%s" % spec_name,
+                "from": "resource_%s" % spec_name,
                 "as": as_field,
                 "let": {
                     "v_id": "$%s" % local_field,
@@ -500,7 +500,7 @@ class Api(object):
 
         def lookup_collection_agg(spec_name, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": "metaphor_%s" % spec_name,
+                "from": "resource_%s" % spec_name,
                 "as": as_field,
                 "let": {
                     "v_id": {"$ifNull": ["$%s" % local_field, []]},
@@ -525,7 +525,7 @@ class Api(object):
 
         def lookup_reverse_link_collection_agg(spec_name, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": "metaphor_%s" % spec_name,
+                "from": "resource_%s" % spec_name,
                 "as": as_field,
                 "let": {
                     "v_id": {"$ifNull": ["$%s" % local_field, []]},

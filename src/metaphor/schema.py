@@ -388,9 +388,9 @@ class Schema(object):
         spec = self.get_spec(spec_name)
         field = spec.fields[from_field_name]
         if field.field_type == 'collection':
-            self.db['metaphor_%s' % field.target_spec_name].update_many({"_type": field.target_spec_name, "_parent_field_name": from_field_name}, {"$set": {"_parent_field_name": to_field_name}})
+            self.db['resource_%s' % field.target_spec_name].update_many({"_type": field.target_spec_name, "_parent_field_name": from_field_name}, {"$set": {"_parent_field_name": to_field_name}})
         else:
-            self.db['metaphor_%s' % spec_name].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
+            self.db['resource_%s' % spec_name].update_many({"_type": spec_name}, {"$rename": {from_field_name: to_field_name}})
         if spec_name == 'root':
             self.db['metaphor_schema'].update_one(
                 {'_id': self._id},
@@ -405,9 +405,9 @@ class Schema(object):
         spec.fields.pop(from_field_name)
 
     def rename_spec(self, from_spec_name, to_spec_name):
-        #self.db['metaphor_resource'].update_many({"_type": from_spec_name}, {"$set": {"_type": to_spec_name}})
         # TODO: do for each child:
-        self.db['metaphor_resource'].update_many({"_parent_type": from_spec_name}, {"$set": {"_parent_type": to_spec_name}})
+        for spec_name in self.specs:
+            self.db['resource_%s' % spec_name].update_many({"_parent_type": from_spec_name}, {"$set": {"_parent_type": to_spec_name}})
         self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {'$rename': {f'specs.{from_spec_name}': f'specs.{to_spec_name}'}},
@@ -586,10 +586,11 @@ class Schema(object):
 
     def cleanup_update(self, update_id):
         # remove dirty flags
-        self.db["resource_%s" % spec_name].update_many(
-            {"_dirty.%s" % update_id: {"$exists": True}},
-            {"$unset": {"_dirty.%s" % update_id: ""}}
-        )
+        for spec_name in self.specs:
+            self.db["resource_%s" % spec_name].update_many(
+                {"_dirty.%s" % update_id: {"$exists": True}},
+                {"$unset": {"_dirty.%s" % update_id: ""}}
+            )
         return self.db['metaphor_updates'].delete_one({"_id": ObjectId(update_id)})
 
     def update_error(self, update_id, message):
@@ -614,8 +615,8 @@ class Schema(object):
         if spec_name == 'user':
             data['_user_hash'] = str(uuid4())
 
-        new_resource_id = self.db['resource_%s' % spec_name].insert(data)
-        return self.encodeid(new_resource_id)
+        insert_result = self.db['resource_%s' % spec_name].insert_one(data)
+        return self.encodeid(insert_result.inserted_id)
 
     def save_details(self):
         self.db['metaphor_schema'].update_one({"_id": self._id}, {"$set": {"name": self.name, "description": self.description}})
@@ -749,13 +750,13 @@ class Schema(object):
 #        self.db['resource_%s' % spec_name].update_many({'_type': spec_name}, {'$unset': {field_name: ''}})
 
     def load_user_by_username(self, username, load_hash=False):
-        return self._load_user_with_aggregate({'username': username, '_type': 'user'}, load_hash)
+        return self._load_user_with_aggregate({'username': username}, load_hash)
 
     def load_user_by_user_hash(self, user_hash):
-        return self._load_user_with_aggregate({'_user_hash': user_hash, '_type': 'user'})
+        return self._load_user_with_aggregate({'_user_hash': user_hash})
 
     def _load_user_with_aggregate(self, match, load_hash=False):
-        user_data = self.db['metaphor_user'].aggregate([
+        user_data = self.db['resource_user'].aggregate([
             {"$match": match},
             {"$limit": 1},
 
@@ -763,13 +764,13 @@ class Schema(object):
                 "foreignField": "_id",
                 "localField": "groups._id",
                 "as": "groups",
-                "from": "metaphor_group",
+                "from": "resource_group",
             }},
             {"$lookup": {
                 "foreignField": "_parent_id",
                 "localField": "groups._id",
                 "as": "group_grants",
-                "from": "metaphor_grant",
+                "from": "resource_grant",
             }},
             {"$limit": 1},
             {"$project": {
@@ -854,4 +855,4 @@ class Schema(object):
                 {"$or": or_clause},
             ]
         }
-        return [g['_id'] for g in self.db['metaphor_grant'].find(query, {'_id': True})]
+        return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]

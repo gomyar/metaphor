@@ -288,7 +288,7 @@ class LRParseTest(unittest.TestCase):
             {'$replaceRoot': {'newRoot': '$_id'}},
             {'$match': {'age': {'$gt': 40}}},
             {'$lookup': {'as': '_val',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$division'},
                         'pipeline': [{'$match': {'$expr': {'$and': [
                                         {'$eq': ['$_id', '$$id']},
@@ -354,7 +354,7 @@ class LRParseTest(unittest.TestCase):
         aggregation = tree.create_aggregation()
         self.assertEqual([
             {'$lookup': {'as': '_val',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$division'},
                         'pipeline': [{'$match': {'$expr': {
                                         '$and': [
@@ -596,13 +596,13 @@ class LRParseTest(unittest.TestCase):
         employee_id_2 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 35}, 'employees', 'branch', branch_id)
 
         tree=parse('self.name -> ("sales": (self.employees[age>20]), "marketting": (self.employees[age>30]))', spec)
-        val = list(self.schema.db['metaphor_branch'].aggregate([{"$match": {"_id": self.schema.decodeid(branch_id)}}] + tree.create_aggregation()))
+        val = list(self.schema.db['resource_branch'].aggregate([{"$match": {"_id": self.schema.decodeid(branch_id)}}] + tree.create_aggregation()))
         self.assertEqual(2, len(val))
         self.assertEqual("bob", val[0]['name'])
         self.assertEqual("ned", val[1]['name'])
 
         self.schema.update_resource_fields('branch', branch_id, {'name': 'marketting'})
-        val = list(self.schema.db['metaphor_branch'].aggregate([{"$match": {"_id": self.schema.decodeid(branch_id)}}] + tree.create_aggregation()))
+        val = list(self.schema.db['resource_branch'].aggregate([{"$match": {"_id": self.schema.decodeid(branch_id)}}] + tree.create_aggregation()))
         self.assertEqual(1, len(val))
         self.assertEqual("ned", val[0]['name'])
 
@@ -616,19 +616,19 @@ class LRParseTest(unittest.TestCase):
 
         # max
         tree = parse("max(employees.salary)", employee_spec)
-        self.assertEqual(30, self.perform_simple_calc(self.schema.db['metaphor_resource'], employee_id_1, tree))
+        self.assertEqual(30, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
         # min
         tree = parse("min(employees.salary)", employee_spec)
-        self.assertEqual(10, self.perform_simple_calc(self.schema.db['metaphor_resource'], employee_id_1, tree))
+        self.assertEqual(10, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
         # avg
         tree = parse("average(employees.salary)", employee_spec)
-        self.assertEqual(20, self.perform_simple_calc(self.schema.db['metaphor_resource'], employee_id_1, tree))
+        self.assertEqual(20, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
         # sum
         tree = parse("sum(employees.salary)", employee_spec)
-        self.assertEqual(60, self.perform_simple_calc(self.schema.db['metaphor_resource'], employee_id_1, tree))
+        self.assertEqual(60, self.perform_simple_calc(self.schema.db['resource_employee'], employee_id_1, tree))
 
     def test_extra_math(self):
         employee_spec = self.schema.specs['employee']
@@ -787,7 +787,7 @@ class LRParseTest(unittest.TestCase):
         # Note: the first aggregation is the "tracker" aggregation
         self.assertEqual([
             [{'$lookup': {'as': '_field_parttimers',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
                                                                                 {'$ifNull': ['$parttimers',
@@ -798,7 +798,7 @@ class LRParseTest(unittest.TestCase):
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_parttimers',
-                        'from': 'metaphor_division',
+                        'from': 'resource_division',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
                                                                                 {'$ifNull': ['$parttimers',
