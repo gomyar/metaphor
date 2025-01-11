@@ -4,18 +4,11 @@ def create_update_aggregation(resource_name, field_name, calc_tree, match_agg, u
         calc_agg = calc_tree.create_aggregation()
         agg = match_agg + [
             {"$lookup": {
-                "from": "metaphor_resource",
+                "from": "resource_%s" % resource_name,
                 "as": field_name,
                 "let": {"id": "$_id"},
                 "pipeline": [
-                    {"$match": {
-                        "$expr": {
-                            "$and": [
-                                {"$eq": ["$_id", "$$id"]},
-                                {"$eq": ["$_type", resource_name]},
-                            ]
-                        }
-                    }},
+                    {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                 ] + calc_agg
             }},
         ]
@@ -66,7 +59,7 @@ def create_update_aggregation(resource_name, field_name, calc_tree, match_agg, u
 
     agg.extend([
         {"$merge": {
-            "into": "metaphor_resource",
+            "into": "resource_%s" % resource_name,
             "on": "_id",
         }}
     ])

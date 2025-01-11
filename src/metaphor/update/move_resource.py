@@ -45,20 +45,20 @@ class MoveResourceUpdate:
                 "_moving": self.update_id,
             }},
             {"$merge": {
-                "into": "metaphor_resource",
+                "into": "metaphor_%s" % to_spec.name,
                 "on": "_id",
                 "whenMatched": "merge",
                 "whenNotMatched": "discard",
             }},
         ]
 
-        self.schema.db.metaphor_resource.aggregate(mark_query)
+        self.schema.db['metaphor_%s' % to_spec.name].aggregate(mark_query)
 
         # mark all children
         child_query = [
             {"$match": {"_moving": self.update_id}},
             {"$graphLookup": {
-                "from": "metaphor_resource",
+                "from": "metaphor_%s" % from_spec.name,
                 "as": "_all_children",
                 "startWith": "$_parent_id",
                 "connectFromField": "_parent_id",
@@ -74,14 +74,14 @@ class MoveResourceUpdate:
                 "_moving_child": {"$toBool": True},
             }},
             {"$merge": {
-                "into": "metaphor_resource",
+                "into": "metaphor_%s" % to_spec.name,
                 "on": "_id",
                 "whenMatched": "merge",
                 "whenNotMatched": "discard",
             }},
         ]
 
-        self.schema.db.metaphor_resource.aggregate(child_query)
+        self.schema.db['metaphor_%s' % from_spec.name].aggregate(child_query)
 
     def run_update_for_marked(self):
         from_tree = parse_url(self.from_path, self.schema.root)
@@ -111,15 +111,16 @@ class MoveResourceUpdate:
                 "_parent_field_name": self.target_field_name,
             }},
             {"$merge": {
-                "into": "metaphor_resource",
+                "into": "metaphor_%s" % to_spec.name,
                 "on": "_id",
                 "whenMatched": "merge",
                 "whenNotMatched": "discard",
             }},
         ]
-        self.schema.db.metaphor_resource.aggregate(aggregation)
+        self.schema.db['metaphor_%s' % from_spec.name].aggregate(aggregation)
 
     def mark_undeleted(self):
+        # TODO: replace with graphlookup
         self.schema.db.metaphor_resource.update_many(
             {"_moving": self.update_id},
             {"$unset": {"_deleted": ""}})

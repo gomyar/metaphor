@@ -43,11 +43,11 @@ class UpdaterTest(unittest.TestCase):
 
         self.updater.create_linkcollection_entry('user', self.user_id, 'groups', self.admin_group_id)
 
-        user_db = self.db['metaphor_resource'].find_one({'_type': 'user'})
+        user_db = self.db['resource_user'].find_one()
         self.assertEqual(1, len(user_db['read_grants']))
 
         self.updater.delete_linkcollection_entry('user', self.schema.decodeid(self.user_id), 'groups', self.admin_group_id)
 
-        user_db = self.db['metaphor_resource'].find_one({'_type': 'user'})
+        user_db = self.db['resource_user'].find_one()
         self.assertEqual(0, len(user_db['read_grants']))
 

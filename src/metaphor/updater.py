@@ -105,7 +105,7 @@ class Updater(object):
             ]
         merge_agg = [
             {"$merge": {
-                "into": "metaphor_resource",
+                "into": "resource_%s" % calc_spec_name,
                 "on": "_id",
                 "whenNotMatched": "discard",
             }}
@@ -113,16 +113,11 @@ class Updater(object):
         # nest this into dependent agg
         nested_agg = [
             {"$lookup": {
-                "from": "metaphor_resource",
+                "from": "resource_%s" % calc_spec_name,
                 "as": "_update",
                 "let": {"id": "$_id"},
                 "pipeline": [
-                    {"$match": {"$expr": {
-                        "$and": [
-                            {"$eq": ["$_id", "$$id"]},
-                            {"$eq": ["$_type", calc_spec_name]},
-                        ]
-                    }}},
+                    {"$match": {"$expr": {"$eq": ["$_id", "$$id"]}}},
                 ] + update_agg,
             }},
         ]
@@ -131,17 +126,12 @@ class Updater(object):
                 {"$unwind": {"path": "$_update", "preserveNullAndEmptyArrays": True}},
                 {"$addFields": {"_update": {"$ifNull": ["$_update", {"_val": None}]}}},
             ])
-        type_agg = [{"$match": {"_type": spec_name}}]
-        self.schema.db["metaphor_resource"].aggregate(type_agg + start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
+        log.debug("Aggregate %s on resource_%s: %s", calc_field_name, spec_name, start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
+        self.schema.db["resource_%s" % spec_name].aggregate(start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
 
         # update for subsequent calcs, if any
         new_start_agg = [
-            {"$match": {"$expr": {
-                "$and": [
-                    {"$in": [calc_field_name, {"$ifNull": ["$_dirty.%s" % update_id, []]}]},
-                    {"$eq": ["$_type", calc_spec_name]},
-                ]
-            }}}
+            {"$match": {"$expr": {"$in": [calc_field_name, {"$ifNull": ["$_dirty.%s" % update_id, []]}]}}}
         ]
         self.update_for_field(calc_spec_name, calc_field_name, update_id, new_start_agg)
 
@@ -164,7 +154,7 @@ class Updater(object):
 
     def _run_update_merge(self, calc_spec_name, calc_field_name, calc_tree, match_agg, updated_resource_spec):
         agg = create_update_aggregation(calc_spec_name, calc_field_name, calc_tree, match_agg)
-        self.schema.db['metaphor_resource'].aggregate([{"$match": {"_type": updated_resource_spec.name}}] + agg)
+        self.schema.db['resource_%s' % updated_resource_spec.name].aggregate(agg)
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
                         parent_id, fields, grants=None):
@@ -233,7 +223,7 @@ class Updater(object):
             self.schema.read_root_grants('users'))
 
     def delete_user(self, username):
-        user = self.schema.db['metaphor_resource'].find_one({'_type': 'user', 'username': username})
+        user = self.schema.db['resource_user'].find_one({'username': username})
         self.delete_resource('user', self.schema.encodeid(user['_id']), user['_parent_type'], user['_parent_field_name'])
 
     def delete_links_to_resource(self, spec_name, resource_id):

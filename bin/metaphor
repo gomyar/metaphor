@@ -34,7 +34,7 @@ def run_create_superuser(mongohost, mongodb):
     username = input("Input username: ")
     password = getpass.getpass("Input password: ")
     if username and password:
-        if db.metaphor_resource.find_one({'username': username, '_type': 'user'}):
+        if db.resource_user.find_one({'username': username}):
             print("User %s already exists" % username)
         else:
             schema_factory = SchemaFactory(db)
@@ -44,7 +44,7 @@ def run_create_superuser(mongohost, mongodb):
 
             user_id = updater.create_user(username, password)
 
-            admin_group = db.metaphor_resource.find_one({'name': 'admin', '_type': 'group'})
+            admin_group = db.resource_group.find_one({'name': 'admin'})
             updater.create_linkcollection_entry('user', user_id, 'groups', schema.encodeid(admin_group['_id']))
 
             print("User %s created" % username)
@@ -56,7 +56,7 @@ def run_create_user(mongohost, mongodb):
     username = input("Input username: ")
     password = getpass.getpass("Input password: ")
     if username and password:
-        if db.metaphor_resource.find_one({'username': username, '_type': 'user'}):
+        if db.resource_user.find_one({'username': username}):
             print("User %s already exists" % username)
         else:
             schema_factory = SchemaFactory(db)
@@ -75,7 +75,7 @@ def run_delete_user(mongohost, mongodb):
     db = client[mongodb]
     username = input("Input username: ")
     if username:
-        if db.metaphor_resource.find_one({'username': username, '_type': 'user'}):
+        if db.resource_user.find_one({'username': username}):
             schema_factory = SchemaFactory(db)
             schema = schema_factory.load_current_schema()
 

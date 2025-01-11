@@ -44,11 +44,11 @@ class UpdaterTest(unittest.TestCase):
         self.updater.create_linkcollection_entry('division', division_id_2, 'employees', employee_id_1)
         self.updater.create_linkcollection_entry('division', division_id_2, 'employees', employee_id_2)
 
-        employee_1 = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_1)})
-        employee_2 = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(employee_id_2)})
+        employee_1 = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_1)})
+        employee_2 = self.db['resource_employee'].find_one({"_id": self.schema.decodeid(employee_id_2)})
 
-        division_1 = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(division_id_1)})
-        division_2 = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(division_id_2)})
+        division_1 = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_1)})
+        division_2 = self.db['resource_division'].find_one({"_id": self.schema.decodeid(division_id_2)})
 
         self.assertEqual([{"_id": self.schema.decodeid(employee_id_1)}], division_1['older_employees'])
         self.assertEqual([{"_id": self.schema.decodeid(employee_id_1)}, {"_id": self.schema.decodeid(employee_id_2)}], division_2['older_employees'])

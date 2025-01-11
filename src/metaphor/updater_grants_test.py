@@ -58,7 +58,7 @@ class UpdaterTest(unittest.TestCase):
         self.updater.create_resource('grant', 'group', 'grants', self.managers_group_id, {'type': 'read', 'url': '/divisions/'})
 
         # confirm grants exist
-        bob = self.db['metaphor_resource'].find_one({'username': 'bob'})
+        bob = self.db['resource_user'].find_one({'username': 'bob'})
 
         # add ego grants, confirm
 

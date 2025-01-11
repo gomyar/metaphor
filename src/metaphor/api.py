@@ -67,19 +67,19 @@ class Api(object):
         return ids_to_dots
 
     def _read_grants(self, user_id, method):
-        results = self.db.metaphor_resource.aggregate([
+        results = self.db.metaphor_user.aggregate([
             {"$match": {"_id": user_id}},
             {"$lookup": {
                 "foreignField": "_id",
                 "localField": "groups._id",
                 "as": "groups",
-                "from": "metaphor_resource",
+                "from": "metaphor_user",
             }},
             {"$lookup": {
                 "foreignField": "_parent_id",
                 "localField": "groups._id",
                 "as": "group_grants",
-                "from": "metaphor_resource",
+                "from": "metaphor_user",
             }},
             {"$limit": 1},
             {"$unwind": "$group_grants"},
@@ -473,9 +473,9 @@ class Api(object):
 
     def create_field_expansion_aggregations(self, spec, expand_dict):
 
-        def lookup_agg(from_field, local_field, foreign_field, as_field, expand_further):
+        def lookup_agg(spec_name, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": "metaphor_resource",
+                "from": "metaphor_%s" % spec_name,
                 "as": as_field,
                 "let": {
                     "v_id": "$%s" % local_field,
@@ -486,7 +486,7 @@ class Api(object):
                             "$expr": {
                                 "$and": [
                                     {"$eq": ["$$v_id", "$%s" % foreign_field]},
-                                    {"$eq": ["$_type", from_field]},
+                                    {"$eq": ["$_type", spec_name]},
                                 ]
                             }
                         }
@@ -498,9 +498,9 @@ class Api(object):
                 agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name]))
             return agg
 
-        def lookup_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
+        def lookup_collection_agg(spec_name, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": "metaphor_resource",
+                "from": "metaphor_%s" % spec_name,
                 "as": as_field,
                 "let": {
                     "v_id": {"$ifNull": ["$%s" % local_field, []]},
@@ -511,7 +511,7 @@ class Api(object):
                             "$expr": {
                                 "$and": [
                                     {"$in": ["$%s" % foreign_field, "$$v_id"]},
-                                    {"$eq": ["$_type", from_field]},
+                                    {"$eq": ["$_type", spec_name]},
                                 ]
                             }
                         }
@@ -523,9 +523,9 @@ class Api(object):
                 agg['$lookup']['pipeline'].extend(self.create_field_expansion_aggregations(inner_spec, expand_further[inner_field_name]))
             return agg
 
-        def lookup_reverse_link_collection_agg(from_field, local_field, foreign_field, as_field, expand_further):
+        def lookup_reverse_link_collection_agg(spec_name, local_field, foreign_field, as_field, expand_further):
             agg = {"$lookup": {
-                "from": "metaphor_resource",
+                "from": "metaphor_%s" % spec_name,
                 "as": as_field,
                 "let": {
                     "v_id": {"$ifNull": ["$%s" % local_field, []]},
@@ -537,7 +537,7 @@ class Api(object):
                             "$expr": {
                                 "$and": [
                                     {"$in": ["$$v_id", "$%s" % foreign_field]},
-                                    {"$eq": ["$_type", from_field]},
+                                    {"$eq": ["$_type", spec_name]},
                                 ]
                             }
                         }
@@ -698,7 +698,7 @@ class Api(object):
             pagination,
         ]
 
-        cursor = self.schema.db['metaphor_resource'].aggregate(aggregation)
+        cursor = self.schema.db['resource_%s' % spec_name].aggregate(aggregation)
         page_results = next(cursor)
 
         results = list(page_results['results'])
@@ -863,7 +863,7 @@ class Api(object):
                 {"$project": project_fields},
             ]
 
-        return self.schema.db['metaphor_resource'].watch(watch_agg, full_document='updateLookup')
+        return self.schema.db['resource_%s' % spec.name].watch(watch_agg, full_document='updateLookup')
 
     def _parse_canonical_url(self, path):
         try:

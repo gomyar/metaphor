@@ -115,7 +115,7 @@ class ServerTest(TestCase):
 
         grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'companies'})
 
-        user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
 
         self.assertEqual([{'_id': self.schema.decodeid(grant_1)}], user['create_grants'])
 
@@ -123,7 +123,7 @@ class ServerTest(TestCase):
         self.api.delete('/users/%s/groups/%s' % (self.user_id, self.group_id))
 
         # assert grants are removed
-        user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
         self.assertEqual([], user['create_grants'])
 
     def test_delete_group_updates_user_grants(self):
@@ -134,7 +134,7 @@ class ServerTest(TestCase):
 
         grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'companies'})
 
-        user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
 
         self.assertEqual([{'_id': self.schema.decodeid(grant_1)}], user['create_grants'])
 
@@ -142,7 +142,7 @@ class ServerTest(TestCase):
         self.api.delete('/groups/%s' % (self.group_id))
 
         # assert grants are removed
-        user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
         self.assertEqual([], user['create_grants'])
 
     def test_delete_group_deletes_child_grants(self):
@@ -162,12 +162,12 @@ class ServerTest(TestCase):
 
     def test_create_password(self):
         user_id = self.api.post('/users', {'username': 'fred', 'password': 'secret'})
-        user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(user_id)})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(user_id)})
         self.assertTrue(check_password_hash(user['password'], 'secret'))
 
     def test_patch_password(self):
         self.api.patch('/users/%s' % self.user_id, {'password': 'secret'})
-        user = self.db['metaphor_resource'].find_one({"_id": self.schema.decodeid(self.user_id)})
+        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
         self.assertTrue(check_password_hash(user['password'], 'secret'))
 
     def test_patch_to_collection_returns_400(self):
