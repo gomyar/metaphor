@@ -745,7 +745,7 @@ class ApiTest(unittest.TestCase):
             '_parent_id': self.schema.decodeid(section_id_1),
             '_parent_type': 'section',
             '_type': 'employee',
-            'name': 'Angus'}, self.db.resource_contractor.find_one({'_id': self.schema.decodeid(contractor_id)}))
+            'name': 'Angus'}, self.db.resource_employee.find_one({'_id': self.schema.decodeid(contractor_id)}))
 
         # test calc update
         self.assertEqual([

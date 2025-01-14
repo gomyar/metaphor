@@ -278,11 +278,11 @@ class LRParseTest(unittest.TestCase):
 
         aggregation = tree.create_aggregation()
         self.assertEqual([
+            {'$match': {'_parent_id': None}},
             {'$lookup': {'as': '_val',
                         'from': 'resource_employee',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_field_name': 'employees',
-                                                '_type': 'employee'}}]}},
+                                                '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
@@ -311,11 +311,11 @@ class LRParseTest(unittest.TestCase):
 
         aggregation = tree.create_aggregation()
         self.assertEqual([
+            {'$match': {'_parent_id': None}},
             {'$lookup': {'as': '_val',
                         'from': 'resource_employee',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_field_name': 'employees',
-                                                '_type': 'employee'}}]}},
+                                                '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
@@ -332,11 +332,11 @@ class LRParseTest(unittest.TestCase):
 
         aggregation = tree.create_aggregation()
         self.assertEqual([
+            {'$match': {'_parent_id': None}},
             {'$lookup': {'as': '_val',
                         'from': 'resource_employee',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_field_name': 'employees',
-                                                '_type': 'employee'}}]}},
+                                                '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
@@ -745,7 +745,7 @@ class LRParseTest(unittest.TestCase):
         division_id_2 = self.schema.insert_resource('division', {'name': 'marketting', 'yearly_sales': 20}, 'divisions')
 
         tree = parse('self.parttimers', self.schema.specs['division'])
-        self.assertEqual([], self._calculate('employee', tree, division_id_1))
+        self.assertEqual(None, self._calculate('employee', tree, division_id_1))
 
         self.schema.create_linkcollection_entry('division', division_id_1, 'parttimers', employee_id_1)
 
@@ -788,27 +788,19 @@ class LRParseTest(unittest.TestCase):
         self.assertEqual([
             [{'$lookup': {'as': '_field_parttimers',
                         'from': 'resource_division',
-                        'let': {'id': '$_id'},
-                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
-                                                                                {'$ifNull': ['$parttimers',
-                                                                                            []]}]},
-                                                                    {'$eq': ['$_type',
-                                                                                'division']}]}}}]}},
+                        'foreignField': 'parttimers._id',
+                        'localField': '_id'}},
             {'$group': {'_id': '$_field_parttimers'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
             [{'$lookup': {'as': '_field_parttimers',
                         'from': 'resource_division',
-                        'let': {'id': '$_id'},
-                        'pipeline': [{'$match': {'$expr': {'$and': [{'$in': [{'_id': '$$id'},
-                                                                                {'$ifNull': ['$parttimers',
-                                                                                            []]}]},
-                                                                    {'$eq': ['$_type',
-                                                                                'division']}]}}}]}},
+                        'foreignField': 'parttimers._id',
+                        'localField': '_id'}},
             {'$group': {'_id': '$_field_parttimers'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
-            [{'$match': {'_type': 'division'}}]], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2, 'division', 'parttimers_age'))
+            []], tree.build_reverse_aggregations(self.schema.specs['employee'], employee_id_2, 'division', 'parttimers_age'))
 
     def test_dependencies(self):
         employee_spec = self.schema.specs['employee']

@@ -59,7 +59,7 @@ class LRParseTest(unittest.TestCase):
 
         expected = [
             {'$lookup': {'as': '_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$boss'},
                         'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                             '$$id']},
@@ -78,11 +78,11 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_val': '$age'}},
             {'$addFields': {'_v_self_age': '$_val'}},
             {'$lookup': {'as': '_lookup_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'from': 'metaphor_resource',
+                                                    'from': 'resource_employee',
                                                     'let': {'id': '$boss'},
                                                     'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                                         '$$id']},
@@ -103,11 +103,12 @@ class LRParseTest(unittest.TestCase):
     def test_root_collection(self):
         tree = parse("employees", self.employee_spec)
 
-        expected = [{'$lookup': {'as': '_val',
-                        'from': 'metaphor_resource',
+        expected = [
+            {'$match': {'_parent_id': None}},
+            {'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_field_name': 'employees',
-                                                '_type': 'employee'}}]}},
+                                                '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}]
@@ -116,11 +117,12 @@ class LRParseTest(unittest.TestCase):
     def test_root_collection_filtered(self):
         tree = parse("employees[age>4]", self.employee_spec)
 
-        expected = [{'$lookup': {'as': '_val',
-                        'from': 'metaphor_resource',
+        expected = [
+            {'$match': {'_parent_id': None}},
+            {'$lookup': {'as': '_val',
+                        'from': 'resource_employee',
                         'pipeline': [{'$match': {'_deleted': {'$exists': False},
-                                                '_parent_field_name': 'employees',
-                                                '_type': 'employee'}}]}},
+                                                '_parent_field_name': 'employees'}}]}},
             {'$group': {'_id': '$_val'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}},
@@ -156,11 +158,11 @@ class LRParseTest(unittest.TestCase):
 
         expected = [
             {'$lookup': {'as': '_lookup_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'from': 'metaphor_resource',
+                                                    'from': 'resource_employee',
                                                     'let': {'id': '$boss'},
                                                     'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                                         '$$id']},
@@ -177,11 +179,11 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_val': {'$eq': ['$_v_self_boss_name', 'Bob']}}},
             {'$addFields': {'_if': '$_val'}},
             {'$lookup': {'as': '_lookup_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'from': 'metaphor_resource',
+                                                    'from': 'resource_employee',
                                                     'let': {'id': '$boss'},
                                                     'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                                         '$$id']},
@@ -234,11 +236,11 @@ class LRParseTest(unittest.TestCase):
 
         expected = [
             {'$lookup': {'as': '_switch_lookup_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'from': 'metaphor_resource',
+                                                    'from': 'resource_employee',
                                                     'let': {'id': '$boss'},
                                                     'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                                         '$$id']},
@@ -277,11 +279,11 @@ class LRParseTest(unittest.TestCase):
 
         self.assertEqual([
             {'$lookup': {'as': '_switch_lookup_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'from': 'metaphor_resource',
+                                                    'from': 'resource_employee',
                                                     'let': {'id': '$boss'},
                                                     'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                                         '$$id']},
@@ -295,11 +297,11 @@ class LRParseTest(unittest.TestCase):
             {'$addFields': {'_switch_val': {'$arrayElemAt': ['$_switch_lookup_val._val',
                                                             0]}}},
             {'$lookup': {'as': '_case_lookup_val',
-                        'from': 'metaphor_resource',
+                        'from': 'resource_employee',
                         'let': {'id': '$_id'},
                         'pipeline': [{'$match': {'$expr': {'$eq': ['$_id', '$$id']}}},
                                     {'$lookup': {'as': '_val',
-                                                    'from': 'metaphor_resource',
+                                                    'from': 'resource_employee',
                                                     'let': {'id': '$boss'},
                                                     'pipeline': [{'$match': {'$expr': {'$and': [{'$eq': ['$_id',
                                                                                                         '$$id']},
@@ -333,13 +335,13 @@ class LRParseTest(unittest.TestCase):
         tree = parse("first(employees.age)", self.employee_spec)
 
         expected = [
+            {'$match': {'_parent_id': None}},
             {"$lookup": {
-                "from": 'metaphor_resource',
+                "from": 'resource_employee',
                 "as": '_val',
                 "pipeline":[
                     {"$match": {
                         "_parent_field_name": "employees",
-                        "_type": "employee",
                         '_deleted': {'$exists': False},
                     }},
                 ]

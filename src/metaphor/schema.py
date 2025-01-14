@@ -419,6 +419,8 @@ class Schema(object):
                         {'_id': self._id},
                         {"$set": {f"specs.{spec_name}.fields.{field_name}.target_spec_name": to_spec_name}}
                     )
+        if 'resource_%s' % from_spec_name in self.db.list_collection_names():
+            self.db['resource_%s' % from_spec_name].rename("resource_%s" % to_spec_name)
 
     def _do_delete_field(self, spec_name, field_name):
         spec = self.specs[spec_name]
@@ -676,7 +678,7 @@ class Schema(object):
 
 
         self.db['resource_%s' % spec_name].aggregate([
-            {"$match": {'_type': spec_name, field_name: {"$exists": True}}},
+            {"$match": {field_name: {"$exists": True}}},
             {"$addFields": {
                 field_name: {"$convert": {
                     "input": "$%s"%field_name,

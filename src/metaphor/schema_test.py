@@ -4,6 +4,7 @@ import unittest
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
+from metaphor.mongoclient_testutils import mongo_connection
 from metaphor.schema import Schema, Spec, Field
 from metaphor.schema import DependencyException
 from metaphor.schema_factory import SchemaFactory
@@ -13,7 +14,7 @@ from werkzeug.security import generate_password_hash
 
 class SchemaTest(unittest.TestCase):
     def setUp(self):
-        client = MongoClient("mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.2.0")
+        client = mongo_connection()
         client.drop_database('metaphor2_test_db')
         self.db = client.metaphor2_test_db
         self.maxDiff = None
@@ -641,7 +642,7 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.insert_resource('primary', {}, 'employees')
 
-        self.assertEqual('ned', self.db.metaphor_primary.find_one({'_type': 'primary'})['name'])
+        self.assertEqual('ned', self.db.resource_primary.find_one({'_type': 'primary'})['name'])
 
         self.assertEqual({
             "current": True,

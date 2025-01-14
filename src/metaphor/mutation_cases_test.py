@@ -93,8 +93,8 @@ class MutationTest(unittest.TestCase):
         self.assertEqual(200, response.status_code)
 
         # assert results
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("42 ironside", user_1['address'])
         self.assertEqual("42 ironside", user_2['address'])
@@ -143,13 +143,11 @@ class MutationTest(unittest.TestCase):
         self.assertEqual(200, response.status_code)
 
         # assert results
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_partner.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_partner.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("Bob", user_1['name'])
         self.assertEqual("Ned", user_2['name'])
-        self.assertEqual("partner", user_1['_type'])
-        self.assertEqual("partner", user_2['_type'])
 
     def test_rename_field(self):
         # setup schema 1

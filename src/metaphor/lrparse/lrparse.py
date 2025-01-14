@@ -120,7 +120,7 @@ class RootResourceRef(ResourceRef):
             raise Exception("Unexpected ego reference in reverse aggregation")
         if self.resource_name in ["self"]:
             #return [[], []]
-            return [[], [{"$match": {"_type": calc_spec_name}}]]
+            return [[], []]
             #return [[]]
         else:
             # assuming root / collection
@@ -132,6 +132,8 @@ class RootResourceRef(ResourceRef):
                 "from": "resource_%s" % (calc_spec_name,),
                 "as": "_field_%s" % (calc_field_name,),
                 "pipeline": [{"$match": {"_type": calc_spec_name}}],
+#                "localField": "_field_%s" % calc_field_name,
+#                "foreignField": "_id",
             }},
             {'$group': {'_id': '$_field_%s' % (calc_field_name,)}},
             {"$unwind": "$_id"},
@@ -186,12 +188,13 @@ class RootResourceRef(ResourceRef):
             return []
         else:
             return [
+                {"$match": {"_parent_id": None}},
+                # TODO: unsure of this:
                 {"$lookup": {
                     "from": "resource_%s" % self.spec.name,
                     "as": "_val",
                     "pipeline":[
                         {"$match": {
-                            "_type": self.spec.name,
                             "_parent_field_name": self.resource_name,
                             "_deleted": {"$exists": False},
                         }}
@@ -250,15 +253,8 @@ class CollectionResourceRef(ResourceRef):
             {"$lookup": {
                 "from": "resource_%s" % (self.parent_spec.name,),
                 "as": "_field_%s" % (self.field_name,),
-                "let": {"id": "$_parent_id"},
-                "pipeline": [
-                    {"$match": {"$expr":
-                        {"$and": [
-                            {"$eq": ["$_id", "$$id"]},
-                            {"$eq": ["$_type", self.parent_spec.name]},
-                        ]}
-                    }}
-                ]
+                "localField": "_parent_id",
+                "foreignField": "_id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -279,7 +275,6 @@ class CollectionResourceRef(ResourceRef):
                             "$expr": {
                                 "$and": [
                                     {"$eq": ["$_parent_id", "$$id"]},
-                                    {"$eq": ["$_type", self.spec.name]},
                                 ]
                             }
                         }},
@@ -300,18 +295,8 @@ class LinkCollectionResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": "$_id"},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    #{"$eq": ["$%s._id" % self.field_name, "$$id"]},
-                                    {"$in": [{"_id": "$$id"}, {"$ifNull": ["$%s" % self.field_name, []]}]},
-                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                    "localField": "_id",
+                    "foreignField": "%s._id" % self.field_name,
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -364,17 +349,8 @@ class LinkResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": "$_id"},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$eq": ["$%s" % self.field_name, "$$id"]},
-                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                    "localField": "_id",
+                    "foreignField": self.field_name,
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -435,17 +411,8 @@ class CalcResourceRef(ResourceRef, Calc):
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": "$_id"},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$eq": ["$%s" % self.field_name, "$$id"]},
-                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                    "localField": "_id",
+                    "foreignField": "%s._id" % self.field_name,
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -498,17 +465,8 @@ class ReverseLinkResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": "$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$eq": ["$_id", "$$id"]},
-                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                    "localField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
+                    "foreignField": "_id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -554,17 +512,8 @@ class ParentCollectionResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": "$_id"},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$eq": ["$_parent_id", "$$id"]},
-                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                    "localField": "_id",
+                    "foreignField": "_parent_id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -614,17 +563,8 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "let": {"id": {"$ifNull": ["$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field, []]}},
-                    "pipeline": [
-                        {"$match": {
-                            "$expr": {
-                                "$and": [
-                                    {"$in": [{"_id": "$_id"}, "$$id"]},
-                                    {"$eq": ["$_type", self.resource_ref.spec.name]},
-                                ]
-                            }
-                        }}
-                    ]
+                    "localField": "%s._id" % self.resource_ref.spec.fields[self.field_name].reverse_link_field,
+                    "foreignField": "_id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},

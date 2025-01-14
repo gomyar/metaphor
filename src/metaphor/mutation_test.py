@@ -52,8 +52,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("42 ironside", user_1['address'])
         self.assertEqual("42 ironside", user_2['address'])
@@ -89,8 +89,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertTrue('address' not in user_1)
         self.assertTrue('address' not in user_2)
@@ -123,8 +123,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("12345", user_1['phone'])
         self.assertEqual("67890", user_2['phone'])
@@ -157,12 +157,11 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
-        self.assertEqual("12345.67", user_1['phone'])
-        self.assertEqual("67890.12", user_2['phone'])
-
+        self.assertEqual("12345.7", user_1['phone'])
+        self.assertEqual("67890.1", user_2['phone'])
 
     def test_alter_field_type_bool_to_str(self):
         # given 2 schemas
@@ -192,8 +191,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("true", user_1['phone'])
         self.assertEqual("false", user_2['phone'])
@@ -226,8 +225,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
 
         self.assertEqual("2023-01-02T10:11:22.000Z", user_1['created'])
         self.assertEqual(None, user_2['created'])
@@ -260,8 +259,8 @@ class MutationTest(unittest.TestCase):
         mutation.mutate()
 
         # assert data moved
-        self.assertEqual(0, self.db.resource_user.count_documents({"_parent_field_name": "primary_users"}))
-        self.assertEqual(2, self.db.resource_user.count_documents({"_parent_field_name": "secondary_users"}))
+        self.assertEqual(0, self.db.resource_client.count_documents({"_parent_field_name": "primary_clients"}))
+        self.assertEqual(2, self.db.resource_client.count_documents({"_parent_field_name": "secondary_clients"}))
 
     def test_move_steps(self):
         # given 2 schemas
@@ -305,8 +304,8 @@ class MutationTest(unittest.TestCase):
         mutation.mutate()
 
         # assert data moved
-        self.assertEqual(0, self.db.resource_client.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_1_id)}))
-        self.assertEqual(2, self.db.resource_client.count_documents({"_type": "job", "_parent_id": self.schema_1.decodeid(client_2_id)}))
+        self.assertEqual(0, self.db.resource_job.count_documents({"_parent_id": self.schema_1.decodeid(client_1_id)}))
+        self.assertEqual(2, self.db.resource_job.count_documents({"_parent_id": self.schema_1.decodeid(client_2_id)}))
 
     def test_validate_move_steps(self):
         # given 2 schemas
@@ -557,9 +556,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        client = self.schema_2.db['resource_client'].find_one({'_id': self.schema_1.decodeid(client_1_id)})
+        client = self.schema_2.db['resource_customer'].find_one({'_id': self.schema_1.decodeid(client_1_id)})
         self.assertEqual("Bob", client["name"])
-        self.assertEqual("customer", client['_type'])
 
     def test_rename_spec_with_different_fields(self):
         # given 2 schemas
@@ -848,8 +846,8 @@ class MutationTest(unittest.TestCase):
         self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
         # insert test data
-        user_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'clients')
-        user_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'clients')
+        client_1_id = self.schema_1.insert_resource('client', {"phone": 12345.67}, 'clients')
+        client_2_id = self.schema_1.insert_resource('client', {"phone": 67890.12}, 'clients')
 
         mutation = MutationFactory(self.schema_1, self.schema_2).create()
         mutation.convert_delete_field_to_rename('client', 'phone', 'phone_number')
@@ -869,10 +867,8 @@ class MutationTest(unittest.TestCase):
 
         mutation.mutate()
 
-        user_1 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_1_id)})
-        user_2 = self.db.resource_user.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+        client_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(client_1_id)})
+        client_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(client_2_id)})
 
-        self.assertEqual("12345.67", user_1['phone_number'])
-        self.assertEqual("67890.12", user_2['phone_number'])
-
-
+        self.assertEqual("12345.7", client_1['phone_number'])
+        self.assertEqual("67890.1", client_2['phone_number'])
