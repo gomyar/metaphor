@@ -50,6 +50,9 @@ class Field(object):
     def is_field(self):
         return True
 
+    def is_reverse(self):
+        return self.reverse_link_field is not None
+
     def check_comparable_type(self, ctype):
         return ctype in self._comparable_types.get(self.field_type, [])
 

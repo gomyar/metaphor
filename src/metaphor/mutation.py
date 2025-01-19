@@ -53,6 +53,7 @@ def _create_create_field_step(spec_name, field_name, field):
                 "default": field.default,
                 "field_type": field.field_type,
                 "field_target": field.target_spec_name,
+                "is_reverse": field.is_reverse(),
             }
         }
 

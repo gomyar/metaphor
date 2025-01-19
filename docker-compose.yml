@@ -14,6 +14,7 @@ services:
       - METAPHOR_MONGO_HOST=mongodb://mongo:27017/admin
     volumes:
       - "${PWD}/src/:/app/"
+      - "${PWD}/bin/metaphor:/bin/metaphor"
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
