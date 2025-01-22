@@ -5,6 +5,12 @@ Idea:
    the second service responds with metadata on the call (whether it be REST resource url / required params / dependent resources or a link to an HTML UI)
 
 
+bugs:
+ - mutating from mutating from as schema name for some reason
+ - all schemas set to current: true
+ - schema editor admin shows wrong fields - done
+
+
 Todo:
 
  - client ui - 

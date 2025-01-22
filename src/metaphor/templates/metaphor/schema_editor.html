@@ -8,7 +8,7 @@ var schema_id = "{{ schema_id }}";
 </script>
 <script src="/admin/static/metaphor/schema_editor.js"></script>
 
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.23/turtlegui.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.24/turtlegui.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
 <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/schema_editor.css"/>
 
@@ -32,7 +32,7 @@ var schema_id = "{{ schema_id }}";
     </div>
 
     <div class="spec root">
-        <div class="fields" gui-list="schema.root" gui-item="field" gui-key="field_name">
+        <div class="fields" gui-list="schema.root.fields" gui-item="field" gui-key="field_name">
             <div class="field">
                 <div class="name" gui-text="field_name"></div>
                 <div class="type" gui-text="field.type"></div>
@@ -100,6 +100,7 @@ var schema_id = "{{ schema_id }}";
         </div>
         <div class="popupform">
             <div class="formfield"><div class="label">Name:</div>
+                <div gui-show="create_field.is_editing" gui-text="create_field.field_name"></div>
                 <input type="text" gui-show="!create_field.is_editing" gui-val="create_field.field_name"></input>
                 <div class="spec_type">
                     <select gui-val="create_field.field_type" gui-list="create_field.all_field_types" gui-item="spec_type" gui-change="turtlegui.reload()">

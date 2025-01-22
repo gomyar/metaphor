@@ -25,11 +25,14 @@ class MalformedFieldException(Exception):
 class Field(object):
     PRIMITIVES = ['int', 'str', 'float', 'bool', 'datetime']
 
-    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None, default=None, required=None):
+    def __init__(self, name, field_type, target_spec_name=None, reverse_link_field=None, default=None, required=None, indexed=None, unique=None, unique_global=None):
         self.name = name
         self.field_type = field_type
         self.default = default
         self.required = required or False
+        self.indexed = indexed or False
+        self.unique = unique or False
+        self.unique_global = unique_global or False
         self.target_spec_name = target_spec_name
         self.reverse_link_field = reverse_link_field  # only used for reverse links
         self._comparable_types= {
@@ -207,7 +210,16 @@ class Schema(object):
             spec = self.add_spec(spec_name)
             for field_name, field_data in spec_data['fields'].items():
                 if field_data['type'] != 'calc':
-                    self._add_field(spec, field_name, field_data['type'], target_spec_name=field_data.get('target_spec_name'), default=field_data.get('default'), required=field_data.get('required'))
+                    self._add_field(spec,
+                        field_name,
+                        field_data['type'],
+                        target_spec_name=field_data.get('target_spec_name'),
+                        default=field_data.get('default'),
+                        required=field_data.get('required'),
+                        indexed=field_data.get('indexed'),
+                        unique=field_data.get('unique'),
+                        unique_global=field_data.get('unique_global'),
+                    )
         self._add_reverse_links()
 
     def _collect_calcs(self, schema_data):
@@ -239,7 +251,14 @@ class Schema(object):
         sorted_calcs = list(toposort(calc_deps))
 
         for root_name, root_data in schema_data.get('root', {}).items():
-            self._add_field(self.root, root_name, root_data['type'], target_spec_name=root_data.get('target_spec_name'), default=root_data.get('default'), required=root_data.get('required'))
+            self._add_field(
+                self.root,
+                root_name,
+                root_data['type'],
+                target_spec_name=root_data.get('target_spec_name'),
+                default=root_data.get('default'),
+                required=root_data.get('required'),
+                )
 
         for line in sorted_calcs:
             for field_str in line:
@@ -267,7 +286,7 @@ class Schema(object):
         self.update_version()
         return self.add_spec(spec_name)
 
-    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None, background=None):
+    def create_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None, background=None, indexed=None, unique=None, unique_global=None):
         if spec_name != 'root' and field_name in self.specs[spec_name].fields:
             raise MalformedFieldException('Field already exists: %s.%s' % (spec_name, field_name))
         if spec_name == 'root' and field_name in self.root.fields:
@@ -281,7 +300,7 @@ class Schema(object):
         if field_type == 'calc':
             self.add_calc(spec, field_name, calc_str, background)
         else:
-            self.add_field(spec, field_name, field_type, field_target, default, required)
+            self.add_field(spec, field_name, field_type, field_target, default, required, indexed, unique, unique_global)
 
     def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None):
         if spec_name != 'root' and field_name not in self.specs[spec_name].fields:
@@ -467,14 +486,14 @@ class Schema(object):
                         all_deps.append('%s.%s' % (name, fname))
         return all_deps
 
-    def _add_field(self, spec, field_name, field_type, target_spec_name=None, default=None, required=None):
-        field = Field(field_name, field_type, target_spec_name=target_spec_name, default=default, required=required)
+    def _add_field(self, spec, field_name, field_type, target_spec_name=None, default=None, required=None, indexed=None, unique=None, unique_global=None):
+        field = Field(field_name, field_type, target_spec_name=target_spec_name, default=default, required=required, indexed=indexed, unique=unique, unique_global=unique_global)
         spec.fields[field_name] = field
         field.spec = spec
         return field
 
-    def add_field(self, spec, field_name, field_type, target_spec_name=None, default=None, required=None):
-        field = self._add_field(spec, field_name, field_type, target_spec_name, default, required)
+    def add_field(self, spec, field_name, field_type, target_spec_name=None, default=None, required=None, indexed=None, unique=None, unique_global=None):
+        field = self._add_field(spec, field_name, field_type, target_spec_name, default, required, indexed, unique, unique_global)
         self._add_reverse_link_for_field(field, spec)
         return field
 
@@ -764,7 +783,6 @@ class Schema(object):
         user_data = self.db['resource_user'].aggregate([
             {"$match": match},
             {"$limit": 1},
-
             {"$lookup": {
                 "foreignField": "_id",
                 "localField": "groups._id",
