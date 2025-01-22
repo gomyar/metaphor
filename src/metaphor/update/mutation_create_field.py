@@ -1,7 +1,7 @@
 
 
 class CreateFieldMutation:
-    def __init__(self, mutation, schema, spec_name, field_name, field_type, default=None, field_target=None, calc_str=None, is_reverse=None):
+    def __init__(self, mutation, schema, spec_name, field_name, field_type, default=None, field_target=None, calc_str=None, is_reverse=None, indexed=None, unique=None, unique_global=None):
         self.mutation = mutation
         self.schema = schema
 
@@ -12,6 +12,7 @@ class CreateFieldMutation:
         self.field_target = field_target
         self.calc_str = calc_str
         self.is_reverse = is_reverse
+        self.indexed = indexed
 
     def __repr__(self):
         return "<CreateFieldMutation>"
@@ -33,5 +34,8 @@ class CreateFieldMutation:
 
         if self.default or self.calc_str:
             self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
+
+        if self.indexed:
+            self.schema.create_index_for_field(self.spec_name, self.field_name)
 
         self.schema.cleanup_update(update_id)

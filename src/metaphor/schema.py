@@ -282,7 +282,6 @@ class Schema(object):
         self.db['metaphor_schema'].update_one(
             {'_id': self._id},
             {"$set": {'specs.%s' % spec_name: {'fields': {}}}})
-        # TODO: set up indexes
         self.update_version()
         return self.add_spec(spec_name)
 
@@ -388,6 +387,30 @@ class Schema(object):
         else:
             self._delete_spec_field(spec_name, field_name)
         self.update_version()
+
+    def create_index_for_spec(self, spec_name):
+        self.db['resource_%s' % spec_name].create_index(
+            ["_parent_id", "_parent_field_name"],
+            name=f"specindex-{spec_name}")
+
+    def create_index_for_field(self, spec_name, field_name, unique=False, unique_global=False):
+        if unique_global:
+            self.db['resource_%s' % spec_name].create_index(
+                [field_name],
+                unique=unique,
+                name=f"{field_name}")
+        elif unique:
+            self.db['resource_%s' % spec_name].create_index(
+                ["_parent_id", "_parent_field_name", field_name],
+                unique=unique,
+                name=f"{field_name}")
+        else:
+            self.db['resource_%s' % spec_name].create_index(
+                [field_name],
+                name=f"{field_name}")
+
+    def drop_index_for_field(self, spec_name, field_name):
+        self.db['resource_%s' % spec_name].drop_index(field_name)
 
     def _delete_root_field(self, field_name):
         self.root.fields.pop(field_name)

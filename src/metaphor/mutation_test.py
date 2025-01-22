@@ -34,7 +34,7 @@ class MutationTest(unittest.TestCase):
 
         self.schema_2.create_spec('client')
         self.schema_2.create_field('client', 'name', 'str')
-        self.schema_2.create_field('client', 'address', 'str', default="42 ironside")
+        self.schema_2.create_field('client', 'address', 'str', default="42 ironside", indexed=True)
 
         self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
@@ -57,6 +57,15 @@ class MutationTest(unittest.TestCase):
 
         self.assertEqual("42 ironside", user_1['address'])
         self.assertEqual("42 ironside", user_2['address'])
+
+        # assert indexes
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(2, len(indexes))
+        id_index = indexes[0]
+        self.assertEqual('_id_', id_index['name'])
+        field_index = indexes[1]
+        self.assertEqual('address', field_index['name'])
+        self.assertEqual(field_index['key'], {'address': 1})
 
     def test_delete_field(self):
         # given 2 schemas
@@ -94,6 +103,12 @@ class MutationTest(unittest.TestCase):
 
         self.assertTrue('address' not in user_1)
         self.assertTrue('address' not in user_2)
+
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(1, len(indexes))
+
+        id_index = indexes[0]
+        self.assertEqual('_id_', id_index['name'])
 
     def test_alter_field_type_int_to_str(self):
         # given 2 schemas
@@ -387,6 +402,17 @@ class MutationTest(unittest.TestCase):
         self.assertEqual('client', mutation.steps[3]['params']['field_target'])
 
         mutation.mutate()
+
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(2, len(indexes))
+
+        id_index = indexes[0]
+        self.assertEqual('_id_', id_index['name'])
+
+        field_index = indexes[1]
+        self.assertEqual('specindex-client', field_index['name'])
+        self.assertEqual(1, field_index['key']['_parent_id'])
+        self.assertEqual(1, field_index['key']['_parent_field_name'])
 
     def test_delete_spec(self):
         # given 2 schemas
@@ -821,12 +847,20 @@ class MutationTest(unittest.TestCase):
                     'default': None,
                     'field_type': 'str',
                     'field_target': None,
+                    'indexed': False,
+                    'is_reverse': False,
+                    'unique': False,
+                    'unique_global': False,
                     'spec_name': 'customer'}},
             {'action': 'create_field',
                 'params': {'field_name': 'customers',
                     'default': None,
                     'field_type': 'collection',
                     'field_target': 'customer',
+                    'indexed': False,
+                    'is_reverse': False,
+                    'unique': False,
+                    'unique_global': False,
                     'spec_name': 'root'}},
         ], mutation.steps)
 

@@ -42,6 +42,7 @@ def _create_create_field_step(spec_name, field_name, field):
                 "default": field.default,
                 "field_type": field.field_type,
                 "calc_str": field.calc_str,
+                "indexed": field.indexed,
             }
         }
     else:
@@ -54,6 +55,9 @@ def _create_create_field_step(spec_name, field_name, field):
                 "field_type": field.field_type,
                 "field_target": field.target_spec_name,
                 "is_reverse": field.is_reverse(),
+                "indexed": field.indexed,
+                "unique": field.unique,
+                "unique_global": field.unique_global,
             }
         }
 

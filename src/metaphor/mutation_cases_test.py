@@ -176,7 +176,16 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'create_field',
-             'params': {'spec_name': 'client', 'field_name': 'title', 'field_type': 'str', 'default': None, 'field_target': None}},
+             'params': {'spec_name': 'client',
+                'field_name': 'title',
+                'field_type': 'str',
+                'default': None,
+                'indexed': False,
+                'is_reverse': False,
+                'spec_name': 'client',
+                'unique': False,
+                'unique_global': False,
+                'field_target': None}},
             {'action': 'delete_field',
              'params': {'spec_name': 'client', 'field_name': 'name'}},
              ], mutations)
@@ -233,9 +242,18 @@ class MutationTest(unittest.TestCase):
         mutations = self.client.get(f"/admin/api/mutations/{mutation_id}/steps").json
         self.assertEqual([
             {'action': 'create_field',
-             'params': {'spec_name': 'root', 'field_name': 'partners', 'field_type': 'collection', 'field_target': 'client', 'default': None}},
+             'params': {'spec_name': 'root',
+                        'field_name': 'partners',
+                        'field_type': 'collection',
+                        'field_target': 'client',
+                        'indexed': False,
+                        'unique': False,
+                        'unique_global': False,
+                        'is_reverse': False,
+                        'default': None}},
             {'action': 'delete_field',
-             'params': {'spec_name': 'root', 'field_name': 'clients'}},
+             'params': {'spec_name': 'root',
+                        'field_name': 'clients'}},
              ], mutations)
 
         # alter mutation to rename field
@@ -276,6 +294,10 @@ class MutationTest(unittest.TestCase):
                 'default': None,
                 'field_name': 'partners',
                 'field_type': 'collection',
+                'unique': False,
+                'unique_global': False,
+                'indexed': False,
+                'is_reverse': False,
                 'field_target': 'client'}},
             {'action': 'delete_field',
              'params': {'spec_name': 'root', 'field_name': 'clients'}},
