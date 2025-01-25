@@ -140,8 +140,16 @@ var schema_id = "{{ schema_id }}";
 
             </div>
             <div gui-show="create_field.is_primitive()">
-                <span class="label">Required:</span>
-                <input type="checkbox" gui-val="create_field.is_required"></input>
+                <label for="create_field_required" class="label">Required:</label>
+                <input id="create_field_required" type="checkbox" gui-val="create_field.is_required"></input>
+                <label for="create_field_indexed" class="label">Indexed:</label>
+                <input id="create_field_indexed" type="checkbox" gui-val="create_field.indexed"></input>
+                <label for="create_field_unique" class="label">Unique:</label>
+                <input id="create_field_unique" type="checkbox" gui-val="create_field.unique" gui-change="turtlegui.reload()"></input>
+                <span gui-show="create_field.unique">
+                    <label for="create_field_global" class="label">Global:</label>
+                    <input id="create_field_global" type="checkbox" gui-val="create_field.unique_global"></input>
+                </span>
             </div>
         </div>
         <div class="popupbuttons">

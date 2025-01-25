@@ -32,19 +32,19 @@ search_bp = Blueprint('search', __name__, template_folder='templates',
                       static_folder='static', url_prefix='/search')
 
 
-def serialize_spec(spec):
+def serialize_spec(spec, admin=False):
     return {
         'name': spec.name,
         'fields': {
-            name: serialize_field(f) for name, f in spec.fields.items()
+            name: serialize_field(f, admin) for name, f in spec.fields.items()
         },
     }
 
-def serialize_schema(schema):
+def serialize_schema(schema, admin=False):
     root_spec = {
         "name": "root",
         "fields": {
-            name: serialize_field(root) for name, root in schema.root.fields.items()
+            name: serialize_field(root, admin) for name, root in schema.root.fields.items()
         },
         "type": "resource",
     }
@@ -55,7 +55,7 @@ def serialize_schema(schema):
         'is_collection': False,
     }
     specs = {
-        name: serialize_spec(spec) for name, spec in schema.specs.items()
+        name: serialize_spec(spec, admin) for name, spec in schema.specs.items()
     }
     specs['root'] = root_spec
     return {
@@ -69,13 +69,21 @@ def serialize_schema(schema):
     }
 
 
-def serialize_field(field):
+def serialize_field(field, admin=False):
     serialized = {
         'name': field.name,
         'type': field.field_type,
         'target_spec_name': field.target_spec_name,
         'is_collection': field.is_collection(),
     }
+    if admin:
+        serialized.update({
+            'required': field.required,
+            'indexed': field.indexed,
+            'unique': field.unique,
+            'unique_global': field.unique_global,
+            'default': field.default,
+        })
     if type(field) is CalcField:
         calc_type = field.infer_type()
         if not calc_type.is_primitive():
@@ -87,8 +95,8 @@ def serialize_field(field):
 def serialize_mutation(mutation):
     return {
         'id': str(mutation._id),
-        'from_schema': serialize_schema(mutation.from_schema),
-        'to_schema': serialize_schema(mutation.to_schema),
+        'from_schema': serialize_schema(mutation.from_schema, flask_login.current_user.admin),
+        'to_schema': serialize_schema(mutation.to_schema, flask_login.current_user.admin),
         'steps': mutation.steps,
         'state': mutation.state,
         'error': mutation.error,
@@ -142,7 +150,7 @@ def api(path):
 def schema():
     api = current_app.config['api']
 
-    return jsonify(serialize_schema(api.schema))
+    return jsonify(serialize_schema(api.schema, flask_login.current_user.admin))
 
 
 @admin_bp.route("/schemas/<schema_id>")
@@ -170,7 +178,7 @@ def admin_api_schemas():
     if request.method == 'GET':
         schema_list = factory.list_schemas()
         return jsonify({
-            "schemas": [serialize_schema(schema) for schema in schema_list]
+            "schemas": [serialize_schema(schema, flask_login.current_user.admin) for schema in schema_list]
         })
     else:
         if request.json:
@@ -192,7 +200,7 @@ def schema_editor_api(schema_id):
     if request.method == 'GET':
         schema = factory.load_schema(schema_id)
         if schema:
-            return jsonify(serialize_schema(schema))
+            return jsonify(serialize_schema(schema, flask_login.current_user.admin))
         else:
             abort(404)
     else:
@@ -295,10 +303,15 @@ def schema_editor_delete_field(schema_id, spec_name, field_name):
     else:
         field_type = request.json['field_type']
         field_target = request.json['field_target']
-        calc_str = request.json['calc_str']
+        calc_str = request.json.get('calc_str')
+        required = request.json.get('required') or False
+        default = request.json.get('default')
+        indexed = request.json.get('indexed') or False
+        unique = request.json.get('unique') or False
+        unique_global = request.json.get('unique_global') or False
 
         try:
-            schema.update_field(spec_name, field_name, field_type, field_target, calc_str)
+            schema.update_field(spec_name, field_name, field_type, field_target, calc_str, default, required, indexed, unique, unique_global)
         except Exception as e:
             log.exception("Exception on PATCH for %s %s %s", schema_id, spec_name, field_name)
             return jsonify({"error": str(e)}), 400

@@ -391,11 +391,41 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual({
             "groups": {"target_spec_name": "group", "type": "collection"},
             "users": {"target_spec_name": "user", "type": "collection"}}, schema['root'])
-        self.assertEqual({'grant': {'fields': {'type': {'type': 'str'}, 'url': {'type': 'str'}}},
+        self.assertEqual({'grant': {'fields': {
+                'type': {
+                    'type': 'str',
+                    'default': None,
+                    'indexed': None,
+                    'required': None,
+                    'unique': None,
+                    'unique_global': None
+                },
+                'url': {
+                    'type': 'str',
+                    'default': None,
+                    'indexed': None,
+                    'required': None,
+                    'unique': None,
+                    'unique_global': None
+                }}},
             'group': {'fields': {'grants': {'target_spec_name': 'grant',
                                             'type': 'collection'},
-                                'name': {'type': 'str'}}},
-            'user': {'fields': {'admin': {'type': 'bool'},
+                                'name': {
+                                    'type': 'str',
+                                    'default': None,
+                                    'indexed': None,
+                                    'required': None,
+                                    'unique': None,
+                                    'unique_global': None
+                                }}},
+            'user': {'fields': {'admin': {
+                'type': 'bool',
+                'default': None,
+                'indexed': None,
+                'required': None,
+                'unique': None,
+                'unique_global': None
+            },
                                 'create_grants': {'calc_str': "self.groups.grants[type='create']",
                                                 'deps': ['grant.type',
                                                          'group.grants',
@@ -408,7 +438,14 @@ class SchemaTest(unittest.TestCase):
                                                 'type': 'calc'},
                                 'groups': {'target_spec_name': 'group',
                                             'type': 'linkcollection'},
-                                'password': {'type': 'str'},
+                                'password': {
+                                    'type': 'str',
+                                    'default': None,
+                                    'indexed': None,
+                                    'required': None,
+                                    'unique': None,
+                                    'unique_global': None
+                                    },
                       'put_grants': {'calc_str': "self.groups.grants[type='put']",
                                      'deps': ['grant.type',
                                               'group.grants',
@@ -424,7 +461,14 @@ class SchemaTest(unittest.TestCase):
                                                          'group.grants',
                                                          'user.groups'],
                                                 'type': 'calc'},
-                                'username': {'type': 'str'}}}}, schema['specs'])
+                                'username': {
+                                    'type': 'str',
+                                    'default': None,
+                                    'indexed': None,
+                                    'required': None,
+                                    'unique': None,
+                                    'unique_global': None
+                                }}}}, schema['specs'])
 
     def test_load_calcs_by_dependency(self):
         self._create_test_schema({
@@ -452,7 +496,13 @@ class SchemaTest(unittest.TestCase):
                 "employee" : {
                     "fields" : {
                         "name" : {
-                            "type" : "str"
+                            "type" : "str",
+                            'default': None,
+                            'indexed': None,
+                            'required': None,
+                            'type': 'str',
+                            'unique': None,
+                            'unique_global': None,
                         },
                         "average_section_income": {
                             "type": "calc",
@@ -465,6 +515,11 @@ class SchemaTest(unittest.TestCase):
                     "fields" : {
                         "income": {
                             "type": "int",
+                            'default': None,
+                            'indexed': None,
+                            'required': None,
+                            'unique': None,
+                            'unique_global': None,
                         },
                         "employees" : {
                             "type" : "collection",
@@ -612,7 +667,13 @@ class SchemaTest(unittest.TestCase):
 
         self.schema.delete_spec("secondary")
 
-        self.assertEqual({'primary': {'fields': {'name': {'type': 'str'}}}},
+        self.assertEqual({'primary': {'fields': {'name': {
+            'default': None,
+            'indexed': None,
+            'required': None,
+            'unique': None,
+            'unique_global': None,
+            'type': 'str'}}}},
                          self.db.metaphor_schema.find_one({"current": True})['specs'])
         self.assertEqual(['primary'], list(self.schema.specs.keys()))
 
@@ -655,12 +716,16 @@ class SchemaTest(unittest.TestCase):
                     "fields" : {
                         "name" : {
                             "type" : "str",
-                            "default": "ned"
+                            "default": "ned",
+                            'indexed': None,
+                            'required': None,
+                            'unique': None,
+                            'unique_global': None,
                         },
                     },
                 },
             },
-            "version": "043bb3e3",
+            "version": "017b77bd",
         }, self.db.metaphor_schema.find_one())
 
         # test load

@@ -291,7 +291,7 @@ class Schema(object):
         if spec_name == 'root' and field_name in self.root.fields:
             raise MalformedFieldException('Field already exists: root.%s' % field_name)
         self._check_field_name(field_name)
-        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required, indexed, unique, unique_global)
         if spec_name == 'root':
             spec = self.root
         else:
@@ -301,12 +301,12 @@ class Schema(object):
         else:
             self.add_field(spec, field_name, field_type, field_target, default, required, indexed, unique, unique_global)
 
-    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None):
+    def update_field(self, spec_name, field_name, field_type, field_target=None, calc_str=None, default=None, required=None, indexed=None, unique=None, unique_global=None):
         if spec_name != 'root' and field_name not in self.specs[spec_name].fields:
             raise MalformedFieldException('Field does not exist: %s' % field_name)
-        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required)
+        self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required, indexed, unique, unique_global)
 
-    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str, default, required):
+    def _update_field(self, spec_name, field_name, field_type, field_target, calc_str, default, required, indexed, unique, unique_global):
         if calc_str:
             self._check_calc_syntax(spec_name, calc_str)
             self._check_circular_dependencies(spec_name, field_name, calc_str)
@@ -318,10 +318,11 @@ class Schema(object):
             field_data = {'type': 'calc', 'calc_str': calc_str, 'deps': deps}
         elif field_type in ('int', 'str', 'float', 'bool'):
             field_data = {'type': field_type}
-            if default is not None:
-                field_data['default'] = default
-            if required is not None:
-                field_data['required'] = required
+            field_data['default'] = default
+            field_data['required'] = required
+            field_data['indexed'] = indexed
+            field_data['unique'] = unique
+            field_data['unique_global'] = unique_global
         else:
             field_data = {'type': field_type, 'target_spec_name': field_target}
 
