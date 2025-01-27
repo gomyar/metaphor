@@ -64,7 +64,7 @@ class MutationTest(unittest.TestCase):
         id_index = indexes[0]
         self.assertEqual('_id_', id_index['name'])
         field_index = indexes[1]
-        self.assertEqual('address', field_index['name'])
+        self.assertEqual('fieldindex-client-address', field_index['name'])
         self.assertEqual(field_index['key'], {'address': 1})
 
     def test_delete_field(self):
@@ -906,3 +906,44 @@ class MutationTest(unittest.TestCase):
 
         self.assertEqual("12345.7", client_1['phone_number'])
         self.assertEqual("67890.1", client_2['phone_number'])
+
+    def test_field_altered(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str', None, None, 'Bob', True, False, True, True, True)
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        self.assertEqual(1, len(mutation.steps))
+        self.assertEqual('alter_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('name', mutation.steps[0]['params']['field_name'])
+
+        mutation.mutate()
+
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(2, len(indexes))
+
+        id_index = indexes[0]
+        self.assertEqual('_id_', id_index['name'])
+        field_index = indexes[1]
+        self.assertEqual('fieldindex-client-name', field_index['name'])
+        self.assertTrue(field_index['unique'])
+
+

@@ -399,19 +399,19 @@ class Schema(object):
             self.db['resource_%s' % spec_name].create_index(
                 [field_name],
                 unique=unique,
-                name=f"{field_name}")
+                name=f"fieldindex-{spec_name}-{field_name}")
         elif unique:
             self.db['resource_%s' % spec_name].create_index(
                 ["_parent_id", "_parent_field_name", field_name],
                 unique=unique,
-                name=f"{field_name}")
+                name=f"fieldindex-{spec_name}-{field_name}")
         else:
             self.db['resource_%s' % spec_name].create_index(
                 [field_name],
-                name=f"{field_name}")
+                name=f"fieldindex-{spec_name}-{field_name}")
 
     def drop_index_for_field(self, spec_name, field_name):
-        self.db['resource_%s' % spec_name].drop_index(field_name)
+        self.db['resource_%s' % spec_name].drop_index(f"fieldindex-{spec_name}-{field_name}")
 
     def _delete_root_field(self, field_name):
         self.root.fields.pop(field_name)

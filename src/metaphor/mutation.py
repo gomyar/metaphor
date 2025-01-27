@@ -5,7 +5,7 @@ import traceback
 from metaphor.schema import Schema, CalcField
 from .update.mutation_create_field import CreateFieldMutation
 from .update.mutation_delete_field import DeleteFieldMutation
-from .update.mutation_alter_field_convert_primitive import AlterFieldConvertPrimitiveMutation
+from .update.mutation_alter_field import AlterFieldMutation
 from .update.mutation_create_spec import CreateSpecMutation
 from .update.mutation_delete_spec import DeleteSpecMutation
 from .update.mutation_rename_field import RenameFieldMutation
@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 ACTIONS = {
     "create_field": CreateFieldMutation,
-    "alter_field": AlterFieldConvertPrimitiveMutation,
+    "alter_field": AlterFieldMutation,
     "delete_field": DeleteFieldMutation,
     "create_spec": CreateSpecMutation,
     "move": MoveMutation,
@@ -141,10 +141,19 @@ class MutationFactory(object):
             if spec_name in self.from_schema.specs:
                 from_spec = self.from_schema.get_spec(spec_name)
                 for field_name, field in to_spec.fields.items():
-                    if field_name in from_spec.fields and field.field_type != from_spec.fields[field_name].field_type:
+                    if field_name in from_spec.fields and not self._compare_fields(field, from_spec.fields[field_name]):
                         new_type = to_spec.fields[field_name].field_type
                         self.mutation._create_alter_field_step(spec_name, field_name, new_type)
 
+    def _compare_fields(self, lhs, rhs):
+        return (lhs.field_type == rhs.field_type and
+                lhs.field_type == rhs.field_type and
+                lhs.default == rhs.default and
+                lhs.required == rhs.required and
+                lhs.indexed == rhs.indexed and
+                lhs.unique == rhs.unique and
+                lhs.unique_global == rhs.unique_global and
+                lhs.target_spec_name == rhs.target_spec_name)
 
     def init_deleted_fields(self):
         for spec_name, to_spec in self.to_schema.specs.items():
