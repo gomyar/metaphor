@@ -23,8 +23,6 @@ var manage = {
     load: function() {
         turtlegui.ajax.get('/admin/api/mutations/' + mutation_id, (data) => {
             manage.mutation = JSON.parse(data);
-            manage.mutation.to_schema.specs['root'] = {"fields": manage.mutation.to_schema.root};
-            manage.mutation.from_schema.specs['root'] = {"fields": manage.mutation.from_schema.root};
             manage.spec_names = manage.all_spec_names();
             manage.diff = [];
             manage.create_diff();
