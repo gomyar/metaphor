@@ -31,6 +31,11 @@ class MResource {
                 collection_data[field_name]._apply_resource_list(data[field_name]);
                 collection_data[field_name]._count = data[field_name].length;
             }
+            if (field_name in data && this._spec.fields[field_name].type == 'link') {
+                var spec = this._m.schema.specs[this._spec.fields[field_name].target_spec_name];
+                var link_data = typeof(data[field_name]) == 'object' ? link_data : null;
+                collection_data[field_name] = new MResource(this._m, spec, this._url + "/" + field_name, link_data, null, this);
+            }
         }
         Object.assign(this, collection_data);
  
@@ -61,6 +66,15 @@ class MResource {
         this[field_name]._get();
     }
 
+    _unset_link(field_name) {
+        this[field_name] = {"id": this[field_name]["id"]};
+        this._m.fire_event({method: 'DELETE', type: "unset_link", resource: this})
+    }
+
+    _is_link_expanded(field_name) {
+        return this[field_name] && this[field_name]._meta;
+    }
+
     _unset_field(field_name) {
         delete this[field_name];
         this._m.fire_event({method: 'DELETE', type: "unset_field", resource: this})
@@ -82,6 +96,7 @@ class MResource {
         this._m.fire_event({method: 'PATCH', type: "patch_started", resource: this})
         this._m.net.patch(this._url, patch_data, (data) => {
             this._loading -= 1;
+            Object.assign(this, patch_data);
             this._m.fire_event({method: 'PATCH', type: "patch_completed", resource: this})
             this._get();
         }, (error) => {
@@ -220,6 +235,7 @@ class MCollection {
     }
 }
 
+
 class Net {
     constructor(m) {
         this._m = m;
@@ -341,7 +357,9 @@ class Metaphor {
                 field_data[field_name] = data[field_name];
             }
         }
-        field_data['id'] = data['id'];
+        if (data['id']) {
+            field_data['id'] = data['id'];
+        }
         return field_data;
     }
 }

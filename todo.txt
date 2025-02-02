@@ -13,6 +13,22 @@ bugs:
 
 Todo:
 
+ - mutation: report error on index creation (unique fails due to duplicates)
+   - add aggregate with group to check ahead of time
+   - known exception DuplicateKeyError, create readable error
+   - possibly create a simple index, then use collMod to make it unique
+     - it's got a dryrun
+     - list violations
+ - mutations: report on any errors
+   - duplicates
+   - move errors
+   - conversion errors
+   - mongo document size errors?
+   - unknown as last resort
+ - mutations: add view to display effects 
+   - loss of data
+   - duplicates which prevent unique index creation (aggregate)
+
  - client ui - 
    - collection fields as "self" urls - change to just null, and infer url from field name - done
 

@@ -655,6 +655,8 @@ class Api(object):
                 if field_value:
                     if field_name in expand_dict:
                         encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'link')
+                    else:
+                        encoded[field_name] = {"id": self.schema.encodeid(field_value)}
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
                 if field_name in expand_dict:
                     encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'resource')

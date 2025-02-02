@@ -94,7 +94,6 @@ class Search {
     show_link_field_search_and_save(resource, field) {
         this.search = new ResourceSearch(field.target_spec_name, (selected_resource) => {
             api.perform_update_resource(resource, field.name, selected_resource.id);
-            resource._get();
             this.hide();
         });
         turtlegui.reload();
@@ -222,7 +221,7 @@ class ApiClient {
     }
 
     is_not_collection(resource) {
-        return !resource._meta.is_collection;
+        return (!resource) || (!resource._meta) || (!resource._meta.is_collection);
     }
 
     is_field_array(field) {
@@ -536,6 +535,9 @@ document.addEventListener("DOMContentLoaded", function(){
         if (event_data.type == "unauthorized") {
             login.show_login();
         } else {
+            if (event_data.error) {
+                handle_http_error(event_data.error, "Error");
+            }
             turtlegui.reload();
         }
     });

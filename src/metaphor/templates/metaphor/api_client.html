@@ -63,7 +63,7 @@
                             <div class="field_value id">
                                 <a class="resource_link" gui-attrs="href=api.build_client_url(resource)" gui-text="resource.id"></a>
                             </div>
-                            <span class="control create_button" gui-show="resource.id&&resource._meta.resource_type=='resource'" gui-click="api.perform_delete_resource(resource)" gui-text="'>> delete ' + resource._spec.name"></span>
+                            <span class="control create_button" gui-show="resource.id&&(!resource._meta.is_collection)" gui-click="api.perform_delete_resource(resource)" gui-text="'>> delete ' + resource._spec.name"></span>
                             <span class="control listen_button" gui-show="!listen_client.is_listening(resource)" gui-click="listen_client.add_resource(resource)">listen</span>
                             <span class="control listen_button listening" gui-show="listen_client.is_listening(resource)" gui-click="listen_client.remove_resource(resource)">stop listening</span>
 
@@ -93,18 +93,21 @@
                             <div class="field_name" gui-text="field_name"></div>
 
                             <div class="field_value">
-                                <span class="expand_button" gui-show="!resource[field_name]" gui-click="resource._get_link(field_name)">+</span>
-                                <span class="expand_button" gui-show="resource[field_name]" gui-click="resource._unset_link(field_name)">-</span>
+                                <span gui-show="resource[field_name]">
+                                    <span class="expand_button" gui-show="!resource[field_name]._meta" gui-click="resource._get_link(field_name)">+</span>
+                                    <span class="expand_button" gui-show="resource[field_name]._meta" gui-click="resource._unset_link(field_name)">-</span>
+                                </span>
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
-                                    <a class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
+                                    <a gui-show="resource[field_name]" class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
+                                    <span gui-show="!resource[field_name]" class="resource_link" gui-text="field_name"></span>
                                 </span>
 
                                 <span class="control create_button" gui-click="search.show_link_field_search_and_save(resource, field)" gui-text="'>> link ' + field.target_spec_name"></span>
 
                                 <span class="control create_button" gui-show="resource[field.name]" gui-click="api.unlink_field(resource, field)" gui-text="'>> unlink ' + field.target_spec_name"></span>
 
-                                <div class="expanded_link" gui-show="resource[field_name]" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
+                                <div class="expanded_link" gui-show="resource._is_link_expanded(field_name)" gui-node="resource[field_name]" gui-node-params="parent_resource=resource;parent_field_name=field_name"></div>
                             </div>
                         </div>
                         <div class="field" gui-show="api.is_simple(field)">
