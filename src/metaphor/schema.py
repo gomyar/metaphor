@@ -4,6 +4,7 @@ from uuid import uuid4
 from datetime import datetime
 import hashlib
 import json
+import time
 
 from bson.objectid import ObjectId
 from flask_login import UserMixin
@@ -411,7 +412,12 @@ class Schema(object):
                 name=f"fieldindex-{spec_name}-{field_name}")
 
     def drop_index_for_field(self, spec_name, field_name):
-        self.db['resource_%s' % spec_name].drop_index(f"fieldindex-{spec_name}-{field_name}")
+        import ipdb; ipdb.set_trace()
+        index_name = f"fieldindex-{spec_name}-{field_name}"
+        if index_name in self.db['resource_%s' % spec_name].index_information():
+            self.db['resource_%s' % spec_name].drop_index(index_name)
+        while index_name in self.db['resource_%s' % spec_name].index_information():
+            time.sleep(1)
 
     def _delete_root_field(self, field_name):
         self.root.fields.pop(field_name)
@@ -903,3 +909,14 @@ class Schema(object):
             ]
         }
         return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
+
+    def has_global_duplicates(self, resource_name, field_name):
+        try:
+            result = self.db['resource_%s' % resource_name].aggregate([
+                {"$group" : { "_id": f"${field_name}", "count": { "$sum": 1 } } },
+                {"$match": {"_id" :{ "$ne" : None} , "count" : {"$gt": 1} } },
+                {"$limit": 1},
+            ])
+            return next(result)['count'] > 1
+        except StopIteration as si:
+            return False

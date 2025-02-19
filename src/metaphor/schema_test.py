@@ -764,3 +764,29 @@ class SchemaTest(unittest.TestCase):
 
         self.schema = SchemaFactory(self.db).load_current_schema()
 
+    def test_duplicate_index_check(self):
+        self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                    },
+                },
+            }
+        })
+
+        employee_id = self.schema.insert_resource('employee', {
+            'name': 'Bob'
+        }, 'employees')
+
+        self.assertFalse(self.schema.has_global_duplicates("employee", "name"))
+
+        employee_id = self.schema.insert_resource('employee', {
+            'name': 'Bob'
+        }, 'employees')
+
+        self.assertTrue(self.schema.has_global_duplicates("employee", "name"))

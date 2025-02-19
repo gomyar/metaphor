@@ -62,6 +62,7 @@ class ApiTest(unittest.TestCase):
             'age': 41,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
         }, employee_1)
 
         employee_2 = self.api.get('employees/%s' % employee_id_2)
@@ -72,6 +73,7 @@ class ApiTest(unittest.TestCase):
             'age': 31,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
         }, employee_2)
 
         division_1 = self.api.get('divisions/%s' % division_id_1)
@@ -118,6 +120,7 @@ class ApiTest(unittest.TestCase):
             'age': 41,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
         }, {
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
             'id': employee_id_2,
@@ -125,6 +128,7 @@ class ApiTest(unittest.TestCase):
             'age': 31,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
         }
         ], linked_employees)
 
@@ -136,6 +140,7 @@ class ApiTest(unittest.TestCase):
             'age': 21,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_2},
         }], linked_employees_2)
 
     def test_collections_and_null_links(self):
@@ -156,6 +161,7 @@ class ApiTest(unittest.TestCase):
             'age': 41,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
         },
         {
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
@@ -164,6 +170,7 @@ class ApiTest(unittest.TestCase):
             'age': 31,
             'created': None,
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
         },
         {
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
@@ -516,6 +523,7 @@ class ApiTest(unittest.TestCase):
                 'id': employee_id_1,
                 'name': 'ned',
                 'parent_section_contractors': None,
+                'division': {'id': division_id_1},
                 }],
             'name': 'sales',
             'yearly_sales': 100}
@@ -562,6 +570,7 @@ class ApiTest(unittest.TestCase):
                  'yearly_sales': 100}],
             'name': 'ned',
             'parent_section_contractors': None,
+            'division': {'id': division_id_1},
             }], self.api.get('/employees', args={"expand": 'link_division_parttimers'})['results'])
 
     def test_expand_null_link(self):
@@ -598,6 +607,7 @@ class ApiTest(unittest.TestCase):
                 'id': employee_id_1,
                 'name': 'ned',
                 'parent_section_contractors': None,
+                'division': {'id': division_id_1},
                 },
                {'_meta': {'is_collection': False,
                           'spec': {'name': 'employee'},
@@ -607,6 +617,7 @@ class ApiTest(unittest.TestCase):
                 'id': employee_id_2,
                 'name': 'bob',
                 'parent_section_contractors': None,
+                'division': {'id': division_id_1},
                 }],
             'yearly_sales': 100}
             , self.api.get('/divisions/%s' % division_id_1, args={"expand": 'parttimers'}))
@@ -635,6 +646,7 @@ class ApiTest(unittest.TestCase):
                 'id': employee_id_1,
                 'name': 'ned',
                 'parent_section_contractors': None,
+                'division': {'id': division_id_1},
                 },
             ],
             'name': 'sales',

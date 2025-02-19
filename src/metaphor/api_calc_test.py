@@ -156,6 +156,7 @@ class ApiTest(unittest.TestCase):
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
             'age': 41,
             'division_link': {"_id": self.schema.decodeid(division_id_1)},
+            'division': {"id": division_id_1},
             'id': employee_id_1,
             'name': 'ned',
             'parent_section_parttimers': None,
