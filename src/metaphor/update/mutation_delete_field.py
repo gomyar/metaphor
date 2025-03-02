@@ -1,13 +1,15 @@
 
 
 class DeleteFieldMutation:
-    def __init__(self, mutation, schema, spec_name, field_name, indexed=None):
+    def __init__(self, mutation, schema, spec_name, field_name, indexed=None, unique=None, unique_global=None):
         self.mutation = mutation
         self.schema = schema
 
         self.spec_name = spec_name
         self.field_name = field_name
         self.indexed = indexed
+        self.unique = unique
+        self.unique_global = unique_global
 
     def __repr__(self):
         return "<DeleteFieldMutation>"
@@ -27,7 +29,11 @@ class DeleteFieldMutation:
 
         self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, start_agg)
 
-        if self.indexed:
-            self.schema.drop_index_for_field(self.spec_name, self.field_name)
+        if self.unique_global:
+            self.schema.drop_index_for_field("global", self.spec_name, self.field_name)
+        elif self.unique:
+            self.schema.drop_index_for_field("unique", self.spec_name, self.field_name)
+        elif self.indexed:
+            self.schema.drop_index_for_field("index", self.spec_name, self.field_name)
 
         self.schema.cleanup_update(update_id)

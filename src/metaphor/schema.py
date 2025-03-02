@@ -65,8 +65,8 @@ class Field(object):
 
 
 class CalcField(Field):
-    def __init__(self, field_name, calc_str, background):
-        super().__init__(field_name, 'calc')
+    def __init__(self, field_name, calc_str, background, indexed=False, unique=False, unique_global=False):
+        super().__init__(field_name, 'calc', indexed=indexed, unique=unique, unique_global=unique_global)
         self.name = field_name
         self.calc_str = calc_str
         self.field_type = 'calc'
@@ -298,7 +298,7 @@ class Schema(object):
         else:
             spec = self.specs[spec_name]
         if field_type == 'calc':
-            self.add_calc(spec, field_name, calc_str, background)
+            self.add_calc(spec, field_name, calc_str, background, indexed, unique, unique_global)
         else:
             self.add_field(spec, field_name, field_type, field_target, default, required, indexed, unique, unique_global)
 
@@ -400,24 +400,21 @@ class Schema(object):
             self.db['resource_%s' % spec_name].create_index(
                 [field_name],
                 unique=unique,
-                name=f"fieldindex-{spec_name}-{field_name}")
+                name=f"field-global-{spec_name}-{field_name}")
         elif unique:
             self.db['resource_%s' % spec_name].create_index(
                 ["_parent_id", "_parent_field_name", field_name],
                 unique=unique,
-                name=f"fieldindex-{spec_name}-{field_name}")
+                name=f"field-unique-{spec_name}-{field_name}")
         else:
             self.db['resource_%s' % spec_name].create_index(
                 [field_name],
-                name=f"fieldindex-{spec_name}-{field_name}")
+                name=f"field-index-{spec_name}-{field_name}")
 
-    def drop_index_for_field(self, spec_name, field_name):
-        import ipdb; ipdb.set_trace()
-        index_name = f"fieldindex-{spec_name}-{field_name}"
+    def drop_index_for_field(self, index_type, spec_name, field_name):
+        index_name = f"field-{index_type}-{spec_name}-{field_name}"
         if index_name in self.db['resource_%s' % spec_name].index_information():
             self.db['resource_%s' % spec_name].drop_index(index_name)
-        while index_name in self.db['resource_%s' % spec_name].index_information():
-            time.sleep(1)
 
     def _delete_root_field(self, field_name):
         self.root.fields.pop(field_name)
@@ -527,14 +524,14 @@ class Schema(object):
         self._add_reverse_link_for_field(field, spec)
         return field
 
-    def add_calc(self, spec, field_name, calc_str, background=False):
+    def add_calc(self, spec, field_name, calc_str, background=False, indexed=False, unique=False, unique_global=False):
         from metaphor.lrparse.lrparse import parse
-        calc_field = self._add_calc(spec, field_name, calc_str, background)
+        calc_field = self._add_calc(spec, field_name, calc_str, background, indexed, unique, unique_global)
         self.calc_trees[(spec.name, field_name)] = parse(calc_str, spec)
         return calc_field
 
-    def _add_calc(self, spec, field_name, calc_str, background=False):
-        calc_field = CalcField(field_name, calc_str=calc_str, background=background)
+    def _add_calc(self, spec, field_name, calc_str, background=False, indexed=False, unique=False, unique_global=False):
+        calc_field = CalcField(field_name, calc_str=calc_str, background=background, indexed=indexed, unique=unique, unique_global=unique_global)
         spec.fields[field_name] = calc_field
         spec.fields[field_name].spec = spec
         return calc_field

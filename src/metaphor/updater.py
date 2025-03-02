@@ -126,7 +126,7 @@ class Updater(object):
                 {"$unwind": {"path": "$_update", "preserveNullAndEmptyArrays": True}},
                 {"$addFields": {"_update": {"$ifNull": ["$_update", {"_val": None}]}}},
             ])
-        log.debug("Aggregate %s on resource_%s: %s", calc_field_name, spec_name, start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
+        #log.debug("Aggregate %s on resource_%s: %s", calc_field_name, spec_name, start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
         self.schema.db["resource_%s" % spec_name].aggregate(start_agg + reverse_agg + nested_agg + calc_field_dirty_agg + merge_agg)
 
         # update for subsequent calcs, if any

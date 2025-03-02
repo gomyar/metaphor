@@ -158,7 +158,7 @@ class MutationTest(unittest.TestCase):
 
         # setup schema 2
         self.schema_2.create_spec('client')
-        self.schema_2.create_field('client', 'title', 'str')
+        self.schema_2.create_field('client', 'title', 'str', indexed=True)
 
         self.schema_2.create_field('root', 'clients', 'collection', 'client')
 
@@ -180,7 +180,7 @@ class MutationTest(unittest.TestCase):
                 'field_name': 'title',
                 'field_type': 'str',
                 'default': None,
-                'indexed': False,
+                'indexed': True,
                 'is_reverse': False,
                 'spec_name': 'client',
                 'unique': False,
@@ -212,8 +212,70 @@ class MutationTest(unittest.TestCase):
                 'field_name': 'title',
                 'field_target': None,
                 'field_type': 'str',
+                'indexed': True,
+                'unique': False,
+                'unique_global': False,
              }},
              ], mutations)
+
+        # run mutation
+        response = self.client.patch(f"/admin/api/mutations/{mutation_id}", json={
+            "promote": True
+        })
+        self.assertEqual(200, response.status_code)
+
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(2, len(indexes))
+        self.assertEqual("_id_", indexes[0]['name'])
+        self.assertEqual("field-index-client-title", indexes[1]['name'])
+
+    def test_cancel_rename_preserves_indexes(self):
+        # setup schema 1
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        # setup schema 2
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'title', 'str', indexed=True)
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": self.schema_2.schema_id})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+
+        # alter mutation to rename field
+        response = self.client.post(f"/admin/api/mutations/{mutation_id}/steps", json={
+            "action": "rename_field",
+            "spec_name": "client",
+            "from_field_name": "name",
+            "to_field_name": "title",
+        })
+        self.assertEqual(200, response.status_code)
+
+        # cancel rename
+        response = self.client.delete(f"/admin/api/mutations/{mutation_id}/steps/client/name")
+        self.assertEqual(200, response.status_code)
+
+        # run mutation
+        response = self.client.patch(f"/admin/api/mutations/{mutation_id}", json={
+            "promote": True
+        })
+        self.assertEqual(200, response.status_code)
+
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(2, len(indexes))
+        self.assertEqual("_id_", indexes[0]['name'])
+        self.assertEqual("field-index-client-title", indexes[1]['name'])
 
     def test_rename_root_field(self):
         # setup schema 1
@@ -278,6 +340,9 @@ class MutationTest(unittest.TestCase):
                 'field_name': 'partners',
                 'field_target': 'client',
                 'field_type': 'collection',
+                'indexed': False,
+                'unique': False,
+                'unique_global': False,
              }},
              ], mutations)
 

@@ -259,6 +259,10 @@ class Mutation:
                 "field_type": field.field_type,
                 "calc_str": field.calc_str if type(field) is CalcField else None,
                 "field_target": field.target_spec_name,
+
+                "indexed": field.indexed,
+                "unique": field.unique,
+                "unique_global": field.unique_global,
             }})
 
         from_field = self.from_schema.get_spec(spec_name).fields[from_field_name]
@@ -342,6 +346,9 @@ class Mutation:
                         "spec_name": from_spec_name,
                         "field_name": field_name,
                         "default": field.default,
+                        "indexed": field.indexed,
+                        "unique": field.unique,
+                        "unique_global": field.unique_global,
                     }
                 })
 

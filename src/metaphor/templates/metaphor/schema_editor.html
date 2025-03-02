@@ -62,6 +62,12 @@ var schema_id = "{{ schema_id }}";
                         <div class="target" gui-text="field.target_spec_name" gui-show="field.target_spec_name"></div>
                         <div class="calc_str" gui-text="field.calc_str" gui-show="field.calc_str"></div>
                     </div>
+                    <div class="indexes">
+                        <span class="bool" gui-text="(field.required && 'R')||''"></span>
+                        <span class="bool" gui-text="(field.indexed && 'I')||''"></span>
+                        <span class="bool" gui-text="(field.unique && 'U')||''"></span>
+                        <span class="bool" gui-text="(field.unique_global && 'G')''"></span>
+                    </div>
                     <div class="field_controls">
                         <button class="button edit_field" gui-click="create_field.show_edit(spec_name, field_name)" gui-show="!schema.current">Edit</button>
                         <button class="button delete_field" gui-click="schema.delete_field(spec_name, field_name)" gui-show="!schema.current">Delete</button>

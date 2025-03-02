@@ -103,6 +103,13 @@ div.specs div.spec div.field div.target {
     display : inline-block;
 }
 
+
+div.specs div.spec div.field div.indexes {
+    font-size : 12px;
+    width : 5%;
+    display : inline-block;
+}
+
 div.specs div.spec div.field div.calc_str {
     font-size : 12px;
     min-width : 45%;

@@ -64,8 +64,56 @@ class MutationTest(unittest.TestCase):
         id_index = indexes[0]
         self.assertEqual('_id_', id_index['name'])
         field_index = indexes[1]
-        self.assertEqual('fieldindex-client-address', field_index['name'])
+        self.assertEqual('field-index-client-address', field_index['name'])
         self.assertEqual(field_index['key'], {'address': 1})
+
+    def test_create_calc_mutation(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'name', 'str')
+
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'title', 'calc', calc_str="'mr '+self.name", indexed=True)
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # insert test data
+        user_1_id = self.schema_1.insert_resource('client', {"name": "Bob"}, 'clients')
+        user_2_id = self.schema_1.insert_resource('client', {"name": "Ned"}, 'clients')
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        self.assertEqual(1, len(mutation.steps))
+        self.assertEqual('create_field', mutation.steps[0]['action'])
+        self.assertEqual('client', mutation.steps[0]['params']['spec_name'])
+        self.assertEqual('title', mutation.steps[0]['params']['field_name'])
+        self.assertEqual("'mr '+self.name", mutation.steps[0]['params']['calc_str'])
+        self.assertEqual(True, mutation.steps[0]['params']['indexed'])
+
+        mutation.mutate()
+
+        user_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_1_id)})
+        user_2 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(user_2_id)})
+
+        self.assertEqual("mr Bob", user_1['title'])
+        self.assertEqual("mr Ned", user_2['title'])
+
+        # assert indexes
+        indexes = list(self.db.resource_client.list_indexes())
+        self.assertEqual(2, len(indexes))
+        id_index = indexes[0]
+        self.assertEqual('_id_', id_index['name'])
+        field_index = indexes[1]
+        self.assertEqual('field-index-client-title', field_index['name'])
+        self.assertEqual(field_index['key'], {'title': 1})
 
     def test_delete_field(self):
         # given 2 schemas
@@ -943,7 +991,7 @@ class MutationTest(unittest.TestCase):
         id_index = indexes[0]
         self.assertEqual('_id_', id_index['name'])
         field_index = indexes[1]
-        self.assertEqual('fieldindex-client-name', field_index['name'])
+        self.assertEqual('field-global-client-name', field_index['name'])
         self.assertTrue(field_index['unique'])
 
 

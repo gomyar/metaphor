@@ -32,8 +32,11 @@ class CreateFieldMutation:
             update_id = str(self.schema.create_update())
             self.schema.default_field_value(self.spec_name, self.field_name, self.default)
 
-        if self.default or self.calc_str:
+        if self.default:
             self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
+
+        if self.calc_str:
+            self.mutation.updater.perform_single_update_aggregation(self.spec_name, self.spec_name, self.field_name, self.schema.calc_trees[self.spec_name, self.field_name], [], [], update_id)
 
         if self.indexed:
             self.schema.create_index_for_field(self.spec_name, self.field_name)

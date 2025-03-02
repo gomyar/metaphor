@@ -26,9 +26,14 @@ class AlterFieldMutation:
             self.schema.alter_field_convert_type(self.spec_name, self.field_name, self.new_type)
 
         if from_field.indexed != to_field.indexed or from_field.unique != to_field.unique or from_field.unique_global != to_field.unique_global:
-            if from_field.indexed or from_field.unique or from_field.unique_global:
-                self.schema.drop_index_for_field(self.spec_name, self.field_name)
             self.schema.create_index_for_field(self.spec_name, self.field_name, to_field.unique, to_field.unique_global)
+
+            if from_field.unique_global and not to_field.unique_global:
+                self.schema.drop_index_for_field("global", self.spec_name, self.field_name)
+            elif from_field.unique and not to_field.unique:
+                self.schema.drop_index_for_field("unique", self.spec_name, self.field_name)
+            elif from_field.indexed and not to_field.indexed:
+                self.schema.drop_index_for_field("index", self.spec_name, self.field_name)
 
         self.mutation.updater.update_for_field(self.spec_name, self.field_name, update_id, [])
 
