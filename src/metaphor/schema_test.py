@@ -7,6 +7,7 @@ from pymongo import MongoClient
 from metaphor.mongoclient_testutils import mongo_connection
 from metaphor.schema import Schema, Spec, Field
 from metaphor.schema import DependencyException
+from metaphor.schema import MalformedFieldException
 from metaphor.schema_factory import SchemaFactory
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
@@ -790,3 +791,23 @@ class SchemaTest(unittest.TestCase):
         }, 'employees')
 
         self.assertTrue(self.schema.has_global_duplicates("employee", "name"))
+
+
+    def test_only_basic_indexes_allowed_on_primitives_for_calc_fields(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
+
+        with self.assertRaises(MalformedFieldException) as me:
+            self.schema.create_field('employee', 'title', 'calc', calc_str="'mr '+self.name", indexed=True, unique=True)
+            self.assertEqual("Unique index not allowed for calc field", str(me))
+
+        with self.assertRaises(MalformedFieldException) as me:
+            self.schema.create_field('employee', 'title', 'calc', calc_str="employees", indexed=True)
+            self.assertEqual("Index not allowed for non-primitive calc field", str(me))
+

@@ -291,6 +291,8 @@ class Schema(object):
             raise MalformedFieldException('Field already exists: %s.%s' % (spec_name, field_name))
         if spec_name == 'root' and field_name in self.root.fields:
             raise MalformedFieldException('Field already exists: root.%s' % field_name)
+        if (unique_global and not unique) or (unique and not indexed):
+            raise MalformedFieldException('Index specified incorrectly')
         self._check_field_name(field_name)
         self._update_field(spec_name, field_name, field_type, field_target, calc_str, default, required, indexed, unique, unique_global)
         if spec_name == 'root':
@@ -311,6 +313,7 @@ class Schema(object):
         if calc_str:
             self._check_calc_syntax(spec_name, calc_str)
             self._check_circular_dependencies(spec_name, field_name, calc_str)
+            self._check_indexes_for_calc(spec_name, calc_str, indexed, unique, unique_global)
 
             from metaphor.lrparse.lrparse import parse
             parsed = parse(calc_str, self.specs[spec_name])
@@ -375,6 +378,15 @@ class Schema(object):
             list(toposort(dep_tree))
         except CircularDependencyError as cde:
             raise MalformedFieldException('%s.%s has circular dependencies: %s' % (spec_name, field_name, cde.data))
+
+    def _check_indexes_for_calc(self, spec_name, calc_str, indexed, unique, unique_global):
+        from metaphor.lrparse.lrparse import parse
+        spec = self.specs[spec_name]
+        tree = parse(calc_str, spec)
+        if indexed and not tree.infer_type().is_primitive():
+            raise MalformedFieldException("Index not allowed for non-primitive calc field")
+        if tree.infer_type().is_primitive() and (unique or unique_global):
+            raise MalformedFieldException("Unique index not allowed for calc field")
 
     def add_spec(self, spec_name):
         spec = Spec(spec_name, self)
