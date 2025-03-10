@@ -188,7 +188,6 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual(ObjectId(employee_id[2:]), self.schema.decodeid(employee_id))
         self.assertEqual({
             '_id': self.schema.decodeid(employee_id),
-            '_schema_id': self.schema._id,
             'name': 'Bob',
             '_parent_field_name': 'employees',
             '_parent_id': None,
@@ -311,7 +310,6 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
@@ -324,7 +322,6 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_parent_id': None,
             '_parent_type': 'root',
             '_parent_field_name': 'divisions',
@@ -336,7 +333,6 @@ class SchemaTest(unittest.TestCase):
 
         self.assertEqual({
             '_id': self.schema.decodeid(section_id_1),
-            '_schema_id': self.schema._id,
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
             '_parent_field_name': 'sections',

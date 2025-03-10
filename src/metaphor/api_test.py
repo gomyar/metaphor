@@ -194,7 +194,6 @@ class ApiTest(unittest.TestCase):
         new_employees = list(self.db['resource_employee'].find({}))
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -203,7 +202,6 @@ class ApiTest(unittest.TestCase):
              'division': self.schema.decodeid(division_id_1),
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -216,7 +214,6 @@ class ApiTest(unittest.TestCase):
         new_employees = list(self.db['resource_employee'].find())
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -230,7 +227,6 @@ class ApiTest(unittest.TestCase):
         new_employees = list(self.db['resource_employee'].find())
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -247,7 +243,6 @@ class ApiTest(unittest.TestCase):
         new_employees = list(self.db['resource_employee'].find({}))
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -265,7 +260,6 @@ class ApiTest(unittest.TestCase):
         employees = list(self.db['resource_employee'].find({}))
         self.assertEqual([
             {'_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'employees',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -277,7 +271,6 @@ class ApiTest(unittest.TestCase):
         divisions = list(self.db['resource_division'].find({'_type': 'division'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'divisions',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -299,7 +292,6 @@ class ApiTest(unittest.TestCase):
         new_divisions = list(self.db['resource_division'].find({'_type': 'division'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'divisions',
              '_parent_id': None,
              '_parent_type': 'root',
@@ -311,7 +303,6 @@ class ApiTest(unittest.TestCase):
         new_sections = list(self.db['resource_section'].find({'_type': 'section'}))
         self.assertEqual([
             {'_id': self.schema.decodeid(section_id_1),
-            '_schema_id': self.schema._id,
              '_parent_field_name': 'sections',
              '_parent_id': self.schema.decodeid(division_id_1),
              '_parent_type': 'division',
@@ -743,7 +734,6 @@ class ApiTest(unittest.TestCase):
         contractor_id = self.api.post('/divisions/%s/sections/%s/contractors' % (division_id_1, section_id_1), {'name': 'Angus'})
         self.assertEqual({
             '_id': self.schema.decodeid(section_id_1),
-            '_schema_id': self.schema._id,
             '_parent_field_name': 'sections',
             '_parent_id': self.schema.decodeid(division_id_1),
             '_parent_type': 'division',
@@ -752,7 +742,6 @@ class ApiTest(unittest.TestCase):
             'name': 'engineering'}, self.db.resource_section.find_one({'_id': self.schema.decodeid(section_id_1)}))
         self.assertEqual({
             '_id': self.schema.decodeid(contractor_id),
-            '_schema_id': self.schema._id,
             '_parent_field_name': 'contractors',
             '_parent_id': self.schema.decodeid(section_id_1),
             '_parent_type': 'section',

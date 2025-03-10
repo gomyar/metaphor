@@ -666,7 +666,6 @@ class Schema(object):
 
         new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
         data['_id'] = new_id
-        data['_schema_id'] = self._id
         data['_type'] = spec_name
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
@@ -808,9 +807,6 @@ class Schema(object):
             if field.required and field_name not in data:
                 errors.append({"error": "Missing required field: '%s'" % field_name})
         return errors
-
-#    def remove_spec_field(self, spec_name, field_name):
-#        self.db['resource_%s' % spec_name].update_many({'_type': spec_name}, {'$unset': {field_name: ''}})
 
     def load_user_by_username(self, username, load_hash=False):
         return self._load_user_with_aggregate({'username': username}, load_hash)

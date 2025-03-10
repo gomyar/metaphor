@@ -46,7 +46,6 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             'name': 'sales',
             '_parent_field_name': 'divisions',
@@ -61,7 +60,6 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             'name': 'sales',
             '_parent_field_name': 'divisions',
@@ -80,7 +78,6 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             'name': 'sales',
             '_parent_field_name': 'divisions',
@@ -98,7 +95,6 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             'name': 'sales',
             '_parent_field_name': 'divisions',
@@ -111,7 +107,6 @@ class UpdaterTest(unittest.TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             'name': 'Bob',
             'age': 41,
@@ -169,7 +164,6 @@ class UpdaterTest(unittest.TestCase):
             division_data['older_non_retired_managers'])
         self.assertEqual({
             "_id" : self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             "_parent_field_name" : "divisions",
             "_parent_id" : None,
@@ -220,7 +214,6 @@ class UpdaterTest(unittest.TestCase):
         employee_data = self.db.resource_employee.find_one()
         self.assertEqual({
             "_id" : self.schema.decodeid(employee_id_1),
-            '_schema_id': self.schema._id,
             '_dirty': {},
             "_parent_field_name" : "employees",
             "_parent_id" : self.schema.decodeid(division_id_1),

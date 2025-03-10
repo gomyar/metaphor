@@ -166,7 +166,6 @@ class AggregatorTest(unittest.TestCase):
         result = self.schema.db['resource_employee'].aggregate(aggregations[0])
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
@@ -190,7 +189,6 @@ class AggregatorTest(unittest.TestCase):
         result = self.schema.db['resource_employee'].aggregate(aggregations[0])
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',

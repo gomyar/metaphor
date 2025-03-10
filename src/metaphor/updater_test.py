@@ -43,7 +43,6 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             'name': 'sales',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
@@ -61,7 +60,6 @@ class UpdaterTest(unittest.TestCase):
         division_data = self.db.resource_division.find_one()
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             'name': 'sales',
             '_parent_field_name': 'divisions',
             '_parent_id': None,
@@ -346,7 +344,6 @@ class UpdaterTest(unittest.TestCase):
 
         self.assertEqual({
             '_id': self.schema.decodeid(division_id_1),
-            '_schema_id': self.schema._id,
             '_parent_field_name': 'divisions',
             '_parent_id': None,
             '_parent_type': 'root',
