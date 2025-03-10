@@ -661,7 +661,7 @@ class Schema(object):
             {"_id": ObjectId(update_id)},
             {"$set": {"error": message}})
 
-    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, grants=None, extra_fields=None):
+    def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, extra_fields=None):
         data = self._parse_fields(spec_name, data)
 
         new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
@@ -757,8 +757,8 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
         return link_id
 
-    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None, extra_fields=None):
-        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, grants, extra_fields)
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, extra_fields=None):
+        resource_id = self.insert_resource(spec_name, data, parent_field, parent_spec_name, parent_id, extra_fields)
         self.create_linkcollection_entry(parent_spec_name, parent_id, parent_field, resource_id)
         return resource_id
 
@@ -835,16 +835,6 @@ class Schema(object):
                 '_id': 1,
                 'username': 1,
                 'password': 1,
-                'read_grants._id': 1,
-                'read_grants.url': 1,
-                'create_grants._id': 1,
-                'create_grants.url': 1,
-                'update_grants._id': 1,
-                'update_grants.url': 1,
-                'delete_grants._id': 1,
-                'delete_grants.url': 1,
-                'put_grants._id': 1,
-                'put_grants.url': 1,
                 '_user_hash': 1,
                 'admin': 1,
                 'group_grants.type': 1,
@@ -892,28 +882,8 @@ class Schema(object):
         self.create_field('user', 'groups', 'linkcollection', 'group')
         self.create_field('group', 'grants', 'collection', 'grant')
 
-        self.create_field('user', 'read_grants', 'calc', calc_str="self.groups.grants[type='read']")
-        self.create_field('user', 'create_grants', 'calc', calc_str="self.groups.grants[type='create']")
-        self.create_field('user', 'update_grants', 'calc', calc_str="self.groups.grants[type='update']")
-        self.create_field('user', 'delete_grants', 'calc', calc_str="self.groups.grants[type='delete']")
-        self.create_field('user', 'put_grants', 'calc', calc_str="self.groups.grants[type='put']")
-
         self.create_field('root', 'users', 'collection', 'user')
         self.create_field('root', 'groups', 'collection', 'group')
-
-    def read_root_grants(self, path):
-        or_clause = [{'url': '/'}]
-        segments = path.split('/')
-        while segments:
-            or_clause.append({'url': '/' + '/'.join(segments)})
-            segments = segments[:-1]
-        query = {
-            "$and": [
-                {"_type": "grant"},
-                {"$or": or_clause},
-            ]
-        }
-        return [g['_id'] for g in self.db['resource_grant'].find(query, {'_id': True})]
 
     def has_global_duplicates(self, resource_name, field_name):
         try:

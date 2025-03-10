@@ -107,50 +107,6 @@ class ServerTest(TestCase):
         yes_response = self.client.patch('/api/employees/%s' % employee_id_1, data=json.dumps({'name': 'willblend'}), content_type='application/json')
         self.assertEqual(200, yes_response.status_code)
 
-    def test_delete_grant_updates_user_grants(self):
-        company_spec = self.schema.create_spec('company')
-        self.schema.create_field('company', 'name', 'str')
-
-        self.schema.create_field('root', 'companies', 'collection', 'company')
-
-        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'companies'})
-
-        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
-
-        self.assertEqual([{'_id': self.schema.decodeid(grant_1)}], user['create_grants'])
-
-        # delete link to group
-        self.api.delete('/users/%s/groups/%s' % (self.user_id, self.group_id))
-
-        # assert grants are removed
-        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
-        self.assertEqual([], user['create_grants'])
-
-    def test_delete_group_updates_user_grants(self):
-        company_spec = self.schema.create_spec('company')
-        self.schema.create_field('company', 'name', 'str')
-
-        self.schema.create_field('root', 'companies', 'collection', 'company')
-
-        grant_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'companies'})
-
-        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
-
-        self.assertEqual([{'_id': self.schema.decodeid(grant_1)}], user['create_grants'])
-
-        # delete link to group
-        self.api.delete('/groups/%s' % (self.group_id))
-
-        # assert grants are removed
-        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
-        self.assertEqual([], user['create_grants'])
-
-    def test_delete_group_deletes_child_grants(self):
-        pass
-
-    def test_delete_grants_deletes_grants_in_resources(self):
-        pass
-
     def test_serialize_password(self):
         user = self.api.get('/users/%s' % self.user_id)
         self.assertEqual({

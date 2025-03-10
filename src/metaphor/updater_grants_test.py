@@ -53,8 +53,7 @@ class UpdaterTest(unittest.TestCase):
 
         # add grants
         self.managers_group_id = self.updater.create_resource(
-            'group', 'root', 'groups', None, {'name': 'managers'},
-            self.schema.read_root_grants('groups'))
+            'group', 'root', 'groups', None, {'name': 'managers'})
         self.updater.create_resource('grant', 'group', 'grants', self.managers_group_id, {'type': 'read', 'url': '/divisions/'})
 
         # confirm grants exist

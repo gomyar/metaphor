@@ -157,10 +157,10 @@ class Updater(object):
         self.schema.db['resource_%s' % updated_resource_spec.name].aggregate(agg)
 
     def create_resource(self, spec_name, parent_spec_name, parent_field_name,
-                        parent_id, fields, grants=None):
+                        parent_id, fields):
         update_id = str(self.schema.create_update())
         return_val = CreateResourceUpdate(update_id, self, self.schema, spec_name, fields, parent_field_name, parent_spec_name,
-                parent_id, grants).execute()
+                parent_id).execute()
         self.schema.cleanup_update(update_id)
         return return_val
 
@@ -169,9 +169,9 @@ class Updater(object):
         CreateLinkCollectionUpdate(update_id, self, self.schema, parent_spec_name, parent_id, parent_field, link_id).execute()
         self.schema.cleanup_update(update_id)
 
-    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data, grants=None):
+    def create_orderedcollection_entry(self, spec_name, parent_spec_name, parent_field, parent_id, data):
         update_id = str(self.schema.create_update())
-        return_val = CreateOrderedCollectionUpdate(update_id, self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants).execute()
+        return_val = CreateOrderedCollectionUpdate(update_id, self, self.schema, spec_name, parent_spec_name, parent_field, parent_id, data).execute()
         self.schema.cleanup_update(update_id)
         return return_val
 
@@ -219,8 +219,7 @@ class Updater(object):
             'root',
             'users',
             None,
-            {'username': username, 'password': pw_hash, 'admin': True},
-            self.schema.read_root_grants('users'))
+            {'username': username, 'password': pw_hash, 'admin': True})
 
     def delete_user(self, username):
         user = self.schema.db['resource_user'].find_one({'username': username})

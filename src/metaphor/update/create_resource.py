@@ -4,7 +4,7 @@ from toposort import toposort
 
 class CreateResourceUpdate:
     def __init__(self, update_id, updater, schema, spec_name, fields, parent_field_name, parent_spec_name,
-                 parent_id, grants):
+                 parent_id):
         self.update_id = update_id
         self.updater = updater
         self.schema = schema
@@ -16,7 +16,6 @@ class CreateResourceUpdate:
         self.parent_field_name = parent_field_name
         self.parent_spec_name = parent_spec_name
         self.parent_id = parent_id
-        self.grants = grants or []
 
     def execute(self):
         dependent_fields = self.schema._fields_with_dependant_calcs(self.spec_name)
@@ -29,7 +28,7 @@ class CreateResourceUpdate:
         # create resource
         resource_id = self.schema.insert_resource(
             self.spec_name, self.fields, self.parent_field_name, self.parent_spec_name,
-            self.parent_id, self.grants, extra_fields)
+            self.parent_id, extra_fields)
 
         # find and update dependent calcs
         start_agg = [

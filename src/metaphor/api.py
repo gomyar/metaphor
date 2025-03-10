@@ -235,8 +235,7 @@ class Api(object):
                     spec.name,
                     field_name,
                     parent_id,
-                    data,
-                    self.schema.read_root_grants(path))
+                    data)
             else:
                 if field_spec.target_spec_name == 'user':
                     data['password'] = generate_password_hash(data['password'])
@@ -245,8 +244,7 @@ class Api(object):
                     spec.name,
                     field_name,
                     parent_id,
-                    data,
-                    self.schema.read_root_grants(path))
+                    data)
         else:
             if path not in self.schema.root.fields:
                 raise HTTPError('', 404, "Not Found", None, None)
@@ -263,8 +261,7 @@ class Api(object):
                 'root',
                 path,
                 None,
-                data,
-                self.schema.read_root_grants(path))
+                data)
 
     def delete(self, path, user=None):
         path = path.strip().strip('/')

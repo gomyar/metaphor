@@ -35,19 +35,17 @@ class UpdaterTest(unittest.TestCase):
 
 
     def test_delete_group(self):
-        self.admin_group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'}, self.schema.read_root_grants('groups'))
+        self.admin_group_id = self.updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'})
 
         self.grant_id = self.updater.create_resource('grant', 'group', 'grants', self.admin_group_id, {'type': 'read', 'url': '/companies'})
 
-        self.user_id = self.updater.create_resource('user', 'root', 'users', None, {'username': 'bob', 'password': 'hash', 'admin': True}, self.schema.read_root_grants('users'))
+        self.user_id = self.updater.create_resource('user', 'root', 'users', None, {'username': 'bob', 'password': 'hash', 'admin': True})
 
         self.updater.create_linkcollection_entry('user', self.user_id, 'groups', self.admin_group_id)
 
         user_db = self.db['resource_user'].find_one()
-        self.assertEqual(1, len(user_db['read_grants']))
 
         self.updater.delete_linkcollection_entry('user', self.schema.decodeid(self.user_id), 'groups', self.admin_group_id)
 
         user_db = self.db['resource_user'].find_one()
-        self.assertEqual(0, len(user_db['read_grants']))
 

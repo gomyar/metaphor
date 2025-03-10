@@ -3,7 +3,7 @@ from toposort import toposort
 
 
 class CreateOrderedCollectionUpdate:
-    def __init__(self, update_id, updater, schema, spec_name, parent_spec_name, parent_field, parent_id, data, grants):
+    def __init__(self, update_id, updater, schema, spec_name, parent_spec_name, parent_field, parent_id, data):
         self.update_id = update_id
         self.updater = updater
         self.schema = schema
@@ -14,7 +14,6 @@ class CreateOrderedCollectionUpdate:
         self.parent_field = parent_field
         self.parent_id = parent_id
         self.data = data
-        self.grants = grants
 
     def execute(self):
         dependent_fields = self.schema._fields_with_dependant_calcs(self.spec_name)
@@ -24,7 +23,7 @@ class CreateOrderedCollectionUpdate:
                 self.update_id: dependent_fields
             }}
 
-        resource_id = self.schema.create_orderedcollection_entry(self.spec_name, self.parent_spec_name, self.parent_field, self.parent_id, self.data, self.grants, extra_fields)
+        resource_id = self.schema.create_orderedcollection_entry(self.spec_name, self.parent_spec_name, self.parent_field, self.parent_id, self.data, extra_fields)
 
         start_agg = [
             {"$match": {"_id": self.schema.decodeid(resource_id)}}
