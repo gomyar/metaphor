@@ -66,6 +66,7 @@ def serialize_schema(schema, admin=False):
         'root': root_spec,
         'version': schema.version,
         'current': schema.current,
+        'groups': schema.groups,
     }
 
 
@@ -162,6 +163,48 @@ def schema():
     return jsonify(serialize_schema(api.schema, user.admin))
 
 
+@api_bp.route("/schema/groups", methods=['GET'])
+@login_required
+def schema_groups():
+    api = current_app.config['api']
+
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
+    if not user:
+        return jsonify({"error": "Your identity does not have access to this service"}), 403
+    return jsonify(list(api.schema.groups.keys()))
+
+
+@api_bp.route("/schema/groups/<group_name>/users", methods=['POST'])
+@login_required
+def schema_usergroups(group_name):
+    api = current_app.config['api']
+
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
+    if not user:
+        return jsonify({"error": "Your identity does not have access to this service"}), 403
+
+    user_id = api.schema.decodeid(request.json['id'])
+    api.schema.add_user_to_group(group_name, user_id)
+    return jsonify({"success": 1})
+
+
+@api_bp.route("/schema/groups/<group_name>/users/<user_id>", methods=['DELETE'])
+@login_required
+def schema_delete_user_from_group(group_name, user_id):
+    api = current_app.config['api']
+
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
+    if not user:
+        return jsonify({"error": "Your identity does not have access to this service"}), 403
+
+    user_id = api.schema.decodeid(user_id)
+    api.schema.remove_user_from_group(group_name, user_id)
+    return jsonify({"success": 1})
+
+
 @admin_bp.route("/schemas/<schema_id>")
 @admin_required
 def schema_editor(schema_id):
@@ -231,6 +274,33 @@ def schema_editor_create_spec(schema_id):
     factory = current_app.config['schema_factory']
     schema = factory.load_schema(schema_id)
     schema.create_spec(request.json['spec_name'])
+    return jsonify({'success': 1})
+
+
+@admin_bp.route("/api/schemas/<schema_id>/groups", methods=['POST'])
+@admin_required
+def schema_editor_create_group(schema_id):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    schema.create_group(request.json['group_name'])
+    return jsonify({'success': 1})
+
+
+@admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>", methods=['DELETE'])
+@admin_required
+def schema_editor_delete_group(schema_id, group_name):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    schema.delete_group(group_name)
+    return jsonify({'success': 1})
+
+
+@admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>/grants", methods=['POST'])
+@admin_required
+def schema_editor_create_grant(schema_id, group_name):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    schema.create_grant(group_name, request.json['grant_type'], request.json['url'])
     return jsonify({'success': 1})
 
 

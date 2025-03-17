@@ -2,6 +2,7 @@
 import unittest
 from datetime import datetime
 from urllib.error import HTTPError
+from server import create_app
 
 from metaphor.mongoclient_testutils import mongo_connection
 
@@ -42,15 +43,27 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('root', 'jobs', 'collection', 'job')
 
         self.api = Api(self.db)
-        self.user_id = self.api.updater.create_basic_user("bob", "password")
+
+        self.app = create_app(self.db)
+        self.client = self.app.test_client()
+
+        self.user_id = self.api.updater.create_basic_user("bob", "password", [], True)
+
+        response = self.client.post('/login', json={
+            "email": "bob",
+            "password": "password",
+        }, follow_redirects=True)
+        self.assertEqual(200, response.status_code)
+
 
     def test_grants(self):
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/users/%s/groups' % self.user_id, {'id': group_id_1})
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "employees")
+        self.schema.create_grant("test", "read", "employees.laptops")
+        self.schema.create_grant("test", "read", "employees.laptops.harddrives")
 
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.laptops'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.laptops.harddrives'})
+        response = self.client.post('/api/schema/groups/test/users', json={'id': self.user_id})
+        self.assertEqual(200, response.status_code)
 
         self.user = self.schema.load_user_by_email("bob")
 
@@ -64,7 +77,7 @@ class ApiTest(unittest.TestCase):
         self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890/tasks'))
 
         # add linkcollection grant
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.jobs'})
+        self.schema.create_grant("test", "read", "employees.jobs")
 
         self.user = self.schema.load_user_by_email("bob")
 
@@ -75,8 +88,8 @@ class ApiTest(unittest.TestCase):
         self.assertFalse(self.api.can_access(self.user, 'read', '/jobs/ID7890'))
 
         # add collection grant
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'jobs'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'jobs.tasks'})
+        self.schema.create_grant("test", "read", "jobs")
+        self.schema.create_grant("test", "read", "jobs.tasks")
 
         self.user = self.schema.load_user_by_email("bob")
 
@@ -88,13 +101,12 @@ class ApiTest(unittest.TestCase):
         self.assertFalse(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890/tasks/ID4321'))
 
     def test_grant_methods(self):
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/users/%s/groups' % self.user_id, {'id': group_id_1})
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "employees")
+        self.schema.create_grant("test", "create", "jobs")
+        self.schema.create_grant("test", "update", "employees")
 
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'jobs'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'employees'})
-
+        self.schema.add_user_to_group("test", self.schema.decodeid(self.user_id))
         self.user = self.schema.load_user_by_email("bob")
 
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees'))

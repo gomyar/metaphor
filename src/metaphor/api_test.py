@@ -867,14 +867,12 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('user', 'references', 'collection', 'employee')
 
         user_id = self.api.post('/users', {'email': 'bob'})
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "users")
+        self.schema.create_grant("test", "read", "users.references")
+        self.schema.create_grant("test", "create", "users.references")
 
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users.references'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'users.references'})
-
-
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+        self.schema.add_user_to_group("test", self.schema.decodeid(user_id))
 
         user = self.schema.load_user_by_email('bob')
 
@@ -889,11 +887,11 @@ class ApiTest(unittest.TestCase):
 
         user_id = self.api.post('/users', {'email': 'bob'})
 
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'users'})
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "users")
+        self.schema.create_grant("test", "update", "users")
 
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+        self.schema.add_user_to_group("test", self.schema.decodeid(user_id))
 
         user = self.schema.load_user_by_email('bob')
 
@@ -909,12 +907,12 @@ class ApiTest(unittest.TestCase):
     def test_grants_set_on_ego(self):
         self.schema.create_field('user', 'references', 'collection', 'employee')
 
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.references'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'ego.references'})
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "ego.references")
+        self.schema.create_grant("test", "create", "ego.references")
 
         user_id = self.api.post('/users', {'email': 'bob'})
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+        self.schema.add_user_to_group("test", self.schema.decodeid(user_id))
 
         user = self.schema.load_user_by_email('bob')
 
@@ -926,14 +924,14 @@ class ApiTest(unittest.TestCase):
     def test_patch_grants_set_on_ego(self):
         self.schema.create_field('user', 'reference', 'link', 'employee')
 
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.reference'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'ego'})
-
         user_id = self.api.post('/users', {'email': 'bob'})
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "ego.reference")
+        self.schema.create_grant("test", "update", "ego")
 
         employee_id = self.api.post('/employees', {'name': 'Fred'})
+        self.schema.add_user_to_group("test", self.schema.decodeid(user_id))
 
         user = self.schema.load_user_by_email('bob')
 
@@ -945,12 +943,12 @@ class ApiTest(unittest.TestCase):
     def test_cannot_post_or_put_ego(self):
         self.schema.create_field('user', 'reference', 'link', 'employee')
 
-        group_id_1 = self.api.post('/groups', {'name': 'test'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.reference'})
-        self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'ego'})
+        self.schema.create_group("test")
+        self.schema.create_grant("test", "read", "ego.reference")
+        self.schema.create_grant("test", "update", "ego")
 
         user_id = self.api.post('/users', {'email': 'bob'})
-        self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
+        self.schema.add_user_to_group("test", self.schema.decodeid(user_id))
 
         employee_id = self.api.post('/employees', {'name': 'Fred'})
 

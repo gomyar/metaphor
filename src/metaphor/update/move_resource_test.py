@@ -132,10 +132,10 @@ class MoveResourceTest(unittest.TestCase):
         self.api.post(f'/current_childs/{current_child_id}/referenced_childs', {"id": child_id_1})
 
         # add source grant
-        self.group_id_1 = self.api.post('/groups', {'name': 'source'})
-        self.grant_id_1 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': 'current_childs.referenced_childs'})
-        self.grant_id_2 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': 'current_grandparents'})
-        self.api.post(f'/users/{self.user_id_1}/groups', {'id': self.group_id_1})
+        self.schema.create_group("source")
+        self.schema.create_grant("source", "read", "current_childs.referenced_childs")
+        self.schema.create_grant("source", "read", "current_grandparents")
+        self.schema.add_user_to_group("source", self.schema.decodeid(self.user_id_1))
 
         user1 = self.schema.load_user_by_email("bob")
 

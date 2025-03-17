@@ -31,14 +31,23 @@ class MutationTest(unittest.TestCase):
         self.api = Api(self.db)
 
         # create initial data
-        self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners.jobs'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients.jobs'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'archived'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'archived.jobs'})
+        self.schema_1.create_group("manager")
+        self.schema_1.create_grant("manager", "read", "employees")
+        self.schema_1.create_grant("manager", "read", "partners")
+        self.schema_1.create_grant("manager", "read", "partners.jobs")
+        self.schema_1.create_grant("manager", "read", "clients")
+        self.schema_1.create_grant("manager", "read", "clients.jobs")
+        self.schema_1.create_grant("manager", "read", "archived")
+        self.schema_1.create_grant("manager", "read", "archived.jobs")
+
+        self.schema_2.create_group("manager")
+        self.schema_2.create_grant("manager", "read", "employees")
+        self.schema_2.create_grant("manager", "read", "partners")
+        self.schema_2.create_grant("manager", "read", "partners.jobs")
+        self.schema_2.create_grant("manager", "read", "clients")
+        self.schema_2.create_grant("manager", "read", "clients.jobs")
+        self.schema_2.create_grant("manager", "read", "archived")
+        self.schema_2.create_grant("manager", "read", "archived.jobs")
 
         self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"], True)
 

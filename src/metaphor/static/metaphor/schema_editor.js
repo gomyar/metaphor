@@ -17,6 +17,7 @@ var schema = {
                 schema.name = result.name;
                 schema.description = result.description;
                 schema.version = result.version;
+                schema.groups = result.groups;
                 loading.dec_loading();
             },
             function(data) {
@@ -77,6 +78,91 @@ var loading = {
         turtlegui.reload();
     }
 };
+
+var create_group = {
+    is_shown: false,
+    group_name: null,
+
+    show_popup: function() {
+        create_group.is_shown = true;
+        create_group.group_name = null;
+        turtlegui.reload();
+    },
+    hide_popup: function() {
+        create_group.is_shown = false;
+        turtlegui.reload();
+    },
+
+    create_group: function() {
+        loading.inc_loading();
+        create_group.hide_popup();
+        turtlegui.ajax.post(
+            '/admin/api/schemas/' + schema_id + '/groups',
+            {'group_name': create_group.name},
+            function(data) {
+                schema.load_specs();
+            },
+            function(data) {
+                loading.dec_loading();
+                alert("Error creating group: " + data.error);
+            }
+        );
+    },
+
+    delete_group: function(group_name) {
+        if (confirm("Delete group " + group_name + "?")) {
+            turtlegui.ajax.delete(
+                '/admin/api/schemas/' + schema_id + '/groups/' + group_name,
+                function(data) {
+                    schema.load_specs();
+                },
+                function(data) {
+                    loading.dec_loading();
+                    alert("Error deleting group: " + data.error);
+                }
+            );
+        }
+    }
+};
+
+
+var create_grant = {
+    is_shown: false,
+    group_name: null,
+    grant_type: null,
+    url: null,
+
+    show_popup: function(group_name) {
+        create_grant.is_shown = true;
+        create_grant.group_name = group_name;
+        create_grant.grant_type = null;
+        create_grant.url = null;
+        turtlegui.reload();
+    },
+    hide_popup: function() {
+        create_grant.is_shown = false;
+        turtlegui.reload();
+    },
+
+    create_grant: function() {
+        loading.inc_loading();
+        create_grant.hide_popup();
+        turtlegui.ajax.post(
+            '/admin/api/schemas/' + schema_id + '/groups/' + this.group_name + '/grants',
+            {'grant_type': create_grant.grant_type,
+             'url': create_grant.url
+            },
+            function(data) {
+                schema.load_specs();
+            },
+            function(data) {
+                loading.dec_loading();
+                alert("Error creating grant: " + data.error);
+            }
+        );
+    }
+};
+
 
 var create_spec = {
     is_shown: false,

@@ -194,6 +194,7 @@ class Schema(object):
         self.description = ""
 
         self.specs = {}
+        self.groups = {}
         self.root = Spec('root', self)
         self._id = None
         self.current = None
@@ -205,7 +206,7 @@ class Schema(object):
 
     @staticmethod
     def create_schema(db):
-        inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}, "created": datetime.now().isoformat()})
+        inserted = db.metaphor_schema.insert_one({"specs": {}, "root": {}, "groups": {}, "created": datetime.now().isoformat()})
         schema = Schema(db)
         schema._id = inserted.inserted_id
         schema.update_version()
@@ -222,6 +223,7 @@ class Schema(object):
         schema_data = {
             "specs": schema_data["specs"],
             "root": schema_data["root"],
+            "groups": schema_data["groups"],
         }
         schema_str = json.dumps(schema_data, sort_keys=True)
         return hashlib.sha1(schema_str.encode("UTF-8")).hexdigest()[:8]
@@ -299,6 +301,7 @@ class Schema(object):
 
         self.version = schema_data['version']
         self.name = self.name or self.version
+        self.groups = schema_data['groups']
 
     def create_spec(self, spec_name):
         if spec_name in self.specs:
@@ -849,39 +852,19 @@ class Schema(object):
         return self._load_user_with_aggregate({'email': email})
 
     def _load_user_with_aggregate(self, match):
-        user_data = self.db['resource_user'].aggregate([
-            {"$match": match},
-            {"$limit": 1},
-            {"$lookup": {
-                "foreignField": "_id",
-                "localField": "groups._id",
-                "as": "groups",
-                "from": "resource_group",
-            }},
-            {"$lookup": {
-                "foreignField": "_parent_id",
-                "localField": "groups._id",
-                "as": "group_grants",
-                "from": "resource_grant",
-            }},
-            {"$limit": 1},
-            {"$project": {
-                '_id': 1,
-                'username': 1,
-                'admin': 1,
-                'group_grants.type': 1,
-                'group_grants.url': 1,
-            }},
-        ])
-        user_data = list(user_data)
+        user_data = self.db['resource_user'].find_one(match)
         if user_data:
-            user_data = user_data[0]
+            group_grants = []
+            user_groups = [g['group_name'] for g in self.get_user_groups(user_data['_id'])]
+            for group_name, group in self.groups.items():
+                if group_name in user_groups:
+                    group_grants.extend(group['grants'])
             grants = {
-                'read': [g['url'] for g in user_data['group_grants'] if g['type'] == 'read'],
-                'create': [g['url'] for g in user_data['group_grants'] if g['type'] == 'create'],
-                'update': [g['url'] for g in user_data['group_grants'] if g['type'] == 'update'],
-                'delete': [g['url'] for g in user_data['group_grants'] if g['type'] == 'delete'],
-                'put': [g['url'] for g in user_data['group_grants'] if g['type'] == 'put'],
+                'read': [g['url'] for g in group_grants if g['grant_type'] == 'read'],
+                'create': [g['url'] for g in group_grants if g['grant_type'] == 'create'],
+                'update': [g['url'] for g in group_grants if g['grant_type'] == 'update'],
+                'delete': [g['url'] for g in group_grants if g['grant_type'] == 'delete'],
+                'put': [g['url'] for g in group_grants if g['grant_type'] == 'put'],
             }
             user = User(user_data['_id'],
                         grants,
@@ -898,21 +881,15 @@ class Schema(object):
         self.create_field('user', 'email', 'str', required=True, indexed=True, unique=True, unique_global=True)
         self.create_field('user', 'admin', 'bool')
 
-        self.create_spec('group')
-        self.create_field('group', 'name', 'str', required=True, indexed=True, unique=True, unique_global=True)
-
-        self.create_spec('grant')
-        self.create_field('grant', 'type', 'str')
-        self.create_field('grant', 'url', 'str')
-
-        self.create_field('user', 'groups', 'linkcollection', 'group')
-        self.create_field('group', 'grants', 'collection', 'grant')
-
         self.create_field('root', 'users', 'collection', 'user')
-        self.create_field('root', 'groups', 'collection', 'group')
 
         self.create_index_for_field('user', 'email')
-        self.create_index_for_field('group', 'name')
+
+        self.create_group("admin")
+        self.create_grant("admin", "read", "/")
+        self.create_grant("admin", "create", "/")
+        self.create_grant("admin", "update", "/")
+        self.create_grant("admin", "delete", "/")
 
     def has_global_duplicates(self, resource_name, field_name):
         try:
@@ -958,3 +935,33 @@ class Schema(object):
             return Identity.from_data(identity_data)
         else:
             return None
+
+    def create_group(self, group_name):
+        if group_name in self.groups:
+            raise Exception("Group already exists: %s" % group_name)
+        self.groups[group_name] = {"grants": []}
+        self.save_groups()
+
+    def delete_group(self, group_name):
+        self.groups.pop(group_name)
+        self.save_groups()
+
+    def save_groups(self):
+        self.db.metaphor_schema.update_one({"_id": self._id}, {"$set": {"groups": self.groups}})
+
+    def create_grant(self, group_name, grant_type, url):
+        allowed_grant_types = ['read', 'create', 'delete', 'update']
+        if grant_type not in allowed_grant_types:
+            raise Exception("Invalid grant type, must be one of %s" % (allowed_grant_types,))
+
+        self.groups[group_name]["grants"].append({"grant_type": grant_type, "url": url})
+        self.save_groups()
+
+    def add_user_to_group(self, group_name, user_id):
+        self.db.metaphor_usergroup.insert_one({"group_name": group_name, "user_id": user_id})
+
+    def remove_user_from_group(self, group_name, user_id):
+        self.db.metaphor_usergroup.delete_one({"group_name": group_name, "user_id": user_id})
+
+    def get_user_groups(self, user_id):
+        return self.db.metaphor_usergroup.find({"user_id": user_id})

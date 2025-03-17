@@ -16,8 +16,10 @@ def run_init_schema(mongohost, mongodb):
     if list(db.list_collections()):
         print("The given Database is not empty. Please run init_schema against a blank Database")
     else:
-        SchemaFactory(db).create_identity_collection()
-        schema = SchemaFactory(db).create_schema()
+        factory = SchemaFactory(db)
+        factory.create_identity_collection()
+        factory.create_usergroup_collection()
+        schema = factory.create_schema()
 
         updater = Updater(schema)
         group_id = updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'})

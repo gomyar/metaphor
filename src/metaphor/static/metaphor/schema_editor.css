@@ -132,3 +132,30 @@ div.calc_text {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+div.groups {
+    margin : 0px;
+    top : 50px;
+    background-color : white;
+    overflow-y : auto;
+}
+
+div.groups div.group {
+    margin : 20px 10px 30px 10px;
+    border-top : 1px solid black;
+}
+
+div.field .type {
+    font-size : 12px;
+    min-width : 10%;
+    margin-left : 50px;
+    display : inline-block;
+}
+
+div.field .url {
+    font-size : 12px;
+    margin-left : 20px;
+    display : inline-block;
+}
+
+

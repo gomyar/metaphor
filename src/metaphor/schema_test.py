@@ -26,6 +26,7 @@ class SchemaTest(unittest.TestCase):
         data['root'] = data.get('root', {})
         data['name'] = data.get('name')
         data['description'] = data.get('description')
+        data['groups'] = {}
         inserted = self.db.metaphor_schema.insert_one(data)
         self.schema = SchemaFactory(self.db).load_current_schema()
 
@@ -386,35 +387,8 @@ class SchemaTest(unittest.TestCase):
 
         schema = self.db.metaphor_schema.find_one()
         self.assertEqual({
-            "groups": {"target_spec_name": "group", "type": "collection"},
             "users": {"target_spec_name": "user", "type": "collection"}}, schema['root'])
-        self.assertEqual({'grant': {'fields': {
-                'type': {
-                    'type': 'str',
-                    'default': None,
-                    'indexed': None,
-                    'required': None,
-                    'unique': None,
-                    'unique_global': None
-                },
-                'url': {
-                    'type': 'str',
-                    'default': None,
-                    'indexed': None,
-                    'required': None,
-                    'unique': None,
-                    'unique_global': None
-                }}},
-            'group': {'fields': {'grants': {'target_spec_name': 'grant',
-                                            'type': 'collection'},
-                                'name': {
-                                    'type': 'str',
-                                    'default': None,
-                                    'indexed': None,
-                                    'required': None,
-                                    'unique': None,
-                                    'unique_global': None
-                                }}},
+        self.assertEqual({
             'user': {'fields': {'admin': {
                 'type': 'bool',
                 'default': None,
@@ -423,8 +397,6 @@ class SchemaTest(unittest.TestCase):
                 'unique': None,
                 'unique_global': None
             },
-            'groups': {'target_spec_name': 'group',
-                        'type': 'linkcollection'},
             'email': {
                 'type': 'str',
                 'default': None,
@@ -654,7 +626,7 @@ class SchemaTest(unittest.TestCase):
             }
         })
 
-        self.assertEqual("446df9b7", self.schema.calculate_short_hash())
+        self.assertEqual("1416b857", self.schema.calculate_short_hash())
 
     def test_field_default(self):
         self._create_test_schema({
@@ -689,7 +661,8 @@ class SchemaTest(unittest.TestCase):
                     },
                 },
             },
-            "version": "017b77bd",
+            "groups": {},
+            "version": "64dfdc6a",
         }, self.db.metaphor_schema.find_one())
 
         # test load
@@ -774,3 +747,50 @@ class SchemaTest(unittest.TestCase):
             self.schema.create_field('employee', 'title', 'calc', calc_str="employees", indexed=True)
             self.assertEqual("Index not allowed for non-primitive calc field", str(me))
 
+    def test_add_group(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
+
+        self.schema.create_spec('job')
+        self.schema.create_field('job', 'name', 'str')
+        self.schema.create_field('job', 'employee', 'link', 'employee')
+        self.schema.create_field('root', 'jobs', 'collection', 'job')
+
+        self.schema.create_group("test_group")
+        self.schema.create_grant("test_group", "read", "employees")
+        self.schema.create_grant("test_group", "create", "employees")
+        self.schema.create_grant("test_group", "delete", "employees")
+        self.schema.create_grant("test_group", "update", "employees")
+
+        # cannot add the same group twice
+        with self.assertRaises(Exception):
+            self.schema.create_group("test_group")
+
+        # cannot add grant against nonexistant url
+        with self.assertRaises(Exception):
+            self.schema.create_grant("test_group2", "read", "nonexistant")
+
+        # must be valid url no filters
+        with self.assertRaises(Exception):
+            self.schema.create_grant("test_group2", "read", "employees[name='bob']")
+
+        # ego is fine, links are fine
+        self.schema.create_grant("test_group", "read", "ego")
+        self.schema.create_grant("test_group", "read", "jobs.employees")
+        self.schema.create_grant("test_group", "read", "jobs.employees")
+
+        # validate input types
+        with self.assertRaises(Exception):
+            self.schema.create_grant("test_group4", "GET", "employees")
+        with self.assertRaises(Exception):
+            self.schema.create_grant("test_group4", "POST", "employees")
+        with self.assertRaises(Exception):
+            self.schema.create_grant("test_group4", "DELETE", "employees")
+        with self.assertRaises(Exception):
+            self.schema.create_grant("test_group4", "PATCH", "employees")

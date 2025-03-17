@@ -53,9 +53,9 @@ class ApiWatchTest(unittest.TestCase):
 
         # create initial data
         self.user_id = self.api.post('/users', {'email': 'bob'})
-        self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
-        self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
+        self.schema.create_group("manager")
+        self.schema.create_grant("manager", "read", "employees")
+        self.schema.add_user_to_group("manager", self.schema.decodeid(self.user_id))
 
         # create test clients
         self.client = self.app.test_client()

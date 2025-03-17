@@ -77,7 +77,79 @@ var schema_id = "{{ schema_id }}";
             <button class="button" gui-click="create_field.show_create(spec_name)" gui-show="!schema.current">Add Field</button> 
         </div>
     </div>
+
+
+    <div class="specs_title">
+        <div class="title">Groups</div>
+        <div class="controls">
+            <button class="button" gui-click="create_group.show_popup()" gui-show="!schema.current">Create group</button> 
+        </div>
+    </div>
+
+    <div class="groups" gui-list="schema.groups" gui-item="group" gui-key="group_name">
+        <div class="group">
+            <div class="title" gui-text="group_name"></div>
+
+            <div class="fields" gui-list="group.grants" gui-item="grant">
+                <div class="field">
+                    <span class="type" gui-text="grant.grant_type"></span>: <span class="url" gui-text="grant.url"></span>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="button" gui-click="create_group.delete_group(group_name)" gui-show="!schema.current">Delete Group</button> 
+                <button class="button" gui-click="create_grant.show_popup(group_name)" gui-show="!schema.current">Create grant</button> 
+            </div>
+        </div> 
+    </div> 
+
 </div>
+
+
+<div id="popup_group" class="popupwrapper" gui-show="create_group.is_shown">
+    <div class="popup">
+        <div class="title">
+            Create group:
+        </div>
+        <div class="popupform">
+            <div class="formfield">
+                <div class="label">Name: </div><div class="group_name"><input type="text" gui-val="create_group.name"></input></div>
+            </div>
+        </div>
+        <div class="popupbuttons">
+            <button class="button" gui-click='create_group.create_group()'>Create</button>
+            <button class="button" gui-click='create_group.hide_popup()'>Close</button>
+        </div>
+    </div>
+</div>
+
+
+<div id="popup_grant" class="popupwrapper" gui-show="create_grant.is_shown">
+    <div class="popup">
+        <div class="title">
+            Create grant in group <span gui-text="create_grant.group_name"></span>:
+        </div>
+        <div class="popupform">
+            <div class="formfield">
+                <div class="label">Type: </div><div class="grant_name">
+                    <select gui-val="create_grant.grant_type">
+                        <option value="read">Read</option>
+                        <option value="create">Create</option>
+                        <option value="update">Update</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                </div>
+            </div>
+            <div class="formfield">
+                <div class="label">Url: </div><div class="grant_name"><input type="text" gui-val="create_grant.url"></input></div>
+            </div>
+        </div>
+        <div class="popupbuttons">
+            <button class="button" gui-click='create_grant.create_grant()'>Create</button>
+            <button class="button" gui-click='create_grant.hide_popup()'>Close</button>
+        </div>
+    </div>
+</div>
+
 
 
 <div id="popup_spec" class="popupwrapper" gui-show="create_spec.is_shown">

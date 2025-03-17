@@ -86,6 +86,7 @@ class LRParseTest(unittest.TestCase):
         data['current'] = True
         data['version'] = 'test'
         data['root'] = data.get('root', {})
+        data['groups'] = {}
         inserted = self.db.metaphor_schema.insert_one(data)
         self.schema = SchemaFactory(self.db).load_current_schema()
 

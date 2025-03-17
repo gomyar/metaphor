@@ -56,6 +56,11 @@ class SchemaFactory:
         self.db.metaphor_identity.create_index(
             ["email", "type"], unique=True)
 
+    def create_usergroup_collection(self):
+        self.db.metaphor_usergroup.create_index(
+            ["user_id", "group_name"], unique=True)
+
+
     def delete_schema(self, schema_id):
         result = self.db.metaphor_schema.delete_one({"_id": ObjectId(schema_id), "current": {"$ne": True}})
         return result.acknowledged

@@ -24,9 +24,9 @@ class ServerTest(TestCase):
 
         self.client = self.app.test_client()
 
-        self.group_id = self.api.post('/groups', {'name': 'manager'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
-        self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'employees'})
+        self.schema.create_group("manager")
+        self.schema.create_grant("manager", "read", "employees")
+        self.schema.create_grant("manager", "create", "employees")
 
         self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"])
 

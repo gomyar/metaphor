@@ -232,7 +232,7 @@ class Updater(object):
 
     def create_basic_user(self, email, password, groups=None, admin=False):
         user_id = self.create_user_resource(email, groups, admin)
-        self.schema.create_basic_identity(user_id, email, password)
+        self.schema.create_basic_identity(self.schema.decodeid(user_id), email, password)
         return user_id
 
     def create_user_resource(self, email, groups=None, admin=False):
@@ -244,6 +244,5 @@ class Updater(object):
             None,
             {'email': email, 'admin': admin})
         for group in groups:
-            admin_group = self.schema.db.resource_group.find_one({'name': group})
-            self.create_linkcollection_entry('user', user_id, 'groups', self.schema.encodeid(admin_group['_id']))
+            self.schema.add_user_to_group(group, self.schema.decodeid(user_id))
         return user_id
