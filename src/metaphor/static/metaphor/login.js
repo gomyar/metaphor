@@ -2,14 +2,14 @@
 class Login {
     constructor(metaphor) {
         this.metaphor = metaphor;
-        this.username = null;
+        this.email = null;
         this.password = null;
         this.is_shown = false;
         this.error = null;
     }
 
     show_login() {
-        this.username = null;
+        this.email = null;
         this.password = null;
         this.is_shown = true;
         this.error = null;
@@ -19,7 +19,7 @@ class Login {
     attempt_login() {
         turtlegui.ajax.post(
             '/login',
-            {"username": this.username, "password": this.password},
+            {"email": this.email, "password": this.password},
             (response) => {
                 this.cancel_login();
                 this.metaphor.load_schema();                
@@ -35,7 +35,7 @@ class Login {
     }
 
     cancel_login() {
-        this.username = null;
+        this.email = null;
         this.password = null;
         this.is_shown = false;
         this.error = null;

@@ -52,7 +52,7 @@ class ApiWatchTest(unittest.TestCase):
         self.schema = self.api.schema
 
         # create initial data
-        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        self.user_id = self.api.post('/users', {'email': 'bob'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': '/employees'})
         self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
@@ -62,8 +62,7 @@ class ApiWatchTest(unittest.TestCase):
 
         # login
         self.client.post('/login', json={
-            "username": "bob",
-            "password": "password",
+            "email": "bob",
         }, follow_redirects=True)
 
         # create socketio client

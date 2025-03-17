@@ -43,8 +43,8 @@ class UpdaterTest(unittest.TestCase):
         division_id_1 = self.updater.create_resource('division', 'root', 'divisions', None, {'name': 'sales'})
 
         # add some users
-        bob_id = self.updater.create_user('bob', 'password')
-        ned_id = self.updater.create_user('ned', 'password')
+        bob_id = self.updater.create_basic_user('bob', 'password')
+        ned_id = self.updater.create_basic_user('ned', 'password')
 
         # hook up users to resources
         # bob has 1 subordinate
@@ -57,7 +57,7 @@ class UpdaterTest(unittest.TestCase):
         self.updater.create_resource('grant', 'group', 'grants', self.managers_group_id, {'type': 'read', 'url': '/divisions/'})
 
         # confirm grants exist
-        bob = self.db['resource_user'].find_one({'username': 'bob'})
+        bob = self.db['resource_user'].find_one({'email': 'bob'})
 
         # add ego grants, confirm
 

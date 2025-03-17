@@ -31,7 +31,6 @@ class MutationTest(unittest.TestCase):
         self.api = Api(self.db)
 
         # create initial data
-        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password', 'admin': True})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'partners'})
@@ -40,7 +39,8 @@ class MutationTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'clients.jobs'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'archived'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'archived.jobs'})
-        self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
+
+        self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"], True)
 
         # create test clients
         self.app = create_app(self.db)
@@ -48,7 +48,7 @@ class MutationTest(unittest.TestCase):
 
         # login
         response = self.client.post('/login', json={
-            "username": "bob",
+            "email": "bob",
             "password": "password",
         }, follow_redirects=True)
 

@@ -8,7 +8,6 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from metaphor.updater import Updater
 from metaphor.schema_factory import SchemaFactory
-from werkzeug.security import generate_password_hash
 
 
 def run_init_schema(mongohost, mongodb):
@@ -17,6 +16,7 @@ def run_init_schema(mongohost, mongodb):
     if list(db.list_collections()):
         print("The given Database is not empty. Please run init_schema against a blank Database")
     else:
+        SchemaFactory(db).create_identity_collection()
         schema = SchemaFactory(db).create_schema()
 
         updater = Updater(schema)
@@ -31,61 +31,76 @@ def run_init_schema(mongohost, mongodb):
 def run_create_superuser(mongohost, mongodb):
     client = MongoClient(mongohost)
     db = client[mongodb]
-    username = input("Input username: ")
+    email = input("Input email: ")
     password = getpass.getpass("Input password: ")
-    if username and password:
-        if db.resource_user.find_one({'username': username}):
-            print("User %s already exists" % username)
+    if email and password:
+        if db.resource_user.find_one({'email': email}):
+            print("User %s already exists" % email)
         else:
             schema_factory = SchemaFactory(db)
             schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
+            updater.create_basic_user(email, password, ['admin'], True)
 
-            user_id = updater.create_user(username, password)
-
-            admin_group = db.resource_group.find_one({'name': 'admin'})
-            updater.create_linkcollection_entry('user', user_id, 'groups', schema.encodeid(admin_group['_id']))
-
-            print("User %s created" % username)
+            print("User %s created" % email)
 
 
 def run_create_user(mongohost, mongodb):
     client = MongoClient(mongohost)
     db = client[mongodb]
-    username = input("Input username: ")
+    email = input("Input email: ")
     password = getpass.getpass("Input password: ")
-    if username and password:
-        if db.resource_user.find_one({'username': username}):
-            print("User %s already exists" % username)
+    if email and password:
+        if db.resource_user.find_one({'email': email}):
+            print("User %s already exists" % email)
         else:
             schema_factory = SchemaFactory(db)
             schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
+            updater.create_basic_user(email, password)
 
-            pw_hash = generate_password_hash(password)
-            user_id = updater.create_resource('user', 'root', 'users', None, {'username': username, 'password': pw_hash, 'admin': False}, schema.read_root_grants('users'))
-
-            print("User %s created" % username)
+            print("User %s created" % email)
 
 
 def run_delete_user(mongohost, mongodb):
     client = MongoClient(mongohost)
     db = client[mongodb]
-    username = input("Input username: ")
-    if username:
-        if db.resource_user.find_one({'username': username}):
+    email = input("Input email: ")
+    if email:
+        if db.resource_user.find_one({'email': email}):
             schema_factory = SchemaFactory(db)
             schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
 
-            user = updater.delete_user(username)
+            user = updater.delete_user(email)
 
-            print("User %s deleted" % username)
+            print("User %s deleted" % email)
         else:
-            print("User %s does not exist" % username)
+            print("User %s does not exist" % email)
+
+
+def run_invite_user(mongohost, mongodb):
+    client = MongoClient(mongohost)
+    db = client[mongodb]
+    email = input("Input email: ")
+    groups = input("Input groups (comma separated): ")
+    admin = input("Is admin? (y/n)")
+    if email:
+        groups = groups.split(',') if groups else []
+        admin = admin in ['y', 'Y', 'yes']
+        if db.resource_user.find_one({'email': email}):
+            print("User %s already exists" % email)
+        else:
+            schema_factory = SchemaFactory(db)
+            schema = schema_factory.load_current_schema()
+
+            updater = Updater(schema)
+            updater.create_user_resource(email, groups, admin)
+
+            print("User %s created" % email)
 
 
 if __name__ == '__main__':
@@ -93,7 +108,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         'command', type=str,
-        help='Command to run: init_schema|create_superuser|create_user')
+        help='Command to run: init_schema|create_superuser|create_user|invite_user')
     parser.add_argument(
         '--mongohost', type=str,
         help='Mongo connection: mongodb://[username:password@]host[:port]')
@@ -108,6 +123,7 @@ if __name__ == '__main__':
         'create_superuser': run_create_superuser,
         'create_user': run_create_user,
         'delete_user': run_delete_user,
+        'invite_user': run_invite_user,
     }
 
     default_mongoconnection = os.getenv('METAPHOR_MONGO_HOST',

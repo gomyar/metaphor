@@ -11,6 +11,8 @@ from flask_login import UserMixin
 from pymongo import ReturnDocument
 from toposort import toposort, CircularDependencyError
 
+from werkzeug.security import generate_password_hash
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -144,23 +146,44 @@ class Spec(object):
         return parents
 
 
-class User(UserMixin):
-    def __init__(self, user_id, username, password, grants, user_hash, admin=False):
-        self._id = user_id
-        self.username = username
-        self.password = password
+class User:
+    def __init__(self, user_id, grants, admin=False):
+        self.user_id = user_id
         self.grants = grants
         self.admin = admin
-        self.user_hash = user_hash
-
-    def get_id(self):
-        return self.user_hash
 
     def is_admin(self):
         return self.admin
 
     def __repr__(self):
-        return "<User %s>" % self.username
+        return "<User %s>" % self.user_id
+
+
+class Identity(UserMixin):
+    def __init__(self, identity_id, user_id, identity_type, email, name, profile_url, session_id=None, password=None):
+        self.identity_id = identity_id
+        self.user_id = user_id
+        self.identity_type = identity_type
+        self.email = email
+        self.name = name
+        self.profile_url = profile_url
+        self.session_id = session_id
+        self.password = password
+
+    def get_id(self):
+        return self.session_id
+
+    @staticmethod
+    def from_data(identity_data):
+        return Identity(
+            identity_data["_id"],
+            identity_data["user_id"],
+            identity_data["type"],
+            identity_data["email"],
+            identity_data["name"],
+            identity_data["profile_url"],
+            identity_data.get("session_id"),
+            identity_data.get("password"))
 
 
 class Schema(object):
@@ -664,8 +687,6 @@ class Schema(object):
     def insert_resource(self, spec_name, data, parent_field_name, parent_type=None, parent_id=None, extra_fields=None):
         data = self._parse_fields(spec_name, data)
 
-        new_id = ObjectId()  # doing this to be able to construct a canonical url without 2 writes
-        data['_id'] = new_id
         data['_type'] = spec_name
         data['_parent_type'] = parent_type or 'root'
         data['_parent_id'] = self.decodeid(parent_id) if parent_id else None
@@ -673,9 +694,6 @@ class Schema(object):
 
         if extra_fields:
             data.update(extra_fields)
-
-        if spec_name == 'user':
-            data['_user_hash'] = str(uuid4())
 
         insert_result = self.db['resource_%s' % spec_name].insert_one(data)
         return self.encodeid(insert_result.inserted_id)
@@ -705,9 +723,6 @@ class Schema(object):
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
         save_data = self._parse_fields(spec_name, field_data)
-
-        if spec_name == 'user' and field_data.get('password'):
-            save_data['_user_hash'] = str(uuid4())
 
         new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
             {"_id": self.decodeid(resource_id)},
@@ -808,13 +823,32 @@ class Schema(object):
                 errors.append({"error": "Missing required field: '%s'" % field_name})
         return errors
 
-    def load_user_by_username(self, username, load_hash=False):
-        return self._load_user_with_aggregate({'username': username}, load_hash)
+    def load_identity(self, identity_type, email):
+        identity_data = self.db['metaphor_identity'].find_one({
+            "type": identity_type,
+            "email": email,
+        })
+        return Identity.from_data(identity_data)
 
-    def load_user_by_user_hash(self, user_hash):
-        return self._load_user_with_aggregate({'_user_hash': user_hash})
+    def update_identity_session_id(self, identity):
+        identity.session_id = str(uuid4())
+        self.db['metaphor_identity'].update_one(
+            {"_id": identity.identity_id},
+            {"$set": {"session_id": identity.session_id}})
 
-    def _load_user_with_aggregate(self, match, load_hash=False):
+    def delete_identity_session_id(self, identity):
+        identity.session_id = str(uuid4())
+        self.db['metaphor_identity'].update_one(
+            {"_id": identity.identity_id},
+            {"$unset": {"session_id": ""}})
+
+    def load_user_by_id(self, user_id):
+        return self._load_user_with_aggregate({'_id': user_id})
+
+    def load_user_by_email(self, email):
+        return self._load_user_with_aggregate({'email': email})
+
+    def _load_user_with_aggregate(self, match):
         user_data = self.db['resource_user'].aggregate([
             {"$match": match},
             {"$limit": 1},
@@ -834,8 +868,6 @@ class Schema(object):
             {"$project": {
                 '_id': 1,
                 'username': 1,
-                'password': 1,
-                '_user_hash': 1,
                 'admin': 1,
                 'group_grants.type': 1,
                 'group_grants.url': 1,
@@ -852,13 +884,8 @@ class Schema(object):
                 'put': [g['url'] for g in user_data['group_grants'] if g['type'] == 'put'],
             }
             user = User(user_data['_id'],
-                        user_data['username'],
-                        user_data['password'],
                         grants,
-                        user_data['_user_hash'],
                         user_data.get('admin'))
-            if load_hash:
-                user.password = user_data['password']
             return user
         else:
             return None
@@ -868,12 +895,11 @@ class Schema(object):
         self.description = "Default Schema"
 
         self.create_spec('user')
-        self.create_field('user', 'username', 'str')
-        self.create_field('user', 'password', 'str')
+        self.create_field('user', 'email', 'str', required=True, indexed=True, unique=True, unique_global=True)
         self.create_field('user', 'admin', 'bool')
 
         self.create_spec('group')
-        self.create_field('group', 'name', 'str')
+        self.create_field('group', 'name', 'str', required=True, indexed=True, unique=True, unique_global=True)
 
         self.create_spec('grant')
         self.create_field('grant', 'type', 'str')
@@ -885,6 +911,9 @@ class Schema(object):
         self.create_field('root', 'users', 'collection', 'user')
         self.create_field('root', 'groups', 'collection', 'group')
 
+        self.create_index_for_field('user', 'email')
+        self.create_index_for_field('group', 'name')
+
     def has_global_duplicates(self, resource_name, field_name):
         try:
             result = self.db['resource_%s' % resource_name].aggregate([
@@ -895,3 +924,37 @@ class Schema(object):
             return next(result)['count'] > 1
         except StopIteration as si:
             return False
+
+    def create_basic_identity(self, user_id, email, password):
+        pw_hash = generate_password_hash(password)
+        identity_data = self.db['metaphor_identity'].find_one_and_update(
+            {"email": email, "type": "basic"},
+            {"$set": {
+                "password": pw_hash,
+                "user_id": user_id,
+                "name": email,
+                "profile_url": None,
+            }},
+            upsert=True,
+            return_document=ReturnDocument.AFTER)
+        return Identity.from_data(identity_data)
+
+    def get_or_create_identity(self, provider, user_id, email, name, profile_url):
+        identity_data = self.db['metaphor_identity'].find_one_and_update(
+            {"email": email, "type": provider},
+            {"$set": {
+                "name": name,
+                "profile_url": profile_url,
+                "user_id": user_id,
+            }},
+            upsert=True,
+            return_document=ReturnDocument.AFTER)
+        return Identity.from_data(identity_data)
+
+    def load_identity_by_session_id(self, session_id):
+        identity_data = self.db['metaphor_identity'].find_one({
+            "session_id": session_id})
+        if identity_data:
+            return Identity.from_data(identity_data)
+        else:
+            return None

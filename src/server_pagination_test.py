@@ -24,11 +24,11 @@ class ServerTest(TestCase):
 
         self.client = self.app.test_client()
 
-        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
         self.api.post('/groups/%s/grants' % self.group_id, {'type': 'create', 'url': 'employees'})
-        self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
+
+        self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"])
 
         # add test data
         self.schema.create_spec('employee')
@@ -41,7 +41,7 @@ class ServerTest(TestCase):
 
         # login
         self.client.post('/login', json={
-            "username": "bob",
+            "email": "bob",
             "password": "password",
         }, follow_redirects=True)
 

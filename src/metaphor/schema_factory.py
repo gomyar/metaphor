@@ -52,6 +52,10 @@ class SchemaFactory:
         schema.set_as_current()
         return schema
 
+    def create_identity_collection(self):
+        self.db.metaphor_identity.create_index(
+            ["email", "type"], unique=True)
+
     def delete_schema(self, schema_id):
         result = self.db.metaphor_schema.delete_one({"_id": ObjectId(schema_id), "current": {"$ne": True}})
         return result.acknowledged

@@ -30,9 +30,9 @@ login_bp = Blueprint('login', __name__,
 
 
 @login_manager.user_loader
-def load_user(user_hash):
+def load_user(session_id):
     api = current_app.config['api']
-    return api.schema.load_user_by_user_hash(user_hash)
+    return api.schema.load_identity_by_session_id(session_id)
 
 
 @login_bp.route('/login', methods=['GET', 'POST'])
@@ -41,10 +41,12 @@ def login():
     if request.method == 'POST':
         if not request.json:
             return "Must use application/json content", 400
-        user = api.schema.load_user_by_username(request.json['username'])
-        if user and check_password_hash(user.password, \
-                                        request.json['password']):
-            login_user(user)
+        identity = api.schema.load_identity("basic", request.json['email'])
+        if identity and check_password_hash(identity.password, \
+                                            request.json['password']):
+            if not identity.session_id:
+                api.schema.update_identity_session_id(identity)
+            login_user(identity)
 
             flash('Logged in successfully.')
 

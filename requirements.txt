@@ -10,3 +10,5 @@ gevent-websocket==0.10.1
 gunicorn==20.1.0
 toposort==1.6
 ipdb==0.12.3
+authlib
+requests

@@ -24,16 +24,17 @@ class ServerTest(TestCase):
 
         self.client = self.app.test_client()
 
-        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
         self.group_id = self.api.post('/groups', {'name': 'manager'})
         self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'employees'})
         self.grant_id_2 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'read', 'url': 'ego'})
-        self.api.post('/users/%s/groups' % self.user_id, {'id': self.group_id})
 
-        self.client.post('/login', json={
-            "username": "bob",
+        self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"])
+
+        response = self.client.post('/login', json={
+            "email": "bob",
             "password": "password",
         }, follow_redirects=True)
+        self.assertEqual(200, response.status_code)
 
     def test_get(self):
         response = self.client.get('/api/')
@@ -43,7 +44,7 @@ class ServerTest(TestCase):
     def test_ego(self):
         response = self.client.get('/api/ego/')
 
-        self.assertEqual('bob', response.json['username'])
+        self.assertEqual('bob', response.json['email'])
 
     def test_group_access(self):
         self.schema.create_spec('client')
@@ -111,20 +112,9 @@ class ServerTest(TestCase):
         user = self.api.get('/users/%s' % self.user_id)
         self.assertEqual({
             '_meta': {'is_collection': False, 'spec': {'name': 'user'}, 'resource_type': 'resource'},
-            'admin': None,
-            'id': self.user_id,
-            'password': '<password>',
-            'username': 'bob'}, user)
-
-    def test_create_password(self):
-        user_id = self.api.post('/users', {'username': 'fred', 'password': 'secret'})
-        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(user_id)})
-        self.assertTrue(check_password_hash(user['password'], 'secret'))
-
-    def test_patch_password(self):
-        self.api.patch('/users/%s' % self.user_id, {'password': 'secret'})
-        user = self.db['resource_user'].find_one({"_id": self.schema.decodeid(self.user_id)})
-        self.assertTrue(check_password_hash(user['password'], 'secret'))
+            'admin': False,
+            'email': 'bob',
+            'id': self.user_id}, user)
 
     def test_patch_to_collection_returns_400(self):
         self.grant_id_1 = self.api.post('/groups/%s/grants' % self.group_id, {'type': 'update', 'url': ''})

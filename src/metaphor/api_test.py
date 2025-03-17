@@ -866,13 +866,7 @@ class ApiTest(unittest.TestCase):
     def test_grants_set_on_post_path(self):
         self.schema.create_field('user', 'references', 'collection', 'employee')
 
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
-
-#        group_id_1 = self.schema.insert_resource('group', {'name': 'test'}, 'groups')
-#        self.schema.insert_resource('grant', {'type': 'read', 'url': '/users'}, 'grants', 'group', group_id_1)
-#        self.schema.insert_resource('grant', {'type': 'read', 'url': '/users/%s/references' % user_id}, 'grants', 'group', group_id_1)
-#        self.schema.insert_resource('grant', {'type': 'create', 'url': '/users/%s/references' % user_id}, 'grants', 'group', group_id_1)
-
+        user_id = self.api.post('/users', {'email': 'bob'})
         group_id_1 = self.api.post('/groups', {'name': 'test'})
 
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users'})
@@ -882,7 +876,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
-        user = self.schema.load_user_by_username('bob')
+        user = self.schema.load_user_by_email('bob')
 
         # post with grants
         self.api.post('/users/%s/references' % user_id, {'name': 'fred'}, user=user)
@@ -893,7 +887,7 @@ class ApiTest(unittest.TestCase):
     def test_grants_set_on_patch_path(self):
         self.schema.create_field('user', 'reference', 'link', 'employee')
 
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        user_id = self.api.post('/users', {'email': 'bob'})
 
         group_id_1 = self.api.post('/groups', {'name': 'test'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'users'})
@@ -901,7 +895,7 @@ class ApiTest(unittest.TestCase):
 
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
-        user = self.schema.load_user_by_username('bob')
+        user = self.schema.load_user_by_email('bob')
 
         # patch with grants
         employee_id = self.api.post('/employees', {'name': 'fred'})
@@ -910,7 +904,7 @@ class ApiTest(unittest.TestCase):
         self.api.patch('/users/%s' % user_id, {'reference': employee_id}, user=user)
 
         get_user = self.api.get('/users/%s' % user_id, user=user)
-        self.assertEqual('bob', get_user['username'])
+        self.assertEqual('bob', get_user['email'])
 
     def test_grants_set_on_ego(self):
         self.schema.create_field('user', 'references', 'collection', 'employee')
@@ -919,10 +913,10 @@ class ApiTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.references'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'ego.references'})
 
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        user_id = self.api.post('/users', {'email': 'bob'})
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
-        user = self.schema.load_user_by_username('bob')
+        user = self.schema.load_user_by_email('bob')
 
         self.api.post('/ego/references', {'name': 'fred'}, user=user)
 
@@ -936,12 +930,12 @@ class ApiTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.reference'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'ego'})
 
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        user_id = self.api.post('/users', {'email': 'bob'})
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
         employee_id = self.api.post('/employees', {'name': 'Fred'})
 
-        user = self.schema.load_user_by_username('bob')
+        user = self.schema.load_user_by_email('bob')
 
         self.api.patch('/ego', {'reference': employee_id}, user=user)
 
@@ -955,18 +949,18 @@ class ApiTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'ego.reference'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'ego'})
 
-        user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
+        user_id = self.api.post('/users', {'email': 'bob'})
         self.api.post('/users/%s/groups' % user_id, {'id': group_id_1})
 
         employee_id = self.api.post('/employees', {'name': 'Fred'})
 
-        user = self.schema.load_user_by_username('bob')
+        user = self.schema.load_user_by_email('bob')
 
         with self.assertRaises(HTTPError):
-            self.api.post('/ego', {'username': 'Ned'})
+            self.api.post('/ego', {'email': 'Ned'})
 
         with self.assertRaises(HTTPError):
-            self.api.put('/ego', {'username': 'Ned'})
+            self.api.put('/ego', {'email': 'Ned'})
 
     def test_expand_further(self):
         self.assertEqual({

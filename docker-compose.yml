@@ -12,6 +12,8 @@ services:
       - FLASK_RUN_PORT=8000
       - METAPHOR_DBNAME=metaphor
       - METAPHOR_MONGO_HOST=mongodb://mongo:27017/admin
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     volumes:
       - "${PWD}/src/:/app/"
       - "${PWD}/bin/metaphor:/bin/metaphor"

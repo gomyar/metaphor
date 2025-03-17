@@ -42,8 +42,7 @@ class ApiTest(unittest.TestCase):
         self.schema.create_field('root', 'jobs', 'collection', 'job')
 
         self.api = Api(self.db)
-        self.user_id = self.api.post('/users', {'username': 'bob', 'password': 'password'})
-
+        self.user_id = self.api.updater.create_basic_user("bob", "password")
 
     def test_grants(self):
         group_id_1 = self.api.post('/groups', {'name': 'test'})
@@ -53,7 +52,7 @@ class ApiTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.laptops'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.laptops.harddrives'})
 
-        self.user = self.schema.load_user_by_username("bob")
+        self.user = self.schema.load_user_by_email("bob")
 
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees'))
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234'))
@@ -67,7 +66,7 @@ class ApiTest(unittest.TestCase):
         # add linkcollection grant
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'employees.jobs'})
 
-        self.user = self.schema.load_user_by_username("bob")
+        self.user = self.schema.load_user_by_email("bob")
 
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs'))
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234/jobs/ID7890'))
@@ -79,7 +78,7 @@ class ApiTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'jobs'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'read', 'url': 'jobs.tasks'})
 
-        self.user = self.schema.load_user_by_username("bob")
+        self.user = self.schema.load_user_by_email("bob")
 
         self.assertTrue(self.api.can_access(self.user, 'read', '/jobs'))
         self.assertTrue(self.api.can_access(self.user, 'read', '/jobs/ID7890'))
@@ -96,7 +95,7 @@ class ApiTest(unittest.TestCase):
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'create', 'url': 'jobs'})
         self.api.post('/groups/%s/grants' % (group_id_1,), {'type': 'update', 'url': 'employees'})
 
-        self.user = self.schema.load_user_by_username("bob")
+        self.user = self.schema.load_user_by_email("bob")
 
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees'))
         self.assertTrue(self.api.can_access(self.user, 'read', '/employees/ID1234'))

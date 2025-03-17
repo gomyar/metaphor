@@ -20,8 +20,6 @@ from metaphor.schema_factory import SchemaFactory
 from metaphor.updater import Updater
 from bson.errors import InvalidId
 
-from werkzeug.security import generate_password_hash
-
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
@@ -108,7 +106,7 @@ class Api(object):
 
         aggregate_query = tree.create_aggregation()
         if path[:4] == 'ego/' or path == 'ego':
-            aggregate_query.insert(0, {"$match": {"_id": user._id}})
+            aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
@@ -123,9 +121,6 @@ class Api(object):
         if user:
             if not self.can_access(user, "update", path):
                 raise HTTPError('', 403, "Not Allowed", None, None)
-
-        if spec.name == 'user' and data.get('password'):
-            data['password'] = generate_password_hash(data['password'])
 
         return self.updater.update_fields(
             spec.name,
@@ -152,7 +147,7 @@ class Api(object):
 
             aggregate_query = tree.create_aggregation()
             if path[:4] == 'ego/':
-                aggregate_query.insert(0, {"$match": {"_id": user._id}})
+                aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
             spec = tree.infer_type()
             is_aggregate = tree.is_collection()
@@ -182,9 +177,6 @@ class Api(object):
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
-            if root_field_spec.target_spec_name == 'user':
-                data['password'] = generate_password_hash(data['password'])
-
             # do put update
             try:
                 if from_path:
@@ -208,7 +200,7 @@ class Api(object):
 
             aggregate_query = tree.create_aggregation()
             if path[:4] == 'ego/':
-                aggregate_query.insert(0, {"$match": {"_id": user._id}})
+                aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
             spec = tree.infer_type()
             is_aggregate = tree.is_collection()
@@ -228,8 +220,6 @@ class Api(object):
                     field_name,
                     data['id'])
             elif field_spec.field_type == 'orderedcollection':
-                if field_spec.target_spec_name == 'user':
-                    data['password'] = generate_password_hash(data['password'])
                 return self.updater.create_orderedcollection_entry(
                     field_spec.target_spec_name,
                     spec.name,
@@ -237,8 +227,6 @@ class Api(object):
                     parent_id,
                     data)
             else:
-                if field_spec.target_spec_name == 'user':
-                    data['password'] = generate_password_hash(data['password'])
                 return self.updater.create_resource(
                     field_spec.target_spec_name,
                     spec.name,
@@ -251,9 +239,6 @@ class Api(object):
 
             root_field_spec = self.schema.root.fields[path]
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
-
-            if root_field_spec.target_spec_name == 'user':
-                data['password'] = generate_password_hash(data['password'])
 
             # add to root spec no need to check existance
             return self.updater.create_resource(
@@ -286,7 +271,7 @@ class Api(object):
 
                 aggregate_query = parent_tree.create_aggregation()
                 if path[:4] == 'ego/':
-                    aggregate_query.insert(0, {"$match": {"_id": user._id}})
+                    aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
                 spec = parent_tree.infer_type()
                 is_aggregate = parent_tree.is_collection()
@@ -305,7 +290,7 @@ class Api(object):
 
                 aggregate_query = parent_tree.create_aggregation()
                 if path[:4] == 'ego/':
-                    aggregate_query.insert(0, {"$match": {"_id": user._id}})
+                    aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
                 spec = parent_tree.infer_type()
                 is_aggregate = parent_tree.is_collection()
@@ -323,7 +308,7 @@ class Api(object):
             else:
                 aggregate_query = parent_field_tree.create_aggregation()
                 if path[:4] == 'ego/':
-                    aggregate_query.insert(0, {"$match": {"_id": user._id}})
+                    aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
                 spec = parent_field_tree.infer_type()
                 is_aggregate = parent_field_tree.is_collection()
@@ -353,7 +338,7 @@ class Api(object):
 
         aggregate_query = tree.create_aggregation()
         if path.split('/')[0] == 'ego':
-            aggregate_query.insert(0, {"$match": {"_id": user._id}})
+            aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
@@ -447,7 +432,7 @@ class Api(object):
 
         aggregate_query = tree.create_aggregation()
         if path[:4] == 'ego/':
-            aggregate_query.insert(0, {"$match": {"_id": user._id}})
+            aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
 
         spec = tree.infer_type()
         is_aggregate = tree.is_collection()
@@ -677,8 +662,6 @@ class Api(object):
                     pass
                 else:
                     encoded[field_name] = calc_result
-            elif spec.name == 'user' and field_name == 'password':
-                encoded[field_name] = '<password>'
             else:
                 encoded[field_name] = field_value
         return encoded
@@ -730,7 +713,7 @@ class Api(object):
 
         if path.split('/')[0] == 'ego':
             aggregate_query = [
-                {"$match": {"_id": user._id}}
+                {"$match": {"_id": user.user_id}}
             ] + aggregate_query
 
         # establish watch
@@ -771,7 +754,7 @@ class Api(object):
 
                 if path.split('/')[0] == 'ego':
                     aggregate_query = [
-                        {"$match": {"_id": user._id}}
+                        {"$match": {"_id": user.user_id}}
                     ] + aggregate_query
 
                 # if we're using a simplified parser we can probably just pull the id off the path
@@ -829,7 +812,7 @@ class Api(object):
 
             if path.split('/')[0] == 'ego':
                 aggregate_query = [
-                    {"$match": {"_id": user._id}}
+                    {"$match": {"_id": user.user_id}}
                 ] + aggregate_query
 
             # if we're using a simplified parser we can probably just pull the id off the path

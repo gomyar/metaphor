@@ -2,8 +2,6 @@
 import gevent
 import time
 
-from werkzeug.security import generate_password_hash
-
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
 from metaphor.lrparse.lrparse import parse_canonical_url
 
@@ -212,15 +210,6 @@ class Updater(object):
         self.schema.cleanup_update(update_id)
         return return_val
 
-    def create_user(self, username, password):
-        pw_hash = generate_password_hash(password)
-        return self.create_resource(
-            'user',
-            'root',
-            'users',
-            None,
-            {'username': username, 'password': pw_hash, 'admin': True})
-
     def delete_user(self, username):
         user = self.schema.db['resource_user'].find_one({'username': username})
         self.delete_resource('user', self.schema.encodeid(user['_id']), user['_parent_type'], user['_parent_field_name'])
@@ -241,3 +230,20 @@ class Updater(object):
                         # call update_resource on resource
                         self.delete_linkcollection_entry(linked_spec_name, resource_data['_id'], field_name, resource_id)
 
+    def create_basic_user(self, email, password, groups=None, admin=False):
+        user_id = self.create_user_resource(email, groups, admin)
+        self.schema.create_basic_identity(user_id, email, password)
+        return user_id
+
+    def create_user_resource(self, email, groups=None, admin=False):
+        groups = groups or []
+        user_id = self.create_resource(
+            'user',
+            'root',
+            'users',
+            None,
+            {'email': email, 'admin': admin})
+        for group in groups:
+            admin_group = self.schema.db.resource_group.find_one({'name': group})
+            self.create_linkcollection_entry('user', user_id, 'groups', self.schema.encodeid(admin_group['_id']))
+        return user_id

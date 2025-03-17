@@ -66,7 +66,7 @@ var schema_id = "{{ schema_id }}";
                         <span class="bool" gui-text="(field.required && 'R')||''"></span>
                         <span class="bool" gui-text="(field.indexed && 'I')||''"></span>
                         <span class="bool" gui-text="(field.unique && 'U')||''"></span>
-                        <span class="bool" gui-text="(field.unique_global && 'G')''"></span>
+                        <span class="bool" gui-text="(field.unique_global && 'G')||''"></span>
                     </div>
                     <div class="field_controls">
                         <button class="button edit_field" gui-click="create_field.show_edit(spec_name, field_name)" gui-show="!schema.current">Edit</button>

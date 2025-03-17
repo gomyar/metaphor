@@ -423,24 +423,16 @@ class SchemaTest(unittest.TestCase):
                 'unique': None,
                 'unique_global': None
             },
-                                'groups': {'target_spec_name': 'group',
-                                            'type': 'linkcollection'},
-                                'password': {
-                                    'type': 'str',
-                                    'default': None,
-                                    'indexed': None,
-                                    'required': None,
-                                    'unique': None,
-                                    'unique_global': None
-                                    },
-                                'username': {
-                                    'type': 'str',
-                                    'default': None,
-                                    'indexed': None,
-                                    'required': None,
-                                    'unique': None,
-                                    'unique_global': None
-                                }}}}, schema['specs'])
+            'groups': {'target_spec_name': 'group',
+                        'type': 'linkcollection'},
+            'email': {
+                'type': 'str',
+                'default': None,
+                'indexed': True,
+                'required': True,
+                'unique': True,
+                'unique_global': True
+            }}}}, schema['specs'])
 
     def test_load_calcs_by_dependency(self):
         self._create_test_schema({

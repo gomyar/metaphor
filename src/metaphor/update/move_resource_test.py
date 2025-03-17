@@ -124,8 +124,8 @@ class MoveResourceTest(unittest.TestCase):
         parent_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "salesman"})
         child_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents/{parent_id_1}/childs", {"name": "vacuums", "age": 1})
 
-        self.user_id_1 = self.api.post('/users', {'username': 'bob', 'password': 'password'})
-        self.user_id_2 = self.api.post('/users', {'username': 'ned', 'password': 'password'})
+        self.user_id_1 = self.api.post('/users', {'email': 'bob'})
+        self.user_id_2 = self.api.post('/users', {'email': 'ned'})
 
         # add link to childs
         current_child_id = self.api.post('/current_childs', {})
@@ -137,7 +137,7 @@ class MoveResourceTest(unittest.TestCase):
         self.grant_id_2 = self.api.post(f'/groups/{self.group_id_1}/grants', {'type': 'read', 'url': 'current_grandparents'})
         self.api.post(f'/users/{self.user_id_1}/groups', {'id': self.group_id_1})
 
-        user1 = self.schema.load_user_by_username("bob")
+        user1 = self.schema.load_user_by_email("bob")
 
         child_1 = self.api.get(f'/current_childs/{current_child_id}/referenced_childs/{child_id_1}', user=user1)
         self.assertEqual("vacuums", child_1['name'])
@@ -150,7 +150,7 @@ class MoveResourceTest(unittest.TestCase):
         self.assertEqual("vacuums", child_1['name'])
 
     def test_move_filter(self):
-        user1 = self.schema.load_user_by_username("bob")
+        user1 = self.schema.load_user_by_email("bob")
 
         grandparent_id_1 = self.api.post("/current_grandparents", {"name": "Bob", "age": 40})
         parent_id_1 = self.api.post(f"/current_grandparents/{grandparent_id_1}/parents", {"name": "salesman"})

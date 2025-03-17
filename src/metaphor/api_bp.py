@@ -93,10 +93,12 @@ def serialize_field(field, admin=False):
 
 
 def serialize_mutation(mutation):
+    api = current_app.config['api']
+    user = api.schema.load_user_by_id(flask_login.current_user.user_id)
     return {
         'id': str(mutation._id),
-        'from_schema': serialize_schema(mutation.from_schema, flask_login.current_user.admin),
-        'to_schema': serialize_schema(mutation.to_schema, flask_login.current_user.admin),
+        'from_schema': serialize_schema(mutation.from_schema, user.admin),
+        'to_schema': serialize_schema(mutation.to_schema, user.admin),
         'steps': mutation.steps,
         'state': mutation.state,
         'error': mutation.error,
@@ -126,7 +128,10 @@ def api_root():
 def api(path):
     try:
         api = current_app.config['api']
-        user = flask_login.current_user
+        identity = flask_login.current_user
+        user = api.schema.load_user_by_id(identity.user_id)
+        if not user:
+            return jsonify({"error": "Your identity does not have access to this service"}), 403
         if request.method == 'POST':
             return jsonify(api.post(path, request.json, user)), 201
         if request.method == 'PATCH':
@@ -150,7 +155,11 @@ def api(path):
 def schema():
     api = current_app.config['api']
 
-    return jsonify(serialize_schema(api.schema, flask_login.current_user.admin))
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
+    if not user:
+        return jsonify({"error": "Your identity does not have access to this service"}), 403
+    return jsonify(serialize_schema(api.schema, user.admin))
 
 
 @admin_bp.route("/schemas/<schema_id>")
@@ -174,11 +183,14 @@ def admin_index():
 @admin_bp.route("/api/schemas", methods=['GET', 'POST'])
 @admin_required
 def admin_api_schemas():
+    api = current_app.config['api']
     factory = current_app.config['schema_factory']
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
     if request.method == 'GET':
         schema_list = factory.list_schemas()
         return jsonify({
-            "schemas": [serialize_schema(schema, flask_login.current_user.admin) for schema in schema_list]
+            "schemas": [serialize_schema(schema, user.admin) for schema in schema_list]
         })
     else:
         if request.json:
@@ -196,11 +208,14 @@ def admin_api_schemas():
 @admin_bp.route("/api/schemas/<schema_id>", methods=['GET', 'DELETE'])
 @admin_required
 def schema_editor_api(schema_id):
+    api = current_app.config['api']
     factory = current_app.config['schema_factory']
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
     if request.method == 'GET':
         schema = factory.load_schema(schema_id)
         if schema:
-            return jsonify(serialize_schema(schema, flask_login.current_user.admin))
+            return jsonify(serialize_schema(schema, user.admin))
         else:
             abort(404)
     else:
