@@ -22,7 +22,8 @@ class DeleteFieldMutation:
 
         if self.spec_name != 'root':
             self.schema.delete_field_value(self.spec_name, self.field_name)
-            self.schema._do_delete_field(self.spec_name, self.field_name)
+            if not self.schema.specs[self.spec_name].fields[self.field_name].is_reverse:
+                self.schema._do_delete_field(self.spec_name, self.field_name)
 
         # find and update dependent calcs
         start_agg = []

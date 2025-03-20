@@ -10,7 +10,7 @@ class AlterFieldMutation:
         self.new_type = new_type
 
     def __repr__(self):
-        return "<AlterFieldTypeConvertPrimitiveMutation>"
+        return "<AlterFieldMutation>"
 
     def actions(self):
         return None

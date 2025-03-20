@@ -37,6 +37,6 @@ class RenameFieldMutation:
             self.schema.alter_field_convert_type(self.spec_name, self.field_name, self.field_type)
 
         if self.indexed:
-            self.schema.create_index_for_field(self.spec_name, self.field_name)
+            self.schema.create_index_for_field(self.spec_name, self.field_name, self.unique, self.unique_global)
 
         self.schema.cleanup_update(update_id)

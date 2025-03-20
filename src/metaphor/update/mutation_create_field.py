@@ -13,6 +13,8 @@ class CreateFieldMutation:
         self.calc_str = calc_str
         self.is_reverse = is_reverse
         self.indexed = indexed
+        self.unique = unique
+        self.unique_global = unique_global
 
     def __repr__(self):
         return "<CreateFieldMutation>"
@@ -39,6 +41,6 @@ class CreateFieldMutation:
             self.mutation.updater.perform_single_update_aggregation(self.spec_name, self.spec_name, self.field_name, self.schema.calc_trees[self.spec_name, self.field_name], [], [], update_id)
 
         if self.indexed:
-            self.schema.create_index_for_field(self.spec_name, self.field_name)
+            self.schema.create_index_for_field(self.spec_name, self.field_name, self.unique, self.unique_global)
 
         self.schema.cleanup_update(update_id)

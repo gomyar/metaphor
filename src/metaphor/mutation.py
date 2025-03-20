@@ -182,9 +182,27 @@ class Mutation:
         self.state = None
         self.error = None
 
+    def _copy_initial_schema(self):
+        schema_data = self.from_schema.db.metaphor_schema.find_one({"_id": self.from_schema._id})
+        schema_data.pop('_id')
+        schema_data['name'] = f"Mutating from {self.from_schema.name} to {self.to_schema.name}"
+        schema_data['current'] = False
+        schema_data['mutation_id'] = self._id
+        inserted = self.from_schema.db.metaphor_schema.insert_one(schema_data)
+        schema_data['id'] = inserted.inserted_id
+        self.schema = Schema(self.from_schema.db)
+        self.schema._build_schema(schema_data)
+        self.updater = Updater(self.schema)
+
+        self.schema.db.metaphor_mutation.find_one_and_update(
+            {"_id": self._id},
+            {"$set": {"schema_id": schema_data["_id"]}})
+
     def mutate(self):
         try:
+            self._copy_initial_schema()
             self.set_mutation_state(self, state="running", updated=datetime.now(), run_datetime=datetime.now())
+            self.schema.set_as_current()
 
             values = {
                 "create_spec": 10,
@@ -209,6 +227,8 @@ class Mutation:
                 log.debug("Running Mutation: %s, %s", action_id, mutation)
                 mutation.execute(action_id)
 
+            self.to_schema.set_as_current()
+            self.schema.delete()
             self.set_mutation_state(self, state="complete", updated=datetime.now(), complete_datetime=datetime.now())
         except Exception as e:
             log.exception("Exception mutating schema")

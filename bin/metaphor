@@ -20,13 +20,6 @@ def run_init_schema(mongohost, mongodb):
         factory.create_identity_collection()
         factory.create_usergroup_collection()
         schema = factory.create_schema()
-
-        updater = Updater(schema)
-        group_id = updater.create_resource('group', 'root', 'groups', None, {'name': 'admin'})
-
-        for grant_type in ['read', 'create', 'update', 'delete']:
-            updater.create_resource('grant', 'group', 'grants', group_id, {'type': grant_type, 'url': '/'})
-
         print("Schema created in database '%s'" % db.name)
 
 

@@ -20,9 +20,13 @@ class SchemaFactory:
         return schema
 
     def load_schema(self, schema_id):
-        schema = Schema(self.db)
-        schema._build_schema(self.load_schema_data(schema_id))
-        return schema
+        schema_data = self.load_schema_data(schema_id)
+        if schema_data:
+            schema = Schema(self.db)
+            schema._build_schema(schema_data)
+            return schema
+        else:
+            return None
 
     def _schema_aggregation(self):
         return [
@@ -117,25 +121,11 @@ class SchemaFactory:
         data = self.db.metaphor_mutation.find()
         return [self._create_mutation(m) for m in data]
 
-
-    def _copy_initial_schema(self, mutation):
-        schema_data = self.db.metaphor_schema.find_one({"_id": mutation.from_schema._id})
-        schema_data.pop('_id')
-        schema_data['name'] = f"Mutating from {mutation.from_schema.name} to {mutation.to_schema.name}"
-        schema_data['current'] = False
-        inserted = self.db.metaphor_schema.insert_one(schema_data)
-        schema_data['id'] = inserted.inserted_id
-        return schema_data
-
     def create_mutation(self, mutation):
-        schema_data = self._copy_initial_schema(mutation)
-        schema = Schema(self.db)
-        schema._build_schema(schema_data)
-
         inserted = self.db.metaphor_mutation.insert_one({
             "from_schema_id": mutation.from_schema._id,
             "to_schema_id": mutation.to_schema._id,
-            "schema_id": schema_data["_id"],
+            "schema_id": None,
             "steps": mutation.steps,
         })
         mutation._id = inserted.inserted_id

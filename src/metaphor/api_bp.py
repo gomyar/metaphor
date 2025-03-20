@@ -96,10 +96,12 @@ def serialize_field(field, admin=False):
 def serialize_mutation(mutation):
     api = current_app.config['api']
     user = api.schema.load_user_by_id(flask_login.current_user.user_id)
+    from_schema = serialize_schema(mutation.from_schema, user.admin) if mutation.from_schema else None
+    to_schema = serialize_schema(mutation.to_schema, user.admin) if mutation.to_schema else None
     return {
         'id': str(mutation._id),
-        'from_schema': serialize_schema(mutation.from_schema, user.admin),
-        'to_schema': serialize_schema(mutation.to_schema, user.admin),
+        'from_schema': from_schema,
+        'to_schema': to_schema,
         'steps': mutation.steps,
         'state': mutation.state,
         'error': mutation.error,
@@ -255,12 +257,11 @@ def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     identity = flask_login.current_user
     user = api.schema.load_user_by_id(identity.user_id)
+    schema = factory.load_schema(schema_id)
+    if not schema:
+        abort(404)
     if request.method == 'GET':
-        schema = factory.load_schema(schema_id)
-        if schema:
-            return jsonify(serialize_schema(schema, user.admin))
-        else:
-            abort(404)
+        return jsonify(serialize_schema(schema, user.admin))
     else:
         if factory.delete_schema(schema_id):
             return jsonify({'ok': 1})
@@ -335,6 +336,8 @@ def schema_editor_create_field(schema_id, spec_name):
     field_type = request.json['field_type']
     field_target = request.json['field_target']
     calc_str = request.json['calc_str']
+    default = request.json.get('default')
+    required = request.json.get('required') or False
     background = request.json.get('background') or False
     indexed = request.json.get('indexed') or False
     unique = request.json.get('unique') or False
@@ -344,7 +347,18 @@ def schema_editor_create_field(schema_id, spec_name):
         return jsonify({"error": "Not Found"}), 404
 
     try:
-        schema.create_field(spec_name, field_name, field_type, field_target, calc_str, background, indexed, unique, unique_global)
+        schema.create_field(
+            spec_name,
+            field_name,
+            field_type,
+            field_target,
+            calc_str,
+            default=default,
+            required=required,
+            background=background,
+            indexed=indexed,
+            unique=unique,
+            unique_global=unique_global)
     except MalformedFieldException as me:
         return jsonify({"error": str(me)}), 400
 
@@ -438,9 +452,7 @@ def single_mutation(mutation_id):
     else:
         if request.json.get('promote') == True:
             log.info("Promoting mutation %s -> %s", mutation.from_schema.version, mutation.to_schema.version)
-            mutation.schema.set_as_current()
             mutation.mutate()
-            mutation.to_schema.set_as_current()
             return jsonify({"ok": 1})
         else:
             return jsonify({"error": "Unsupported option"}), 400

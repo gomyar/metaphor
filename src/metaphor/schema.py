@@ -46,6 +46,7 @@ class Field(object):
             'datetime': ['datetime'],
         }
         self.spec = None
+        self.mutation_id = None
 
     def is_primitive(self):
         return self.field_type in Field.PRIMITIVES
@@ -284,7 +285,7 @@ class Schema(object):
                 target_spec_name=root_data.get('target_spec_name'),
                 default=root_data.get('default'),
                 required=root_data.get('required'),
-                )
+            )
 
         for line in sorted_calcs:
             for field_str in line:
@@ -302,6 +303,7 @@ class Schema(object):
         self.version = schema_data['version']
         self.name = self.name or self.version
         self.groups = schema_data['groups']
+        self.mutation_id = schema_data.get('mutation_id')
 
     def create_spec(self, spec_name):
         if spec_name in self.specs:
@@ -965,3 +967,6 @@ class Schema(object):
 
     def get_user_groups(self, user_id):
         return self.db.metaphor_usergroup.find({"user_id": user_id})
+
+    def delete(self):
+        self.db.metaphor_schema.delete_one({"_id": self._id})
