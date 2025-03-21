@@ -93,6 +93,7 @@ var schema_id = "{{ schema_id }}";
             <div class="fields" gui-list="group.grants" gui-item="grant">
                 <div class="field">
                     <span class="type" gui-text="grant.grant_type"></span>: <span class="url" gui-text="grant.url"></span>
+                    <button class="button" gui-click="create_grant.delete_grant(group_name, grant)" gui-show="!schema.current">Delete</button> 
                 </div>
             </div>
             <div class="controls">

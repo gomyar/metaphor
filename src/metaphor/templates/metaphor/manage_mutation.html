@@ -196,6 +196,162 @@ var mutation_id = "{{ mutation_id }}";
         </div>
     </div>
 
+    <hr/>
+    <div class="title">Schema Groups diff</div>
+
+    <div class="diff_grid" gui-list="group_diff.diff" gui-item="diff">
+        <div class="diff_item">
+            <div gui-show="diff.change=='deleted'">
+                <div class="diff_line">
+                    <span class="deleted">
+                        <div class="spec_name" gui-text="diff.group_name"></div>
+
+                        <div gui-list="manage.mutation.from_schema.groups[diff.group_name].grants" gui-item="grant">
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="grant.grant_type"></span>
+                                    <span class="type" gui-text="grant.url"></span>
+                                </div>
+                            </span>
+                        </div>
+
+                    </span>
+
+                    <span class="change">
+                        <span class="deleted">Removed</span>
+                        <span></span>
+                        <span></span>
+                    </span>
+
+                    <span></span>
+                </div>
+            </div>
+
+            <div gui-show="diff.change=='created'">
+
+                <div class="diff_line">
+                    <span></span>
+                    <span class="change">
+                        <span></span>
+                        <span></span>
+                        <span class="created">Added</span>
+                    </span>
+
+                    <span class="created">
+                        <div class="spec_name" gui-text="diff.group_name"></div>
+
+                        <div gui-list="manage.mutation.to_schema.groups[diff.group_name].grants" gui-item="grant">
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="grant.grant_type"></span>
+                                    <span class="type" gui-text="grant.url"></span>
+                                </div>
+                            </span>
+                        </div>
+
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="diff_line" gui-case="'same'" style="display: grid;">
+                <span class="spec_fields"></span>
+
+                <span class="change">
+                </span>
+
+                <span class="spec_fields"></span>
+            </div>
+
+            <div gui-show="diff.change=='same'">
+
+                <div class="diff_line">
+                    <span>
+                        <div class="spec_name" gui-text="diff.group_name"></div>
+                    </span>
+
+                    <span></span>
+
+                    <span>
+                        <div class="spec_name" gui-text="diff.group_name"></div>
+                    </span>
+                </div>
+
+                <div gui-list="diff.grants" gui-item="grant">
+
+                    <div gui-switch="grant.change">
+                        <div class="diff_line" gui-case="'same'">
+                            <span class="spec_fields">
+                                <div class="field">
+                                    <span class="name" gui-text="grant.name"></span>
+                                    <span class="type" gui-text="grant.name"></span>
+                                </div>
+                            </span>
+
+                            <span class="change">
+                                                            
+                            </span>
+
+                            <span class="spec_fields">  
+                                <div class="field">
+                                    <span class="name" gui-text="grant.name"></span>
+                                    <span class="type" gui-text="grant.name"></span>
+                                </div>
+                            </span>
+                        </div>
+
+                        <div class="diff_line" gui-case="'created'">
+                            <span class="spec_fields">
+                                <div class="field">
+                                </div>
+                            </span>
+
+                            <span class="change">
+                                <span></span>
+                                <span></span>
+                                <span class="created">Added</span>
+                            </span>
+
+                            <span class="spec_fields created">  
+                                <div class="field">
+                                    <span class="name" gui-text="grant.name"></span>
+                                    <span class="type" gui-text="grant.name"></span>
+                                </div>
+                            </span>
+                        </div>
+ 
+                        <div class="diff_line" gui-case="'removed'">
+                            <span class="spec_fields deleted">
+                                <div class="field">
+                                    <span class="name" gui-text="grant.name"></span>
+                                    <span class="type" gui-text="grant.name"></span>
+                                </div>
+                            </span>
+
+
+                            <span class="change">
+                                <span class="deleted">Removed</span>
+                                <span></span>
+                                <span></span>
+                            </span>
+
+                            <span class="spec_fields">  
+                                <div class="field">
+                                </div>
+                            </span>
+                        </div>
+
+
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 

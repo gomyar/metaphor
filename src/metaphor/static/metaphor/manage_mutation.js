@@ -26,6 +26,7 @@ var manage = {
             manage.spec_names = manage.all_spec_names();
             manage.diff = [];
             manage.create_diff();
+            group_diff.create_diff();
             turtlegui.reload();
         });
     },
@@ -228,6 +229,67 @@ var manage = {
                 window.location = '/admin';
             });
         }
+    }
+}
+
+
+var group_diff = {
+    diff: [],
+
+    create_diff: function() {
+        for (var group_name of this.all_group_names()) {
+            if ((group_name in manage.mutation.from_schema.groups) && !(group_name in manage.mutation.to_schema.groups)) {
+                // removed
+                this.diff.push({
+                    change: "deleted",
+                    group_name: group_name
+                });
+            } else if (!(group_name in manage.mutation.from_schema.groups) && (group_name in manage.mutation.to_schema.groups)) {
+                // created
+                this.diff.push({
+                    change: "created",
+                    group_name: group_name
+                });
+            } else {
+                // same, check fields
+                var from_group = manage.mutation.from_schema.groups[group_name];
+                var to_group = manage.mutation.to_schema.groups[group_name];
+
+                from_grant_names = from_group.grants.map(a => a.grant_type + ':' + a.url);
+                to_grant_names = to_group.grants.map(a => a.grant_type + ':' + a.url);
+
+                var grant_diff = [];
+                var grant_names = [];
+                grant_names = grant_names.concat(from_grant_names);
+                grant_names = grant_names.concat(to_grant_names);
+                grant_names = grant_names.filter((v, i, a) => { return a.indexOf(v) === i; });
+                grant_names.sort();
+
+                for (var grant_name of grant_names) {
+                    if (from_grant_names.indexOf(grant_name) != -1 && to_grant_names.indexOf(grant_name) == -1) {
+                        grant_diff.push({"change": "removed", "name": grant_name});
+                    } else if (from_grant_names.indexOf(grant_name) == -1 && to_grant_names.indexOf(grant_name) != -1) {
+                        grant_diff.push({"change": "created", "name": grant_name});
+                    } else {
+                        grant_diff.push({"change": "same", "name": grant_name});
+                    }
+                }
+
+                this.diff.push({
+                    change: "same",
+                    group_name: group_name,
+                    grants: grant_diff
+                });
+            }
+        }
+    },
+
+    all_group_names: function() {
+        var group_names = Object.keys(manage.mutation.to_schema.groups);
+        group_names = group_names.concat(Object.keys(manage.mutation.from_schema.groups));
+        group_names = group_names.filter((v, i, a) => { return a.indexOf(v) === i; });
+        group_names.sort();
+        return group_names;
     }
 }
 

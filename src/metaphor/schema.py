@@ -959,6 +959,10 @@ class Schema(object):
         self.groups[group_name]["grants"].append({"grant_type": grant_type, "url": url})
         self.save_groups()
 
+    def delete_grant(self, group_name, grant_type, url):
+        self.groups[group_name]["grants"].pop(self.groups[group_name]["grants"].index({"grant_type": grant_type, "url": url}))
+        self.save_groups()
+
     def add_user_to_group(self, group_name, user_id):
         self.db.metaphor_usergroup.insert_one({"group_name": group_name, "user_id": user_id})
 

@@ -160,6 +160,22 @@ var create_grant = {
                 alert("Error creating grant: " + data.error);
             }
         );
+    },
+
+    delete_grant: function(group_name, grant) {
+        if (confirm("Delete grant?")) {
+            loading.inc_loading();
+            turtlegui.ajax.delete(
+                '/admin/api/schemas/' + schema_id + '/groups/' + group_name + '/grants/' + grant.grant_type + "/" + grant.url,
+                function(data) {
+                    schema.load_specs();
+                },
+                function(data) {
+                    loading.dec_loading();
+                    alert("Error creating grant: " + data.error);
+                }
+            );
+        }
     }
 };
 

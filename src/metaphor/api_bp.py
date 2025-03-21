@@ -305,6 +305,16 @@ def schema_editor_create_grant(schema_id, group_name):
     return jsonify({'success': 1})
 
 
+@admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>/grants/<grant_type>/<url>", methods=['DELETE'])
+@admin_required
+def schema_editor_delete_grant(schema_id, group_name, grant_type, url):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    schema.delete_grant(group_name, grant_type, url)
+    return jsonify({'success': 1})
+
+
+
 @admin_bp.route("/api/schemas/<schema_id>/calcs", methods=['POST'])
 @admin_required
 def schema_editor_calcs(schema_id):
