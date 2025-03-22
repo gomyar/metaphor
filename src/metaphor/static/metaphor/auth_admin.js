@@ -38,6 +38,48 @@ var auth_admin = {
     }
 }
 
+
+var invite_user = {
+    shown: false,
+    email: null,
+    groups: [],
+    admin: false,
+    adding_group: null,
+
+    show: function() {
+        this.shown = true;
+        turtlegui.reload();
+    },
+
+    close: function() {
+        this.shown = false;
+        turtlegui.reload();
+    },
+
+    add_group: function() {
+        if (this.adding_group && this.groups.indexOf(this.adding_group) == -1) {
+            this.groups.push(this.adding_group);
+            turtlegui.reload();
+        }
+    },
+
+    remove_group: function(group_name) {
+        this.groups.splice(this.groups.indexOf(group_name), 1);
+        turtlegui.reload();
+    },
+
+    invite: function() {
+        turtlegui.ajax.post("/auth/api/identities", {
+            "email": this.email,
+            "groups": this.groups,
+            "admin": this.admin
+        }, () => {
+            this.close();
+        });
+    }
+}
+
+
 document.addEventListener("DOMContentLoaded", function(){
     metaphor = new Metaphor('/api', '/', window.location.search);
     login = new Login(metaphor);

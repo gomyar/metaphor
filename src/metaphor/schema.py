@@ -938,6 +938,9 @@ class Schema(object):
         else:
             return None
 
+    def get_identities(self):
+        return [Identity.from_data(i) for i in self.db['metaphor_identity'].find()]
+
     def create_group(self, group_name):
         if group_name in self.groups:
             raise Exception("Group already exists: %s" % group_name)

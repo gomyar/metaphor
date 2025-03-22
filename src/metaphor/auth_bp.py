@@ -71,3 +71,27 @@ def single_usergroup(group_name, user_id):
     return jsonify({'ok': 1})
 
 
+@auth_bp.route("/api/identities", methods=['GET', 'POST'])
+@admin_required
+def all_identities():
+    api = current_app.config['api']
+
+    def serialize(identity):
+        return {
+            "identity_id": identity['identity_id'],
+            "user_id": identity['user_id'],
+            "identity_type": identity['identity_type'],
+            "email": identity['email'],
+            "name": identity['name'],
+        }
+
+    if request.method == 'GET':
+        identities = api.schema.get_identities()
+        return jsonify([serialize(i) for i in identities])
+    else:
+        data = request.json
+        api.updater.create_user_resource(
+            data['email'],
+            data['groups'],
+            data['admin'])
+        return jsonify({'ok': 1})

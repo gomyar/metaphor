@@ -24,7 +24,10 @@
     </div>
 
     <div class="layer fullscreen auth_user_list">
-        <div class="title">Users</div>
+        <div class="title">
+            <span>Users</span>
+            <span class="invite_button" gui-click="invite_user.show()">Invite User</span>
+        </div>
 
         <div gui-list="auth_admin.user_groups" gui-item="user">
             <div class="user">
@@ -58,6 +61,43 @@
             </div>
         </div >
     </div >
+
+    <div class="popupwrapper" gui-show="invite_user.shown">
+        <div class="popup">
+            <div class="title">
+                <div>Invite User</div>
+            </div>
+            <div class="popupform" >
+                <div class="formfield">
+                    <div >Email: </div><div class="spec_name"><input type="text" gui-val="invite_user.email"></input></div>
+                </div>
+                <div class="formfield">
+                    <div>Groups: </div>
+                    <div>
+                        <select gui-val="invite_user.adding_group" gui-list="metaphor.schema.groups" gui-item="group" gui-key="group_name">
+                            <option gui-val="group_name" gui-text="group_name"></option>
+                        </select>
+                        <button class="button" gui-click='invite_user.add_group()'>Add</button>
+                    </div>
+
+                    <div gui-list="invite_user.groups" gui-item="group_name">
+                        <span class="user_group">
+                            <span gui-text="group_name"></span>
+                            <span class="remove_user_button" gui-click="invite_user.remove_group(group_name)">&#10006;</span>
+                        </span>
+                    </div>
+                </div>
+                 <div class="formfield">
+                    <div >Admin: </div><div class="spec_name"><input type="checkbox" gui-val="invite_user.admin"></input></div>
+                </div>
+            </div>
+            <div class="popupbuttons">
+                <button class="button" gui-click='invite_user.invite()'>Invite</button>
+                <button class="button" gui-click='invite_user.close()'>Close</button>
+            </div>
+        </div>
+    </div>
+ 
 
     <div id="login" class="popupwrapper" gui-show="login.is_shown" gui-include="'/admin/static/metaphor/login.html'"></div>
 

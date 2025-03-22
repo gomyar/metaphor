@@ -223,6 +223,7 @@ div.title {
     font-size : 16px;
     font-weight : bold;
     display : inline-block;
+    width: 100%;
 }
 
 div.schematitle {
@@ -246,13 +247,13 @@ div.auth_user_list div.user {
     height: 15px;
 }
 
-div.auth_user_list span.user_group {
+span.user_group {
     margin: 5px;
     background-color: lightgrey;
     font-size: 12px;
 }
 
-div.auth_user_list span.remove_user_button {
+span.remove_user_button {
     margin: 5px;
     background-color: lightgrey;
     font-size: 12px;
@@ -301,4 +302,11 @@ div.auth_group_list span.grant_type {
 
 div.auth_group_list span.grant_url {
     font-size: 12px;
+}
+
+span.invite_button {
+    font-size: 12px;
+    text-transform: uppercase;
+    float:right;
+    cursor: pointer;
 }
