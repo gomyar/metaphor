@@ -950,6 +950,7 @@ class Schema(object):
 
     def save_groups(self):
         self.db.metaphor_schema.update_one({"_id": self._id}, {"$set": {"groups": self.groups}})
+        self.update_version()
 
     def create_grant(self, group_name, grant_type, url):
         allowed_grant_types = ['read', 'create', 'delete', 'update']

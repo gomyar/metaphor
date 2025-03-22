@@ -231,3 +231,74 @@ div.schematitle {
     margin-top: 12px;
 }
 
+div.auth_user_list {
+    margin : 60px 10px 10px 10px;
+    border-top : 2px solid black;
+    width: 48%;
+    overflow-y: auto;
+
+}
+
+div.auth_user_list div.user {
+    margin-top: 10px;
+    width: 100%;
+    background-color: lightgrey;
+    height: 15px;
+}
+
+div.auth_user_list span.user_group {
+    margin: 5px;
+    background-color: lightgrey;
+    font-size: 12px;
+}
+
+div.auth_user_list span.remove_user_button {
+    margin: 5px;
+    background-color: lightgrey;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+div.auth_user_list span.add_to_group {
+    font-size: 12px;
+    text-transform: uppercase;
+    float:right;
+    cursor: pointer;
+}
+
+
+div.auth_group_list {
+    margin : 60px 10px 10px 10px;
+    border-top : 2px solid black;
+    width: 48%;
+    overflow-y: auto;
+    left: 50%;
+}
+
+div.auth_group_list div.group {
+    margin-top: 10px;
+}
+
+div.auth_group_list div.group_name {
+    font-weight: bold;
+    font-weight: bold;
+    border: 1px solid white;
+}
+
+div.auth_group_list div.group_name.adding {
+    border: 1px solid black;
+    cursor: pointer;
+    background-color: lightgrey;
+}
+
+div.auth_group_list span.grant_type {
+    display: inline-block;
+    width: 50px;
+    font-weight: bold;
+    margin-left: 10px;
+    font-size: 12px;
+}
+
+div.auth_group_list span.grant_url {
+    font-size: 12px;
+}

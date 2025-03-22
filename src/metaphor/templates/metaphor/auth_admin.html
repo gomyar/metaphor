@@ -1,0 +1,65 @@
+<html>
+<head>
+
+    <script src="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.24/turtlegui.js" crossorigin="anonymous"></script>
+    <script src="/admin/static/metaphor/login.js"></script>
+    <script src="/admin/static/metaphor/metaphor.js"></script>
+    <script src="/admin/static/metaphor/auth_admin.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/gomyar/turtlegui@v5.23/turtlegui.css"/>
+    <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/common.css"/>
+    <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/schema_editor.css"/>
+    <link rel="stylesheet" type="text/css" href="/admin/static/metaphor/admin.css"/>
+
+</head>
+
+<body>
+
+    <div class="layer anchortop admin_titlebar">
+        <div class="title">
+            <span class="title"><a href='/admin'>Admin</a></span> &gt; </span>
+            <span>Auth Admin</span>
+        </div>
+
+    </div>
+
+    <div class="layer fullscreen auth_user_list">
+        <div class="title">Users</div>
+
+        <div gui-list="auth_admin.user_groups" gui-item="user">
+            <div class="user">
+                <span gui-text="user.email"></span>
+                <span class="add_to_group" gui-show="!auth_admin.adding_user" gui-click="auth_admin.show_add_to_group(user)">Add to Group</span>
+                <span class="add_to_group" gui-show="auth_admin.adding_user" gui-click="auth_admin.show_add_to_group(null)">Cancel</span>
+            </div>
+            <div class="user_groups" gui-list="user.groups" gui-item="group_name">
+                <span class="user_group">
+                    <span gui-text="group_name"></span>
+                    <span class="remove_user_button" gui-click="auth_admin.remove_user_from_group(user, group_name)">&#10006;</span>
+                </span>
+            </div>
+        </div >
+    </div >
+
+
+    <div class="layer fullscreen auth_group_list">
+        <div class="title">Groups</div>
+
+        <div gui-list="metaphor.schema.groups" gui-item="group" gui-key="group_name">
+            <div class="group">
+                <div class="group_name" gui-class="auth_admin.should_show_adding_group(group_name)&&'adding'" gui-text="group_name" gui-click="auth_admin.add_user_to_group(group_name)"></div>
+                <div gui-list="group.grants" gui-item="grant">
+                    <div>
+                        <span class="grant_type" gui-text="grant.grant_type"></span>
+                        <span>: </span>
+                        <span class="grant_url" gui-text="grant.url"></span>
+                    </div>
+                </div>
+            </div>
+        </div >
+    </div >
+
+    <div id="login" class="popupwrapper" gui-show="login.is_shown" gui-include="'/admin/static/metaphor/login.html'"></div>
+
+</body> 
+</html>

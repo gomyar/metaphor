@@ -32,6 +32,7 @@ from metaphor.api_bp import search_bp
 from metaphor.login_bp import login_bp
 from metaphor.login_bp import init_login
 from metaphor.client_bp import client_bp
+from metaphor.auth_bp import auth_bp
 from metaphor.oauth import oauth_bp, init_oauth
 
 import logging
@@ -55,6 +56,7 @@ def create_app(db):
     app.register_blueprint(search_bp)
     app.register_blueprint(login_bp)
     app.register_blueprint(oauth_bp)
+    app.register_blueprint(auth_bp)
 
     init_login(app)
     init_oauth(app)
