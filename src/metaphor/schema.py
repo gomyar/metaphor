@@ -620,6 +620,14 @@ class Schema(object):
         pass
 
     def _parse_fields(self, spec_name, resource_data):
+        parsed_data = self._parse_fields_for_update(spec_name, resource_data)
+        spec = self.specs[spec_name]
+        for field_name, field in spec.fields.items():
+            if field.default is not None and field_name not in resource_data:
+                parsed_data[field_name] = field.default
+        return parsed_data
+
+    def _parse_fields_for_update(self, spec_name, resource_data):
         parsed_data = {}
         spec = self.specs[spec_name]
         for field_name, field_value in resource_data.items():
@@ -632,9 +640,6 @@ class Schema(object):
                 parsed_data[field_name] = datetime.fromisoformat(field_value.replace('Z', '+00:00'))
             else:
                 parsed_data[field_name] = field_value
-        for field_name, field in spec.fields.items():
-            if field.default is not None and field_name not in resource_data:
-                parsed_data[field_name] = field.default
         return parsed_data
 
     def _fields_with_dependant_calcs(self, spec_name):
@@ -727,7 +732,7 @@ class Schema(object):
         self.db['resource_%s' % spec_name].update_one({"_id": parent_id}, {"$pull": {field_name: {"_id": self.decodeid(resource_id)}}})
 
     def update_resource_fields(self, spec_name, resource_id, field_data):
-        save_data = self._parse_fields(spec_name, field_data)
+        save_data = self._parse_fields_for_update(spec_name, field_data)
 
         new_resource = self.db['resource_%s' % spec_name].find_one_and_update(
             {"_id": self.decodeid(resource_id)},

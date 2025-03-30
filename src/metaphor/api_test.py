@@ -278,6 +278,35 @@ class ApiTest(unittest.TestCase):
              'yearly_sales': 100,
              'name': 'sales'}], divisions)
 
+    def test_patch_default(self):
+        self.schema.create_field('employee', 'title', 'str', default="DEFAULT")
+
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'title': 'non-default'}, 'employees')
+        employees = list(self.db['resource_employee'].find({}))
+        self.assertEqual([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             '_type': 'employee',
+             'age': 41,
+             'name': 'ned',
+             'title': 'non-default'}], employees)
+
+        # patch check field has not changed
+        self.api.patch('employees/%s' % employee_id_1, {'name': "Bob"})
+
+        employees = list(self.db['resource_employee'].find({}))
+        self.assertEqual([
+            {'_id': self.schema.decodeid(employee_id_1),
+             '_parent_field_name': 'employees',
+             '_parent_id': None,
+             '_parent_type': 'root',
+             '_type': 'employee',
+             'age': 41,
+             'name': 'Bob',
+             'title': 'non-default'}], employees)
+
     def test_post_lower(self):
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
 
