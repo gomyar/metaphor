@@ -100,7 +100,7 @@
                                 <!-- possible expansion to resource -->
                                 <span class="link_url">
                                     <a gui-show="resource[field_name]" class="resource_link" gui-attrs="href=api.build_client_url(resource, field_name)" gui-text="field_name"></a>
-                                    <span gui-show="!resource[field_name]" class="resource_link" gui-text="field_name"></span>
+                                    <span gui-show="!resource[field_name]" class="resource_link"><i style="font-weight: normal">null</i></span>
                                 </span>
 
                                 <span class="control create_button" gui-click="search.show_link_field_search_and_save(resource, field)" gui-text="'>> link ' + field.target_spec_name"></span>
