@@ -12,6 +12,8 @@ from langchain.agents.agent_types import AgentType
 from langchain.tools import StructuredTool
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
+from langfuse.callback import CallbackHandler
+
 
 from metaphor.schema_serializer import serialize_schema
 
@@ -42,7 +44,8 @@ class SchemaEditorAgent:
 
     def prompt(self, text):
         schema_structure = json.dumps(serialize_schema(self.schema), indent=4)
-        return self.graph.invoke({"messages": [text]})
+        langfuse_callback = CallbackHandler()
+        return self.graph.invoke({"messages": [text]}, config={"callbacks": [langfuse_callback]})
 
     def create_new_spec(self, spec_name:str) -> str:
         """ Creates a new spec with the given name and optional description
