@@ -51,9 +51,13 @@ class SchemaFactory:
         return results[0] if results else None
 
     def create_schema(self):
+        schema = self.create_new_schema()
+        schema.set_as_current()
+        return schema
+
+    def create_new_schema(self):
         schema = Schema.create_schema(self.db)
         schema.create_initial_schema()
-        schema.set_as_current()
         return schema
 
     def create_identity_collection(self):

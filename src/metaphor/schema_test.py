@@ -794,3 +794,4 @@ class SchemaTest(unittest.TestCase):
             self.schema.create_grant("test_group4", "DELETE", "employees")
         with self.assertRaises(Exception):
             self.schema.create_grant("test_group4", "PATCH", "employees")
+

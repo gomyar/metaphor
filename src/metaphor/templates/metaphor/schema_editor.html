@@ -14,7 +14,7 @@ var schema_id = "{{ schema_id }}";
 
 </head>
 
-<body>
+<body gui-keyup="agent.check_focus()">
 
 
 <div class="layer anchortop title_version">
@@ -103,6 +103,14 @@ var schema_id = "{{ schema_id }}";
         </div> 
     </div> 
 
+</div>
+
+
+<div class="agent_input">
+    <div gui-show="agent.shown">
+        <textarea rows=4 cols=50 gui-val="agent.prompt_text" gui-focus="true" gui-keyup="agent.submit_prompt(this)" style="resize: none"></textarea>
+    </div>
+    <div class="agent_button" gui-click="agent.agent_button_pressed()">&#x1F916;</div>
 </div>
 
 

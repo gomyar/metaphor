@@ -983,3 +983,4 @@ class Schema(object):
 
     def delete(self):
         self.db.metaphor_schema.delete_one({"_id": self._id})
+

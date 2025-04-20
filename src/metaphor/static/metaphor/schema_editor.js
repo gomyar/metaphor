@@ -322,6 +322,39 @@ var create_field = {
     }
 };
 
+
+var agent = {
+    shown: false,
+    prompt_text: null,
+
+    check_focus: function() {
+        if (event.keyCode == 13 && event.altKey) {
+            if (!this.shown) {
+                this.shown = true;
+                turtlegui.reload();
+            }
+        }
+    },
+
+    submit_prompt: function(text_elem) {
+        if (event.keyCode == 13 && event.altKey) {
+            turtlegui.ajax.post('/admin/api/schemas/' + schema_id + "/agent",
+                {"prompt_text": text_elem.value},
+                (d) => {
+                    this.prompt_text = null;
+                    this.shown = false;
+                    schema.load_specs();
+                })
+        }
+    },
+
+    agent_button_pressed: function() {
+        this.shown = !this.shown;
+        turtlegui.reload();
+    }
+}
+
+
 document.addEventListener("DOMContentLoaded", function(){
     // call turtlegui.reload() when the page loads
     schema.load_specs();
