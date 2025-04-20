@@ -63,6 +63,7 @@ def callback(provider):
     except OAuthError as oe:
         return jsonify({"error": "Access token invalid"}), 401
 
+    import ipdb; ipdb.set_trace()
     if provider == 'google':
         user_info = client.get('https://www.googleapis.com/oauth2/v3/userinfo').json()
         email = user_info.get("email")

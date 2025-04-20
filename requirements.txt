@@ -11,3 +11,10 @@ toposort==1.10
 ipdb==0.12.3
 authlib==1.6.0
 requests==2.32.4
+
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+
+langchain-openai
+langchain
+langgraph

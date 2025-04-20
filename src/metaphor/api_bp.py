@@ -12,6 +12,7 @@ from metaphor.schema import Schema, CalcField
 from metaphor.mutation import Mutation, MutationFactory
 from metaphor.schema import DependencyException
 from metaphor.schema_serializer import serialize_schema
+from metaphor.agent import SchemaEditorAgent
 
 from urllib.error import HTTPError
 from gridfs import GridOut
@@ -236,6 +237,17 @@ def schema_editor_api(schema_id):
 def schema_editor_create_spec(schema_id):
     schema = load_checked_schema(schema_id)
     schema.create_spec(request.json['spec_name'])
+    return jsonify({'success': 1})
+
+
+@admin_bp.route("/api/schemas/<schema_id>/agent", methods=['POST'])
+@admin_required
+def schema_agent(schema_id):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+
+    agent = SchemaEditorAgent(schema)
+    agent.prompt(request.json['prompt_text'])
     return jsonify({'success': 1})
 
 
