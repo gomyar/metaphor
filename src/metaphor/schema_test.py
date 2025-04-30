@@ -550,6 +550,22 @@ class SchemaTest(unittest.TestCase):
         except DependencyException as de:
             self.assertEqual("secondary is linked from primary.secondaries", str(de))
 
+    def test_delete_spec_error(self):
+        self._create_test_schema({
+            "specs" : {
+            }
+        })
+
+        self.schema.create_spec('component')
+        self.schema.create_field('component', 'name', 'str')
+
+        self.schema.create_spec('egg')
+        self.schema.create_field('egg', 'name', 'str')
+
+        self.schema.create_field('egg', 'component', 'link', 'component')
+
+        self.schema.delete_spec('egg')
+
     def test_delete_root_field(self):
         self._create_test_schema({
             "specs" : {

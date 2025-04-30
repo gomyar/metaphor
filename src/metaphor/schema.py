@@ -142,7 +142,7 @@ class Spec(object):
         for ref_spec_name, ref_spec in self.schema.specs.items():
             if ref_spec_name != self.name:
                 for ref_field_name, ref_field in ref_spec.fields.items():
-                    if ref_field.target_spec_name == self.name:
+                    if ref_field.target_spec_name == self.name and not ref_field.is_reverse():
                         parents.append("%s.%s" % (ref_spec_name, ref_field_name))
         return parents
 
