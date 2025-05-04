@@ -242,3 +242,7 @@ class ServerTest(TestCase):
 
         api_schema = self.client.get('/api/schema').json
         self.assertEqual(['fields', 'name', 'type'], list(api_schema['root'].keys()))
+
+    def test_cannot_alter_current_schema(self):
+        response = self.client.delete("/admin/api/schemas/{self.schema.id}")
+        self.assertEqual(403, response.status_code)

@@ -106,7 +106,7 @@ var schema_id = "{{ schema_id }}";
 </div>
 
 
-<div class="agent_input">
+<div class="agent_input" gui-show="!schema.current">
     <div gui-show="agent.shown">
         <textarea rows=4 cols=50 gui-val="agent.prompt_text" gui-focus="true" gui-keyup="agent.submit_prompt(this)" style="resize: none"></textarea>
     </div>

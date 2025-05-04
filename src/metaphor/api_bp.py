@@ -49,6 +49,15 @@ def serialize_mutation(mutation):
     }
 
 
+def load_checked_schema(schema_id):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    if not schema:
+        abort(404)
+    if schema.current:
+        abort(403)
+    return schema
+
 @search_bp.route("/<spec_name>", methods=['GET'])
 @login_required
 def search(spec_name):
@@ -198,12 +207,11 @@ def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     identity = flask_login.current_user
     user = api.schema.load_user_by_id(identity.user_id)
-    schema = factory.load_schema(schema_id)
-    if not schema:
-        abort(404)
     if request.method == 'GET':
+        schema = factory.load_schema(schema_id)
         return jsonify(serialize_schema(schema, user.admin))
     else:
+        schema = load_checked_schema(schema_id)
         if factory.delete_schema(schema_id):
             return jsonify({'ok': 1})
         else:
@@ -213,8 +221,7 @@ def schema_editor_api(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/specs", methods=['POST'])
 @admin_required
 def schema_editor_create_spec(schema_id):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.create_spec(request.json['spec_name'])
     return jsonify({'success': 1})
 
@@ -222,8 +229,7 @@ def schema_editor_create_spec(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/agent", methods=['POST'])
 @admin_required
 def schema_agent(schema_id):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
 
     agent = SchemaEditorAgent(schema)
     agent.prompt(request.json['prompt_text'])
@@ -233,8 +239,7 @@ def schema_agent(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/groups", methods=['POST'])
 @admin_required
 def schema_editor_create_group(schema_id):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.create_group(request.json['group_name'])
     return jsonify({'success': 1})
 
@@ -242,8 +247,7 @@ def schema_editor_create_group(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_group(schema_id, group_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.delete_group(group_name)
     return jsonify({'success': 1})
 
@@ -251,8 +255,7 @@ def schema_editor_delete_group(schema_id, group_name):
 @admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>/grants", methods=['POST'])
 @admin_required
 def schema_editor_create_grant(schema_id, group_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.create_grant(group_name, request.json['grant_type'], request.json['url'])
     return jsonify({'success': 1})
 
@@ -260,8 +263,7 @@ def schema_editor_create_grant(schema_id, group_name):
 @admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>/grants/<grant_type>/<url>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_grant(schema_id, group_name, grant_type, url):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.delete_grant(group_name, grant_type, url)
     return jsonify({'success': 1})
 
@@ -291,8 +293,7 @@ def schema_editor_calcs(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields", methods=['POST'])
 @admin_required
 def schema_editor_create_field(schema_id, spec_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
 
     field_name = request.json['field_name']
     field_type = request.json['field_type']
@@ -330,8 +331,7 @@ def schema_editor_create_field(schema_id, spec_name):
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_spec(schema_id, spec_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     if schema.current:
         return jsonify({"error": "cannot alter current schema"}), 400
 
@@ -348,8 +348,7 @@ def schema_editor_delete_spec(schema_id, spec_name):
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
 @admin_required
 def schema_editor_delete_field(schema_id, spec_name, field_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     if schema.current:
         return jsonify({"error": "cannot alter current schema"}), 400
 
@@ -393,6 +392,8 @@ def mutations():
 
         from_schema = factory.load_schema(data['from_schema_id'])
         to_schema = factory.load_schema(data['to_schema_id'])
+        if not to_schema.current:
+            abort(403, {"error": "Target schema must be the current live schema"})
         mutation = MutationFactory(from_schema, to_schema).create()
 
         factory.create_mutation(mutation)
