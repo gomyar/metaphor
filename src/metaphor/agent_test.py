@@ -88,3 +88,44 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(3, len(employee_spec['fields']))
         calc_field = self.schema.specs['employee'].fields['years_to_retirement']
         self.assertEqual('int', calc_field.infer_type().field_type)
+
+    def test_calc_collection(self):
+        self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "age": {
+                            "type": "int"
+                        },
+                        "positions": {
+                            "type": "collection",
+                            "target_spec_name": "position",
+                        }
+                    },
+                },
+                "position": {
+                    "fields": {
+                        "description": {
+                            "type": "str",
+                        },
+                        "salary": {
+                            "type": "int",
+                        }
+                    }
+                },
+            }
+        })
+        self.agent = SchemaEditorAgent(self.schema)
+
+        self.agent.prompt("Add a field to employee called best positions which is a product of all the employees positions with a salary over 40000")
+        schema_json = serialize_schema(self.schema)
+        employee_spec = schema_json['specs']['employee']
+        self.assertEqual(4, len(employee_spec['fields']))
+        calc_field = self.schema.specs['employee'].fields['best_positions']
+        self.assertEqual('position', calc_field.infer_type().field_type)
+        self.assertTrue(calc_field.is_collection())

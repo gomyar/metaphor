@@ -30,6 +30,9 @@ log = logging.getLogger()
 class SchemaEditorAgent:
     PROMPT = '''
         You are an api schema manager agent. You are responsible for making changes to a the schema for an API.  You will only use the available tools to perform actions. You handle creating, editing, and deleting of the specs in the schema and the fields in each spec. Each field may be either a simple or complex type. Simple types are str, int, float, bool. Complex types may be collections of specs, collections of links to other specs, or single links to another spec. Calc types are read only calculated fields which may return any type.
+        Field names may only consist of lowercase letters and underscores. Where multiple words are given for a field, join them with underscores.
+        Spec names may only consist of lowercase letters and underscores. Where multiple words are given for a spec, join them with underscores.
+
 
         The current Schema has the following structure:
         {schema_structure}
@@ -37,10 +40,11 @@ class SchemaEditorAgent:
         {user_prompt}
     '''
     CALC_PROMPT = """
-        You are a calculation creator agent. You are responsible for translating a user request into a usable calculation against a given schema. The calculation takes the form of a DSL with a more or less mathematical structure. The calculation will be based on the specs and fields in the schema. Terms in the calculation evaluate to a spec or field or simple type. The evaluation begins at the fields in the root spec or relative to the spec in question using the 'self' keyword, which always refers to an instance of that spec. Filtering on collections may be accomplished using terms within square brackets.
+        You are a calculation creator agent. You are responsible for translating a user request into a usable calculation against a given schema. The calculation takes the form of a DSL with a more or less mathematical structure. The calculation will be based on the specs and fields in the schema. Terms in the calculation evaluate to a spec or field or simple type. The evaluation begins at the fields in the root spec or relative to the spec in question using the 'self' keyword, which always refers to an instance of that spec. Filtering on collections may be accomplished using terms within square brackets. If the first term is not a root field, then it cannot be used as the root of a term. If the term is a field of a spec, then self must be used.
 
         - If the schema has a spec called student, with a field called age, and the user says "add a field to student which is the age of the student plus 1" the calc is: "self.age + 1". This is because self refers to any instance of the student spec.
         - If the schema has a root spec with a field called "students" which is a collection of students, and the user says "add a field to another spec which is all the students over the age of 18" the calc is: "students[age>18]". This is because students is a field in the root spec and the square brackets filter on the students collection.
+        - If the schema has a root spec with a field called "employees", and a spec called "employee", and the user says "Add a field to employee called best positions which is a product of all the employees positions with a salary over 40000" then the calc is a field on employees with a value of "self.positions[salary>40000]"
 
         All specs and fields referenced must exist in the schema.
 
@@ -203,9 +207,6 @@ class SchemaEditorAgent:
         """
         self.schema.create_field(spec_name, field_name, "linkcollection", field_target=target_spec_name)
         return "Link Collection created"
-
-    def create_new_calc_field(self, params):
-        pass
 
     def delete_field(self, spec_name:str, field_name:str) -> str:
         """ Deletes a field from the given spec
