@@ -14,7 +14,7 @@
 
 </head>
 
-<body gui-keyup="api.check_esc()">
+<body gui-keyup="api.check_esc() && agent.check_focus()">
 
     <div class="anchortop topbar">
         <span><b>Location:</b></span>
@@ -180,6 +180,15 @@
             </div>
         </div>
     </div>
+
+
+    <div class="agent_input">
+        <div gui-show="agent.shown">
+            <textarea rows=4 cols=50 gui-val="agent.prompt_text" gui-focus="true" gui-keyup="agent.submit_prompt(this)" style="resize: none"></textarea>
+        </div>
+        <div class="agent_button" gui-click="agent.agent_button_pressed()">&#x1F916;</div>
+    </div>
+
 
     <div id="create_resource" class="popupwrapper" gui-show="api.creating_resource" tabIndex="0">
         <div class="popup create_popup">

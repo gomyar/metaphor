@@ -54,9 +54,10 @@ class ApiAgent:
 
         {user_prompt}
     '''
-    def __init__(self, api, schema):
+    def __init__(self, api, schema, user=None):
         self.api = api
         self.schema = schema
+        self.user = user
         self.model = ChatOpenAI(
             model="gpt-3.5-turbo",
             temperature=0)
@@ -85,9 +86,9 @@ class ApiAgent:
                 path: full path to the resource
                 fields: dictionary of any field values given
         """
-        resource_id = self.api.post(path, fields)
+        resource_id = self.api.post(path, fields, user=self.user)
         new_path = os.path.join(path, resource_id)
-        resource = self.api.get(path)
+        resource = self.api.get(path, user=self.user)
 
         return resource
 
@@ -97,8 +98,8 @@ class ApiAgent:
                 path: full path to the resource
                 fields: dictionary of any field values given
         """
-        self.api.patch(path, fields)
-        resource = self.api.get(path)
+        self.api.patch(path, fields, user=self.user)
+        resource = self.api.get(path, user=self.user)
 
         return "resource updated"
 
@@ -107,10 +108,10 @@ class ApiAgent:
             Args:
                 path: full path to the resource
         """
-        self.api.delete(path)
+        self.api.delete(path, user=self.user)
         path_parts = path.strip('/').split('/')
         new_path = "/" + "/".join(path_parts[:-1])
-        resource = self.api.get(new_path)
+        resource = self.api.get(new_path, user=self.user)
 
         return "resource deleted"
 
@@ -119,7 +120,7 @@ class ApiAgent:
             Args:
                 path: full path to the resource
         """
-        resource = self.api.get(path)
+        resource = self.api.get(path, user=self.user)
         return resource
 
     def find_resources(self, path: str, query: dict) -> list[dict]:
@@ -130,7 +131,7 @@ class ApiAgent:
         """
         filter_str = ",".join(["%s~%s" % (f, json.dumps(v)) for (f, v) in query.items()])
         filter_str = f"[{filter_str}]" if filter_str else ""
-        resource = self.api.get(path + filter_str)
+        resource = self.api.get(path + filter_str, user=self.user)
         return resource['results']
 
     def link_resource(self, from_resource_path: str, field_name: str, to_resource_path: str) -> str:
@@ -140,9 +141,9 @@ class ApiAgent:
                 field_name: name of the link field to set
                 to_resource_path: target resource path
         """
-        from_resource = self.api.get(from_resource_path)
-        to_resource = self.api.get(to_resource_path)
+        from_resource = self.api.get(from_resource_path, user=self.user)
+        to_resource = self.api.get(to_resource_path, user=self.user)
 
-        self.api.patch(from_resource_path, {field_name: to_resource['id']})
+        self.api.patch(from_resource_path, {field_name: to_resource['id']}, user=self.user)
 
         return "resource linked"
