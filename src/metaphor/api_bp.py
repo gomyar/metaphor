@@ -13,6 +13,7 @@ from metaphor.mutation import Mutation, MutationFactory
 from metaphor.schema import DependencyException
 from metaphor.schema_serializer import serialize_schema
 from metaphor.agent import SchemaEditorAgent
+from metaphor.api_agent import ApiAgent
 
 from urllib.error import HTTPError
 from gridfs import GridOut
@@ -115,6 +116,20 @@ def api(path):
             return jsonify(api.put(path, request.json, user)), 201
     except HTTPError as he:
         return jsonify({"error": he.reason}), he.getcode()
+
+
+@api_bp.route("/agent", methods=['POST'])
+@login_required
+def api_agent():
+    api = current_app.config['api']
+    identity = flask_login.current_user
+    user = api.schema.load_user_by_id(identity.user_id)
+
+    agent = ApiAgent(api, api.schema, user)
+    agent.prompt(request.json['prompt_text'])
+    return jsonify({'success': 1})
+
+
 
 
 @api_bp.route("/schema", methods=['GET'])

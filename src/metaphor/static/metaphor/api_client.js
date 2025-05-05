@@ -527,6 +527,39 @@ class ListenClient {
     }
 }
 
+
+var agent = {
+    shown: false,
+    prompt_text: null,
+
+    check_focus: function() {
+        if (event.keyCode == 13 && event.altKey) {
+            if (!this.shown) {
+                this.shown = true;
+                turtlegui.reload();
+            }
+        }
+    },
+
+    submit_prompt: function(text_elem) {
+        if (event.keyCode == 13 && event.altKey) {
+            turtlegui.ajax.post('/api/agent',
+                {"prompt_text": text_elem.value},
+                (d) => {
+                    this.prompt_text = null;
+                    this.shown = false;
+                    turtlegui.reload();
+                })
+        }
+    },
+
+    agent_button_pressed: function() {
+        this.shown = !this.shown;
+        turtlegui.reload();
+    }
+}
+
+
 var api = new ApiClient();
 var listen_client = new ListenClient();
 
