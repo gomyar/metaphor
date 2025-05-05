@@ -66,6 +66,7 @@ class ApiAgent:
             self.delete_resource,
             self.get_resource,
             self.find_resources,
+            self.link_resource,
         ])
 
     def prompt(self, user_prompt):
@@ -76,9 +77,9 @@ class ApiAgent:
         langfuse_callback = CallbackHandler()
         return self.graph.invoke({
             "messages": [prompt]},
-            config={"callbacks": [langfuse_callback], "recursion_limit": 5})
+            config={"callbacks": [langfuse_callback], "recursion_limit": 10})
 
-    def create_resource(self, path: str, fields: dict):
+    def create_resource(self, path: str, fields: dict) -> dict:
         """ Creates a new resource in the collection specified by the given path, using the field values.
             Args:
                 path: full path to the resource
@@ -88,13 +89,9 @@ class ApiAgent:
         new_path = os.path.join(path, resource_id)
         resource = self.api.get(path)
 
-        return {
-            "messages": f"New resource created with id {resource_id}",
-            "current_resource_path": new_path,
-            "current_resource": resource,
-        }
+        return resource
 
-    def update_resource(self, path: str, fields: dict):
+    def update_resource(self, path: str, fields: dict) -> str:
         """ Updates the fields in the resource with the given path
             Args:
                 path: full path to the resource
@@ -103,13 +100,9 @@ class ApiAgent:
         self.api.patch(path, fields)
         resource = self.api.get(path)
 
-        return {
-            "messages": "resource updated",
-            "current_resource_path": path,
-            "current_resource": resource,
-        }
+        return "resource updated"
 
-    def delete_resource(self, path: str):
+    def delete_resource(self, path: str) -> str:
         """ Deletes the resource with the given path
             Args:
                 path: full path to the resource
@@ -119,35 +112,37 @@ class ApiAgent:
         new_path = "/" + "/".join(path_parts[:-1])
         resource = self.api.get(new_path)
 
-        return {
-            "messages": "resource deleted",
-            "current_resource_path": new_path,
-            "current_resource": resource,
-        }
+        return "resource deleted"
 
-    def get_resource(self, path:str):
+    def get_resource(self, path:str) -> dict:
         """ Gets a single resource from the api with the given path
             Args:
                 path: full path to the resource
         """
-        resource = self.api.get(new_path)
+        resource = self.api.get(path)
+        return resource
 
-        return {
-            "messages": "got resource",
-            "current_resource_path": path,
-            "current_resource": resource,
-        }
-
-    def find_resources(self):
-        """ Gets a single resource from the api with the given path.
-            Each resource in the path may have a filter applied to it.
+    def find_resources(self, path: str, query: dict) -> list[dict]:
+        """ Gets a filtered list of resources from the given url. Filtered based on the fields in the query dict.
             Args:
                 path: full path to the resource
+                query: dict of fields to filter for
         """
-        resource = self.api.get(new_path)
+        filter_str = ",".join(["%s~%s" % (f, json.dumps(v)) for (f, v) in query.items()])
+        filter_str = f"[{filter_str}]" if filter_str else ""
+        resource = self.api.get(path + filter_str)
+        return resource['results']
 
-        return {
-            "messages": "got resource",
-            "current_resource_path": path,
-            "current_resource": None,
-        }
+    def link_resource(self, from_resource_path: str, field_name: str, to_resource_path: str) -> str:
+        """ Link a resource to another using the given field name
+            Args:
+                from_resource_path: path of the resource from which to link
+                field_name: name of the link field to set
+                to_resource_path: target resource path
+        """
+        from_resource = self.api.get(from_resource_path)
+        to_resource = self.api.get(to_resource_path)
+
+        self.api.patch(from_resource_path, {field_name: to_resource['id']})
+
+        return "resource linked"
