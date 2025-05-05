@@ -68,6 +68,7 @@ class ApiAgent:
             self.get_resource,
             self.find_resources,
             self.link_resource,
+            self.create_linkcollection_entry,
         ])
 
     def prompt(self, user_prompt):
@@ -135,7 +136,7 @@ class ApiAgent:
         return resource['results']
 
     def link_resource(self, from_resource_path: str, field_name: str, to_resource_path: str) -> str:
-        """ Link a resource to another using the given field name
+        """ Link a resource to another using the given field name. This works with fields of type 'link' only.
             Args:
                 from_resource_path: path of the resource from which to link
                 field_name: name of the link field to set
@@ -144,6 +145,24 @@ class ApiAgent:
         from_resource = self.api.get(from_resource_path, user=self.user)
         to_resource = self.api.get(to_resource_path, user=self.user)
 
-        self.api.patch(from_resource_path, {field_name: to_resource['id']}, user=self.user)
+        if self.schema.specs[from_resource['_meta']['spec']['name']].fields[field_name].field_type == 'link':
+            self.api.patch(from_resource_path, {field_name: to_resource['id']}, user=self.user)
+        elif self.schema.specs[from_resource['_meta']['spec']['name']].fields[field_name].field_type == 'linkcollection':
+            self.api.post(from_resource_path + "/" + field_name, {"id": to_resource['id']}, user=self.user)
+        else:
+            return f"Field {field_name} is not a link or linkcollection"
+
+        return "resource linked"
+
+    def create_linkcollection_entry(self, from_resource_path: str, field_name: str, to_resource_id: str) -> str:
+        """ Add a link to a resource to a linkcollection field. This works with fields of type 'linkcollection' only.
+            Args:
+                from_resource_path: path of the resource from which to link
+                field_name: name of the linkcollection field to add to
+                to_resource_id: id of target resource
+        """
+        from_resource = self.api.get(from_resource_path, user=self.user)
+
+        self.api.post(from_resource_path + "/" + field_name, {"id": to_resource_id}, user=self.user)
 
         return "resource linked"

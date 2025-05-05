@@ -117,3 +117,57 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(1, employees['count'])
         employee = employees['results'][0]
         self.assertEqual({"id": job_id_1}, employee['job'])
+
+    def test_link_collection_prompt(self):
+        self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
+            "root": {
+                "jobs": {
+                    "type": "collection",
+                    "target_spec_name": "job",
+                    "name": "jobs",
+                },
+                "employees": {
+                    "type": "collection",
+                    "target_spec_name": "employee",
+                    "name": "employees",
+                },
+            },
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "age": {
+                            "type": "int"
+                        },
+                        "jobs": {
+                            "type": "linkcollection",
+                            "target_spec_name": "job"
+                        },
+                    },
+                },
+                "job": {
+                    "fields": {
+                        "title": {
+                            "type": "str"
+                        }
+                    },
+                },
+            }
+        })
+
+        employee_id_1 = self.api.post('/employees', {'name': 'Bob', 'age': 31})
+        job_id_1 = self.api.post('/jobs', {'title': 'Manager'})
+
+        self.agent = ApiAgent(self.api, self.schema)
+
+        self.agent.prompt("Add the manager job to Bob")
+
+        employees = self.api.get("/employees", {"expand": "jobs"})
+        self.assertEqual(1, employees['count'])
+        employee = employees['results'][0]
+        self.assertEqual(1, len(employee['jobs']))
+        self.assertEqual(job_id_1, employee['jobs'][0]["id"])
