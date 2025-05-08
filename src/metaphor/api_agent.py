@@ -147,12 +147,9 @@ class ApiAgent:
 
         if self.schema.specs[from_resource['_meta']['spec']['name']].fields[field_name].field_type == 'link':
             self.api.patch(from_resource_path, {field_name: to_resource['id']}, user=self.user)
-        elif self.schema.specs[from_resource['_meta']['spec']['name']].fields[field_name].field_type == 'linkcollection':
-            self.api.post(from_resource_path + "/" + field_name, {"id": to_resource['id']}, user=self.user)
+            return "resource linked"
         else:
-            return f"Field {field_name} is not a link or linkcollection"
-
-        return "resource linked"
+            return f"Field {field_name} is not a link"
 
     def create_linkcollection_entry(self, from_resource_path: str, field_name: str, to_resource_id: str) -> str:
         """ Add a link to a resource to a linkcollection field. This works with fields of type 'linkcollection' only.
@@ -163,6 +160,8 @@ class ApiAgent:
         """
         from_resource = self.api.get(from_resource_path, user=self.user)
 
-        self.api.post(from_resource_path + "/" + field_name, {"id": to_resource_id}, user=self.user)
-
-        return "resource linked"
+        if self.schema.specs[from_resource['_meta']['spec']['name']].fields[field_name].field_type == 'linkcollection':
+            self.api.post(from_resource_path + "/" + field_name, {"id": to_resource_id}, user=self.user)
+            return "resource linked"
+        else:
+            return f"Field {field_name} is not a linkcollection"
