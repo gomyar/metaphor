@@ -9,6 +9,7 @@ bugs:
  - mutating from mutating from as schema name for some reason
  - all schemas set to current: true
  - schema editor admin shows wrong fields - done
+ - duplicate key index errors should be a 400
 
 
 Todo:
