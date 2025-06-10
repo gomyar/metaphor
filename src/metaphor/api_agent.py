@@ -16,7 +16,6 @@ from langgraph.prebuilt import create_react_agent
 
 from typing_extensions import TypedDict, Annotated
 from pydantic import BaseModel
-from langfuse.callback import CallbackHandler
 
 
 from metaphor.schema_serializer import serialize_schema
@@ -76,10 +75,9 @@ class ApiAgent:
         prompt = ApiAgent.PROMPT.format(
             schema_structure=schema_structure,
             user_prompt=user_prompt)
-        langfuse_callback = CallbackHandler()
         return self.graph.invoke({
             "messages": [prompt]},
-            config={"callbacks": [langfuse_callback], "recursion_limit": 10})
+            config={"recursion_limit": 10})
 
     def create_resource(self, path: str, fields: dict) -> dict:
         """ Creates a new resource in the collection specified by the given path, using the field values.

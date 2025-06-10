@@ -15,7 +15,6 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 from typing_extensions import TypedDict, Annotated
 from pydantic import BaseModel
-from langfuse.callback import CallbackHandler
 
 
 from metaphor.schema_serializer import serialize_schema
@@ -105,9 +104,7 @@ class SchemaEditorAgent:
         prompt = SchemaEditorAgent.CALC_PROMPT.format(
             schema_structure=schema_structure,
             user_prompt=last_message)
-        langfuse_callback = CallbackHandler()
-        response = self.calc_model.invoke(prompt,
-            config={"callbacks": [langfuse_callback]})
+        response = self.calc_model.invoke(prompt)
 
         tool_responses = []
         for tool_call in response.tool_calls:
@@ -153,10 +150,8 @@ class SchemaEditorAgent:
         prompt = SchemaEditorAgent.PROMPT.format(
             schema_structure=schema_structure,
             user_prompt=user_prompt)
-        langfuse_callback = CallbackHandler()
         return self.graph.invoke({
-            "messages": [prompt]},
-            config={"callbacks": [langfuse_callback]})
+            "messages": [prompt]})
 
     def create_new_spec(self, spec_name:str) -> str:
         """ Creates a new spec with the given name and optional description
