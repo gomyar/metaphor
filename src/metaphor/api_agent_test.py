@@ -171,3 +171,59 @@ class AgentTest(unittest.TestCase):
         employee = employees['results'][0]
         self.assertEqual(1, len(employee['jobs']))
         self.assertEqual(job_id_1, employee['jobs'][0]["id"])
+
+    def test_multiple_resources(self):
+        self._create_test_schema({
+            "name": "Test 1",
+            "description": "A description",
+            "root": {
+                "jobs": {
+                    "type": "collection",
+                    "target_spec_name": "job",
+                    "name": "jobs",
+                },
+                "employees": {
+                    "type": "collection",
+                    "target_spec_name": "employee",
+                    "name": "employees",
+                },
+            },
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "name" : {
+                            "type" : "str"
+                        },
+                        "age": {
+                            "type": "int"
+                        },
+                        "job": {
+                            "type": "link",
+                            "target_spec_name": "job"
+                        },
+                    },
+                },
+                "job": {
+                    "fields": {
+                        "title": {
+                            "type": "str"
+                        }
+                    },
+                },
+            }
+        })
+
+        job_id_1 = self.api.post('/jobs', {'title': 'Manager'})
+
+        self.agent = ApiAgent(self.api, self.schema)
+
+        result = self.agent.prompt("Add an Employee called Bob with the Manager job")
+
+        employees = self.api.get("/employees")
+        self.assertEqual(1, employees['count'])
+        employee = employees['results'][0]
+        self.assertEqual({"id": job_id_1}, employee['job'])
+        self.assertEqual("Bob", employee['name'])
+        self.assertEqual(None, employee['age'])
+
+

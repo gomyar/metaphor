@@ -124,12 +124,13 @@ class ApiAgent:
         resource = self.api.get(path, user=self.user)
         return resource
 
-    def find_resources(self, path: str, query: dict) -> list[dict]:
+    def find_resources(self, path: str, query: dict = None) -> list[dict]:
         """ Gets a filtered list of resources from the given url. Filtered based on the fields in the query dict.
             Args:
                 path: full path to the resource
                 query: dict of fields to filter for
         """
+        query = query or {}
         filter_str = ",".join(["%s~%s" % (f, json.dumps(v)) for (f, v) in query.items()])
         filter_str = f"[{filter_str}]" if filter_str else ""
         resource = self.api.get(path + filter_str, user=self.user)

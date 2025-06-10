@@ -81,14 +81,14 @@ socket_map = {}
 @login_required
 @socketio.on('connect')
 def on_connect():
-    log.debug("Connected %s %s", flask_login.current_user.username, request.sid)
+    log.debug("Connected %s %s", flask_login.current_user.user_id, request.sid)
     socket_map[request.sid] = {}
 
 
 @login_required
 @socketio.on('disconnect')
 def on_disconnect():
-    log.debug('Client disconnected %s', flask_login.current_user.username)
+    log.debug('Client disconnected %s', flask_login.current_user.user_id)
     sockets = socket_map.pop(request.sid)
     for url in sockets:
         log.debug("Cleaning listen for: %s", url)
@@ -113,7 +113,7 @@ def watch_resource(watch, sid, url):
 @login_required
 @socketio.on('add_resource')
 def add_resource(event):
-    log.debug("add resource %s %s", flask_login.current_user.username, event)
+    log.debug("add resource %s %s", flask_login.current_user.user_id, event)
 
     try:
         if event['url'] in socket_map[request.sid]:
@@ -135,7 +135,7 @@ def add_resource(event):
 @login_required
 @socketio.on('remove_resource')
 def remove_resource(event):
-    log.debug("remove resource %s %s", flask_login.current_user.username, event)
+    log.debug("remove resource %s %s", flask_login.current_user.user_id, event)
     mapped_socket = socket_map[request.sid].pop(event['url'])
     mapped_socket['watch'].close()
     mapped_socket['gthread'].join()

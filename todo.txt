@@ -6,10 +6,12 @@ Idea:
 
 
 bugs:
- - mutating from mutating from as schema name for some reason
- - all schemas set to current: true
- - schema editor admin shows wrong fields - done
  - duplicate key index errors should be a 400
+ - add tests for socketio
+
+ - add better error codes for logging in first time - 401 403 vs 500
+ - add better reporting when mongodb not replicasetted and default schema not yet initialized
+ - add create_admin to metaphor scripts
 
 
 Todo:
