@@ -12,6 +12,7 @@ bugs:
  - add better error codes for logging in first time - 401 403 vs 500
  - add better reporting when mongodb not replicasetted and default schema not yet initialized
  - add create_admin to metaphor scripts
+ - add new user to group
 
 
 Todo:
