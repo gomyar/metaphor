@@ -586,7 +586,7 @@ function load_initial_api() {
 document.addEventListener("DOMContentLoaded", function(){
     var path = window.location.pathname.replace(/^\/client\//, '/');
     if (path.endsWith('/')) { path = path.slice(0, -1); }
-    metaphor = new Metaphor('/api', path, window.location.search);
+    metaphor = new Metaphor(window.location.origin + '/api', path, window.location.search);
     login = new Login(metaphor);
     metaphor.register_listener((event_data) => {
         if (event_data.type == "unauthorized") {
