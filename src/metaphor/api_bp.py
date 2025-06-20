@@ -11,6 +11,7 @@ from metaphor.login import admin_required
 from metaphor.schema import Schema, CalcField
 from metaphor.mutation import Mutation, MutationFactory
 from metaphor.schema import DependencyException
+from metaphor.schema_serializer import serialize_schema
 
 from urllib.error import HTTPError
 
@@ -32,67 +33,6 @@ search_bp = Blueprint('search', __name__, template_folder='templates',
                       static_folder='static', url_prefix='/search')
 
 
-def serialize_spec(spec, admin=False):
-    return {
-        'name': spec.name,
-        'fields': {
-            name: serialize_field(f, admin) for name, f in spec.fields.items()
-        },
-    }
-
-def serialize_schema(schema, admin=False):
-    root_spec = {
-        "name": "root",
-        "fields": {
-            name: serialize_field(root, admin) for name, root in schema.root.fields.items()
-        },
-        "type": "resource",
-    }
-    root_spec["fields"]["ego"] = {
-        'name': "ego",
-        'type': "calc",
-        'target_spec_name': "user",
-        'is_collection': False,
-    }
-    specs = {
-        name: serialize_spec(spec, admin) for name, spec in schema.specs.items()
-    }
-    specs['root'] = root_spec
-    return {
-        'id': str(schema._id),
-        'name': schema.name,
-        'description': schema.description,
-        'specs': specs,
-        'root': root_spec,
-        'version': schema.version,
-        'current': schema.current,
-        'groups': schema.groups,
-    }
-
-
-def serialize_field(field, admin=False):
-    serialized = {
-        'name': field.name,
-        'type': field.field_type,
-        'target_spec_name': field.target_spec_name,
-        'is_collection': field.is_collection(),
-    }
-    if admin:
-        serialized.update({
-            'required': field.required,
-            'indexed': field.indexed,
-            'unique': field.unique,
-            'unique_global': field.unique_global,
-            'default': field.default,
-        })
-    if type(field) is CalcField:
-        calc_type = field.infer_type()
-        if not calc_type.is_primitive():
-            serialized['target_spec_name'] = calc_type.name
-        serialized['calc_str'] = field.calc_str
-    return serialized
-
-
 def serialize_mutation(mutation):
     api = current_app.config['api']
     user = api.schema.load_user_by_id(flask_login.current_user.user_id)
@@ -107,6 +47,15 @@ def serialize_mutation(mutation):
         'error': mutation.error,
     }
 
+
+def load_checked_schema(schema_id):
+    factory = current_app.config['schema_factory']
+    schema = factory.load_schema(schema_id)
+    if not schema:
+        abort(404)
+    if schema.current:
+        abort(403)
+    return schema
 
 @search_bp.route("/<spec_name>", methods=['GET'])
 @login_required
@@ -246,7 +195,7 @@ def admin_api_schemas():
                 factory.create_schema_from_import(request.json)
                 return jsonify({'ok': 1})
         else:
-            factory.create_schema()
+            factory.create_new_schema()
             return jsonify({'ok': 1})
 
 
@@ -257,12 +206,11 @@ def schema_editor_api(schema_id):
     factory = current_app.config['schema_factory']
     identity = flask_login.current_user
     user = api.schema.load_user_by_id(identity.user_id)
-    schema = factory.load_schema(schema_id)
-    if not schema:
-        abort(404)
     if request.method == 'GET':
+        schema = factory.load_schema(schema_id)
         return jsonify(serialize_schema(schema, user.admin))
     else:
+        schema = load_checked_schema(schema_id)
         if factory.delete_schema(schema_id):
             return jsonify({'ok': 1})
         else:
@@ -272,8 +220,7 @@ def schema_editor_api(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/specs", methods=['POST'])
 @admin_required
 def schema_editor_create_spec(schema_id):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.create_spec(request.json['spec_name'])
     return jsonify({'success': 1})
 
@@ -281,8 +228,7 @@ def schema_editor_create_spec(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/groups", methods=['POST'])
 @admin_required
 def schema_editor_create_group(schema_id):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.create_group(request.json['group_name'])
     return jsonify({'success': 1})
 
@@ -290,8 +236,7 @@ def schema_editor_create_group(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_group(schema_id, group_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.delete_group(group_name)
     return jsonify({'success': 1})
 
@@ -299,8 +244,7 @@ def schema_editor_delete_group(schema_id, group_name):
 @admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>/grants", methods=['POST'])
 @admin_required
 def schema_editor_create_grant(schema_id, group_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.create_grant(group_name, request.json['grant_type'], request.json['url'])
     return jsonify({'success': 1})
 
@@ -308,8 +252,7 @@ def schema_editor_create_grant(schema_id, group_name):
 @admin_bp.route("/api/schemas/<schema_id>/groups/<group_name>/grants/<grant_type>/<url>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_grant(schema_id, group_name, grant_type, url):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     schema.delete_grant(group_name, grant_type, url)
     return jsonify({'success': 1})
 
@@ -339,8 +282,7 @@ def schema_editor_calcs(schema_id):
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields", methods=['POST'])
 @admin_required
 def schema_editor_create_field(schema_id, spec_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
 
     field_name = request.json['field_name']
     field_type = request.json['field_type']
@@ -378,8 +320,7 @@ def schema_editor_create_field(schema_id, spec_name):
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>", methods=['DELETE'])
 @admin_required
 def schema_editor_delete_spec(schema_id, spec_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     if schema.current:
         return jsonify({"error": "cannot alter current schema"}), 400
 
@@ -396,8 +337,7 @@ def schema_editor_delete_spec(schema_id, spec_name):
 @admin_bp.route("/api/schemas/<schema_id>/specs/<spec_name>/fields/<field_name>", methods=['DELETE', 'PATCH'])
 @admin_required
 def schema_editor_delete_field(schema_id, spec_name, field_name):
-    factory = current_app.config['schema_factory']
-    schema = factory.load_schema(schema_id)
+    schema = load_checked_schema(schema_id)
     if schema.current:
         return jsonify({"error": "cannot alter current schema"}), 400
 
@@ -441,6 +381,9 @@ def mutations():
 
         from_schema = factory.load_schema(data['from_schema_id'])
         to_schema = factory.load_schema(data['to_schema_id'])
+        if not from_schema.current:
+            return jsonify({"error": "Target schema must be the current live schema"}), 403
+
         mutation = MutationFactory(from_schema, to_schema).create()
 
         factory.create_mutation(mutation)

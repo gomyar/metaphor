@@ -11,6 +11,7 @@ RUN apk add --update \
     musl-dev \
     gcc \
     libevent-dev \
+    git \
   && rm -rf /var/cache/apk/*
 
 COPY ./requirements.txt /requirements.txt

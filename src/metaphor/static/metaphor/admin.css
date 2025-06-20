@@ -219,6 +219,13 @@ div.steps {
 }
 
 
+span.tab {
+    font-size : 16px;
+    font-weight : bold;
+    display : inline;
+}
+
+
 div.title {
     font-size : 16px;
     font-weight : bold;
