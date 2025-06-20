@@ -46,6 +46,7 @@ def run_create_user(mongohost, mongodb):
     db = client[mongodb]
     email = input("Input email: ")
     password = getpass.getpass("Input password: ")
+    groups = input("Input groups: ")
     if email and password:
         if db.resource_user.find_one({'email': email}):
             print("User %s already exists" % email)
@@ -53,8 +54,15 @@ def run_create_user(mongohost, mongodb):
             schema_factory = SchemaFactory(db)
             schema = schema_factory.load_current_schema()
 
+            groups = groups.strip().split()
+            groups = [g.strip() for f in groups if g.strip()]
+            for group_name in groups:
+                if group_name not in schema.groups:
+                    print(f"Error: No such group: {group_name}")
+                    return
+
             updater = Updater(schema)
-            updater.create_basic_user(email, password)
+            updater.create_basic_user(email, password, groups)
 
             print("User %s created" % email)
 
