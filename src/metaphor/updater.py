@@ -1,6 +1,9 @@
 
 import gevent
 import time
+from datetime import datetime
+
+from gridfs import GridFS
 
 from metaphor.lrparse.reverse_aggregator import ReverseAggregator
 from metaphor.lrparse.lrparse import parse_canonical_url
@@ -161,6 +164,19 @@ class Updater(object):
                 parent_id).execute()
         self.schema.cleanup_update(update_id)
         return return_val
+
+    def create_file(self, spec_name, parent_id, field_name, stream, content_type, user=None):
+        fs = GridFS(self.schema.db)
+
+        file_id = fs.put(
+            stream,
+            parent_id=parent_id,
+            content_type=content_type,
+            upload_timestamp=datetime.utcnow(),
+            uploaded_by=user.user_id if user else None,
+        )
+        self.update_fields(spec_name, parent_id, {field_name: file_id})
+        return self.schema.encodeid(file_id)
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         update_id = str(self.schema.create_update())

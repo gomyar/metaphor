@@ -1,5 +1,6 @@
 
 import json
+from io import BytesIO
 from unittest import TestCase
 from server import create_app
 from metaphor.mongoclient_testutils import mongo_connection
@@ -27,6 +28,9 @@ class ServerTest(TestCase):
         self.schema.create_group("manager")
         self.schema.create_grant("manager", "read", "employees")
         self.schema.create_grant("manager", "read", "ego")
+        self.schema.create_grant("manager", "create", "applications")
+        self.schema.create_grant("manager", "create", "applications.resume")
+        self.schema.create_grant("manager", "read", "applications.resume")
 
         self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"])
 
@@ -246,3 +250,27 @@ class ServerTest(TestCase):
     def test_cannot_alter_current_schema(self):
         response = self.client.delete("/admin/api/schemas/{self.schema.id}")
         self.assertEqual(403, response.status_code)
+
+    def test_upload_file(self):
+        self.schema.create_spec('application')
+        self.schema.create_field('application', 'name', 'str')
+        self.schema.create_field('application', 'resume', 'file')
+        self.schema.create_field('root', 'applications', 'collection', 'application')
+
+        app_response = self.client.post('/api/applications',
+            data=json.dumps({'name': 'test application'}),
+            content_type='application/json')
+        application_id = app_response.json
+
+        response = self.client.post(
+            f'/api/applications/{application_id}/resume',
+            data=b'This is a test file content.',
+            content_type='application/octet-stream')
+
+        self.assertEqual(201, response.status_code)
+        file_id = response.json
+
+        file_response = self.client.get(f'/api/applications/{application_id}/resume')
+        self.assertEqual(200, file_response.status_code)
+        self.assertEqual("application/octet-stream", file_response.content_type)
+        self.assertEqual(b'This is a test file content.', file_response.data)

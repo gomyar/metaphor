@@ -14,6 +14,7 @@ from metaphor.schema import DependencyException
 from metaphor.schema_serializer import serialize_schema
 
 from urllib.error import HTTPError
+from gridfs import GridOut
 
 import flask_login
 
@@ -85,12 +86,16 @@ def api(path):
         if not user:
             return jsonify({"error": "Your identity does not have access to this service"}), 403
         if request.method == 'POST':
-            return jsonify(api.post(path, request.json, user)), 201
+            return jsonify(api.post(path, request, user)), 201
         if request.method == 'PATCH':
             return jsonify(api.patch(path, request.json, user))
         if request.method == 'GET':
             result = api.get(path, request.args, user)
             if result is not None:
+                if isinstance(result, GridOut):
+                    response = current_app.response_class(result, mimetype='application/octet-stream')
+                    response.headers['Content-Disposition'] = f'attachment; filename="{result.filename}"'
+                    return response
                 return jsonify(result)
             else:
                 return "Not Found", 404

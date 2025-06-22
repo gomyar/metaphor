@@ -7,6 +7,8 @@ from datetime import datetime
 
 from flask import request
 
+from gridfs import GridFS
+
 from metaphor.lrparse.lrparse import parse
 from metaphor.lrparse.lrparse import parse_url
 from metaphor.lrparse.lrparse import parse_canonical_url
@@ -186,7 +188,7 @@ class Api(object):
 
             return self.updater.move_resource(from_path, path, None, path, 'root')
 
-    def post(self, path, data, user=None):
+    def post(self, path, request, user=None):
         path = path.strip().strip('/')
 
         # check permissions
@@ -212,6 +214,18 @@ class Api(object):
             parent_resource = next(cursor)
 
             parent_id = self.schema.encodeid(parent_resource['_id'])
+
+            if field_spec.field_type == 'file':
+                return self.updater.create_file(
+                    spec.name,
+                    parent_id,
+                    field_name,
+                    request.stream,
+                    request.content_type,
+                    user)
+
+            # TODO: bodgy bodge
+            data = request.json if not isinstance(request, dict) else request
 
             if field_spec.field_type == 'linkcollection':
                 return self.updater.create_linkcollection_entry(
@@ -241,12 +255,53 @@ class Api(object):
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
             # add to root spec no need to check existance
+            # TODO: bodgy bodge
+            data = request.json if not isinstance(request, dict) else request
             return self.updater.create_resource(
                 root_field_spec.target_spec_name,
                 'root',
                 path,
                 None,
                 data)
+
+    def upload_file(self, path, stream, content_type, user=None):
+        path = path.strip().strip('/')
+
+        # check permissions
+        if user:
+            if not self.can_access(user, "create", path):
+                raise HTTPError('', 403, "Not Allowed", None, None)
+
+        if '/' in path:
+            parent_path, field_name = path.rsplit('/', 1)
+            tree = self._parse_canonical_url(parent_path)
+
+            aggregate_query = tree.create_aggregation()
+            if path[:4] == 'ego/':
+                aggregate_query.insert(0, {"$match": {"_id": user.user_id}})
+
+            spec = tree.infer_type()
+            is_aggregate = tree.is_collection()
+
+            field_spec = spec.fields[field_name]
+            if field_spec.field_type != 'file':
+                raise HTTPError('', 400, "Field %s is not a file field" % field_name, None, None)
+
+            # if we're using a simplified parser we can probably just pull the id off the path
+            cursor = tree.root_collection().aggregate(aggregate_query)
+            parent_resource = next(cursor)
+
+            parent_id = self.schema.encodeid(parent_resource['_id'])
+
+            return self.updater.create_file(
+                spec.name,
+                parent_id,
+                field_name,
+                stream,
+                content_type,
+                user)
+        else:
+            raise HTTPError('', 400, "Cannot upload file to root resource", None, None)
 
     def delete(self, path, user=None):
         path = path.strip().strip('/')
@@ -390,6 +445,29 @@ class Api(object):
                 aggregate_query.extend(expand_agg)
 
             # run mongo query from from root_resource collection
+            if tree.infer_type().field_type == 'file':
+                parent_path, field_name = path.rsplit('/', 1)
+                parent_tree = self._parse_canonical_url(parent_path)
+
+                parent_agg = parent_tree.create_aggregation()
+                if path[:4] == 'ego/':
+                    parent_agg.insert(0, {"$match": {"_id": user.user_id}})
+
+                parent_spec = parent_tree.infer_type()
+
+                field_spec = parent_spec.fields[field_name]
+
+                cursor = tree.root_collection().aggregate(aggregate_query)
+                parent_resource = next(cursor)
+
+                parent_id = self.schema.encodeid(parent_resource['_id'])
+                file_id = parent_resource.get(field_name)
+                if file_id:
+                    fs = GridFS(self.schema.db)
+                    return fs.get(file_id)
+                else:
+                    return None
+
             cursor = tree.root_collection().aggregate(aggregate_query)
             result = next(cursor, None)
 

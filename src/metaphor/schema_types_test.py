@@ -181,3 +181,22 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual([{'error': "Missing required field: 'name'"}],
                           self.schema.validate_spec('employee', {'address': "12 Road"}))
 
+
+    def test_file_type(self):
+        self._create_test_schema({
+            "specs" : {
+                "employee" : {
+                    "fields" : {
+                        "resume": {
+                            "type": "file"
+                        }
+                    },
+                },
+            }
+        })
+
+        self.assertEqual(1, len(self.schema.specs))
+        self.assertEqual("file", self.schema.specs['employee'].fields['resume'].field_type)
+
+        self.assertEqual([{'error': "Invalid type: int for field 'resume' of 'employee' (expected 'file')"}],
+                          self.schema.validate_spec('employee', {'resume': 12}))

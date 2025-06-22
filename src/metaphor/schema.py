@@ -124,6 +124,8 @@ class Spec(object):
             field = self.fields[name]
             tree = parse(field.calc_str, self)
             return tree.infer_type()
+        elif self.fields[name].field_type == 'file':
+            return self.fields[name]
         else:
             raise SyntaxError('Unrecognised field type')
 
