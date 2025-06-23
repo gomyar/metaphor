@@ -86,7 +86,7 @@ def api(path):
         if not user:
             return jsonify({"error": "Your identity does not have access to this service"}), 403
         if request.method == 'POST':
-            return jsonify(api.post(path, request, user)), 201
+            return jsonify(api.post(path, request.json, user, request)), 201
         if request.method == 'PATCH':
             return jsonify(api.patch(path, request.json, user))
         if request.method == 'GET':

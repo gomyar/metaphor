@@ -188,7 +188,7 @@ class Api(object):
 
             return self.updater.move_resource(from_path, path, None, path, 'root')
 
-    def post(self, path, request, user=None):
+    def post(self, path, data, user=None, request=None):
         path = path.strip().strip('/')
 
         # check permissions
@@ -215,7 +215,7 @@ class Api(object):
 
             parent_id = self.schema.encodeid(parent_resource['_id'])
 
-            if field_spec.field_type == 'file':
+            if field_spec.field_type == 'file' and request:
                 return self.updater.create_file(
                     spec.name,
                     parent_id,
@@ -223,9 +223,6 @@ class Api(object):
                     request.stream,
                     request.content_type,
                     user)
-
-            # TODO: bodgy bodge
-            data = request.json if not isinstance(request, dict) else request
 
             if field_spec.field_type == 'linkcollection':
                 return self.updater.create_linkcollection_entry(
@@ -255,8 +252,6 @@ class Api(object):
             root_spec = self.schema.specs[root_field_spec.target_spec_name]
 
             # add to root spec no need to check existance
-            # TODO: bodgy bodge
-            data = request.json if not isinstance(request, dict) else request
             return self.updater.create_resource(
                 root_field_spec.target_spec_name,
                 'root',
