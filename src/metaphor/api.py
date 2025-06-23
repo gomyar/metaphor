@@ -222,7 +222,8 @@ class Api(object):
                     field_name,
                     request.stream,
                     request.content_type,
-                    user)
+                    user,
+                    parent_resource.get(field_name))
 
             if field_spec.field_type == 'linkcollection':
                 return self.updater.create_linkcollection_entry(
@@ -365,6 +366,19 @@ class Api(object):
 
                 cursor = tree.root_collection().aggregate(aggregate_query)
                 parent_resource = next(cursor)
+
+                # check for file deletion
+                resource_tree = self._parse_canonical_url(path)
+                resource_field_name = path.rsplit('/', 1)[-1]
+                field_spec = spec.fields[resource_field_name]
+
+                if field_spec.field_type == 'file':
+                    self.updater.delete_file(
+                        spec.name,
+                        parent_resource['_id'],
+                        resource_field_name,
+                        parent_resource[resource_field_name])
+                    return {}
 
                 parent_spec_name = parent_field_tree.parent_spec.name if parent_field_tree.parent_spec else None
                 return self.updater.delete_resource(spec.name, resource_id, parent_spec_name, field_name)

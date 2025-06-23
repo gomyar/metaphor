@@ -165,7 +165,7 @@ class Updater(object):
         self.schema.cleanup_update(update_id)
         return return_val
 
-    def create_file(self, spec_name, parent_id, field_name, stream, content_type, user=None):
+    def create_file(self, spec_name, parent_id, field_name, stream, content_type, user=None, old_file_id=None):
         fs = GridFS(self.schema.db)
 
         file_id = fs.put(
@@ -176,7 +176,14 @@ class Updater(object):
             uploaded_by=user.user_id if user else None,
         )
         self.update_fields(spec_name, parent_id, {field_name: file_id})
+        if old_file_id:
+            fs.delete(old_file_id)
         return self.schema.encodeid(file_id)
+
+    def delete_file(self, spec_name, parent_id, field_name, file_id):
+        fs = GridFS(self.schema.db)
+        fs.delete(file_id)
+        self.update_fields(spec_name, self.schema.encodeid(parent_id), {field_name: None})
 
     def create_linkcollection_entry(self, parent_spec_name, parent_id, parent_field, link_id):
         update_id = str(self.schema.create_update())

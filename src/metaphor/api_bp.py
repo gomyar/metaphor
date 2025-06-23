@@ -93,8 +93,11 @@ def api(path):
             result = api.get(path, request.args, user)
             if result is not None:
                 if isinstance(result, GridOut):
-                    response = current_app.response_class(result, mimetype='application/octet-stream')
-                    response.headers['Content-Disposition'] = f'attachment; filename="{result.filename}"'
+                    response = current_app.response_class(result, mimetype=result.content_type)
+                    if request.args.get('download'):
+                        response.headers['Content-Disposition'] = f'attachment; filename="{request.args['download']}"'
+                    if request.args.get('contenttype'):
+                        response.content_type = request.args['contenttype']
                     return response
                 return jsonify(result)
             else:

@@ -31,6 +31,7 @@ class ServerTest(TestCase):
         self.schema.create_grant("manager", "create", "applications")
         self.schema.create_grant("manager", "create", "applications.resume")
         self.schema.create_grant("manager", "read", "applications.resume")
+        self.schema.create_grant("manager", "delete", "applications.resume")
 
         self.user_id = self.api.updater.create_basic_user("bob", "password", ["manager"])
 
@@ -270,7 +271,73 @@ class ServerTest(TestCase):
         self.assertEqual(201, response.status_code)
         file_id = response.json
 
+        # test get file contents
         file_response = self.client.get(f'/api/applications/{application_id}/resume')
         self.assertEqual(200, file_response.status_code)
         self.assertEqual("application/octet-stream", file_response.content_type)
         self.assertEqual(b'This is a test file content.', file_response.data)
+
+        # test download file with specific filename
+        file_response = self.client.get(f'/api/applications/{application_id}/resume?download=text_file.txt')
+        self.assertEqual(200, file_response.status_code)
+        self.assertEqual("application/octet-stream", file_response.content_type)
+        self.assertEqual(b'This is a test file content.', file_response.data)
+        self.assertEqual('attachment; filename="text_file.txt"', file_response.headers['Content-Disposition'])
+
+        # test override content type
+        file_response = self.client.get(f'/api/applications/{application_id}/resume?download=text_file.txt&contenttype=text/plain')
+        self.assertEqual(200, file_response.status_code)
+        self.assertEqual("text/plain", file_response.content_type)
+        self.assertEqual(b'This is a test file content.', file_response.data)
+        self.assertEqual('attachment; filename="text_file.txt"', file_response.headers['Content-Disposition'])
+
+        # assert the size of the fs collection
+        self.assertEqual(1, len(list(self.schema.db.fs.files.find({}))))
+
+        # overwrite the file
+        response = self.client.post(
+            f'/api/applications/{application_id}/resume',
+            data=b'This is new version.',
+            content_type='application/octet-stream')
+
+        # assert file is overridden
+        file_response = self.client.get(f'/api/applications/{application_id}/resume')
+        self.assertEqual(b'This is new version.', file_response.data)
+
+        # assert the original file is deleted
+        self.assertEqual(1, len(list(self.schema.db.fs.files.find({}))))
+
+    def test_delete_uploaded_file(self):
+        self.schema.create_spec('application')
+        self.schema.create_field('application', 'name', 'str')
+        self.schema.create_field('application', 'resume', 'file')
+        self.schema.create_field('root', 'applications', 'collection', 'application')
+
+        app_response = self.client.post('/api/applications',
+            data=json.dumps({'name': 'test application'}),
+            content_type='application/json')
+        application_id = app_response.json
+
+        # initially 404 when no file is uploaded
+        no_response = self.client.get(f'/api/applications/{application_id}/resume')
+        self.assertEqual(404, no_response.status_code)
+
+        # upload a file
+        response = self.client.post(
+            f'/api/applications/{application_id}/resume',
+            data=b'This is a test file content.',
+            content_type='application/octet-stream')
+
+        self.assertEqual(201, response.status_code)
+        file_id = response.json
+
+        # test delete file contents
+        file_response = self.client.delete(f'/api/applications/{application_id}/resume')
+        self.assertEqual(200, file_response.status_code)
+
+        # assert the file is deleted
+        no_response = self.client.get(f'/api/applications/{application_id}/resume')
+        self.assertEqual(404, no_response.status_code)
+
+        # assert the file is deleted
+        self.assertEqual(0, len(list(self.schema.db.fs.files.find({}))))
