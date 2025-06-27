@@ -175,6 +175,17 @@
                                 <input type="checkbox" gui-val="resource[field_name]" gui-change="api.perform_update_resource(resource, field_name, resource[field_name])"></input>
                             </div>
                         </div>
+
+                        <div class="field" gui-show="field.type=='file'">
+                            <div class="field_name" gui-text="field_name"></div>
+
+                            <a class="resource_link" gui-attrs="href=api.build_api_url(resource, field_name)" gui-show="resource[field_name]">Download</a>
+
+                            <div class="field_value simple">
+                                <input type="file" gui-change="api.perform_upload_file(this, resource, field_name)"></input>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -313,6 +324,9 @@
                                     <span class="simple_field_val" gui-text="resource[field_name]"></span>
                                 </div>
                                 <div class="field_value simple" gui-show="field.type=='bool'" gui-text="(resource[field_name] && 'true') || 'false'">
+                                </div>
+                                <div class="field_value simple" gui-class="field.type" gui-show="field.type=='file'">
+                                    <span class="simple_field_val" >file</span>
                                 </div>
                             </div>
                         </div>

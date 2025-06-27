@@ -751,6 +751,8 @@ class Api(object):
                     pass
                 else:
                     encoded[field_name] = calc_result
+            elif field.field_type == 'file':
+                encoded[field_name] = str(field_value) if field_value else None
             else:
                 encoded[field_name] = field_value
         return encoded

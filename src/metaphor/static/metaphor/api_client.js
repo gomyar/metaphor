@@ -338,6 +338,10 @@ class ApiClient {
         var url = resource._url + '/' + (fields ? fields.join('/') : '');
         return '/client' + url;
     }
+
+    build_api_url(resource, ...fields) {
+        return resource._m.api_root + resource._url + '/' + (fields ? fields.join('/') : '');
+    }
  
     perform_create_resource() {
         console.log('Creating', this.creating_resource);
@@ -352,6 +356,26 @@ class ApiClient {
         var patch_data = {};
         patch_data[field_name] = field_value;
         resource._patch(patch_data);
+    }
+
+    perform_upload_file(elem, resource, field_name) {
+        var file = elem.files[0];
+        if (file) {
+            fetch(this.build_api_url(resource, field_name), {
+                method: 'POST',
+                headers: {
+                'Content-Type': file.type || 'application/octet-stream'
+                },
+                body: file
+            })
+            .then(function(response) {
+                resource._get();
+            }).error(function(error) {
+                handle_http_error(error, "Error uploading file");
+            });
+        } else {
+            alert("No file selected");
+        }
     }
 
     set_editing_field(element, resource, field) {
