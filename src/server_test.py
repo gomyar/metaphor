@@ -341,3 +341,23 @@ class ServerTest(TestCase):
 
         # assert the file is deleted
         self.assertEqual(0, len(list(self.schema.db.fs.files.find({}))))
+
+    def test_do_not_support_application_formdata(self):
+        self.schema.create_spec('application')
+        self.schema.create_field('application', 'name', 'str')
+        self.schema.create_field('application', 'resume', 'file')
+        self.schema.create_field('root', 'applications', 'collection', 'application')
+
+        app_response = self.client.post('/api/applications',
+            data=json.dumps({'name': 'test application'}),
+            content_type='application/json')
+        application_id = app_response.json
+
+        # try to upload a file using formdata
+        response = self.client.post(
+            f'/api/applications/{application_id}/resume',
+            data={'file': (BytesIO(b'This is a test file content.'), 'test.txt')},
+            content_type='multipart/form-data')
+
+        self.assertEqual(400, response.status_code)
+        self.assertIn("Unsupported content type", response.json['error'])

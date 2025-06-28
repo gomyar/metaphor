@@ -85,8 +85,14 @@ def api(path):
         user = api.schema.load_user_by_id(identity.user_id)
         if not user:
             return jsonify({"error": "Your identity does not have access to this service"}), 403
+        content_type = request.content_type.split(';')[0] if request.content_type else None
+        if content_type == 'multipart/form-data':
+            return jsonify({"error": "Unsupported content type"}), 400
         if request.method == 'POST':
-            return jsonify(api.post(path, request.json, user, request)), 201
+            if content_type == 'application/json':
+                return jsonify(api.post(path, request.json, user, request)), 201
+            else:
+                return jsonify(api.post(path, None, user, request)), 201
         if request.method == 'PATCH':
             return jsonify(api.patch(path, request.json, user))
         if request.method == 'GET':
