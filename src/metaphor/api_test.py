@@ -752,6 +752,21 @@ class ApiTest(unittest.TestCase):
             }
             , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'parent_division_sections'}))
 
+    def test_expand_calc(self):
+        self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.link_employee_division')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.schema.insert_resource('employee', {'name': 'ned', 'age': 41, 'division': division_id_1}, 'employees')
+
+        self.assertEqual( {
+            '_meta': {'is_collection': False,
+                    'resource_type': 'resource',
+                    'spec': {'name': 'division'}},
+                    'id': division_id_1,
+                    'name': 'sales',
+                    'yearly_sales': 100}
+            , self.api.get('/divisions/%s' % (division_id_1,), args={"expand": 'all_employees'}))
+
     def test_orderedcollection(self):
         self.schema.create_field('division', 'all_contractors', 'calc', calc_str='self.sections.contractors')
 

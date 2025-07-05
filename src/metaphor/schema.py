@@ -84,6 +84,14 @@ class CalcField(Field):
         calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
         return calc_tree.infer_type()
 
+    @property
+    def target_spec_name(self):
+        return self.infer_type().name
+
+    @target_spec_name.setter
+    def target_spec_name(self, value):
+        pass
+
     def get_resource_dependencies(self):
         calc_tree = self.spec.schema.calc_trees[self.spec.name, self.name]
         return calc_tree.get_resource_dependencies()

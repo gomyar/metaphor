@@ -17,6 +17,7 @@ from metaphor.lrparse.lrparse import CollectionResourceRef
 from metaphor.lrparse.lrparse import RootResourceRef
 from metaphor.lrparse.lrparse import LinkCollectionResourceRef
 from metaphor.lrparse.lrparse import OrderedCollectionResourceRef
+from metaphor.lrparse.lrparse import ReverseLinkResourceRef
 from metaphor.lrparse.lrparse import FieldRef
 from metaphor.schema import CalcField
 from metaphor.schema_factory import SchemaFactory
@@ -626,7 +627,21 @@ class Api(object):
                 raise HTTPError('', 400, '%s not a field of %s' % (field_name, spec.name), None, None)
             field = spec.fields[field_name]
 
-            if field.field_type == 'link':
+            field_type = field.field_type
+            if field_type == 'calc':
+                tree = parse(field.calc_str, spec)
+                if type(tree) == ReverseLinkResourceRef:
+                    field_type = 'reverse_link'
+                elif type(tree) == CollectionResourceRef:
+                    field_type = 'collection'
+                elif type(tree) == LinkCollectionResourceRef:
+                    field_type = 'linkcollection'
+                elif type(tryy) == LinkResourceRef:
+                    field_type = 'link'
+                else:
+                    raise HTTPError('', 400, 'Cannot expand field %s' % (field_type))
+
+            if field_type == 'link':
                 # add check for ' if in "expand" parameter'
                 aggregate_query.append(
                     lookup_agg(
@@ -641,7 +656,7 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
-            elif field.field_type == 'reverse_link':
+            elif field_type == 'reverse_link':
                 aggregate_query.append(
                     lookup_agg(
                             field.target_spec_name,
@@ -653,7 +668,7 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
-            elif field.field_type in ('linkcollection','orderedcollection'):
+            elif field_type in ('linkcollection','orderedcollection'):
                 aggregate_query.append(
                     lookup_collection_agg(
                             field.target_spec_name,
@@ -665,7 +680,7 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
-            elif field.field_type == 'collection':
+            elif field_type == 'collection':
                 aggregate_query.append(
                     lookup_agg(
                             field.target_spec_name,
@@ -677,7 +692,7 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
-            elif field.field_type == 'parent_collection':
+            elif field_type == 'parent_collection':
                 aggregate_query.append(
                     lookup_agg(
                             spec.fields[field_name].target_spec_name,
@@ -692,7 +707,7 @@ class Api(object):
                 aggregate_query.append(
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
-            elif field.field_type == 'reverse_link_collection':
+            elif field_type == 'reverse_link_collection':
                 aggregate_query.append(
                     lookup_reverse_link_collection_agg(
                             field.target_spec_name,
@@ -705,7 +720,7 @@ class Api(object):
                     {"$set": {field_name: "$_expanded_%s" % field_name}}
                 )
             else:
-                raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field.field_type), None, None)
+                raise HTTPError('', 400, 'Unable to expand field %s of type %s' % (field_name, field_type), None, None)
         return aggregate_query
 
     def encode_resource(self, spec, resource_data, expand_dict, resource_type):
