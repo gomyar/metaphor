@@ -19,6 +19,7 @@ from metaphor.lrparse.lrparse import LinkCollectionResourceRef
 from metaphor.lrparse.lrparse import OrderedCollectionResourceRef
 from metaphor.lrparse.lrparse import ReverseLinkResourceRef
 from metaphor.lrparse.lrparse import FieldRef
+from metaphor.lrparse.lrparse import LinkResourceRef
 from metaphor.schema import CalcField
 from metaphor.schema_factory import SchemaFactory
 from metaphor.updater import Updater
@@ -628,15 +629,18 @@ class Api(object):
             field = spec.fields[field_name]
 
             field_type = field.field_type
+            reverse_link_field = field.reverse_link_field
             if field_type == 'calc':
                 tree = parse(field.calc_str, spec)
                 if type(tree) == ReverseLinkResourceRef:
                     field_type = 'reverse_link'
+                    reverse_link_field = tree.reverse_link_field()
                 elif type(tree) == CollectionResourceRef:
                     field_type = 'collection'
                 elif type(tree) == LinkCollectionResourceRef:
                     field_type = 'linkcollection'
-                elif type(tryy) == LinkResourceRef:
+                    reverse_link_field = tree.reverse_link_field()
+                elif type(tree) == LinkResourceRef:
                     field_type = 'link'
                 else:
                     raise HTTPError('', 400, 'Cannot expand field %s' % (field_type))
@@ -646,7 +650,7 @@ class Api(object):
                 aggregate_query.append(
                     lookup_agg(
                         field.target_spec_name,
-                        field_name,
+                        f"{field_name}._id",
                         "_id",
                         "_expanded_%s" % field_name,
                         expand_dict))
@@ -661,7 +665,7 @@ class Api(object):
                     lookup_agg(
                             field.target_spec_name,
                             "_id",
-                            field.reverse_link_field,
+                            f"{reverse_link_field}._id",
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
@@ -712,7 +716,7 @@ class Api(object):
                     lookup_reverse_link_collection_agg(
                             field.target_spec_name,
                             "_id",
-                            "%s._id" % field.reverse_link_field,
+                            "%s._id" % reverse_link_field,
                             "_expanded_%s" % field_name,
                             expand_dict
                     ))
@@ -742,7 +746,7 @@ class Api(object):
                     if field_name in expand_dict:
                         encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'link')
                     else:
-                        encoded[field_name] = {"id": self.schema.encodeid(field_value)}
+                        encoded[field_name] = {"id": self.schema.encodeid(field_value['_id'])}
             elif field.field_type == 'parent_collection' and resource_data.get('_parent_id'):
                 if field_name in expand_dict:
                     encoded[field_name] = self.encode_resource(self.schema.specs[field.target_spec_name], resource_data[field_name], expand_dict[field_name], 'resource')
@@ -763,9 +767,12 @@ class Api(object):
                     else:
                         encoded[field_name] = calc_result
                 elif tree.is_collection():
-                    pass
+                    # TODO: Add pagination
+                    if field_name in expand_dict:
+                        encoded[field_name] = [self.encode_resource(self.schema.specs[res_type.name], citem, expand_dict.get(field_name) or {}, "resource") for citem in resource_data[field_name]]
                 else:
-                    encoded[field_name] = calc_result
+                    if field_name in expand_dict:
+                        encoded[field_name] = self.encode_resource(self.schema.specs[res_type.name], calc_result, expand_dict.get(field_name) or {}, "resource")
             elif field.field_type == 'file':
                 encoded[field_name] = str(field_value) if field_value else None
             else:

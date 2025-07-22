@@ -71,14 +71,18 @@ class LRParseTest(unittest.TestCase):
                 },
             },
             "root": {
-                "employees": {
-                    "type": "collection",
-                    "target_spec_name": "employee",
+                "fields": {
+                    "employees": {
+                        "type": "collection",
+                        "target_spec_name": "employee",
+                    },
+                    "divisions": {
+                        "type": "collection",
+                        "target_spec_name": "division",
+                    }
                 },
-                "divisions": {
-                    "type": "collection",
-                    "target_spec_name": "division",
-                }
+                "name": "root",
+                "type": "resource"
             },
         })
 
@@ -290,7 +294,7 @@ class LRParseTest(unittest.TestCase):
             {'$match': {'age': {'$gt': 40}}},
             {'$lookup': {'as': '_val',
                         'from': 'resource_division',
-                        'let': {'id': '$division'},
+                        'let': {'id': '$division._id'},
                         'pipeline': [{'$match': {'$expr': {'$and': [
                                         {'$eq': ['$_id', '$$id']},
                                         {'$eq': ['$_type', 'division']},
@@ -356,7 +360,7 @@ class LRParseTest(unittest.TestCase):
         self.assertEqual([
             {'$lookup': {'as': '_val',
                         'from': 'resource_division',
-                        'let': {'id': '$division'},
+                        'let': {'id': '$division._id'},
                         'pipeline': [{'$match': {'$expr': {
                                         '$and': [
                                             {'$eq': ['$_id', '$$id']},

@@ -45,7 +45,17 @@ class SchemaTest(unittest.TestCase):
                         }
                     },
                 },
-            }
+            },
+            "root": {
+                "fields": {
+                    "employees": {
+                        "type": "collection",
+                        "target_spec_name": "employee",
+                    },
+                },
+                "name": "root",
+                "type": "resource"
+            },
         })
 
         self.assertEqual("Test 1", self.schema.name)
@@ -237,13 +247,15 @@ class SchemaTest(unittest.TestCase):
                 },
             },
             "root": {
-                "employees": {
-                    "type": "collection",
-                    "target_spec_name": "employee",
-                },
-                "departments": {
-                    "type": "collection",
-                    "target_spec_name": "department",
+                "fields": {
+                    "employees": {
+                        "type": "collection",
+                        "target_spec_name": "employee",
+                    },
+                    "departments": {
+                        "type": "collection",
+                        "target_spec_name": "department",
+                    }
                 }
             },
         })
@@ -387,7 +399,7 @@ class SchemaTest(unittest.TestCase):
 
         schema = self.db.metaphor_schema.find_one()
         self.assertEqual({
-            "users": {"target_spec_name": "user", "type": "collection"}}, schema['root'])
+            "fields": {"users": {"target_spec_name": "user", "type": "collection"}}}, schema['root'])
         self.assertEqual({
             'user': {'fields': {'admin': {
                 'type': 'bool',
@@ -579,7 +591,7 @@ class SchemaTest(unittest.TestCase):
         self.schema.delete_field('root', 'primaries')
 
         self.assertEqual(0, len(self.schema.root.fields))
-        self.assertEqual({}, self.db.metaphor_schema.find_one()['root'])
+        self.assertEqual({"fields": {}}, self.db.metaphor_schema.find_one()['root'])
 
     def test_delete_root_field_with_dependencies(self):
         self._create_test_schema({

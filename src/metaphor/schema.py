@@ -203,6 +203,7 @@ class Schema(object):
 
         self.name = ""
         self.description = ""
+        self.version = None
 
         self.specs = {}
         self.groups = {}
@@ -287,7 +288,7 @@ class Schema(object):
 
         sorted_calcs = list(toposort(calc_deps))
 
-        for root_name, root_data in schema_data.get('root', {}).items():
+        for root_name, root_data in schema_data['root'].get('fields', {}).items():
             self._add_field(
                 self.root,
                 root_name,
@@ -302,13 +303,13 @@ class Schema(object):
                 spec_name, field_name = field_str.split('.')
 
                 if spec_name == 'root':
-                    field_data = schema_data['root'][field_name]
+                    field_data = schema_data['root']['fields'][field_name]
                 else:
                     field_data = schema_data['specs'][spec_name]['fields'][field_name]
-                if field_data['type'] == 'calc':
-                    spec = self.specs[spec_name]
-                    self._add_calc(spec, field_name, field_data['calc_str'])
-                    self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
+                    if field_data['type'] == 'calc':
+                        spec = self.specs[spec_name]
+                        self._add_calc(spec, field_name, field_data['calc_str'])
+                        self.calc_trees[(spec.name, field_name)] = parse(field_data['calc_str'], spec)
 
         self.version = schema_data['version']
         self.name = self.name or self.version
@@ -371,7 +372,7 @@ class Schema(object):
         if spec_name == 'root':
             self.db['metaphor_schema'].update_one(
                 {'_id': self._id},
-                {"$set": {'root.%s' % (field_name,): field_data}},
+                {"$set": {'root.fields.%s' % (field_name,): field_data}},
                 upsert=True)
             self.update_version()
         else:
@@ -474,7 +475,7 @@ class Schema(object):
 
         self.db['metaphor_schema'].update_one(
             {'_id': self._id},
-            {"$unset": {'root.%s' % (field_name,): ''}})
+            {"$unset": {'root.fields.%s' % (field_name,): ''}})
 
     def _delete_spec_field(self, spec_name, field_name):
         self._do_delete_field(spec_name, field_name)
@@ -493,7 +494,7 @@ class Schema(object):
         if spec_name == 'root':
             self.db['metaphor_schema'].update_one(
                 {'_id': self._id},
-                {'$rename': {f'root.{from_field_name}': f'root.{to_field_name}'}},
+                {'$rename': {f'root.fields.{from_field_name}': f'root.fields.{to_field_name}'}},
             )
         else:
             self.db['metaphor_schema'].update_one(
@@ -643,7 +644,7 @@ class Schema(object):
         for field_name, field_value in resource_data.items():
             field = spec.fields[field_name]
             if field.field_type == 'link' and field_value is not None:
-                parsed_data[field_name] = self.decodeid(field_value)
+                parsed_data[field_name] = {"_id": self.decodeid(field_value)}
             elif field.field_type == 'linkcollection' and field_value is not None:
                 raise Exception("Do this")
             elif field.field_type == 'datetime' and field_value is not None:

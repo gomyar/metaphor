@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import json
 from datetime import datetime
 import getpass
 import argparse
@@ -10,20 +11,24 @@ from metaphor.updater import Updater
 from metaphor.schema_factory import SchemaFactory
 
 
-def run_init_schema(mongohost, mongodb):
+def run_init_schema(mongohost, mongodb, schema_filepath):
     client = MongoClient(mongohost)
     db = client[mongodb]
     if list(db.list_collections()):
         print("The given Database is not empty. Please run init_schema against a blank Database")
     else:
         factory = SchemaFactory(db)
+        if schema_filepath:
+            schema_json = json.load(open(schema_filepath))
+            factory.create_schema_from_import(schema_json, True)
+        else:
+            factory.create_schema()
         factory.create_identity_collection()
         factory.create_usergroup_collection()
-        schema = factory.create_schema()
         print("Schema created in database '%s'" % db.name)
 
 
-def run_create_superuser(mongohost, mongodb):
+def run_create_superuser(mongohost, mongodb, _):
     client = MongoClient(mongohost)
     db = client[mongodb]
     email = input("Input email: ")
@@ -41,7 +46,7 @@ def run_create_superuser(mongohost, mongodb):
             print("User %s created" % email)
 
 
-def run_create_user(mongohost, mongodb):
+def run_create_user(mongohost, mongodb, _):
     client = MongoClient(mongohost)
     db = client[mongodb]
     email = input("Input email: ")
@@ -67,7 +72,7 @@ def run_create_user(mongohost, mongodb):
             print("User %s created" % email)
 
 
-def run_delete_user(mongohost, mongodb):
+def run_delete_user(mongohost, mongodb, _):
     client = MongoClient(mongohost)
     db = client[mongodb]
     email = input("Input email: ")
@@ -85,7 +90,7 @@ def run_delete_user(mongohost, mongodb):
             print("User %s does not exist" % email)
 
 
-def run_invite_user(mongohost, mongodb):
+def run_invite_user(mongohost, mongodb, _):
     client = MongoClient(mongohost)
     db = client[mongodb]
     email = input("Input email: ")
@@ -118,6 +123,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--mongodb', type=str,
         help='Mongo database')
+    parser.add_argument(
+        '--file', type=str,
+        help='Schema file path')
 
     args = parser.parse_args()
 
@@ -135,4 +143,5 @@ if __name__ == '__main__':
 
     commands[args.command](
         args.mongohost or default_mongoconnection,
-        args.mongodb or default_mongodb)
+        args.mongodb or default_mongodb,
+        args.file or None)

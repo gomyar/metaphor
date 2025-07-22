@@ -37,7 +37,17 @@ class SchemaTest(unittest.TestCase):
                         }
                     },
                 },
-            }
+            },
+            "root": {
+                "fields": {
+                    "employees": {
+                        "type": "collection",
+                        "target_spec_name": "employee",
+                    },
+                },
+                "name": "root",
+                "type": "resource"
+            },
         })
         self.assertEqual(1, len(self.schema.specs))
         self.assertEqual("int", self.schema.specs['employee'].fields['age'].field_type)

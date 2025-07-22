@@ -5,6 +5,7 @@ from metaphor.mongoclient_testutils import mongo_connection
 
 from metaphor.schema_factory import SchemaFactory
 from metaphor.mutation import Mutation
+from metaphor.schema_serializer import serialize_schema
 
 
 class SchemaFactoryTest(unittest.TestCase):
@@ -34,3 +35,14 @@ class SchemaFactoryTest(unittest.TestCase):
         schemas = self.factory.list_schemas()
 
         self.assertEqual(2, len(list(schemas)))
+
+    def test_import_export(self):
+        schema_1 = self.factory.create_schema()
+        schemas_list = list(self.factory.list_schemas())
+        self.assertEqual(1, len(schemas_list))
+
+        schema_json = serialize_schema(schema_1)
+
+        self.factory.create_schema_from_import(schema_json)
+        schemas_list = list(self.factory.list_schemas())
+        self.assertEqual(2, len(schemas_list))

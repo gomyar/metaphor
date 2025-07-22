@@ -111,7 +111,7 @@ class UpdaterTest(unittest.TestCase):
             [{'$lookup': {'as': '_field_manager',
                         'from': 'resource_division',
                         'localField': '_id',
-                        'foreignField': 'manager'}},
+                        'foreignField': 'manager._id'}},
             {'$group': {'_id': '$_field_manager'}},
             {'$unwind': '$_id'},
             {'$replaceRoot': {'newRoot': '$_id'}}],
@@ -228,7 +228,7 @@ class UpdaterTest(unittest.TestCase):
             {"$lookup": {
                 "from": "resource_employee",
                 "foreignField": "_id",
-                "localField": "manager",
+                "localField": "manager._id",
                 "as": "_field_link_division_manager",
             }},
             {'$group': {'_id': '$_field_link_division_manager'}},

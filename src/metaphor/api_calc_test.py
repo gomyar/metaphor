@@ -92,14 +92,18 @@ class ApiTest(unittest.TestCase):
                 },
             },
             "root": {
-                "employees": {
-                    "type": "collection",
-                    "target_spec_name": "employee",
+                "fields": {
+                    "employees": {
+                        "type": "collection",
+                        "target_spec_name": "employee",
+                    },
+                    "divisions": {
+                        "type": "collection",
+                        "target_spec_name": "division",
+                    },
                 },
-                "divisions": {
-                    "type": "collection",
-                    "target_spec_name": "division",
-                }
+                "name": "root",
+                "type": "resource"
             },
         })
 
@@ -156,7 +160,6 @@ class ApiTest(unittest.TestCase):
         self.assertEqual({
             '_meta': {'is_collection': False, 'spec': {'name': 'employee'}, 'resource_type': 'resource'},
             'age': 41,
-            'division_link': {"_id": self.schema.decodeid(division_id_1)},
             'division': {"id": division_id_1},
             'id': employee_id_1,
             'name': 'ned',

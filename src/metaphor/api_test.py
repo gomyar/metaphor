@@ -199,7 +199,7 @@ class ApiTest(unittest.TestCase):
              '_parent_type': 'root',
              '_type': 'employee',
              'age': 41,
-             'division': self.schema.decodeid(division_id_1),
+             'division': {"_id": self.schema.decodeid(division_id_1)},
              'name': 'ned'},
             {'_id': self.schema.decodeid(employee_id_2),
              '_parent_field_name': 'employees',
@@ -248,7 +248,7 @@ class ApiTest(unittest.TestCase):
              '_parent_type': 'root',
              '_type': 'employee',
              'age': 41,
-             'division': self.schema.decodeid(division_id_1),
+             'division': {"_id": self.schema.decodeid(division_id_1)},
              'name': 'ned'}], new_employees)
 
     def test_patch(self):
@@ -265,7 +265,7 @@ class ApiTest(unittest.TestCase):
              '_parent_type': 'root',
              '_type': 'employee',
              'age': 41,
-             'division': self.schema.decodeid(division_id_1),
+             'division': {"_id": self.schema.decodeid(division_id_1)},
              'name': 'ned'}], employees)
 
         divisions = list(self.db['resource_division'].find({'_type': 'division'}))
@@ -752,7 +752,32 @@ class ApiTest(unittest.TestCase):
             }
             , self.api.get('/divisions/%s/sections/%s' % (division_id_1, section_id_1), args={"expand": 'parent_division_sections'}))
 
-    def test_expand_calc(self):
+    def test_expand_calc_link(self):
+        self.schema.create_field('employee', 'my_division', 'calc', calc_str='self.division')
+
+        division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
+        employee_id_1 = self.api.updater.create_resource('employee', None, 'employees', None, {'name': 'ned', 'age': 41, 'division': division_id_1})
+
+        self.assertEqual( {
+            '_meta': {'is_collection': False,
+                    'resource_type': 'resource',
+                    'spec': {'name': 'employee'}},
+            'id': employee_id_1,
+            'name': 'ned',
+            'age': 41,
+            'parent_section_contractors': None,
+            'division': {"id": division_id_1},
+            'created': None,
+            'my_division': {
+                '_meta': {'is_collection': False,
+                    'resource_type': 'resource',
+                    'spec': {'name': 'division'}},
+                'id': division_id_1,
+                'name': 'sales',
+                'yearly_sales': 100}},
+            self.api.get('/employees/%s' % (employee_id_1,), args={"expand": 'my_division'}))
+
+    def test_expand_calc_reverse_link(self):
         self.schema.create_field('division', 'all_employees', 'calc', calc_str='self.link_employee_division')
 
         division_id_1 = self.schema.insert_resource('division', {'name': 'sales', 'yearly_sales': 100}, 'divisions')
@@ -764,7 +789,18 @@ class ApiTest(unittest.TestCase):
                     'spec': {'name': 'division'}},
                     'id': division_id_1,
                     'name': 'sales',
-                    'yearly_sales': 100}
+                    'yearly_sales': 100,
+                    'all_employees': [
+                    {'_meta': {'is_collection': False,
+                            'resource_type': 'resource',
+                            'spec': {'name': 'employee'}},
+                    'age': 41,
+                    'created': None,
+                    'division': {'id': division_id_1},
+                    'id': employee_id_1,
+                    'name': 'ned',
+                    'parent_section_contractors': None}],
+                    }
             , self.api.get('/divisions/%s' % (division_id_1,), args={"expand": 'all_employees'}))
 
     def test_orderedcollection(self):
@@ -823,6 +859,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual({
             '_meta': {'is_collection': False, 'spec': {'name': 'division'}, 'resource_type': 'resource'},
             'id': division_id_1,
+            'manager': {'id': contractor_id},
             'name': 'sales',
             'yearly_sales': 100}, self.api.get('/divisions/%s' % division_id_1))
 

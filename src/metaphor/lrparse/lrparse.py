@@ -350,7 +350,7 @@ class LinkResourceRef(ResourceRef):
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
                     "localField": "_id",
-                    "foreignField": self.field_name,
+                    "foreignField": f"{self.field_name}._id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
             {"$unwind": "$_id"},
@@ -371,7 +371,7 @@ class LinkResourceRef(ResourceRef):
             {"$lookup": {
                 "from": 'resource_%s' % self.spec.name,
                 "as": '_val',
-                "let": {"id": "$%s" % self.field_name},
+                "let": {"id": "$%s._id" % self.field_name},
                 "pipeline": [
                     {"$match": {
                         "$expr": {
@@ -460,12 +460,15 @@ class ReverseLinkResourceRef(ResourceRef):
         reverse_field = self.resource_ref.spec.name
         return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
+    def reverse_link_field(self):
+        return self.resource_ref.spec.fields[self.field_name].reverse_link_field
+
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "localField": self.resource_ref.spec.fields[self.field_name].reverse_link_field,
+                    "localField": f"{self.reverse_link_field()}._id",
                     "foreignField": "_id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
@@ -486,7 +489,7 @@ class ReverseLinkResourceRef(ResourceRef):
                         {"$match": {
                             "$expr": {
                                 "$and": [
-                                    {"$eq": ["$$id", "$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field]},
+                                    {"$eq": ["$$id", "$%s._id" % self.reverse_link_field()]},
                                     {"$eq": ["$_type", self.spec.name]},
                                 ]
                             }
@@ -558,12 +561,15 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
         _, reverse_spec, reverse_field = self.field_name.split('_')  # well this should have a better impl
         return {"%s.%s" % (reverse_spec, reverse_field)} | self.resource_ref.get_resource_dependencies()
 
+    def reverse_link_field(self):
+        return self.resource_ref.spec.fields[self.field_name].reverse_link_field
+
     def create_reverse(self, calc_spec_name, calc_field_name):
         return [
             {"$lookup": {
                     "from": "resource_%s" % (self.resource_ref.spec.name,),
                     "as": "_field_%s" % (self.field_name,),
-                    "localField": "%s._id" % self.resource_ref.spec.fields[self.field_name].reverse_link_field,
+                    "localField": "%s._id" % self.reverse_link_field(),
                     "foreignField": "_id",
             }},
             {'$group': {'_id': '$_field_%s' % (self.field_name,)}},
@@ -584,7 +590,7 @@ class ReverseLinkCollectionResourceRef(ResourceRef):
                         {"$match": {
                             "$expr": {
                                 "$and": [
-                                    {"$in": [{"_id": "$$id"}, {"$ifNull": ["$%s" % self.resource_ref.spec.fields[self.field_name].reverse_link_field, []]}]},
+                                    {"$in": [{"_id": "$$id"}, {"$ifNull": ["$%s" % self.reverse_link_field(), []]}]},
                                     {"$eq": ["$_type", self.resource_ref.spec.fields[self.field_name].target_spec_name]},
                                 ]
                             }

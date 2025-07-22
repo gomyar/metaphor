@@ -83,14 +83,17 @@ class SchemaFactory:
             schema._build_schema(data)
             yield schema
 
-    def create_schema_from_import(self, schema_data):
+    def create_schema_from_import(self, schema_data, current=False):
         saved = {
             "root": schema_data['root'],
             "specs": schema_data['specs'],
             "version": schema_data['version'],
-            "created": schema_data['created'],
+            "groups": schema_data['groups'],
+            "created": datetime.now().isoformat(),
+            "current": current,
         }
-        self.db.metaphor_schema.insert_one(saved)
+        inserted = self.db.metaphor_schema.insert_one(saved)
+        return inserted.inserted_id
 
     def copy_schema_from_id(self, schema_id, name):
         to_copy = self.db.metaphor_schema.find_one({"_id": ObjectId(schema_id)})
