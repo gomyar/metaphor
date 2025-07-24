@@ -85,8 +85,8 @@ class SchemaFactory:
 
     def create_schema_from_import(self, schema_data, current=False):
         saved = {
-            "root": schema_data['root'],
-            "specs": schema_data['specs'],
+            "root": {'fields': dict((n, v) for n, v in schema_data['root']['fields'].items() if n != 'ego')},
+            "specs": dict((n, v) for n, v in schema_data['specs'].items() if n != 'root'),
             "version": schema_data['version'],
             "groups": schema_data['groups'],
             "created": datetime.now().isoformat(),

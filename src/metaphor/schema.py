@@ -302,9 +302,7 @@ class Schema(object):
             for field_str in line:
                 spec_name, field_name = field_str.split('.')
 
-                if spec_name == 'root':
-                    field_data = schema_data['root']['fields'][field_name]
-                else:
+                if spec_name != 'root':
                     field_data = schema_data['specs'][spec_name]['fields'][field_name]
                     if field_data['type'] == 'calc':
                         spec = self.specs[spec_name]

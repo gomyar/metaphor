@@ -396,7 +396,7 @@ def mutations():
         from_schema = factory.load_schema(data['from_schema_id'])
         to_schema = factory.load_schema(data['to_schema_id'])
         if not from_schema.current:
-            return jsonify({"error": "Target schema must be the current live schema"}), 403
+            return jsonify({"error": "Target schema must be the current live schema"}), 400
 
         mutation = MutationFactory(from_schema, to_schema).create()
 

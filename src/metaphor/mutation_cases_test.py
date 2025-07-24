@@ -1,5 +1,7 @@
 
 import unittest
+import json
+import os
 
 from bson.objectid import ObjectId
 from metaphor.mongoclient_testutils import mongo_connection
@@ -12,6 +14,7 @@ from metaphor.api import Api
 from server import create_app
 
 from .mutation import MutationFactory
+from metaphor.schema_serializer import serialize_schema
 
 
 class MutationTest(unittest.TestCase):
@@ -577,3 +580,32 @@ class MutationTest(unittest.TestCase):
 
     def test_alter_field_to_required_include_default(self):
         pass
+
+    def test_mutate_from_imported_schema(self):
+        factory = SchemaFactory(self.db)
+
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'name', 'str')
+        self.schema_2.create_field('client', 'address', 'str', default="42 ironside")
+
+        self.schema_2.create_spec('contract')
+        self.schema_2.create_field('contract', 'title', 'str')
+        self.schema_2.create_field('contract', 'description', 'str')
+        self.schema_2.create_field('contract', 'salary', 'int')
+
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        #schema_json = serialize_schema(self.schema_2)
+        schema_json = json.load(open(os.path.join(os.path.dirname(__file__), "mutation_cases_test.json")))
+        schema_id = factory.create_schema_from_import(schema_json)
+
+        # create mutation
+        response = self.client.post('/admin/api/mutations', json={
+            "from_schema_id": self.schema_1.schema_id, "to_schema_id": str(schema_id)})
+        mutation_data = response.json
+        mutation_id = mutation_data['id']
+
+        response = self.client.patch(f"/admin/api/mutations/{mutation_id}", json={
+            "promote": True
+        })
+        self.assertEqual(200, response.status_code)

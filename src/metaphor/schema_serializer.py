@@ -20,7 +20,7 @@ def serialize_schema(schema, admin=False):
     }
     root_spec["fields"]["ego"] = {
         'name': "ego",
-        'type': "calc",
+        'type': "ego",
         'target_spec_name': "user",
         'is_collection': False,
     }
