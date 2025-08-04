@@ -294,6 +294,45 @@ class MutationTest(unittest.TestCase):
         self.assertEqual("2023-01-02T10:11:22.000Z", user_1['created'])
         self.assertEqual(None, user_2['created'])
 
+    def test_alter_field_type_collection_to_linkcollection(self):
+        # given 2 schemas
+        self.schema_1 = SchemaFactory(self.db).create_schema()
+        self.schema_2 = SchemaFactory(self.db).create_schema()
+
+        self.schema_1.set_as_current()
+
+        self.schema_1.create_spec('book')
+        self.schema_1.create_spec('client')
+        self.schema_1.create_field('client', 'books', 'collection', 'book')
+        self.schema_1.create_field('root', 'clients', 'collection', 'client')
+
+        self.schema_2.create_spec('book')
+        self.schema_2.create_spec('client')
+        self.schema_2.create_field('client', 'books', 'linkcollection', 'book')
+        self.schema_2.create_field('root', 'clients', 'collection', 'client')
+
+        # insert test data
+        client_1_id = self.schema_1.insert_resource('client', {}, 'clients')
+        book_1_id = self.schema_1.insert_resource('book', {}, 'books', 'client', client_1_id)
+
+        mutation = MutationFactory(self.schema_1, self.schema_2).create()
+
+        self.assertEqual(3, len(mutation.steps))
+        self.assertEqual('alter_field', mutation.steps[1]['action'])
+        self.assertEqual('client', mutation.steps[1]['params']['spec_name'])
+        self.assertEqual('books', mutation.steps[1]['params']['field_name'])
+
+        mutation.mutate()
+
+        client_1 = self.db.resource_client.find_one({"_id": self.schema_1.decodeid(client_1_id)})
+
+        self.assertEqual({'_id': self.schema_1.decodeid(client_1_id),
+            '_parent_field_name': 'clients',
+            '_parent_id': None,
+            '_parent_type': 'root',
+            '_type': 'client'}
+            , client_1)
+
     def test_move_steps_root(self):
         # given 2 schemas
         self.schema_1 = SchemaFactory(self.db).create_schema()

@@ -770,22 +770,22 @@ class Schema(object):
             'datetime': 'date',
         }
 
-
-        self.db['resource_%s' % spec_name].aggregate([
-            {"$match": {field_name: {"$exists": True}}},
-            {"$addFields": {
-                field_name: {"$convert": {
-                    "input": "$%s"%field_name,
-                    "to": type_map[new_type],
-                    "onError": None,
-                    "onNull": None,
+        if new_type in type_map:
+            self.db['resource_%s' % spec_name].aggregate([
+                {"$match": {field_name: {"$exists": True}}},
+                {"$addFields": {
+                    field_name: {"$convert": {
+                        "input": "$%s"%field_name,
+                        "to": type_map[new_type],
+                        "onError": None,
+                        "onNull": None,
+                    }},
                 }},
-            }},
-            {"$merge": {
-                "into": 'resource_%s' % spec_name,
-                "whenNotMatched": "discard",
-            }}
-        ])
+                {"$merge": {
+                    "into": 'resource_%s' % spec_name,
+                    "whenNotMatched": "discard",
+                }}
+            ])
 
     def create_linkcollection_entry(self, spec_name, parent_id, parent_field, link_id):
         self.db['resource_%s' % spec_name].update_one({'_id': self.decodeid(parent_id)}, {'$addToSet': {parent_field: {'_id': self.decodeid(link_id)}}})
