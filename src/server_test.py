@@ -1,6 +1,7 @@
 
 import json
 from io import BytesIO
+import base64
 from unittest import TestCase
 from server import create_app
 from metaphor.mongoclient_testutils import mongo_connection
@@ -361,3 +362,26 @@ class ServerTest(TestCase):
 
         self.assertEqual(400, response.status_code)
         self.assertIn("Unsupported content type", response.json['error'])
+
+    def test_basic_header(self):
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
+
+        self.schema.create_group("user")
+        self.schema.create_grant("user", "read", "employees")
+
+        self.user_id = self.api.updater.create_basic_user("ned@ned.com", "password", ["user"])
+
+        token = base64.b64encode("ned@ned.com:password".encode()).decode()
+
+        response = self.client.get(f'/api/employees', headers={
+            "Authorization": f"Basic {token}",
+        })
+        self.assertEqual(200, response.status_code)
+
+        response = self.client.get(f'/api/ego', headers={
+            "Authorization": f"Basic {token}",
+        })
+        self.assertEqual(403, response.status_code)

@@ -3,3 +3,4 @@
 src/metaphor.egg-info/
 .ropeproject
 .env
+venv/
