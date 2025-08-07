@@ -23,6 +23,7 @@ from flask import current_app
 from flask_socketio import SocketIO, emit
 import flask_login
 from flask_login import login_required
+from flask import session
 
 from metaphor.api import Api
 from metaphor.schema_factory import SchemaFactory
@@ -57,6 +58,11 @@ def create_app(db):
     app.register_blueprint(login_bp)
     app.register_blueprint(oauth_bp)
     app.register_blueprint(auth_bp)
+
+    @app.before_request
+    def prevent_session_if_basic_auth():
+        if request.headers.get('Authorization', '').startswith('Basic '):
+            session.clear()
 
     init_login(app)
     init_oauth(app)

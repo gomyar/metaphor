@@ -30,31 +30,31 @@ login_bp = Blueprint('login', __name__,
                      static_url_path='/static/accounts')
 
 
-def load_user_from_basic_header():
+@login_manager.request_loader
+def load_user_from_basic_auth(request):
     api = current_app.config['api']
     auth_header = request.headers.get('Authorization')
-    if auth_header and auth_header.startswith('Basic '):
-        encoded_credentials = auth_header.split(' ')[1]
-        try:
-            decoded = base64.b64decode(encoded_credentials).decode('utf-8')
-            email, password = decoded.split(':', 1)
+    if not auth_header or not auth_header.startswith('Basic '):
+        return None
 
-            identity = api.schema.load_identity("basic", email=email)
-            if identity and check_password_hash(identity.password, password):
-                return identity
-        except Exception as e:
-            return None
+    try:
+        encoded = auth_header.split(' ')[1]
+        decoded = base64.b64decode(encoded).decode('utf-8')
+        email, password = decoded.split(':', 1)
+
+        identity = api.schema.load_identity("basic", email=email)
+        if identity and check_password_hash(identity.password, password):
+            return identity
+    except Exception:
+        pass
+
     return None
 
 
 @login_manager.user_loader
 def load_user(session_id):
     api = current_app.config['api']
-    identity = load_user_from_basic_header()
-    if not identity:
-        return api.schema.load_identity_by_session_id(session_id)
-    else:
-        return identity
+    return api.schema.load_identity_by_session_id(session_id)
 
 
 @login_bp.route('/login', methods=['GET', 'POST'])

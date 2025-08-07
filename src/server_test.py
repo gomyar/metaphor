@@ -385,3 +385,32 @@ class ServerTest(TestCase):
             "Authorization": f"Basic {token}",
         })
         self.assertEqual(403, response.status_code)
+
+    def test_basic_header_no_session(self):
+        # recreate client, no logged in user
+        self.client = self.app.test_client()
+
+        self.schema.create_spec('employee')
+        self.schema.create_field('employee', 'name', 'str')
+
+        self.schema.create_field('root', 'employees', 'collection', 'employee')
+
+        self.schema.create_group("user")
+        self.schema.create_grant("user", "read", "employees")
+
+        self.user_id = self.api.updater.create_basic_user("ned@ned.com", "password", ["user"])
+
+        token = base64.b64encode("ned@ned.com:password".encode()).decode()
+
+        response = self.client.get(f'/api/employees', headers={
+            "Authorization": f"Basic {token}",
+        })
+        # assert header still works
+        self.assertEqual(200, response.status_code)
+
+        response = self.client.get(f'/api/ego', headers={
+            "Authorization": f"Basic {token}",
+        })
+        self.assertEqual(403, response.status_code)
+
+
