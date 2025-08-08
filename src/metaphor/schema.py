@@ -847,7 +847,7 @@ class Schema(object):
             "type": identity_type,
             "email": email,
         })
-        return Identity.from_data(identity_data)
+        return Identity.from_data(identity_data) if identity_data else None
 
     def update_identity_session_id(self, identity):
         identity.session_id = str(uuid4())

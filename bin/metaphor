@@ -11,15 +11,15 @@ from metaphor.updater import Updater
 from metaphor.schema_factory import SchemaFactory
 
 
-def run_init_schema(mongohost, mongodb, schema_filepath):
-    client = MongoClient(mongohost)
-    db = client[mongodb]
+def run_init_schema(args):
+    client = MongoClient(args.mongohost)
+    db = client[args.mongodb]
     if list(db.list_collections()):
         print("The given Database is not empty. Please run init_schema against a blank Database")
     else:
         factory = SchemaFactory(db)
-        if schema_filepath:
-            schema_json = json.load(open(schema_filepath))
+        if args.file:
+            schema_json = json.load(open(args.file))
             factory.create_schema_from_import(schema_json, True)
         else:
             factory.create_schema()
@@ -28,11 +28,11 @@ def run_init_schema(mongohost, mongodb, schema_filepath):
         print("Schema created in database '%s'" % db.name)
 
 
-def run_create_superuser(mongohost, mongodb, _):
-    client = MongoClient(mongohost)
-    db = client[mongodb]
-    email = input("Input email: ")
-    password = getpass.getpass("Input password: ")
+def run_create_superuser(args):
+    client = MongoClient(args.mongohost)
+    db = client[args.mongodb]
+    email = args.email or input("Input email: ")
+    password = args.password or getpass.getpass("Input password: ")
     if email and password:
         if db.resource_user.find_one({'email': email}):
             print("User %s already exists" % email)
@@ -46,12 +46,12 @@ def run_create_superuser(mongohost, mongodb, _):
             print("User %s created" % email)
 
 
-def run_create_user(mongohost, mongodb, _):
-    client = MongoClient(mongohost)
-    db = client[mongodb]
-    email = input("Input email: ")
-    password = getpass.getpass("Input password: ")
-    groups = input("Input groups: ")
+def run_create_user(args):
+    client = MongoClient(args.mongohost)
+    db = client[args.mongodb]
+    email = args.email or input("Input email: ")
+    password = args.password or getpass.getpass("Input password: ")
+    groups = args.groups or input("Input groups: ")
     if email and password:
         if db.resource_user.find_one({'email': email}):
             print("User %s already exists" % email)
@@ -60,7 +60,7 @@ def run_create_user(mongohost, mongodb, _):
             schema = schema_factory.load_current_schema()
 
             groups = groups.strip().split()
-            groups = [g.strip() for f in groups if g.strip()]
+            groups = [g.strip() for g in groups if g.strip()]
             for group_name in groups:
                 if group_name not in schema.groups:
                     print(f"Error: No such group: {group_name}")
@@ -72,10 +72,10 @@ def run_create_user(mongohost, mongodb, _):
             print("User %s created" % email)
 
 
-def run_delete_user(mongohost, mongodb, _):
-    client = MongoClient(mongohost)
-    db = client[mongodb]
-    email = input("Input email: ")
+def run_delete_user(args):
+    client = MongoClient(args.mongohost)
+    db = client[args.mongodb]
+    email = args.email or input("Input email: ")
     if email:
         if db.resource_user.find_one({'email': email}):
             schema_factory = SchemaFactory(db)
@@ -90,15 +90,13 @@ def run_delete_user(mongohost, mongodb, _):
             print("User %s does not exist" % email)
 
 
-def run_invite_user(mongohost, mongodb, _):
-    client = MongoClient(mongohost)
-    db = client[mongodb]
-    email = input("Input email: ")
-    groups = input("Input groups (comma separated): ")
-    admin = input("Is admin? (y/n)")
+def run_invite_user(args):
+    client = MongoClient(args.mongohost)
+    db = client[args.mongodb]
+    email = args.email or input("Input email: ")
+    groups = args.groups or input("Input groups (comma separated): ")
     if email:
         groups = groups.split(',') if groups else []
-        admin = admin in ['y', 'Y', 'yes']
         if db.resource_user.find_one({'email': email}):
             print("User %s already exists" % email)
         else:
@@ -106,42 +104,56 @@ def run_invite_user(mongohost, mongodb, _):
             schema = schema_factory.load_current_schema()
 
             updater = Updater(schema)
-            updater.create_user_resource(email, groups, admin)
+            updater.create_user_resource(email, groups, False)
 
-            print("User %s created" % email)
+            print("User %s invited" % email)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Metaphor init scripts')
+    parser.add_argument(
+        '--mongohost',
+        default=os.getenv('METAPHOR_MONGO_HOST',
+                          'mongodb://127.0.0.1:27017/admin'),
+        help='Mongo connection (default from METAPHOR_MONGO_HOST)'
+    )
+    parser.add_argument(
+        '--mongodb',
+        default=os.getenv('METAPHOR_DBNAME', 'metaphor'),
+        help='Mongo database (default from METAPHOR_DBNAME)'
+    )
+    subparsers = parser.add_subparsers(dest='command', required=True)
 
-    parser.add_argument(
-        'command', type=str,
-        help='Command to run: init_schema|create_superuser|create_user|invite_user')
-    parser.add_argument(
-        '--mongohost', type=str,
-        help='Mongo connection: mongodb://[username:password@]host[:port]')
-    parser.add_argument(
-        '--mongodb', type=str,
-        help='Mongo database')
-    parser.add_argument(
-        '--file', type=str,
-        help='Schema file path')
+    # ---- init_schema ----
+    init_parser = subparsers.add_parser('init_schema', help='Initialize schema from a file')
+    init_parser.add_argument('--file', help='Schema file path')
+    init_parser.set_defaults(func=run_init_schema)
 
+    # ---- create_superuser ----
+    superuser_parser = subparsers.add_parser('create_superuser', help='Create a superuser')
+    superuser_parser.add_argument('email', help='Email of user')
+    superuser_parser.add_argument('password', help='Password of user')
+    superuser_parser.set_defaults(func=run_create_superuser)
+
+    # ---- create_user ----
+    create_user_parser = subparsers.add_parser('create_user', help='Create a user')
+    create_user_parser.add_argument('email', help='Email of user')
+    create_user_parser.add_argument('password', help='Password of user')
+    create_user_parser.add_argument('groups', help='Comma separated list of groups user belongs to')
+    create_user_parser.set_defaults(func=run_create_user)
+
+    # ---- delete_user ----
+    delete_user_parser = subparsers.add_parser('delete_user', help='Delete a user')
+    delete_user_parser.add_argument('email', help='Email of user')
+    delete_user_parser.set_defaults(func=run_delete_user)
+
+    # ---- invite_user ----
+    invite_user_parser = subparsers.add_parser('invite_user', help='Invite a user')
+    invite_user_parser.add_argument('email', help='Email of user')
+    invite_user_parser.add_argument('groups', help='Comma separated list of groups user belongs to')
+    invite_user_parser.set_defaults(func=run_invite_user)
+
+    # ---- Parse and dispatch ----
     args = parser.parse_args()
+    args.func(args)
 
-    commands = {
-        'init_schema': run_init_schema,
-        'create_superuser': run_create_superuser,
-        'create_user': run_create_user,
-        'delete_user': run_delete_user,
-        'invite_user': run_invite_user,
-    }
-
-    default_mongoconnection = os.getenv('METAPHOR_MONGO_HOST',
-                                        'mongodb://127.0.0.1:27017/admin')
-    default_mongodb = os.getenv('METAPHOR_DBNAME', 'metaphor')
-
-    commands[args.command](
-        args.mongohost or default_mongoconnection,
-        args.mongodb or default_mongodb,
-        args.file or None)

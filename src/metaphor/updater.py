@@ -233,8 +233,8 @@ class Updater(object):
         self.schema.cleanup_update(update_id)
         return return_val
 
-    def delete_user(self, username):
-        user = self.schema.db['resource_user'].find_one({'username': username})
+    def delete_user(self, email):
+        user = self.schema.db['resource_user'].find_one({'email': email})
         self.delete_resource('user', self.schema.encodeid(user['_id']), user['_parent_type'], user['_parent_field_name'])
 
     def delete_links_to_resource(self, spec_name, resource_id):
