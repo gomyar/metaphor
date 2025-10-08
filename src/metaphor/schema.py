@@ -156,6 +156,36 @@ class Spec(object):
                         parents.append("%s.%s" % (ref_spec_name, ref_field_name))
         return parents
 
+    def to_dict(self):
+        """Convert spec to dictionary representation"""
+        result = {
+            '_id': self.name,
+            'fields': {}
+        }
+        
+        for field_name, field in self.fields.items():
+            field_data = {
+                'type': field.field_type,
+            }
+            if hasattr(field, 'target_spec_name') and field.target_spec_name:
+                field_data['target_spec_name'] = field.target_spec_name
+            if hasattr(field, 'default') and field.default is not None:
+                field_data['default'] = field.default
+            if hasattr(field, 'required'):
+                field_data['required'] = field.required
+            if hasattr(field, 'indexed'):
+                field_data['indexed'] = field.indexed
+            if hasattr(field, 'unique'):
+                field_data['unique'] = field.unique
+            if hasattr(field, 'unique_global'):
+                field_data['unique_global'] = field.unique_global
+            if hasattr(field, 'calc_str'):
+                field_data['calc_str'] = field.calc_str
+                
+            result['fields'][field_name] = field_data
+            
+        return result
+
 
 class User:
     def __init__(self, user_id, grants, admin=False):
@@ -171,7 +201,7 @@ class User:
 
 
 class Identity(UserMixin):
-    def __init__(self, identity_id, user_id, identity_type, email, name, profile_url, session_id=None, password=None):
+    def __init__(self, identity_id, user_id, identity_type, email, name, profile_url, session_id=None, password=None, token=None):
         self.identity_id = identity_id
         self.user_id = user_id
         self.identity_type = identity_type
@@ -180,9 +210,10 @@ class Identity(UserMixin):
         self.profile_url = profile_url
         self.session_id = session_id
         self.password = password
+        self.token = token
 
     def get_id(self):
-        return self.session_id
+        return self.session_id or self.token
 
     @staticmethod
     def from_data(identity_data):
@@ -194,7 +225,8 @@ class Identity(UserMixin):
             identity_data["name"],
             identity_data["profile_url"],
             identity_data.get("session_id"),
-            identity_data.get("password"))
+            identity_data.get("password"),
+            identity_data.get("token"))
 
 
 class Schema(object):
@@ -952,6 +984,14 @@ class Schema(object):
         else:
             return None
 
+    def load_identity_by_token(self, token):
+        identity_data = self.db['metaphor_identity'].find_one({
+            "token": token})
+        if identity_data:
+            return Identity.from_data(identity_data)
+        else:
+            return None
+
     def get_identities(self):
         return [Identity.from_data(i) for i in self.db['metaphor_identity'].find()]
 
@@ -992,4 +1032,50 @@ class Schema(object):
 
     def delete(self):
         self.db.metaphor_schema.delete_one({"_id": self._id})
+
+    def to_dict(self):
+        """Convert schema to dictionary representation"""
+        result = {
+            'id': str(self._id),
+            'name': self.name,
+            'description': self.description,
+            'version': self.version,
+            'current': self.current,
+            'groups': self.groups,
+            'root': {
+                'fields': {}
+            },
+            'specs': {}
+        }
+
+        # Add root fields
+        for field_name, field in self.root.fields.items():
+            result['root']['fields'][field_name] = {
+                'type': field.field_type,
+                'target_spec_name': getattr(field, 'target_spec_name', None),
+                'default': getattr(field, 'default', None),
+                'required': getattr(field, 'required', False)
+            }
+
+        # Add specs
+        for spec_name, spec in self.specs.items():
+            result['specs'][spec_name] = {
+                'fields': {}
+            }
+            for field_name, field in spec.fields.items():
+                field_data = {
+                    'type': field.field_type,
+                }
+                if hasattr(field, 'target_spec_name') and field.target_spec_name:
+                    field_data['target_spec_name'] = field.target_spec_name
+                if hasattr(field, 'default') and field.default is not None:
+                    field_data['default'] = field.default
+                if hasattr(field, 'required'):
+                    field_data['required'] = field.required
+                if hasattr(field, 'calc_str'):
+                    field_data['calc_str'] = field.calc_str
+
+                result['specs'][spec_name]['fields'][field_name] = field_data
+
+        return result
 

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import json
+import secrets
+
 from datetime import datetime
 import getpass
 import argparse
@@ -111,12 +114,53 @@ def run_invite_user(mongohost, mongodb, _):
             print("User %s created" % email)
 
 
+def run_create_token(mongohost, mongodb, _):
+    client = MongoClient(mongohost)
+    db = client[mongodb]
+    email = input("Input email: ")
+    token_name = input("Input token name (optional): ") or "API Token"
+    custom_token = input("Input custom token value (optional, for dev only): ")
+
+    if email:
+        user = db.resource_user.find_one({'email': email})
+        if not user:
+            print("User %s does not exist" % email)
+            return
+
+        # Use custom token if provided, otherwise generate a secure random token
+        if custom_token:
+            token = custom_token
+            print("WARNING: Using custom token value. Only use this for local development!")
+        else:
+            token = secrets.token_urlsafe(32)
+
+        # Create or update identity with token
+        identity_data = {
+            "user_id": user['_id'],
+            "type": "token",
+            "email": email,
+            "name": token_name,
+            "profile_url": "",
+            "token": token,
+            "created": datetime.now().isoformat()
+        }
+
+        # Insert the token identity
+        result = db.metaphor_identity.insert_one(identity_data)
+
+        print(f"Token created for user {email}")
+        print(f"Token name: {token_name}")
+        print(f"Token: {token}")
+        if not custom_token:
+            print("Store this token securely - it cannot be retrieved again!")
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Metaphor init scripts')
 
     parser.add_argument(
         'command', type=str,
-        help='Command to run: init_schema|create_superuser|create_user|invite_user')
+        help='Command to run: init_schema|create_superuser|create_user|invite_user|create_token')
     parser.add_argument(
         '--mongohost', type=str,
         help='Mongo connection: mongodb://[username:password@]host[:port]')
@@ -135,6 +179,7 @@ if __name__ == '__main__':
         'create_user': run_create_user,
         'delete_user': run_delete_user,
         'invite_user': run_invite_user,
+        'create_token': run_create_token,
     }
 
     default_mongoconnection = os.getenv('METAPHOR_MONGO_HOST',

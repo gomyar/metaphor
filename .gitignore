@@ -3,3 +3,5 @@
 src/metaphor.egg-info/
 .ropeproject
 .env
+.serena/
+.idea/

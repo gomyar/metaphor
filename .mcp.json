@@ -1,0 +1,44 @@
+{
+    "mcpServers": {
+        "serena": {
+            "type": "stdio",
+            "command": "uvx",
+            "args": [
+                "--from",
+                "git+https://github.com/oraios/serena",
+                "serena",
+                "start-mcp-server",
+                "--context",
+                "ide-assistant"
+            ],
+            "env": {}
+        },
+        "puppeteer": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-puppeteer"
+            ]
+        },
+        "mongodb-mcp": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                "MDB_MCP_CONNECTION_STRING=mongodb://mongodb:27017",
+                "--network",
+                "spike_claude_config_app-network",
+                "mongodb/mongodb-mcp-server"
+            ]
+        },
+        "metaphor": {
+            "type": "http",
+            "url": "http://localhost:8000/mcp/",
+            "headers": {
+                "Authorization": "Bearer token"
+            }
+        }
+    }
+}
