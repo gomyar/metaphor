@@ -5,7 +5,7 @@ import sys
 import json
 import secrets
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import getpass
 import argparse
 from pymongo import MongoClient
@@ -117,42 +117,67 @@ def run_invite_user(mongohost, mongodb, _):
 def run_create_token(mongohost, mongodb, _):
     client = MongoClient(mongohost)
     db = client[mongodb]
+
+    # Get user email
     email = input("Input email: ")
-    token_name = input("Input token name (optional): ") or "API Token"
-    custom_token = input("Input custom token value (optional, for dev only): ")
+    if not email:
+        print("Email is required")
+        return
 
-    if email:
-        user = db.resource_user.find_one({'email': email})
-        if not user:
-            print("User %s does not exist" % email)
-            return
+    # Check if user exists
+    user = db.resource_user.find_one({'email': email})
+    if not user:
+        print("User %s does not exist" % email)
+        return
 
-        # Use custom token if provided, otherwise generate a secure random token
-        if custom_token:
-            token = custom_token
-            print("WARNING: Using custom token value. Only use this for local development!")
-        else:
-            token = secrets.token_urlsafe(32)
+    # Get OAuth client details
+    client_name = input(f"Input client name (default: '{email} API Client'): ") or f"{email} API Client"
 
-        # Create or update identity with token
-        identity_data = {
-            "user_id": user['_id'],
-            "type": "token",
-            "email": email,
-            "name": token_name,
-            "profile_url": "",
-            "token": token,
-            "created": datetime.now().isoformat()
-        }
+    # Get scopes
+    default_scopes = "read,write"
+    scopes_input = input(f"Input scopes (comma-separated, default: '{default_scopes}'): ") or default_scopes
+    scopes = [scope.strip() for scope in scopes_input.split(',') if scope.strip()]
 
-        # Insert the token identity
-        result = db.metaphor_identity.insert_one(identity_data)
+    # Ask about admin scope
+    admin_scope = input("Include admin scope? (y/n, default: n): ").lower()
+    if admin_scope in ['y', 'yes']:
+        if 'admin' not in scopes:
+            scopes.append('admin')
 
-        print(f"Token created for user {email}")
-        print(f"Token name: {token_name}")
-        print(f"Token: {token}")
-        if not custom_token:
-            print("Store this token securely - it cannot be retrieved again!")
+    # Get token expiration
+    expiration_hours = input("Token expiration in hours (default: 24): ") or "24"
+    try:
+        expiration_hours = int(expiration_hours)
+    except ValueError:
+        print("Invalid expiration hours, using default of 24")
+        expiration_hours = 24
+
+    # Create schema factory and get current schema
+    schema_factory = SchemaFactory(db)
+    schema = schema_factory.load_current_schema()
+
+    try:
+        # Create OAuth client
+        client_id, client_secret = schema.create_oauth_client(client_name, scopes)
+
+        # Create OAuth token
+        expires_in_seconds = expiration_hours * 3600
+        access_token, expires_at = schema.create_oauth_token(client_id, scopes, expires_in_seconds)
+
+        # Display results
+        print(f"\nOAuth client created for user: {email}")
+        print(f"Client Name: {client_name}")
+        print(f"Client ID: {client_id}")
+        print(f"Client Secret: {client_secret}")
+        print(f"Access Token: {access_token}")
+        print(f"Token Expires: {expires_at.isoformat()}")
+        print(f"Scopes: {', '.join(scopes)}")
+        print(f"\nStore these credentials securely - they cannot be retrieved again!")
+        print(f"Use the access token for API authentication with 'Authorization: Bearer {access_token}'")
+
+    except Exception as e:
+        print(f"Error creating OAuth client/token: {e}")
+        return
 
 
 if __name__ == '__main__':

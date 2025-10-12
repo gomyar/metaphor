@@ -522,8 +522,15 @@ class MCPServer:
 
     def _check_admin_access(self):
         from flask import g
-        
-        # Check if we have user context from token authentication
+
+        # Check for OAuth authentication first
+        if hasattr(g, 'oauth_token') and g.oauth_token:
+            # For OAuth tokens, check if client has admin scope
+            if not g.oauth_token.has_scope('admin'):
+                raise MCPError(-32000, "Admin scope required for this operation")
+            return
+
+        # Fall back to user-based authentication
         if not hasattr(g, 'current_user') or not g.current_user:
             raise MCPError(-32000, "Authentication required for admin operations")
 
@@ -698,28 +705,55 @@ def mcp_endpoint():
             }), 401
 
         token = auth_header.split(' ')[1]
-        identity = api.schema.load_identity_by_token(token)
-        
-        if not identity:
-            return jsonify({
-                "jsonrpc": "2.0", 
-                "id": None,
-                "error": {
-                    "code": -32000,
-                    "message": "Invalid or expired token"
-                }
-            }), 401
 
-        user = api.schema.load_user_by_id(identity.user_id)
-        if not user:
-            return jsonify({
-                "jsonrpc": "2.0",
-                "id": None, 
-                "error": {
-                    "code": -32000,
-                    "message": "User not found"
-                }
-            }), 401
+        # Try OAuth token first
+        oauth_token = api.schema.load_oauth_token(token)
+
+        if oauth_token:
+            # Valid OAuth token - load client for context
+            oauth_client = api.schema.load_oauth_client(oauth_token.client_id)
+            if not oauth_client:
+                return jsonify({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32000,
+                        "message": "OAuth client not found"
+                    }
+                }), 401
+
+            # For OAuth tokens, we don't have a user context
+            # Set OAuth-specific context for the MCP server
+            identity = None
+            user = None
+
+        else:
+            # Fall back to identity token
+            identity = api.schema.load_identity_by_token(token)
+
+            if not identity:
+                return jsonify({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32000,
+                        "message": "Invalid or expired token"
+                    }
+                }), 401
+
+            user = api.schema.load_user_by_id(identity.user_id)
+            if not user:
+                return jsonify({
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32000,
+                        "message": "User not found"
+                    }
+                }), 401
+
+            oauth_token = None
+            oauth_client = None
 
         # Set current user context for the MCP server
         # We'll need to modify the MCPServer to accept user context
@@ -728,6 +762,8 @@ def mcp_endpoint():
             from flask import g
             g.current_user = identity
             g.current_api_user = user
+            g.oauth_token = oauth_token
+            g.oauth_client = oauth_client
             
             mcp_server = MCPServer(api, schema_factory)
 

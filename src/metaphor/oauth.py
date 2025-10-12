@@ -1,5 +1,7 @@
 
 import os
+import base64
+import logging
 
 from flask import Blueprint, redirect, url_for, session, request, jsonify
 from authlib.integrations.flask_client import OAuth
@@ -7,8 +9,9 @@ from authlib.integrations.base_client.errors import OAuthError
 from flask import current_app
 from flask_login import login_user
 
+log = logging.getLogger(__name__)
 
-oauth_bp = Blueprint('oauth', __name__)
+oauth_bp = Blueprint('oauth', __name__, url_prefix='/oauth')
 oauth = OAuth()
 
 
@@ -89,4 +92,184 @@ def callback(provider):
     login_user(identity)
 
     return redirect('/')
+
+
+# OAuth 2.0 Client Credentials Flow (Machine-to-Machine Authentication)
+
+@oauth_bp.route('/token', methods=['POST'])
+def token():
+    """
+    OAuth 2.0 Client Credentials Grant Token Endpoint
+
+    Handles POST /oauth/token with grant_type=client_credentials
+    Expects client authentication via Authorization header (Basic Auth)
+    """
+    api = current_app.config['api']
+
+    # Verify grant type
+    grant_type = request.form.get('grant_type')
+    if grant_type != 'client_credentials':
+        return jsonify({
+            "error": "unsupported_grant_type",
+            "error_description": "Only client_credentials grant type is supported"
+        }), 400
+
+    # Extract client credentials from Authorization header
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Basic '):
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Client authentication required via Basic Auth"
+        }), 401
+
+    try:
+        # Decode Basic Auth credentials
+        encoded_credentials = auth_header[6:]  # Remove "Basic " prefix
+        decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
+        client_id, client_secret = decoded_credentials.split(':', 1)
+    except (ValueError, UnicodeDecodeError):
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Invalid client credentials format"
+        }), 401
+
+    # Load and verify client
+    client = api.schema.load_oauth_client(client_id)
+    if not client:
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Client not found"
+        }), 401
+
+    if not client.verify_secret(client_secret):
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Invalid client secret"
+        }), 401
+
+    # Handle scope parameter
+    requested_scopes = request.form.get('scope', '').split()
+    if requested_scopes:
+        # Verify all requested scopes are allowed for this client
+        for scope in requested_scopes:
+            if scope not in client.scopes:
+                return jsonify({
+                    "error": "invalid_scope",
+                    "error_description": f"Scope '{scope}' not allowed for this client"
+                }), 400
+        granted_scopes = requested_scopes
+    else:
+        # Grant all client scopes if none specified
+        granted_scopes = client.scopes
+
+    # Create access token
+    try:
+        access_token, expires_at = api.schema.create_oauth_token(
+            client_id=client_id,
+            scopes=granted_scopes,
+            expires_in_seconds=3600  # 1 hour default
+        )
+
+        return jsonify({
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "scope": " ".join(granted_scopes)
+        })
+
+    except Exception as e:
+        log.error(f"Failed to create OAuth token: {e}")
+        return jsonify({
+            "error": "server_error",
+            "error_description": "Failed to create access token"
+        }), 500
+
+
+@oauth_bp.route('/revoke', methods=['POST'])
+def revoke_token():
+    """
+    OAuth 2.0 Token Revocation Endpoint
+
+    Handles POST /oauth/revoke to revoke access tokens
+    """
+    api = current_app.config['api']
+
+    # Get token from request
+    token = request.form.get('token')
+    if not token:
+        return jsonify({
+            "error": "invalid_request",
+            "error_description": "Missing token parameter"
+        }), 400
+
+    # Revoke the token
+    api.schema.revoke_oauth_token(token)
+
+    # RFC 7009 says to return 200 regardless of whether token existed
+    return '', 200
+
+
+@oauth_bp.route('/introspect', methods=['POST'])
+def introspect_token():
+    """
+    OAuth 2.0 Token Introspection Endpoint (RFC 7662)
+
+    Handles POST /oauth/introspect to check token validity and metadata
+    Requires client authentication
+    """
+    api = current_app.config['api']
+
+    # Extract client credentials from Authorization header
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Basic '):
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Client authentication required via Basic Auth"
+        }), 401
+
+    try:
+        # Decode Basic Auth credentials
+        encoded_credentials = auth_header[6:]
+        decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
+        client_id, client_secret = decoded_credentials.split(':', 1)
+    except (ValueError, UnicodeDecodeError):
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Invalid client credentials format"
+        }), 401
+
+    # Verify client
+    client = api.schema.load_oauth_client(client_id)
+    if not client or not client.verify_secret(client_secret):
+        return jsonify({
+            "error": "invalid_client",
+            "error_description": "Invalid client credentials"
+        }), 401
+
+    # Get token to introspect
+    token = request.form.get('token')
+    if not token:
+        return jsonify({
+            "error": "invalid_request",
+            "error_description": "Missing token parameter"
+        }), 400
+
+    # Load token details
+    oauth_token = api.schema.load_oauth_token(token)
+
+    if oauth_token and not oauth_token.is_expired():
+        # Token is active
+        return jsonify({
+            "active": True,
+            "client_id": oauth_token.client_id,
+            "scope": " ".join(oauth_token.scopes),
+            "exp": int(oauth_token.expires_at.timestamp()),
+            "iat": int(oauth_token.created_at.timestamp()),
+            "token_type": "Bearer"
+        })
+    else:
+        # Token is inactive (expired, revoked, or doesn't exist)
+        return jsonify({
+            "active": False
+        })
 

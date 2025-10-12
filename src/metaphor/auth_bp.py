@@ -95,3 +95,104 @@ def all_identities():
             data['groups'],
             data['admin'])
         return jsonify({'ok': 1})
+
+@auth_bp.route("/api/oauth_clients", methods=['GET', 'POST'])
+@admin_required
+def oauth_clients():
+    """Manage OAuth clients - list all or create new"""
+    api = current_app.config['api']
+
+    if request.method == 'GET':
+        # List all OAuth clients
+        clients = api.schema.get_oauth_clients()
+        def serialize_client(client):
+            return {
+                "client_id": client.client_id,
+                "name": client.name,
+                "scopes": client.scopes,
+                "created_at": client.created_at.isoformat() if client.created_at else None
+            }
+        return jsonify([serialize_client(c) for c in clients])
+
+    else:  # POST
+        # Create new OAuth client
+        data = request.json
+        if not data or 'name' not in data or 'scopes' not in data:
+            return jsonify({'error': 'Missing required fields: name, scopes'}), 400
+
+        name = data['name']
+        scopes = data['scopes'] if isinstance(data['scopes'], list) else data['scopes'].split()
+
+        try:
+            client_id, client_secret = api.schema.create_oauth_client(name, scopes)
+            return jsonify({
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'name': name,
+                'scopes': scopes,
+                'message': 'OAuth client created successfully. Store the client_secret securely - it will not be shown again.'
+            }), 201
+        except Exception as e:
+            log.error(f"Failed to create OAuth client: {e}")
+            return jsonify({'error': 'Failed to create OAuth client'}), 500
+
+
+@auth_bp.route("/api/oauth_clients/<client_id>", methods=['DELETE'])
+@admin_required
+def delete_oauth_client(client_id):
+    """Delete an OAuth client and all its tokens"""
+    api = current_app.config['api']
+
+    if api.schema.delete_oauth_client(client_id):
+        return jsonify({'message': 'OAuth client deleted successfully'})
+    else:
+        return jsonify({'error': 'OAuth client not found'}), 404
+
+
+@auth_bp.route("/api/oauth_clients/<client_id>/tokens", methods=['GET'])
+@admin_required
+def oauth_client_tokens(client_id):
+    """List active tokens for an OAuth client"""
+    api = current_app.config['api']
+
+    # Verify client exists
+    client = api.schema.load_oauth_client(client_id)
+    if not client:
+        return jsonify({'error': 'OAuth client not found'}), 404
+
+    # Get active tokens
+    tokens = api.schema.get_oauth_tokens_for_client(client_id)
+    
+    def serialize_token(token):
+        return {
+            "access_token": token.access_token[:8] + "..." if len(token.access_token) > 8 else token.access_token,
+            "scopes": token.scopes,
+            "expires_at": token.expires_at.isoformat(),
+            "created_at": token.created_at.isoformat() if token.created_at else None
+        }
+
+    return jsonify([serialize_token(t) for t in tokens])
+
+
+@auth_bp.route("/api/oauth_tokens/cleanup", methods=['POST'])
+@admin_required
+def cleanup_expired_tokens():
+    """Clean up expired OAuth tokens"""
+    api = current_app.config['api']
+
+    deleted_count = api.schema.cleanup_expired_oauth_tokens()
+    return jsonify({
+        'message': f'Cleaned up {deleted_count} expired OAuth tokens'
+    })
+
+
+@auth_bp.route("/api/oauth_tokens/<access_token>", methods=['DELETE'])
+@admin_required
+def revoke_oauth_token(access_token):
+    """Revoke a specific OAuth token"""
+    api = current_app.config['api']
+
+    if api.schema.revoke_oauth_token(access_token):
+        return jsonify({'message': 'OAuth token revoked successfully'})
+    else:
+        return jsonify({'error': 'OAuth token not found'}), 404

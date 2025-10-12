@@ -1,7 +1,7 @@
 
 import os
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import json
 import time
@@ -227,6 +227,69 @@ class Identity(UserMixin):
             identity_data.get("session_id"),
             identity_data.get("password"),
             identity_data.get("token"))
+
+class OAuthClient(object):
+    def __init__(self, client_id, client_secret_hash, name, scopes, created_at=None):
+        self.client_id = client_id
+        self.client_secret_hash = client_secret_hash
+        self.name = name
+        self.scopes = scopes if isinstance(scopes, list) else scopes.split()
+        self.created_at = created_at or datetime.utcnow()
+
+    @staticmethod
+    def from_data(client_data):
+        return OAuthClient(
+            client_data["client_id"],
+            client_data["client_secret_hash"],
+            client_data["name"],
+            client_data["scopes"],
+            client_data.get("created_at"))
+
+    def verify_secret(self, client_secret):
+        """Verify the provided client secret against the stored hash"""
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.client_secret_hash, client_secret)
+
+    @staticmethod
+    def generate_client_id():
+        """Generate a unique client ID"""
+        return str(uuid4())
+
+    @staticmethod
+    def hash_secret(client_secret):
+        """Hash a client secret for storage"""
+        return generate_password_hash(client_secret)
+
+
+class OAuthToken(object):
+    def __init__(self, access_token, client_id, scopes, expires_at, created_at=None):
+        self.access_token = access_token
+        self.client_id = client_id
+        self.scopes = scopes if isinstance(scopes, list) else scopes.split()
+        self.expires_at = expires_at
+        self.created_at = created_at or datetime.utcnow()
+
+    @staticmethod
+    def from_data(token_data):
+        return OAuthToken(
+            token_data["access_token"],
+            token_data["client_id"],
+            token_data["scopes"],
+            token_data["expires_at"],
+            token_data.get("created_at"))
+
+    def is_expired(self):
+        """Check if the token has expired"""
+        return datetime.utcnow() > self.expires_at
+
+    def has_scope(self, required_scope):
+        """Check if token has the required scope"""
+        return required_scope in self.scopes
+
+    @staticmethod
+    def generate_access_token():
+        """Generate a secure random access token"""
+        return hashlib.sha256(str(uuid4()).encode()).hexdigest()
 
 
 class Schema(object):
@@ -994,6 +1057,95 @@ class Schema(object):
 
     def get_identities(self):
         return [Identity.from_data(i) for i in self.db['metaphor_identity'].find()]
+
+    # OAuth Client Management Methods
+
+    def create_oauth_client(self, name, scopes, client_secret=None):
+        """Create a new OAuth client"""
+        client_id = OAuthClient.generate_client_id()
+        if not client_secret:
+            client_secret = str(uuid4())
+        
+        client_secret_hash = OAuthClient.hash_secret(client_secret)
+        
+        client_data = {
+            "client_id": client_id,
+            "client_secret_hash": client_secret_hash,
+            "name": name,
+            "scopes": scopes if isinstance(scopes, list) else scopes.split(),
+            "created_at": datetime.utcnow()
+        }
+        
+        self.db['metaphor_oauth_client'].insert_one(client_data)
+        return client_id, client_secret
+    
+    def load_oauth_client(self, client_id):
+        """Load OAuth client by client_id"""
+        client_data = self.db['metaphor_oauth_client'].find_one({"client_id": client_id})
+        if client_data:
+            return OAuthClient.from_data(client_data)
+        return None
+    
+    def get_oauth_clients(self):
+        """Get all OAuth clients"""
+        return [OAuthClient.from_data(c) for c in self.db['metaphor_oauth_client'].find()]
+    
+    def delete_oauth_client(self, client_id):
+        """Delete OAuth client and all its tokens"""
+        # Delete all tokens for this client
+        self.db['metaphor_oauth_token'].delete_many({"client_id": client_id})
+        # Delete the client
+        result = self.db['metaphor_oauth_client'].delete_one({"client_id": client_id})
+        return result.deleted_count > 0
+
+    # OAuth Token Management Methods
+    
+    def create_oauth_token(self, client_id, scopes, expires_in_seconds=3600):
+        """Create a new OAuth access token"""
+        access_token = OAuthToken.generate_access_token()
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_in_seconds)
+        
+        token_data = {
+            "access_token": access_token,
+            "client_id": client_id,
+            "scopes": scopes if isinstance(scopes, list) else scopes.split(),
+            "expires_at": expires_at,
+            "created_at": datetime.utcnow()
+        }
+        
+        self.db['metaphor_oauth_token'].insert_one(token_data)
+        return access_token, expires_at
+    
+    def load_oauth_token(self, access_token):
+        """Load OAuth token by access token"""
+        token_data = self.db['metaphor_oauth_token'].find_one({"access_token": access_token})
+        if token_data:
+            token = OAuthToken.from_data(token_data)
+            if not token.is_expired():
+                return token
+            else:
+                # Remove expired token
+                self.db['metaphor_oauth_token'].delete_one({"access_token": access_token})
+        return None
+    
+    def revoke_oauth_token(self, access_token):
+        """Revoke (delete) an OAuth token"""
+        result = self.db['metaphor_oauth_token'].delete_one({"access_token": access_token})
+        return result.deleted_count > 0
+    
+    def cleanup_expired_oauth_tokens(self):
+        """Remove all expired OAuth tokens"""
+        result = self.db['metaphor_oauth_token'].delete_many({
+            "expires_at": {"$lt": datetime.utcnow()}
+        })
+        return result.deleted_count
+    
+    def get_oauth_tokens_for_client(self, client_id):
+        """Get all active tokens for a client"""
+        return [OAuthToken.from_data(t) for t in self.db['metaphor_oauth_token'].find({
+            "client_id": client_id,
+            "expires_at": {"$gt": datetime.utcnow()}
+        })]
 
     def create_group(self, group_name):
         if group_name in self.groups:
