@@ -20,7 +20,7 @@ services:
       - "${PWD}/src/:/app/"
       - "${PWD}/bin/metaphor:/bin/metaphor"
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${METAPHOR_PORT:-8000}:8000"
     depends_on:
       - mongo
     entrypoint: ["gunicorn", "-k", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", "server:app", "--timeout", "6000", "--bind=0.0.0.0:8000", "--access-logfile=-", "--reload"]
@@ -31,4 +31,4 @@ services:
     image: mongo:5.0.0
     command: --replSet metaphor
     ports:
-      - "127.0.0.1:27017:27017"
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"

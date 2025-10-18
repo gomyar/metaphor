@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 import json
-import secrets
 
-from datetime import datetime, timedelta
 import getpass
 import argparse
 from pymongo import MongoClient
-from pymongo.database import Database
 from metaphor.updater import Updater
 from metaphor.schema_factory import SchemaFactory
+
+from metaphor.admin_script import AdminScript
 
 
 def run_init_schema(mongohost, mongodb, schema_filepath):
@@ -114,6 +112,7 @@ def run_invite_user(mongohost, mongodb, _):
             print("User %s created" % email)
 
 
+
 def run_create_token(mongohost, mongodb, _):
     client = MongoClient(mongohost)
     db = client[mongodb]
@@ -152,28 +151,21 @@ def run_create_token(mongohost, mongodb, _):
         print("Invalid expiration hours, using default of 24")
         expiration_hours = 24
 
-    # Create schema factory and get current schema
-    schema_factory = SchemaFactory(db)
-    schema = schema_factory.load_current_schema()
-
     try:
-        # Create OAuth client
-        client_id, client_secret = schema.create_oauth_client(client_name, scopes)
-
-        # Create OAuth token
-        expires_in_seconds = expiration_hours * 3600
-        access_token, expires_at = schema.create_oauth_token(client_id, scopes, expires_in_seconds)
+        # Create token manager and generate complete token set
+        token_manager = AdminScript(db)
+        result = token_manager.create_complete_token_set(email, client_name, scopes, expiration_hours)
 
         # Display results
-        print(f"\nOAuth client created for user: {email}")
-        print(f"Client Name: {client_name}")
-        print(f"Client ID: {client_id}")
-        print(f"Client Secret: {client_secret}")
-        print(f"Access Token: {access_token}")
-        print(f"Token Expires: {expires_at.isoformat()}")
-        print(f"Scopes: {', '.join(scopes)}")
+        print(f"\nOAuth client created for user: {result['user_email']}")
+        print(f"Client Name: {result['client_name']}")
+        print(f"Client ID: {result['client_id']}")
+        print(f"Client Secret: {result['client_secret']}")
+        print(f"Access Token: {result['access_token']}")
+        print(f"Token Expires: {result['expires_at'].isoformat()}")
+        print(f"Scopes: {', '.join(result['scopes'])}")
         print(f"\nStore these credentials securely - they cannot be retrieved again!")
-        print(f"Use the access token for API authentication with 'Authorization: Bearer {access_token}'")
+        print(f"Use the access token for API authentication with 'Authorization: Bearer {result['access_token']}'")
 
     except Exception as e:
         print(f"Error creating OAuth client/token: {e}")
